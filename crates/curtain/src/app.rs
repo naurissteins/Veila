@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{Context, Result, anyhow, bail};
 use calloop::signals::{Signal, Signals};
+use kwylock_renderer::{ClearColor, FrameSize, SoftwareBuffer, shm};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     output::{OutputHandler, OutputState},
@@ -22,7 +23,7 @@ use smithay_client_toolkit::{
     shm::{Shm, ShmHandler},
 };
 
-use crate::{CurtainOptions, render};
+use crate::CurtainOptions;
 
 const LOCK_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -238,8 +239,22 @@ impl CurtainApp {
         };
 
         let size = self.resolve_surface_size(index, configure.new_size);
+        let buffer = match SoftwareBuffer::solid(
+            FrameSize::new(size.0, size.1),
+            ClearColor::opaque(0, 0, 0),
+        ) {
+            Ok(buffer) => buffer,
+            Err(error) => {
+                self.failure_reason = Some(format!(
+                    "failed to build curtain software buffer: {error:#}"
+                ));
+                self.exit_requested = true;
+                return;
+            }
+        };
+
         if let Err(error) =
-            render::commit_blank_surface(&self.shm, queue_handle, &surface, size.0, size.1)
+            shm::commit_buffer(&self.shm, queue_handle, surface.wl_surface(), &buffer)
         {
             self.failure_reason = Some(format!("failed to render curtain surface: {error:#}"));
             self.exit_requested = true;

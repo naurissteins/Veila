@@ -3,7 +3,6 @@
 //! Secure session-lock curtain for Kwylock.
 
 mod app;
-mod render;
 
 use std::path::PathBuf;
 

@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
 
-//! Rendering primitives shared by Kwylock components.
+//! Shared rendering primitives used by Kwylock components.
+
+pub mod shm;
+
+use thiserror::Error;
 
 /// Pixel dimensions for a render target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +22,13 @@ impl FrameSize {
     /// Returns whether the frame area is empty.
     pub const fn is_empty(self) -> bool {
         self.width == 0 || self.height == 0
+    }
+
+    /// Returns the ARGB8888 byte length for the frame size.
+    pub fn byte_len(self) -> Option<usize> {
+        let width = usize::try_from(self.width).ok()?;
+        let height = usize::try_from(self.height).ok()?;
+        width.checked_mul(height)?.checked_mul(4)
     }
 }
 
@@ -40,11 +51,75 @@ impl ClearColor {
             alpha: u8::MAX,
         }
     }
+
+    pub const fn to_argb8888_bytes(self) -> [u8; 4] {
+        u32::from_be_bytes([self.alpha, self.red, self.green, self.blue]).to_le_bytes()
+    }
+}
+
+/// Shared renderer error type.
+#[derive(Debug, Error)]
+pub enum RendererError {
+    #[error("frame size {0:?} is invalid for ARGB8888 rendering")]
+    InvalidFrameSize(FrameSize),
+    #[error("frame size must not be empty")]
+    EmptyFrame,
+    #[error(transparent)]
+    ShmPool(#[from] smithay_client_toolkit::shm::CreatePoolError),
+}
+
+/// Shared result type for rendering operations.
+pub type Result<T> = std::result::Result<T, RendererError>;
+
+/// Owned ARGB8888 software buffer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SoftwareBuffer {
+    size: FrameSize,
+    pixels: Vec<u8>,
+}
+
+impl SoftwareBuffer {
+    /// Creates a new ARGB8888 buffer of the requested size.
+    pub fn new(size: FrameSize) -> Result<Self> {
+        let Some(byte_len) = size.byte_len() else {
+            return Err(RendererError::InvalidFrameSize(size));
+        };
+
+        Ok(Self {
+            size,
+            pixels: vec![0; byte_len],
+        })
+    }
+
+    /// Creates a solid-color ARGB8888 buffer.
+    pub fn solid(size: FrameSize, color: ClearColor) -> Result<Self> {
+        let mut buffer = Self::new(size)?;
+        buffer.clear(color);
+        Ok(buffer)
+    }
+
+    /// Fills the buffer with a single color.
+    pub fn clear(&mut self, color: ClearColor) {
+        let pixel = color.to_argb8888_bytes();
+        self.pixels
+            .chunks_exact_mut(4)
+            .for_each(|chunk| chunk.copy_from_slice(&pixel));
+    }
+
+    /// Returns the frame size for the buffer.
+    pub const fn size(&self) -> FrameSize {
+        self.size
+    }
+
+    /// Returns the ARGB8888 bytes.
+    pub fn pixels(&self) -> &[u8] {
+        &self.pixels
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ClearColor, FrameSize};
+    use super::{ClearColor, FrameSize, SoftwareBuffer};
 
     #[test]
     fn detects_empty_frame_sizes() {
@@ -53,15 +128,15 @@ mod tests {
     }
 
     #[test]
-    fn creates_opaque_colors() {
-        assert_eq!(
-            ClearColor::opaque(10, 20, 30),
-            ClearColor {
-                red: 10,
-                green: 20,
-                blue: 30,
-                alpha: 255,
-            }
-        );
+    fn computes_argb8888_byte_size() {
+        assert_eq!(FrameSize::new(2, 3).byte_len(), Some(24));
+    }
+
+    #[test]
+    fn fills_solid_buffers() {
+        let buffer = SoftwareBuffer::solid(FrameSize::new(2, 1), ClearColor::opaque(10, 20, 30))
+            .expect("buffer should be created");
+
+        assert_eq!(buffer.pixels(), &[30, 20, 10, 255, 30, 20, 10, 255]);
     }
 }

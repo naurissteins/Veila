@@ -384,6 +384,7 @@ dependencies = [
  "anyhow",
  "calloop",
  "kwylock-common",
+ "kwylock-renderer",
  "smithay-client-toolkit",
  "tracing",
  "tracing-subscriber",
@@ -406,6 +407,10 @@ dependencies = [
 [[package]]
 name = "kwylock-renderer"
 version = "0.1.0"
+dependencies = [
+ "smithay-client-toolkit",
+ "thiserror",
+]
 
 [[package]]
 name = "kwylock-ui"

@@ -13,6 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 kwylock-common = { path = "../common" }
+kwylock-renderer = { path = "../renderer" }
 anyhow = { workspace = true }
 calloop = { workspace = true }
 smithay-client-toolkit = { workspace = true }
