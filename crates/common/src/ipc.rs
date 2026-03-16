@@ -12,8 +12,8 @@ pub enum ClientMessage {
 /// Messages sent from the daemon to UI-facing clients.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonMessage {
-    LockStateChanged { locked: bool },
-    AuthenticationFailed { remaining_attempts: u8 },
+    AuthenticationRejected { retry_after_ms: Option<u64> },
+    AuthenticationBusy,
 }
 
 /// Encodes an IPC message as JSON for the initial control channel.

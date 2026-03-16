@@ -13,10 +13,11 @@ use tokio::{
     time::timeout,
 };
 
-pub async fn spawn_curtain(notify_socket: &Path) -> Result<Child> {
+pub async fn spawn_curtain(notify_socket: &Path, daemon_socket: &Path) -> Result<Child> {
     let binary = curtain_binary_path()?;
     let mut command = Command::new(&binary);
     command.arg(format!("--notify-socket={}", notify_socket.display()));
+    command.arg(format!("--daemon-socket={}", daemon_socket.display()));
 
     tracing::info!(binary = %binary.display(), "spawning curtain");
 

@@ -1,5 +1,6 @@
 use std::{
     path::{Path, PathBuf},
+    sync::mpsc::{Receiver, Sender, channel},
     time::{Duration, Instant},
 };
 
@@ -22,7 +23,10 @@ use smithay_client_toolkit::{
     shm::Shm,
 };
 
-use crate::CurtainOptions;
+use crate::{
+    CurtainOptions,
+    auth::{AuthEvent, submit_password},
+};
 
 const LOCK_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -44,12 +48,16 @@ pub(crate) struct CurtainApp {
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
     notify_socket: Option<PathBuf>,
+    daemon_socket: Option<PathBuf>,
+    auth_events: Receiver<AuthEvent>,
+    auth_sender: Sender<AuthEvent>,
     ui_shell: ShellState,
     lock_started_at: Instant,
     pub(crate) session_locked: bool,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
     ready_notified: bool,
+    auth_in_flight: bool,
     pub(crate) has_keyboard_focus: bool,
     pub(crate) failure_reason: Option<String>,
 }
@@ -61,6 +69,8 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
         options: CurtainOptions,
     ) -> Result<Self> {
+        let (auth_sender, auth_events) = channel();
+
         Ok(Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
@@ -75,12 +85,16 @@ impl CurtainApp {
             keyboard: None,
             lock_surfaces: Vec::new(),
             notify_socket: options.notify_socket,
+            daemon_socket: options.daemon_socket,
+            auth_events,
+            auth_sender,
             ui_shell: ShellState::default(),
             lock_started_at: Instant::now(),
             session_locked: false,
             session_finished: false,
             exit_requested: false,
             ready_notified: false,
+            auth_in_flight: false,
             has_keyboard_focus: false,
             failure_reason: None,
         })
@@ -237,14 +251,40 @@ impl CurtainApp {
     }
 
     pub(crate) fn handle_shell_key(&mut self, key: ShellKey, queue_handle: &QueueHandle<Self>) {
+        if self.auth_in_flight {
+            return;
+        }
+
         let action = self.ui_shell.handle_key(key);
         if let ShellAction::Submit(secret) = action {
-            tracing::info!(
-                length = secret.chars().count(),
-                "password submission received before PAM integration"
-            );
+            let Some(socket_path) = self.daemon_socket.clone() else {
+                tracing::warn!("password submitted without a daemon auth socket");
+                self.ui_shell.authentication_rejected(None);
+                self.render_all_surfaces(queue_handle);
+                return;
+            };
+
+            self.auth_in_flight = true;
+            submit_password(socket_path, secret, self.auth_sender.clone());
         }
         self.render_all_surfaces(queue_handle);
+    }
+
+    pub(crate) fn drain_auth_events(&mut self, queue_handle: &QueueHandle<Self>) {
+        while let Ok(event) = self.auth_events.try_recv() {
+            match event {
+                AuthEvent::Rejected { retry_after_ms } => {
+                    self.auth_in_flight = false;
+                    self.ui_shell.authentication_rejected(retry_after_ms);
+                    self.render_all_surfaces(queue_handle);
+                }
+                AuthEvent::Busy => {
+                    self.auth_in_flight = false;
+                    self.ui_shell.authentication_busy();
+                    self.render_all_surfaces(queue_handle);
+                }
+            }
+        }
     }
 
     pub(crate) fn surface_has_focus_target(

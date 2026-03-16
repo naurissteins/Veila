@@ -419,6 +419,7 @@ dependencies = [
  "futures-util",
  "kwylock-common",
  "nix",
+ "nonstick",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -460,6 +461,35 @@ name = "libc"
 version = "0.2.183"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5b646652bf6661599e1da8901b3b9522896f01e736bad5f723fe7a3a27f899d"
+
+[[package]]
+name = "libpam-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "114545207fdd55a59a967d9d974960007fce62f6f075f2414bea2589091253f6"
+dependencies = [
+ "libc",
+ "libpam-sys-helpers",
+ "libpam-sys-impls",
+]
+
+[[package]]
+name = "libpam-sys-helpers"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8790428ad4abc1112412a63c780337b5cd050fc90d497bdea96e8e2e029323a9"
+dependencies = [
+ "libpam-sys-impls",
+]
+
+[[package]]
+name = "libpam-sys-impls"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa3007a9936a126c31a182569b6e9a6203f0ac79313a42c136a2421685fd81cb"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "linux-raw-sys"
@@ -527,6 +557,19 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+]
+
+[[package]]
+name = "nonstick"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de28bc5222f0f8495fdf5134dd91b7dc880bfdc1fa0646499d80c13d7ebbbd46"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libpam-sys",
+ "libpam-sys-helpers",
+ "libpam-sys-impls",
 ]
 
 [[package]]

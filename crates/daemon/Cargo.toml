@@ -16,6 +16,7 @@ kwylock-common = { path = "../common" }
 anyhow = { workspace = true }
 futures-util = { workspace = true }
 nix = { workspace = true }
+nonstick = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

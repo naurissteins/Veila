@@ -9,6 +9,7 @@ const BULLET: ClearColor = ClearColor::opaque(240, 244, 250);
 const PLACEHOLDER: ClearColor = ClearColor::opaque(68, 78, 102);
 const FOCUS: ClearColor = ClearColor::opaque(116, 161, 255);
 const SUBMIT: ClearColor = ClearColor::opaque(255, 194, 92);
+const REJECTED: ClearColor = ClearColor::opaque(220, 96, 96);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {
@@ -27,7 +28,8 @@ pub enum ShellKey {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ShellStatus {
     Idle,
-    Submitted,
+    Pending,
+    Rejected { retry_after_ms: Option<u64> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,14 +74,23 @@ impl ShellState {
                 ShellAction::None
             }
             ShellKey::Enter => {
-                self.status = ShellStatus::Submitted;
                 if self.secret.is_empty() {
                     ShellAction::None
                 } else {
+                    self.status = ShellStatus::Pending;
                     ShellAction::Submit(self.secret.clone())
                 }
             }
         }
+    }
+
+    pub fn authentication_busy(&mut self) {
+        self.status = ShellStatus::Idle;
+    }
+
+    pub fn authentication_rejected(&mut self, retry_after_ms: Option<u64>) {
+        self.secret.clear();
+        self.status = ShellStatus::Rejected { retry_after_ms };
     }
 
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
@@ -100,7 +111,8 @@ impl ShellState {
                     INPUT_BORDER
                 }
             }
-            ShellStatus::Submitted => SUBMIT,
+            ShellStatus::Pending => SUBMIT,
+            ShellStatus::Rejected { .. } => REJECTED,
         };
 
         fill_rect(buffer, panel_x, panel_y, panel_width, panel_height, PANEL);
@@ -144,7 +156,7 @@ impl ShellState {
             buffer,
             panel_x + 32,
             indicator_y,
-            (panel_width - 64) / 3,
+            indicator_width(panel_width, self.status),
             6,
             accent,
         );
@@ -202,6 +214,20 @@ impl ShellState {
         if self.focused {
             let cursor_x = start_x + bullet_count as i32 * spacing + 4;
             fill_rect(buffer, cursor_x, input_y + 8, 3, input_height - 16, accent);
+        }
+    }
+}
+
+fn indicator_width(panel_width: i32, status: ShellStatus) -> i32 {
+    match status {
+        ShellStatus::Idle => (panel_width - 64) / 3,
+        ShellStatus::Pending => (panel_width - 64) / 2,
+        ShellStatus::Rejected { retry_after_ms } => {
+            if retry_after_ms.unwrap_or_default() > 0 {
+                panel_width - 64
+            } else {
+                ((panel_width - 64) * 2) / 3
+            }
         }
     }
 }
@@ -279,6 +305,15 @@ mod tests {
             shell.handle_key(ShellKey::Enter),
             ShellAction::Submit(String::from("a"))
         );
+    }
+
+    #[test]
+    fn rejection_clears_secret() {
+        let mut shell = ShellState::default();
+        shell.handle_key(ShellKey::Character('a'));
+        shell.authentication_rejected(Some(1_000));
+
+        assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
     }
 
     #[test]
