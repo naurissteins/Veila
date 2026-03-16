@@ -115,6 +115,11 @@ impl SoftwareBuffer {
     pub fn pixels(&self) -> &[u8] {
         &self.pixels
     }
+
+    /// Returns the ARGB8888 bytes for in-place drawing.
+    pub fn pixels_mut(&mut self) -> &mut [u8] {
+        &mut self.pixels
+    }
 }
 
 #[cfg(test)]

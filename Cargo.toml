@@ -22,7 +22,7 @@ futures-util = "0.3"
 nix = { version = "0.31", features = ["signal"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop"] }
+smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop", "xkbcommon"] }
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "net", "process", "rt-multi-thread", "signal", "time"] }
 toml = "0.8"
