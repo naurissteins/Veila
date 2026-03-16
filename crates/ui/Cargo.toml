@@ -1,0 +1,19 @@
+[package]
+name = "kwylock-ui"
+description = "Password and lock scene UI process for Kwylock"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "kwylock-ui"
+path = "src/main.rs"
+
+[dependencies]
+kwylock-common = { path = "../common" }
+kwylock-renderer = { path = "../renderer" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+

@@ -1,0 +1,18 @@
+[package]
+name = "kwylock-curtain"
+description = "Secure curtain bootstrap binary for Kwylock"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "kwylock-curtain"
+path = "src/main.rs"
+
+[dependencies]
+kwylock-common = { path = "../common" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+

@@ -1,0 +1,15 @@
+[package]
+name = "kwylock-common"
+description = "Shared config, IPC, and error types for Kwylock"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+toml = { workspace = true }
+

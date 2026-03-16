@@ -1,0 +1,11 @@
+[package]
+name = "kwylock-renderer"
+description = "Shared rendering primitives for Kwylock"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
