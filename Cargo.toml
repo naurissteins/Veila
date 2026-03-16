@@ -18,11 +18,14 @@ repository = "https://github.com/kwimy/kwylock"
 [workspace.dependencies]
 anyhow = "1"
 calloop = { version = "0.14", features = ["signals"] }
+futures-util = "0.3"
+nix = { version = "0.31", features = ["signal"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop"] }
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "process", "rt-multi-thread", "signal", "time"] }
+tokio = { version = "1", features = ["macros", "net", "process", "rt-multi-thread", "signal", "time"] }
 toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
