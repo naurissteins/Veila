@@ -1,95 +1,11 @@
-use kwylock_renderer::{ClearColor, SoftwareBuffer};
+use kwylock_renderer::{
+    ClearColor, SoftwareBuffer,
+    text::{TextStyle, draw_text, measure_text},
+};
 
-use crate::ShellTheme;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ShellAction {
-    None,
-    Submit(String),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShellKey {
-    Character(char),
-    Backspace,
-    Enter,
-    Escape,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ShellStatus {
-    Idle,
-    Pending,
-    Rejected { retry_after_ms: Option<u64> },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ShellState {
-    secret: String,
-    focused: bool,
-    status: ShellStatus,
-    theme: ShellTheme,
-}
-
-impl Default for ShellState {
-    fn default() -> Self {
-        Self::new(ShellTheme::default())
-    }
-}
+use super::{ShellState, ShellStatus};
 
 impl ShellState {
-    pub fn new(theme: ShellTheme) -> Self {
-        Self {
-            secret: String::new(),
-            focused: false,
-            status: ShellStatus::Idle,
-            theme,
-        }
-    }
-
-    pub fn set_focus(&mut self, focused: bool) {
-        self.focused = focused;
-    }
-
-    pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
-        match key {
-            ShellKey::Character(character) => {
-                if !character.is_control() && self.secret.chars().count() < 128 {
-                    self.secret.push(character);
-                    self.status = ShellStatus::Idle;
-                }
-                ShellAction::None
-            }
-            ShellKey::Backspace => {
-                self.secret.pop();
-                self.status = ShellStatus::Idle;
-                ShellAction::None
-            }
-            ShellKey::Escape => {
-                self.secret.clear();
-                self.status = ShellStatus::Idle;
-                ShellAction::None
-            }
-            ShellKey::Enter => {
-                if self.secret.is_empty() {
-                    ShellAction::None
-                } else {
-                    self.status = ShellStatus::Pending;
-                    ShellAction::Submit(self.secret.clone())
-                }
-            }
-        }
-    }
-
-    pub fn authentication_busy(&mut self) {
-        self.status = ShellStatus::Idle;
-    }
-
-    pub fn authentication_rejected(&mut self, retry_after_ms: Option<u64>) {
-        self.secret.clear();
-        self.status = ShellStatus::Rejected { retry_after_ms };
-    }
-
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
         buffer.clear(self.theme.background);
         self.render_overlay(buffer);
@@ -99,21 +15,13 @@ impl ShellState {
         let size = buffer.size();
         let width = size.width as i32;
         let height = size.height as i32;
-        let panel_width = ((width * 3) / 5).clamp(320, 560);
-        let panel_height = 176;
+        let panel_width = ((width * 3) / 5).clamp(360, 620);
+        let panel_height = 240;
         let panel_x = (width - panel_width) / 2;
         let panel_y = (height - panel_height) / 2;
-        let accent = match self.status {
-            ShellStatus::Idle => {
-                if self.focused {
-                    self.theme.focus
-                } else {
-                    self.theme.input_border
-                }
-            }
-            ShellStatus::Pending => self.theme.pending,
-            ShellStatus::Rejected { .. } => self.theme.rejected,
-        };
+        let accent = self.accent_color();
+        let hint_style = TextStyle::new(self.theme.foreground, 2);
+        let status_style = TextStyle::new(accent, 2);
 
         fill_rect(
             buffer,
@@ -134,8 +42,18 @@ impl ShellState {
         );
         fill_rect(buffer, panel_x, panel_y, panel_width, 6, accent);
 
+        let hint_y = panel_y + 34;
+        draw_centered_text(
+            buffer,
+            panel_x,
+            panel_width,
+            hint_y,
+            &self.hint_text,
+            hint_style,
+        );
+
         let input_x = panel_x + 32;
-        let input_y = panel_y + 82;
+        let input_y = panel_y + 94;
         let input_width = panel_width - 64;
         let input_height = 38;
 
@@ -180,6 +98,45 @@ impl ShellState {
         );
 
         self.draw_secret(buffer, input_x, input_y, input_width, input_height, accent);
+
+        if let Some(status_text) = self.status_text() {
+            draw_centered_text(
+                buffer,
+                panel_x,
+                panel_width,
+                indicator_y + 22,
+                &status_text,
+                status_style,
+            );
+        }
+    }
+
+    fn accent_color(&self) -> ClearColor {
+        match self.status {
+            ShellStatus::Idle => {
+                if self.focused {
+                    self.theme.focus
+                } else {
+                    self.theme.input_border
+                }
+            }
+            ShellStatus::Pending => self.theme.pending,
+            ShellStatus::Rejected { .. } => self.theme.rejected,
+        }
+    }
+
+    fn status_text(&self) -> Option<String> {
+        match self.status {
+            ShellStatus::Idle => None,
+            ShellStatus::Pending => Some(String::from("Checking password")),
+            ShellStatus::Rejected { retry_after_ms } => match retry_after_ms {
+                Some(retry_after_ms) if retry_after_ms > 0 => {
+                    let seconds = retry_after_ms.div_ceil(1_000);
+                    Some(format!("Authentication failed, retry in {seconds}s"))
+                }
+                Some(_) | None => Some(String::from("Authentication failed")),
+            },
+        }
     }
 
     fn draw_secret(
@@ -243,6 +200,19 @@ impl ShellState {
     }
 }
 
+fn draw_centered_text(
+    buffer: &mut SoftwareBuffer,
+    panel_x: i32,
+    panel_width: i32,
+    y: i32,
+    text: &str,
+    style: TextStyle,
+) {
+    let (width, _) = measure_text(text, style);
+    let x = panel_x + ((panel_width - width as i32) / 2);
+    draw_text(buffer, x, y, text, style);
+}
+
 fn indicator_width(panel_width: i32, status: ShellStatus) -> i32 {
     match status {
         ShellStatus::Idle => (panel_width - 64) / 3,
@@ -301,53 +271,4 @@ fn stroke_rect(
     fill_rect(buffer, x, y + height - thickness, width, thickness, color);
     fill_rect(buffer, x, y, thickness, height, color);
     fill_rect(buffer, x + width - thickness, y, thickness, height, color);
-}
-
-#[cfg(test)]
-mod tests {
-    use kwylock_renderer::{FrameSize, SoftwareBuffer};
-
-    use super::{ShellAction, ShellKey, ShellState};
-
-    #[test]
-    fn edits_and_submits_password_text() {
-        let mut shell = ShellState::default();
-
-        assert_eq!(
-            shell.handle_key(ShellKey::Character('a')),
-            ShellAction::None
-        );
-        assert_eq!(
-            shell.handle_key(ShellKey::Character('b')),
-            ShellAction::None
-        );
-        assert_eq!(
-            shell.handle_key(ShellKey::Enter),
-            ShellAction::Submit(String::from("ab"))
-        );
-        assert_eq!(shell.handle_key(ShellKey::Backspace), ShellAction::None);
-        assert_eq!(
-            shell.handle_key(ShellKey::Enter),
-            ShellAction::Submit(String::from("a"))
-        );
-    }
-
-    #[test]
-    fn rejection_clears_secret() {
-        let mut shell = ShellState::default();
-        shell.handle_key(ShellKey::Character('a'));
-        shell.authentication_rejected(Some(1_000));
-
-        assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
-    }
-
-    #[test]
-    fn renders_non_empty_scene() {
-        let mut shell = ShellState::default();
-        shell.set_focus(true);
-        let mut buffer = SoftwareBuffer::new(FrameSize::new(480, 320)).expect("buffer");
-        shell.render(&mut buffer);
-
-        assert!(buffer.pixels().iter().any(|byte| *byte != 0));
-    }
 }

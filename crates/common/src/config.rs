@@ -89,6 +89,8 @@ pub struct LockConfig {
     pub auth_backoff_base_ms: u64,
     #[serde(default = "default_auth_backoff_max_seconds")]
     pub auth_backoff_max_seconds: u64,
+    #[serde(default)]
+    pub user_hint: Option<String>,
 }
 
 impl Default for LockConfig {
@@ -97,6 +99,7 @@ impl Default for LockConfig {
             acquire_timeout_seconds: default_lock_acquire_timeout_seconds(),
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
+            user_hint: None,
         }
     }
 }
@@ -225,6 +228,7 @@ mod tests {
         .expect("config should parse");
 
         assert_eq!(config.lock.acquire_timeout_seconds, 5);
+        assert!(config.lock.user_hint.is_none());
         assert_eq!(config.background.color, RgbColor(12, 16, 24));
         assert!(config.background.path.is_none());
     }
@@ -240,6 +244,7 @@ mod tests {
                 [lock]
                 acquire_timeout_seconds = 9
                 auth_backoff_base_ms = 250
+                user_hint = "Type your password"
 
                 [visuals]
                 focus = [10, 120, 200]
@@ -252,6 +257,10 @@ mod tests {
         assert_eq!(loaded.path.as_deref(), Some(path.as_path()));
         assert_eq!(loaded.config.lock.acquire_timeout_seconds, 9);
         assert_eq!(loaded.config.lock.auth_backoff_base_ms, 250);
+        assert_eq!(
+            loaded.config.lock.user_hint.as_deref(),
+            Some("Type your password")
+        );
         assert_eq!(loaded.config.visuals.focus, RgbColor(10, 120, 200));
 
         fs::remove_file(path).ok();

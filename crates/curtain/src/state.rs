@@ -77,7 +77,7 @@ impl CurtainApp {
         let background_asset =
             BackgroundAsset::load(config.background.path.as_deref(), theme.background)
                 .context("failed to load curtain background")?;
-        let ui_shell = ShellState::new(theme);
+        let ui_shell = ShellState::new(theme, config.lock.user_hint.clone());
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 
         tracing::info!(

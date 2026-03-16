@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+font8x8 = { workspace = true }
 image = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 thiserror = { workspace = true }
