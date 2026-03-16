@@ -21,6 +21,7 @@ pub const fn component_name() -> &'static str {
 pub struct CurtainOptions {
     pub notify_socket: Option<PathBuf>,
     pub daemon_socket: Option<PathBuf>,
+    pub config_path: Option<PathBuf>,
 }
 
 impl CurtainOptions {
@@ -36,6 +37,11 @@ impl CurtainOptions {
 
             if let Some(path) = arg.strip_prefix("--daemon-socket=") {
                 options.daemon_socket = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(path) = arg.strip_prefix("--config=") {
+                options.config_path = Some(PathBuf::from(path));
                 continue;
             }
 
@@ -61,6 +67,7 @@ mod tests {
             "kwylock-curtain".to_string(),
             "--notify-socket=/tmp/kwylock.sock".to_string(),
             "--daemon-socket=/tmp/kwylock-auth.sock".to_string(),
+            "--config=/tmp/kwylock.toml".to_string(),
         ])
         .expect("arguments should parse");
 
@@ -71,6 +78,10 @@ mod tests {
         assert_eq!(
             options.daemon_socket.as_deref(),
             Some(std::path::Path::new("/tmp/kwylock-auth.sock"))
+        );
+        assert_eq!(
+            options.config_path.as_deref(),
+            Some(std::path::Path::new("/tmp/kwylock.toml"))
         );
     }
 }

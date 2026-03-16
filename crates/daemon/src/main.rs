@@ -12,5 +12,6 @@ async fn main() -> anyhow::Result<()> {
         "starting daemon"
     );
 
-    kwylock_daemon::run().await
+    let options = kwylock_daemon::DaemonOptions::parse_args(std::env::args())?;
+    kwylock_daemon::run(options).await
 }

@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum KwylockError {
     #[error("failed to parse config: {0}")]
     Config(#[from] toml::de::Error),
+    #[error("failed to load config: {0}")]
+    ConfigIo(#[from] std::io::Error),
     #[error("failed to encode or decode ipc message: {0}")]
     IpcCodec(#[from] serde_json::Error),
 }

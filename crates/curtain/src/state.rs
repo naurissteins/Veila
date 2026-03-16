@@ -5,8 +5,9 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
+use kwylock_common::AppConfig;
 use kwylock_renderer::{FrameSize, SoftwareBuffer, shm};
-use kwylock_ui::{ShellAction, ShellKey, ShellState};
+use kwylock_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
@@ -27,8 +28,6 @@ use crate::{
     CurtainOptions,
     auth::{AuthEvent, submit_password},
 };
-
-const LOCK_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
@@ -52,6 +51,7 @@ pub(crate) struct CurtainApp {
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
     ui_shell: ShellState,
+    lock_wait_timeout: Duration,
     lock_started_at: Instant,
     pub(crate) session_locked: bool,
     pub(crate) session_finished: bool,
@@ -70,6 +70,25 @@ impl CurtainApp {
         options: CurtainOptions,
     ) -> Result<Self> {
         let (auth_sender, auth_events) = channel();
+        let loaded_config = AppConfig::load(options.config_path.as_deref())
+            .context("failed to load curtain config")?;
+        let config = loaded_config.config;
+        let ui_shell = ShellState::new(ShellTheme::from_config(&config));
+        let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
+
+        tracing::info!(
+            config = loaded_config
+                .path
+                .as_deref()
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| "defaults".to_string()),
+            background_image = config
+                .background
+                .path
+                .as_deref()
+                .map(|path| path.display().to_string()),
+            "loaded curtain config"
+        );
 
         Ok(Self {
             connection,
@@ -88,7 +107,8 @@ impl CurtainApp {
             daemon_socket: options.daemon_socket,
             auth_events,
             auth_sender,
-            ui_shell: ShellState::default(),
+            ui_shell,
+            lock_wait_timeout,
             lock_started_at: Instant::now(),
             session_locked: false,
             session_finished: false,
@@ -167,7 +187,7 @@ impl CurtainApp {
             return Ok(());
         }
 
-        if self.lock_started_at.elapsed() <= LOCK_WAIT_TIMEOUT {
+        if self.lock_started_at.elapsed() <= self.lock_wait_timeout {
             return Ok(());
         }
 

@@ -1,15 +1,6 @@
 use kwylock_renderer::{ClearColor, SoftwareBuffer};
 
-const BACKGROUND: ClearColor = ClearColor::opaque(8, 12, 20);
-const PANEL: ClearColor = ClearColor::opaque(22, 28, 38);
-const PANEL_BORDER: ClearColor = ClearColor::opaque(74, 86, 110);
-const INPUT: ClearColor = ClearColor::opaque(13, 18, 28);
-const INPUT_BORDER: ClearColor = ClearColor::opaque(92, 108, 146);
-const BULLET: ClearColor = ClearColor::opaque(240, 244, 250);
-const PLACEHOLDER: ClearColor = ClearColor::opaque(68, 78, 102);
-const FOCUS: ClearColor = ClearColor::opaque(116, 161, 255);
-const SUBMIT: ClearColor = ClearColor::opaque(255, 194, 92);
-const REJECTED: ClearColor = ClearColor::opaque(220, 96, 96);
+use crate::ShellTheme;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {
@@ -37,19 +28,25 @@ pub struct ShellState {
     secret: String,
     focused: bool,
     status: ShellStatus,
+    theme: ShellTheme,
 }
 
 impl Default for ShellState {
     fn default() -> Self {
-        Self {
-            secret: String::new(),
-            focused: false,
-            status: ShellStatus::Idle,
-        }
+        Self::new(ShellTheme::default())
     }
 }
 
 impl ShellState {
+    pub fn new(theme: ShellTheme) -> Self {
+        Self {
+            secret: String::new(),
+            focused: false,
+            status: ShellStatus::Idle,
+            theme,
+        }
+    }
+
     pub fn set_focus(&mut self, focused: bool) {
         self.focused = focused;
     }
@@ -94,7 +91,7 @@ impl ShellState {
     }
 
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
-        buffer.clear(BACKGROUND);
+        buffer.clear(self.theme.background);
 
         let size = buffer.size();
         let width = size.width as i32;
@@ -106,16 +103,23 @@ impl ShellState {
         let accent = match self.status {
             ShellStatus::Idle => {
                 if self.focused {
-                    FOCUS
+                    self.theme.focus
                 } else {
-                    INPUT_BORDER
+                    self.theme.input_border
                 }
             }
-            ShellStatus::Pending => SUBMIT,
-            ShellStatus::Rejected { .. } => REJECTED,
+            ShellStatus::Pending => self.theme.pending,
+            ShellStatus::Rejected { .. } => self.theme.rejected,
         };
 
-        fill_rect(buffer, panel_x, panel_y, panel_width, panel_height, PANEL);
+        fill_rect(
+            buffer,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            self.theme.panel,
+        );
         stroke_rect(
             buffer,
             panel_x,
@@ -123,7 +127,7 @@ impl ShellState {
             panel_width,
             panel_height,
             2,
-            PANEL_BORDER,
+            self.theme.panel_border,
         );
         fill_rect(buffer, panel_x, panel_y, panel_width, 6, accent);
 
@@ -132,7 +136,14 @@ impl ShellState {
         let input_width = panel_width - 64;
         let input_height = 38;
 
-        fill_rect(buffer, input_x, input_y, input_width, input_height, INPUT);
+        fill_rect(
+            buffer,
+            input_x,
+            input_y,
+            input_width,
+            input_height,
+            self.theme.input,
+        );
         stroke_rect(
             buffer,
             input_x,
@@ -140,7 +151,11 @@ impl ShellState {
             input_width,
             input_height,
             2,
-            if self.focused { accent } else { INPUT_BORDER },
+            if self.focused {
+                accent
+            } else {
+                self.theme.input_border
+            },
         );
 
         let indicator_y = input_y + input_height + 24;
@@ -150,7 +165,7 @@ impl ShellState {
             indicator_y,
             panel_width - 64,
             6,
-            PLACEHOLDER,
+            self.theme.muted,
         );
         fill_rect(
             buffer,
@@ -180,7 +195,7 @@ impl ShellState {
                 input_y + (input_height / 2) - 2,
                 input_width / 3,
                 4,
-                PLACEHOLDER,
+                self.theme.muted,
             );
 
             if self.focused {
@@ -208,7 +223,14 @@ impl ShellState {
 
         for index in 0..bullet_count {
             let x = start_x + index as i32 * spacing;
-            fill_rect(buffer, x, bullet_y, bullet_size, bullet_size, BULLET);
+            fill_rect(
+                buffer,
+                x,
+                bullet_y,
+                bullet_size,
+                bullet_size,
+                self.theme.foreground,
+            );
         }
 
         if self.focused {

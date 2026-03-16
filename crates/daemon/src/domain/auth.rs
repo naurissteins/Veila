@@ -7,11 +7,54 @@ pub enum AuthAdmission {
     RateLimited(Duration),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuthPolicy {
+    base_delay: Duration,
+    max_delay: Duration,
+}
+
+impl Default for AuthPolicy {
+    fn default() -> Self {
+        Self::new(Duration::from_secs(1), Duration::from_secs(16))
+    }
+}
+
+impl AuthPolicy {
+    pub fn new(base_delay: Duration, max_delay: Duration) -> Self {
+        let base_delay = base_delay.max(Duration::from_millis(1));
+        let max_delay = max_delay.max(base_delay);
+
+        Self {
+            base_delay,
+            max_delay,
+        }
+    }
+
+    fn failure_delay(self, failed_attempts: u8) -> Duration {
+        let exponent = u32::from(failed_attempts.saturating_sub(1).min(16));
+        let multiplier = 1u32.checked_shl(exponent).unwrap_or(u32::MAX);
+        let scaled = self.base_delay.saturating_mul(multiplier);
+        scaled.min(self.max_delay)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct AuthState {
     failed_attempts: u8,
     retry_after: Option<Instant>,
     in_flight: bool,
+    policy: AuthPolicy,
+}
+
+impl AuthState {
+    pub fn new(policy: AuthPolicy) -> Self {
+        Self {
+            failed_attempts: 0,
+            retry_after: None,
+            in_flight: false,
+            policy,
+        }
+    }
 }
 
 impl AuthState {
@@ -42,10 +85,7 @@ impl AuthState {
     pub fn finish_failure(&mut self, now: Instant) {
         self.in_flight = false;
         self.failed_attempts = self.failed_attempts.saturating_add(1);
-
-        let exponent = u32::from(self.failed_attempts.saturating_sub(1).min(4));
-        let seconds = 1u64 << exponent;
-        self.retry_after = Some(now + Duration::from_secs(seconds));
+        self.retry_after = Some(now + self.policy.failure_delay(self.failed_attempts));
     }
 }
 
@@ -53,7 +93,7 @@ impl AuthState {
 mod tests {
     use std::time::{Duration, Instant};
 
-    use super::{AuthAdmission, AuthState};
+    use super::{AuthAdmission, AuthPolicy, AuthState};
 
     #[test]
     fn rejects_parallel_attempts() {
@@ -88,5 +128,24 @@ mod tests {
         state.finish_success();
 
         assert!(matches!(state.admit(now), AuthAdmission::Allowed));
+    }
+
+    #[test]
+    fn clamps_delay_to_policy_maximum() {
+        let mut state = AuthState::new(AuthPolicy::new(
+            Duration::from_millis(500),
+            Duration::from_secs(2),
+        ));
+        let now = Instant::now();
+
+        for _ in 0..5 {
+            state.start_attempt();
+            state.finish_failure(now);
+        }
+
+        match state.admit(now) {
+            AuthAdmission::RateLimited(delay) => assert!(delay <= Duration::from_secs(2)),
+            AuthAdmission::Allowed | AuthAdmission::Busy => panic!("attempt should be throttled"),
+        }
     }
 }
