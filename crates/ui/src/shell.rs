@@ -92,7 +92,10 @@ impl ShellState {
 
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
         buffer.clear(self.theme.background);
+        self.render_overlay(buffer);
+    }
 
+    pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
         let size = buffer.size();
         let width = size.width as i32;
         let height = size.height as i32;

@@ -5,6 +5,7 @@
 mod app;
 mod auth;
 mod handlers;
+mod scene;
 mod state;
 
 use std::path::PathBuf;

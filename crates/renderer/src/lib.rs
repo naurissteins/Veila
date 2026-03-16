@@ -2,6 +2,7 @@
 
 //! Shared rendering primitives used by Kwylock components.
 
+pub mod background;
 pub mod shm;
 
 use thiserror::Error;
@@ -66,6 +67,8 @@ pub enum RendererError {
     EmptyFrame,
     #[error(transparent)]
     ShmPool(#[from] smithay_client_toolkit::shm::CreatePoolError),
+    #[error(transparent)]
+    Image(#[from] image::ImageError),
 }
 
 /// Shared result type for rendering operations.

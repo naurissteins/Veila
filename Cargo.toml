@@ -19,6 +19,7 @@ repository = "https://github.com/kwimy/kwylock"
 anyhow = "1"
 calloop = { version = "0.14", features = ["signals"] }
 futures-util = "0.3"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 nix = { version = "0.31", features = ["signal", "user"] }
 nonstick = "0.1"
 serde = { version = "1", features = ["derive"] }

@@ -1,12 +1,12 @@
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::mpsc::{Receiver, Sender, channel},
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, anyhow, bail};
 use kwylock_common::AppConfig;
-use kwylock_renderer::{FrameSize, SoftwareBuffer, shm};
+use kwylock_renderer::background::BackgroundAsset;
 use kwylock_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 use smithay_client_toolkit::{
     compositor::CompositorState,
@@ -18,9 +18,7 @@ use smithay_client_toolkit::{
     },
     registry::RegistryState,
     seat::SeatState,
-    session_lock::{
-        SessionLock, SessionLockState, SessionLockSurface, SessionLockSurfaceConfigure,
-    },
+    session_lock::{SessionLock, SessionLockState, SessionLockSurface},
     shm::Shm,
 };
 
@@ -33,6 +31,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
     pub(crate) surface: SessionLockSurface,
     pub(crate) size: Option<(u32, u32)>,
+    pub(crate) background: Option<kwylock_renderer::SoftwareBuffer>,
 }
 
 pub(crate) struct CurtainApp {
@@ -46,17 +45,18 @@ pub(crate) struct CurtainApp {
     pub(crate) shm: Shm,
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
-    notify_socket: Option<PathBuf>,
+    pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
-    ui_shell: ShellState,
+    pub(crate) background_asset: BackgroundAsset,
+    pub(crate) ui_shell: ShellState,
     lock_wait_timeout: Duration,
     lock_started_at: Instant,
     pub(crate) session_locked: bool,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
-    ready_notified: bool,
+    pub(crate) ready_notified: bool,
     auth_in_flight: bool,
     pub(crate) has_keyboard_focus: bool,
     pub(crate) failure_reason: Option<String>,
@@ -73,7 +73,11 @@ impl CurtainApp {
         let loaded_config = AppConfig::load(options.config_path.as_deref())
             .context("failed to load curtain config")?;
         let config = loaded_config.config;
-        let ui_shell = ShellState::new(ShellTheme::from_config(&config));
+        let theme = ShellTheme::from_config(&config);
+        let background_asset =
+            BackgroundAsset::load(config.background.path.as_deref(), theme.background)
+                .context("failed to load curtain background")?;
+        let ui_shell = ShellState::new(theme);
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 
         tracing::info!(
@@ -107,6 +111,7 @@ impl CurtainApp {
             daemon_socket: options.daemon_socket,
             auth_events,
             auth_sender,
+            background_asset,
             ui_shell,
             lock_wait_timeout,
             lock_started_at: Instant::now(),
@@ -164,6 +169,7 @@ impl CurtainApp {
             output,
             surface,
             size: None,
+            background: None,
         });
 
         Ok(())
@@ -215,49 +221,6 @@ impl CurtainApp {
         }
 
         Ok(())
-    }
-
-    pub(crate) fn configure_surface(
-        &mut self,
-        queue_handle: &QueueHandle<Self>,
-        surface: SessionLockSurface,
-        configure: SessionLockSurfaceConfigure,
-    ) {
-        let Some(index) = self
-            .lock_surfaces
-            .iter()
-            .position(|entry| entry.surface.wl_surface() == surface.wl_surface())
-        else {
-            tracing::warn!("configure received for unknown session-lock surface");
-            return;
-        };
-
-        let size = self.resolve_surface_size(index, configure.new_size);
-        self.lock_surfaces[index].size = Some(size);
-
-        if let Err(error) = self.render_surface(&surface, size, queue_handle) {
-            self.failure_reason = Some(format!("failed to render curtain surface: {error:#}"));
-            self.exit_requested = true;
-            return;
-        }
-
-        self.maybe_notify_ready();
-    }
-
-    pub(crate) fn render_all_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
-        let surfaces: Vec<_> = self
-            .lock_surfaces
-            .iter()
-            .filter_map(|entry| entry.size.map(|size| (entry.surface.clone(), size)))
-            .collect();
-
-        for (surface, size) in surfaces {
-            if let Err(error) = self.render_surface(&surface, size, queue_handle) {
-                self.failure_reason = Some(format!("failed to rerender UI shell: {error:#}"));
-                self.exit_requested = true;
-                return;
-            }
-        }
     }
 
     pub(crate) fn set_keyboard_focus(&mut self, focused: bool, queue_handle: &QueueHandle<Self>) {
@@ -315,73 +278,4 @@ impl CurtainApp {
             .iter()
             .any(|entry| entry.surface.wl_surface() == surface)
     }
-
-    fn render_surface(
-        &mut self,
-        surface: &SessionLockSurface,
-        size: (u32, u32),
-        queue_handle: &QueueHandle<Self>,
-    ) -> Result<()> {
-        let mut buffer = SoftwareBuffer::new(FrameSize::new(size.0, size.1))
-            .map_err(|error| anyhow!("failed to allocate software buffer: {error}"))?;
-        self.ui_shell.render(&mut buffer);
-        shm::commit_buffer(&self.shm, queue_handle, surface.wl_surface(), &buffer)
-            .map_err(|error| anyhow!("failed to commit software buffer: {error}"))
-    }
-
-    fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> (u32, u32) {
-        if requested.0 > 0 && requested.1 > 0 {
-            return requested;
-        }
-
-        if let Some(info) = self.output_state.info(&self.lock_surfaces[index].output)
-            && let Some((width, height)) = info.logical_size
-            && width > 0
-            && height > 0
-        {
-            tracing::warn!(
-                output = info.name.as_deref().unwrap_or("unknown"),
-                width,
-                height,
-                "lock surface configure had zero dimension; falling back to output logical size"
-            );
-            return (width as u32, height as u32);
-        }
-
-        tracing::warn!("lock surface configure had zero dimension; falling back to 1920x1080");
-        (1920, 1080)
-    }
-
-    pub(crate) fn maybe_notify_ready(&mut self) {
-        if self.ready_notified || !self.session_locked || self.lock_surfaces.is_empty() {
-            return;
-        }
-
-        if self.lock_surfaces.iter().any(|entry| entry.size.is_none()) {
-            return;
-        }
-
-        self.ready_notified = true;
-
-        if let Some(path) = self.notify_socket.as_deref() {
-            if let Err(error) = notify_ready(path) {
-                tracing::warn!(?path, "failed to notify ready state: {error:#}");
-            } else {
-                tracing::info!(?path, "curtain reported readiness");
-            }
-        }
-    }
-}
-
-fn notify_ready(path: &Path) -> Result<()> {
-    use std::io::Write as _;
-    use std::os::unix::net::UnixStream;
-
-    let mut stream = UnixStream::connect(path)
-        .with_context(|| format!("failed to connect to notify socket {}", path.display()))?;
-    stream
-        .write_all(&[1u8])
-        .with_context(|| format!("failed to write readiness byte to {}", path.display()))?;
-
-    Ok(())
 }
