@@ -1,7 +1,10 @@
 use kwylock_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
     masked::{MaskedInputStyle, draw_masked_input},
-    panel::{PanelHeaderStyle, draw_panel_header},
+    panel::{
+        PanelBodyMetrics, PanelBodyStyle, PanelHeaderStyle, draw_panel_header, layout_panel_body,
+        measure_panel_height,
+    },
     progress::{Progress, ProgressBarStyle, draw_progress_bar},
     shape::{BorderStyle, BoxStyle, Rect, draw_box},
     symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
@@ -24,9 +27,11 @@ impl ShellState {
         let width = size.width as i32;
         let height = size.height as i32;
         let panel_width = ((width * 3) / 5).clamp(320, 620);
-        let content_width = (panel_width - 64).max(160) as u32;
         let panel_x = (width - panel_width) / 2;
         let accent = self.accent_color();
+        let panel_body = PanelBodyStyle::new();
+        let provisional_panel_rect = Rect::new(panel_x, 0, panel_width, 0);
+        let content_width = panel_body.content_width(provisional_panel_rect).max(160);
         let hint_block = fit_wrapped_text(
             &self.hint_text,
             TextStyle::new(self.theme.foreground, 2),
@@ -34,7 +39,14 @@ impl ShellState {
             1,
         );
         let status_row = self.status_row(content_width, accent);
-        let panel_height = compute_panel_height(&hint_block, status_row.as_ref());
+        let panel_height = measure_panel_height(
+            PanelHeaderStyle::new(accent),
+            panel_body,
+            PanelBodyMetrics {
+                hint_height: hint_block.height as i32,
+                status_height: status_row.as_ref().map(|row| row.height as i32),
+            },
+        );
         let panel_y = (height - panel_height) / 2;
         let panel_rect = Rect::new(panel_x, panel_y, panel_width, panel_height);
 
@@ -45,19 +57,21 @@ impl ShellState {
                 .with_border(BorderStyle::new(self.theme.panel_border, 2)),
         );
         let header = draw_panel_header(buffer, panel_rect, PanelHeaderStyle::new(accent));
+        let body = layout_panel_body(
+            panel_rect,
+            header,
+            panel_body,
+            PanelBodyMetrics {
+                hint_height: hint_block.height as i32,
+                status_height: status_row.as_ref().map(|row| row.height as i32),
+            },
+        );
 
-        let hint_y = header.content_y;
-        draw_centered_block(buffer, panel_x, panel_width, hint_y, &hint_block);
-
-        let input_x = panel_x + 32;
-        let input_y = hint_y + hint_block.height as i32 + 22;
-        let input_width = panel_width - 64;
-        let input_height = 38;
-        let input_rect = Rect::new(input_x, input_y, input_width, input_height);
+        draw_centered_block(buffer, panel_x, panel_width, body.hint_y, &hint_block);
 
         draw_box(
             buffer,
-            input_rect,
+            body.input_rect,
             BoxStyle::new(self.theme.input).with_border(BorderStyle::new(
                 if self.focused {
                     accent
@@ -68,10 +82,9 @@ impl ShellState {
             )),
         );
 
-        let indicator_y = input_y + input_height + 24;
         draw_progress_bar(
             buffer,
-            Rect::new(panel_x + 32, indicator_y, panel_width - 64, 6),
+            body.progress_rect,
             indicator_progress(&self.status),
             ProgressBarStyle::new(
                 self.theme.muted,
@@ -85,14 +98,14 @@ impl ShellState {
 
         draw_masked_input(
             buffer,
-            input_rect,
+            body.input_rect,
             self.secret.chars().count(),
             self.focused,
             MaskedInputStyle::new(self.theme.foreground, self.theme.muted, accent),
         );
 
-        if let Some(status_row) = status_row.as_ref() {
-            draw_centered_status_row(buffer, panel_x, panel_width, indicator_y + 22, status_row);
+        if let (Some(status_row), Some(status_y)) = (status_row.as_ref(), body.status_y) {
+            draw_centered_status_row(buffer, panel_x, panel_width, status_y, status_row);
         }
     }
 
@@ -164,11 +177,6 @@ struct StatusRow {
     gap: u32,
     width: u32,
     height: u32,
-}
-
-fn compute_panel_height(hint_block: &TextBlock, status_row: Option<&StatusRow>) -> i32 {
-    let status_height = status_row.map(|row| row.height as i32 + 22).unwrap_or(0);
-    34 + hint_block.height as i32 + 22 + 38 + 24 + 6 + status_height + 28
 }
 
 fn draw_centered_block(
