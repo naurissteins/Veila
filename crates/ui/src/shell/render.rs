@@ -1,8 +1,9 @@
 use kwylock_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
     masked::{MaskedInputStyle, draw_masked_input},
+    panel::{PanelHeaderStyle, draw_panel_header},
     progress::{Progress, ProgressBarStyle, draw_progress_bar},
-    shape::{BorderStyle, BoxStyle, Rect, draw_box, fill_rect},
+    shape::{BorderStyle, BoxStyle, Rect, draw_box},
     symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
     text::{TextBlock, TextStyle, fit_wrapped_text},
 };
@@ -43,9 +44,9 @@ impl ShellState {
             BoxStyle::new(self.theme.panel)
                 .with_border(BorderStyle::new(self.theme.panel_border, 2)),
         );
-        fill_rect(buffer, Rect::new(panel_x, panel_y, panel_width, 6), accent);
+        let header = draw_panel_header(buffer, panel_rect, PanelHeaderStyle::new(accent));
 
-        let hint_y = panel_y + 34;
+        let hint_y = header.content_y;
         draw_centered_block(buffer, panel_x, panel_width, hint_y, &hint_block);
 
         let input_x = panel_x + 32;
