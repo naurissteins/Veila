@@ -3,6 +3,7 @@
 //! Shared rendering primitives used by Kwylock components.
 
 pub mod background;
+pub mod shape;
 pub mod shm;
 pub mod symbol;
 pub mod text;

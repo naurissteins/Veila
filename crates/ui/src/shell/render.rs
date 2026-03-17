@@ -1,5 +1,6 @@
 use kwylock_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
+    shape::{BorderStyle, BoxStyle, Rect, draw_box, fill_rect},
     symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
     text::{TextBlock, TextStyle, fit_wrapped_text},
 };
@@ -32,25 +33,15 @@ impl ShellState {
         let status_row = self.status_row(content_width, accent);
         let panel_height = compute_panel_height(&hint_block, status_row.as_ref());
         let panel_y = (height - panel_height) / 2;
+        let panel_rect = Rect::new(panel_x, panel_y, panel_width, panel_height);
 
-        fill_rect(
+        draw_box(
             buffer,
-            panel_x,
-            panel_y,
-            panel_width,
-            panel_height,
-            self.theme.panel,
+            panel_rect,
+            BoxStyle::new(self.theme.panel)
+                .with_border(BorderStyle::new(self.theme.panel_border, 2)),
         );
-        stroke_rect(
-            buffer,
-            panel_x,
-            panel_y,
-            panel_width,
-            panel_height,
-            2,
-            self.theme.panel_border,
-        );
-        fill_rect(buffer, panel_x, panel_y, panel_width, 6, accent);
+        fill_rect(buffer, Rect::new(panel_x, panel_y, panel_width, 6), accent);
 
         let hint_y = panel_y + 34;
         draw_centered_block(buffer, panel_x, panel_width, hint_y, &hint_block);
@@ -59,44 +50,35 @@ impl ShellState {
         let input_y = hint_y + hint_block.height as i32 + 22;
         let input_width = panel_width - 64;
         let input_height = 38;
+        let input_rect = Rect::new(input_x, input_y, input_width, input_height);
 
-        fill_rect(
+        draw_box(
             buffer,
-            input_x,
-            input_y,
-            input_width,
-            input_height,
-            self.theme.input,
-        );
-        stroke_rect(
-            buffer,
-            input_x,
-            input_y,
-            input_width,
-            input_height,
-            2,
-            if self.focused {
-                accent
-            } else {
-                self.theme.input_border
-            },
+            input_rect,
+            BoxStyle::new(self.theme.input).with_border(BorderStyle::new(
+                if self.focused {
+                    accent
+                } else {
+                    self.theme.input_border
+                },
+                2,
+            )),
         );
 
         let indicator_y = input_y + input_height + 24;
         fill_rect(
             buffer,
-            panel_x + 32,
-            indicator_y,
-            panel_width - 64,
-            6,
+            Rect::new(panel_x + 32, indicator_y, panel_width - 64, 6),
             self.theme.muted,
         );
         fill_rect(
             buffer,
-            panel_x + 32,
-            indicator_y,
-            indicator_width(panel_width, &self.status),
-            6,
+            Rect::new(
+                panel_x + 32,
+                indicator_y,
+                indicator_width(panel_width, &self.status),
+                6,
+            ),
             accent,
         );
 
@@ -179,20 +161,19 @@ impl ShellState {
         if self.secret.is_empty() {
             fill_rect(
                 buffer,
-                input_x + 20,
-                input_y + (input_height / 2) - 2,
-                input_width / 3,
-                4,
+                Rect::new(
+                    input_x + 20,
+                    input_y + (input_height / 2) - 2,
+                    input_width / 3,
+                    4,
+                ),
                 self.theme.muted,
             );
 
             if self.focused {
                 fill_rect(
                     buffer,
-                    input_x + 20,
-                    input_y + 9,
-                    3,
-                    input_height - 18,
+                    Rect::new(input_x + 20, input_y + 9, 3, input_height - 18),
                     accent,
                 );
             }
@@ -213,17 +194,18 @@ impl ShellState {
             let x = start_x + index as i32 * spacing;
             fill_rect(
                 buffer,
-                x,
-                bullet_y,
-                bullet_size,
-                bullet_size,
+                Rect::new(x, bullet_y, bullet_size, bullet_size),
                 self.theme.foreground,
             );
         }
 
         if self.focused {
             let cursor_x = start_x + bullet_count as i32 * spacing + 4;
-            fill_rect(buffer, cursor_x, input_y + 8, 3, input_height - 16, accent);
+            fill_rect(
+                buffer,
+                Rect::new(cursor_x, input_y + 8, 3, input_height - 16),
+                accent,
+            );
         }
     }
 }
@@ -302,50 +284,4 @@ fn indicator_width(panel_width: i32, status: &ShellStatus) -> i32 {
             }
         }
     }
-}
-
-fn fill_rect(
-    buffer: &mut SoftwareBuffer,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    color: ClearColor,
-) {
-    let size = buffer.size();
-    let right = (x + width).clamp(0, size.width as i32);
-    let bottom = (y + height).clamp(0, size.height as i32);
-    let left = x.clamp(0, size.width as i32);
-    let top = y.clamp(0, size.height as i32);
-
-    if left >= right || top >= bottom {
-        return;
-    }
-
-    let stride = size.width as usize * 4;
-    let pixel = color.to_argb8888_bytes();
-    let pixels = buffer.pixels_mut();
-
-    for row in top as usize..bottom as usize {
-        let row_start = row * stride;
-        for column in left as usize..right as usize {
-            let offset = row_start + column * 4;
-            pixels[offset..offset + 4].copy_from_slice(&pixel);
-        }
-    }
-}
-
-fn stroke_rect(
-    buffer: &mut SoftwareBuffer,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    thickness: i32,
-    color: ClearColor,
-) {
-    fill_rect(buffer, x, y, width, thickness, color);
-    fill_rect(buffer, x, y + height - thickness, width, thickness, color);
-    fill_rect(buffer, x, y, thickness, height, color);
-    fill_rect(buffer, x + width - thickness, y, thickness, height, color);
 }
