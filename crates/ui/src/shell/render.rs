@@ -1,5 +1,6 @@
 use kwylock_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
+    masked::{MaskedInputStyle, draw_masked_input},
     progress::{Progress, ProgressBarStyle, draw_progress_bar},
     shape::{BorderStyle, BoxStyle, Rect, draw_box, fill_rect},
     symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
@@ -81,7 +82,13 @@ impl ShellState {
             ),
         );
 
-        self.draw_secret(buffer, input_x, input_y, input_width, input_height, accent);
+        draw_masked_input(
+            buffer,
+            input_rect,
+            self.secret.chars().count(),
+            self.focused,
+            MaskedInputStyle::new(self.theme.foreground, self.theme.muted, accent),
+        );
 
         if let Some(status_row) = status_row.as_ref() {
             draw_centered_status_row(buffer, panel_x, panel_width, indicator_y + 22, status_row);
@@ -146,66 +153,6 @@ impl ShellState {
             width,
             height,
         })
-    }
-
-    fn draw_secret(
-        &self,
-        buffer: &mut SoftwareBuffer,
-        input_x: i32,
-        input_y: i32,
-        input_width: i32,
-        input_height: i32,
-        accent: ClearColor,
-    ) {
-        if self.secret.is_empty() {
-            fill_rect(
-                buffer,
-                Rect::new(
-                    input_x + 20,
-                    input_y + (input_height / 2) - 2,
-                    input_width / 3,
-                    4,
-                ),
-                self.theme.muted,
-            );
-
-            if self.focused {
-                fill_rect(
-                    buffer,
-                    Rect::new(input_x + 20, input_y + 9, 3, input_height - 18),
-                    accent,
-                );
-            }
-
-            return;
-        }
-
-        let bullet_size = 10;
-        let spacing = 16;
-        let visible = ((input_width - 40) / spacing).max(1) as usize;
-        let bullet_count = self.secret.chars().count().min(visible);
-        let row_width = (bullet_count as i32 * bullet_size)
-            + ((bullet_count.saturating_sub(1)) as i32 * (spacing - bullet_size));
-        let start_x = input_x + ((input_width - row_width) / 2).max(18);
-        let bullet_y = input_y + (input_height - bullet_size) / 2;
-
-        for index in 0..bullet_count {
-            let x = start_x + index as i32 * spacing;
-            fill_rect(
-                buffer,
-                Rect::new(x, bullet_y, bullet_size, bullet_size),
-                self.theme.foreground,
-            );
-        }
-
-        if self.focused {
-            let cursor_x = start_x + bullet_count as i32 * spacing + 4;
-            fill_rect(
-                buffer,
-                Rect::new(cursor_x, input_y + 8, 3, input_height - 16),
-                accent,
-            );
-        }
     }
 }
 
