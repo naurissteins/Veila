@@ -1,5 +1,6 @@
 use kwylock_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
+    progress::{Progress, ProgressBarStyle, draw_progress_bar},
     shape::{BorderStyle, BoxStyle, Rect, draw_box, fill_rect},
     symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
     text::{TextBlock, TextStyle, fit_wrapped_text},
@@ -66,20 +67,18 @@ impl ShellState {
         );
 
         let indicator_y = input_y + input_height + 24;
-        fill_rect(
+        draw_progress_bar(
             buffer,
             Rect::new(panel_x + 32, indicator_y, panel_width - 64, 6),
-            self.theme.muted,
-        );
-        fill_rect(
-            buffer,
-            Rect::new(
-                panel_x + 32,
-                indicator_y,
-                indicator_width(panel_width, &self.status),
-                6,
+            indicator_progress(&self.status),
+            ProgressBarStyle::new(
+                self.theme.muted,
+                if self.focused && matches!(self.status, ShellStatus::Idle) {
+                    self.theme.focus
+                } else {
+                    accent
+                },
             ),
-            accent,
         );
 
         self.draw_secret(buffer, input_x, input_y, input_width, input_height, accent);
@@ -269,18 +268,18 @@ fn text_shadow(scale: u32) -> ShadowStyle {
     ShadowStyle::new(TEXT_SHADOW_COLOR, offset, offset)
 }
 
-fn indicator_width(panel_width: i32, status: &ShellStatus) -> i32 {
+fn indicator_progress(status: &ShellStatus) -> Progress {
     match status {
-        ShellStatus::Idle => (panel_width - 64) / 3,
-        ShellStatus::Pending => (panel_width - 64) / 2,
+        ShellStatus::Idle => Progress::new(1, 3),
+        ShellStatus::Pending => Progress::new(1, 2),
         ShellStatus::Rejected {
             displayed_retry_seconds,
             ..
         } => {
             if displayed_retry_seconds.unwrap_or_default() > 0 {
-                panel_width - 64
+                Progress::new(1, 1)
             } else {
-                ((panel_width - 64) * 2) / 3
+                Progress::new(2, 3)
             }
         }
     }
