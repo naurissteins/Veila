@@ -1,9 +1,12 @@
 use kwylock_renderer::{
     ClearColor, SoftwareBuffer,
+    symbol::{SymbolKind, SymbolStyle, draw_symbol, measure_symbol},
     text::{TextBlock, TextStyle, fit_wrapped_text},
 };
 
 use super::{ShellState, ShellStatus};
+
+const STATUS_ROW_MAX_GAP: u32 = 12;
 
 impl ShellState {
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
@@ -25,10 +28,8 @@ impl ShellState {
             content_width,
             1,
         );
-        let status_block = self.status_text().map(|status_text| {
-            fit_wrapped_text(&status_text, TextStyle::new(accent, 2), content_width, 1)
-        });
-        let panel_height = compute_panel_height(&hint_block, status_block.as_ref());
+        let status_row = self.status_row(content_width, accent);
+        let panel_height = compute_panel_height(&hint_block, status_row.as_ref());
         let panel_y = (height - panel_height) / 2;
 
         fill_rect(
@@ -100,8 +101,8 @@ impl ShellState {
 
         self.draw_secret(buffer, input_x, input_y, input_width, input_height, accent);
 
-        if let Some(status_block) = status_block.as_ref() {
-            draw_centered_block(buffer, panel_x, panel_width, indicator_y + 22, status_block);
+        if let Some(status_row) = status_row.as_ref() {
+            draw_centered_status_row(buffer, panel_x, panel_width, indicator_y + 22, status_row);
         }
     }
 
@@ -133,6 +134,36 @@ impl ShellState {
                 Some(_) | None => Some(String::from("Authentication failed")),
             },
         }
+    }
+
+    fn status_symbol(&self) -> Option<SymbolKind> {
+        match self.status {
+            ShellStatus::Idle => None,
+            ShellStatus::Pending => Some(SymbolKind::Pending),
+            ShellStatus::Rejected { .. } => Some(SymbolKind::Error),
+        }
+    }
+
+    fn status_row(&self, max_width: u32, accent: ClearColor) -> Option<StatusRow> {
+        let symbol = self.status_symbol()?;
+        let text = self.status_text()?;
+        let reserved_width = measure_symbol(SymbolStyle::new(accent, 2)).0 + STATUS_ROW_MAX_GAP;
+        let text_width = max_width.saturating_sub(reserved_width).max(96);
+        let text = fit_wrapped_text(&text, TextStyle::new(accent, 2), text_width, 1);
+        let symbol_style = SymbolStyle::new(accent, text.style.scale);
+        let (symbol_width, symbol_height) = measure_symbol(symbol_style);
+        let gap = status_row_gap(text.style.scale);
+        let width = symbol_width + gap + text.width;
+        let height = symbol_height.max(text.height);
+
+        Some(StatusRow {
+            symbol,
+            symbol_style,
+            text,
+            gap,
+            width,
+            height,
+        })
     }
 
     fn draw_secret(
@@ -196,10 +227,17 @@ impl ShellState {
     }
 }
 
-fn compute_panel_height(hint_block: &TextBlock, status_block: Option<&TextBlock>) -> i32 {
-    let status_height = status_block
-        .map(|block| block.height as i32 + 22)
-        .unwrap_or(0);
+struct StatusRow {
+    symbol: SymbolKind,
+    symbol_style: SymbolStyle,
+    text: TextBlock,
+    gap: u32,
+    width: u32,
+    height: u32,
+}
+
+fn compute_panel_height(hint_block: &TextBlock, status_row: Option<&StatusRow>) -> i32 {
+    let status_height = status_row.map(|row| row.height as i32 + 22).unwrap_or(0);
     34 + hint_block.height as i32 + 22 + 38 + 24 + 6 + status_height + 28
 }
 
@@ -212,6 +250,27 @@ fn draw_centered_block(
 ) {
     let x = panel_x + ((panel_width - block.width as i32) / 2);
     block.draw(buffer, x, y);
+}
+
+fn draw_centered_status_row(
+    buffer: &mut SoftwareBuffer,
+    panel_x: i32,
+    panel_width: i32,
+    y: i32,
+    row: &StatusRow,
+) {
+    let x = panel_x + ((panel_width - row.width as i32) / 2);
+    let (symbol_width, symbol_height) = measure_symbol(row.symbol_style);
+    let symbol_y = y + ((row.height as i32 - symbol_height as i32) / 2);
+    let text_x = x + symbol_width as i32 + row.gap as i32;
+    let text_y = y + ((row.height as i32 - row.text.height as i32) / 2);
+
+    draw_symbol(buffer, x, symbol_y, row.symbol, row.symbol_style);
+    row.text.draw(buffer, text_x, text_y);
+}
+
+fn status_row_gap(scale: u32) -> u32 {
+    (scale.max(1) * 4).clamp(6, STATUS_ROW_MAX_GAP)
 }
 
 fn indicator_width(panel_width: i32, status: &ShellStatus) -> i32 {

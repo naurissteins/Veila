@@ -4,6 +4,7 @@
 
 pub mod background;
 pub mod shm;
+pub mod symbol;
 pub mod text;
 
 use thiserror::Error;
