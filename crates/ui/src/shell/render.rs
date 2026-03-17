@@ -92,7 +92,7 @@ impl ShellState {
             buffer,
             panel_x + 32,
             indicator_y,
-            indicator_width(panel_width, self.status),
+            indicator_width(panel_width, &self.status),
             6,
             accent,
         );
@@ -112,7 +112,7 @@ impl ShellState {
     }
 
     fn accent_color(&self) -> ClearColor {
-        match self.status {
+        match &self.status {
             ShellStatus::Idle => {
                 if self.focused {
                     self.theme.focus
@@ -126,13 +126,15 @@ impl ShellState {
     }
 
     fn status_text(&self) -> Option<String> {
-        match self.status {
+        match &self.status {
             ShellStatus::Idle => None,
             ShellStatus::Pending => Some(String::from("Checking password")),
-            ShellStatus::Rejected { retry_after_ms } => match retry_after_ms {
-                Some(retry_after_ms) if retry_after_ms > 0 => {
-                    let seconds = retry_after_ms.div_ceil(1_000);
-                    Some(format!("Authentication failed, retry in {seconds}s"))
+            ShellStatus::Rejected {
+                displayed_retry_seconds,
+                ..
+            } => match displayed_retry_seconds {
+                Some(retry_seconds) if *retry_seconds > 0 => {
+                    Some(format!("Authentication failed, retry in {retry_seconds}s"))
                 }
                 Some(_) | None => Some(String::from("Authentication failed")),
             },
@@ -213,12 +215,15 @@ fn draw_centered_text(
     draw_text(buffer, x, y, text, style);
 }
 
-fn indicator_width(panel_width: i32, status: ShellStatus) -> i32 {
+fn indicator_width(panel_width: i32, status: &ShellStatus) -> i32 {
     match status {
         ShellStatus::Idle => (panel_width - 64) / 3,
         ShellStatus::Pending => (panel_width - 64) / 2,
-        ShellStatus::Rejected { retry_after_ms } => {
-            if retry_after_ms.unwrap_or_default() > 0 {
+        ShellStatus::Rejected {
+            displayed_retry_seconds,
+            ..
+        } => {
+            if displayed_retry_seconds.unwrap_or_default() > 0 {
                 panel_width - 64
             } else {
                 ((panel_width - 64) * 2) / 3

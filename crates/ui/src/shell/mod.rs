@@ -1,5 +1,7 @@
 mod render;
 
+use std::time::{Duration, Instant};
+
 use crate::ShellTheme;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,11 +18,14 @@ pub enum ShellKey {
     Escape,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ShellStatus {
     Idle,
     Pending,
-    Rejected { retry_after_ms: Option<u64> },
+    Rejected {
+        retry_until: Option<Instant>,
+        displayed_retry_seconds: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,15 +96,58 @@ impl ShellState {
 
     pub fn authentication_rejected(&mut self, retry_after_ms: Option<u64>) {
         self.secret.clear();
-        self.status = ShellStatus::Rejected { retry_after_ms };
+        let retry_until = retry_after_ms
+            .filter(|retry_after_ms| *retry_after_ms > 0)
+            .map(|retry_after_ms| Instant::now() + Duration::from_millis(retry_after_ms));
+        let displayed_retry_seconds = retry_until.and_then(current_retry_seconds);
+        self.status = ShellStatus::Rejected {
+            retry_until,
+            displayed_retry_seconds,
+        };
     }
+
+    pub fn advance_animated_state(&mut self) -> bool {
+        let ShellStatus::Rejected {
+            retry_until,
+            displayed_retry_seconds,
+        } = &mut self.status
+        else {
+            return false;
+        };
+
+        let next_display = retry_until.and_then(current_retry_seconds);
+        if *displayed_retry_seconds == next_display {
+            return false;
+        }
+
+        *displayed_retry_seconds = next_display;
+        if next_display.is_none() {
+            *retry_until = None;
+        }
+
+        true
+    }
+}
+
+fn current_retry_seconds(retry_until: Instant) -> Option<u64> {
+    let seconds = retry_until
+        .saturating_duration_since(Instant::now())
+        .as_millis()
+        .div_ceil(1_000) as u64;
+
+    if seconds == 0 { None } else { Some(seconds) }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        thread,
+        time::{Duration, Instant},
+    };
+
     use kwylock_renderer::{FrameSize, SoftwareBuffer};
 
-    use super::{ShellAction, ShellKey, ShellState};
+    use super::{ShellAction, ShellKey, ShellState, ShellStatus};
 
     #[test]
     fn edits_and_submits_password_text() {
@@ -131,6 +179,20 @@ mod tests {
         shell.authentication_rejected(Some(1_000));
 
         assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
+    }
+
+    #[test]
+    fn countdown_state_advances_after_timeout() {
+        let mut shell = ShellState {
+            status: ShellStatus::Rejected {
+                retry_until: Some(Instant::now() + Duration::from_millis(1_100)),
+                displayed_retry_seconds: Some(2),
+            },
+            ..ShellState::default()
+        };
+        thread::sleep(Duration::from_millis(250));
+
+        assert!(shell.advance_animated_state());
     }
 
     #[test]

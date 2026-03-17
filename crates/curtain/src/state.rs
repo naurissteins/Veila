@@ -270,6 +270,12 @@ impl CurtainApp {
         }
     }
 
+    pub(crate) fn advance_animated_scene(&mut self, queue_handle: &QueueHandle<Self>) {
+        if self.ui_shell.advance_animated_state() {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
     pub(crate) fn surface_has_focus_target(
         &self,
         surface: &smithay_client_toolkit::reexports::client::protocol::wl_surface::WlSurface,
