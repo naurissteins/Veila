@@ -1,6 +1,6 @@
 use font8x8::{BASIC_FONTS, UnicodeFonts};
 
-use crate::{ClearColor, SoftwareBuffer};
+use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TextStyle {
@@ -42,23 +42,28 @@ impl TextStyle {
 }
 
 impl TextBlock {
+    /// Draws the laid out text block.
     pub fn draw(&self, buffer: &mut SoftwareBuffer, x: i32, y: i32) {
-        let scale = self.style.scale.max(1) as i32;
-        let advance = glyph_advance(self.style) as i32;
-        let line_height = glyph_line_height(self.style) as i32;
-        let pixel = self.style.color.to_argb8888_bytes();
+        draw_lines(buffer, x, y, &self.lines, self.style, self.style.color);
+    }
 
-        for (line_index, line) in self.lines.iter().enumerate() {
-            let baseline_y = y + line_index as i32 * line_height;
-            for (character_index, character) in line.chars().enumerate() {
-                let glyph = BASIC_FONTS.get(character).or_else(|| BASIC_FONTS.get('?'));
-                let Some(glyph) = glyph else {
-                    continue;
-                };
-                let baseline_x = x + character_index as i32 * advance;
-                draw_glyph(buffer, baseline_x, baseline_y, scale, &pixel, &glyph);
-            }
-        }
+    /// Draws the laid out text block with a simple drop shadow.
+    pub fn draw_with_shadow(
+        &self,
+        buffer: &mut SoftwareBuffer,
+        x: i32,
+        y: i32,
+        shadow: ShadowStyle,
+    ) {
+        draw_lines(
+            buffer,
+            x + shadow.offset_x,
+            y + shadow.offset_y,
+            &self.lines,
+            self.style,
+            shadow.color,
+        );
+        self.draw(buffer, x, y);
     }
 }
 
@@ -69,6 +74,19 @@ pub fn measure_text(text: &str, style: TextStyle) -> (u32, u32) {
 
 pub fn draw_text(buffer: &mut SoftwareBuffer, x: i32, y: i32, text: &str, style: TextStyle) {
     layout_text_lines(text.lines().map(String::from).collect(), style).draw(buffer, x, y);
+}
+
+/// Draws text with a simple drop shadow.
+pub fn draw_text_with_shadow(
+    buffer: &mut SoftwareBuffer,
+    x: i32,
+    y: i32,
+    text: &str,
+    style: TextStyle,
+    shadow: ShadowStyle,
+) {
+    layout_text_lines(text.lines().map(String::from).collect(), style)
+        .draw_with_shadow(buffer, x, y, shadow);
 }
 
 pub fn wrap_text(text: &str, style: TextStyle, max_width: u32) -> TextBlock {
@@ -227,6 +245,32 @@ fn draw_glyph(
     }
 }
 
+fn draw_lines(
+    buffer: &mut SoftwareBuffer,
+    x: i32,
+    y: i32,
+    lines: &[String],
+    style: TextStyle,
+    color: ClearColor,
+) {
+    let scale = style.scale.max(1) as i32;
+    let advance = glyph_advance(style) as i32;
+    let line_height = glyph_line_height(style) as i32;
+    let pixel = color.to_argb8888_bytes();
+
+    for (line_index, line) in lines.iter().enumerate() {
+        let baseline_y = y + line_index as i32 * line_height;
+        for (character_index, character) in line.chars().enumerate() {
+            let glyph = BASIC_FONTS.get(character).or_else(|| BASIC_FONTS.get('?'));
+            let Some(glyph) = glyph else {
+                continue;
+            };
+            let baseline_x = x + character_index as i32 * advance;
+            draw_glyph(buffer, baseline_x, baseline_y, scale, &pixel, &glyph);
+        }
+    }
+}
+
 fn fill_scaled_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, scale: i32, pixel: &[u8; 4]) {
     let size = buffer.size();
     let left = x.clamp(0, size.width as i32);
@@ -252,8 +296,10 @@ fn fill_scaled_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, scale: i32, pi
 
 #[cfg(test)]
 mod tests {
-    use super::{TextStyle, draw_text, fit_wrapped_text, measure_text, wrap_text};
-    use crate::{ClearColor, FrameSize, SoftwareBuffer};
+    use super::{
+        TextStyle, draw_text, draw_text_with_shadow, fit_wrapped_text, measure_text, wrap_text,
+    };
+    use crate::{ClearColor, FrameSize, ShadowStyle, SoftwareBuffer};
 
     #[test]
     fn measures_text_blocks() {
@@ -285,6 +331,17 @@ mod tests {
         let mut buffer = SoftwareBuffer::new(FrameSize::new(64, 32)).expect("buffer");
 
         draw_text(&mut buffer, 0, 0, "K", style);
+
+        assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn renders_shadowed_text() {
+        let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2);
+        let shadow = ShadowStyle::new(ClearColor::opaque(8, 10, 14), 2, 2);
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(64, 32)).expect("buffer");
+
+        draw_text_with_shadow(&mut buffer, 0, 0, "K", style, shadow);
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
     }

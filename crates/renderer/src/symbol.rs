@@ -1,4 +1,4 @@
-use crate::{ClearColor, SoftwareBuffer};
+use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
 /// Small reusable bitmap symbols for lock UI state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,8 +36,38 @@ pub fn draw_symbol(
     symbol: SymbolKind,
     style: SymbolStyle,
 ) {
-    let scale = style.scale.max(1) as i32;
-    let pixel = style.color.to_argb8888_bytes();
+    draw_symbol_colored(buffer, x, y, symbol, style.scale.max(1) as i32, style.color);
+}
+
+/// Draws a symbol with a simple drop shadow.
+pub fn draw_symbol_with_shadow(
+    buffer: &mut SoftwareBuffer,
+    x: i32,
+    y: i32,
+    symbol: SymbolKind,
+    style: SymbolStyle,
+    shadow: ShadowStyle,
+) {
+    draw_symbol_colored(
+        buffer,
+        x + shadow.offset_x,
+        y + shadow.offset_y,
+        symbol,
+        style.scale.max(1) as i32,
+        shadow.color,
+    );
+    draw_symbol(buffer, x, y, symbol, style);
+}
+
+fn draw_symbol_colored(
+    buffer: &mut SoftwareBuffer,
+    x: i32,
+    y: i32,
+    symbol: SymbolKind,
+    scale: i32,
+    color: ClearColor,
+) {
+    let pixel = color.to_argb8888_bytes();
 
     for (row, bits) in bitmap(symbol).iter().enumerate() {
         for column in 0..8 {
@@ -98,8 +128,8 @@ fn fill_scaled_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, scale: i32, pi
 
 #[cfg(test)]
 mod tests {
-    use super::{SymbolKind, SymbolStyle, draw_symbol, measure_symbol};
-    use crate::{ClearColor, FrameSize, SoftwareBuffer};
+    use super::{SymbolKind, SymbolStyle, draw_symbol, draw_symbol_with_shadow, measure_symbol};
+    use crate::{ClearColor, FrameSize, ShadowStyle, SoftwareBuffer};
 
     #[test]
     fn measures_scaled_symbols() {
@@ -144,5 +174,20 @@ mod tests {
         );
 
         assert_ne!(pending.pixels(), error.pixels());
+    }
+
+    #[test]
+    fn renders_shadowed_symbols() {
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(24, 24)).expect("buffer");
+        draw_symbol_with_shadow(
+            &mut buffer,
+            4,
+            4,
+            SymbolKind::Error,
+            SymbolStyle::new(ClearColor::opaque(220, 96, 96), 2),
+            ShadowStyle::new(ClearColor::opaque(8, 10, 14), 2, 2),
+        );
+
+        assert!(buffer.pixels().iter().any(|byte| *byte != 0));
     }
 }

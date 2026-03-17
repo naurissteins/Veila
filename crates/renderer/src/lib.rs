@@ -60,6 +60,25 @@ impl ClearColor {
     }
 }
 
+/// Drop-shadow parameters for bitmap primitives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShadowStyle {
+    pub color: ClearColor,
+    pub offset_x: i32,
+    pub offset_y: i32,
+}
+
+impl ShadowStyle {
+    /// Creates a new shadow style.
+    pub const fn new(color: ClearColor, offset_x: i32, offset_y: i32) -> Self {
+        Self {
+            color,
+            offset_x,
+            offset_y,
+        }
+    }
+}
+
 /// Shared renderer error type.
 #[derive(Debug, Error)]
 pub enum RendererError {

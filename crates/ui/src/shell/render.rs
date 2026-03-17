@@ -1,12 +1,13 @@
 use kwylock_renderer::{
-    ClearColor, SoftwareBuffer,
-    symbol::{SymbolKind, SymbolStyle, draw_symbol, measure_symbol},
+    ClearColor, ShadowStyle, SoftwareBuffer,
+    symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
     text::{TextBlock, TextStyle, fit_wrapped_text},
 };
 
 use super::{ShellState, ShellStatus};
 
 const STATUS_ROW_MAX_GAP: u32 = 12;
+const TEXT_SHADOW_COLOR: ClearColor = ClearColor::opaque(8, 10, 14);
 
 impl ShellState {
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
@@ -249,7 +250,7 @@ fn draw_centered_block(
     block: &TextBlock,
 ) {
     let x = panel_x + ((panel_width - block.width as i32) / 2);
-    block.draw(buffer, x, y);
+    block.draw_with_shadow(buffer, x, y, text_shadow(block.style.scale));
 }
 
 fn draw_centered_status_row(
@@ -265,12 +266,25 @@ fn draw_centered_status_row(
     let text_x = x + symbol_width as i32 + row.gap as i32;
     let text_y = y + ((row.height as i32 - row.text.height as i32) / 2);
 
-    draw_symbol(buffer, x, symbol_y, row.symbol, row.symbol_style);
-    row.text.draw(buffer, text_x, text_y);
+    draw_symbol_with_shadow(
+        buffer,
+        x,
+        symbol_y,
+        row.symbol,
+        row.symbol_style,
+        text_shadow(row.symbol_style.scale),
+    );
+    row.text
+        .draw_with_shadow(buffer, text_x, text_y, text_shadow(row.text.style.scale));
 }
 
 fn status_row_gap(scale: u32) -> u32 {
     (scale.max(1) * 4).clamp(6, STATUS_ROW_MAX_GAP)
+}
+
+fn text_shadow(scale: u32) -> ShadowStyle {
+    let offset = scale.max(1) as i32;
+    ShadowStyle::new(TEXT_SHADOW_COLOR, offset, offset)
 }
 
 fn indicator_width(panel_width: i32, status: &ShellStatus) -> i32 {
