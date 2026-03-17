@@ -1,6 +1,6 @@
 use kwylock_renderer::{
     ClearColor, SoftwareBuffer,
-    text::{TextStyle, draw_text, measure_text},
+    text::{TextBlock, TextStyle, fit_wrapped_text},
 };
 
 use super::{ShellState, ShellStatus};
@@ -15,13 +15,21 @@ impl ShellState {
         let size = buffer.size();
         let width = size.width as i32;
         let height = size.height as i32;
-        let panel_width = ((width * 3) / 5).clamp(360, 620);
-        let panel_height = 240;
+        let panel_width = ((width * 3) / 5).clamp(320, 620);
+        let content_width = (panel_width - 64).max(160) as u32;
         let panel_x = (width - panel_width) / 2;
-        let panel_y = (height - panel_height) / 2;
         let accent = self.accent_color();
-        let hint_style = TextStyle::new(self.theme.foreground, 2);
-        let status_style = TextStyle::new(accent, 2);
+        let hint_block = fit_wrapped_text(
+            &self.hint_text,
+            TextStyle::new(self.theme.foreground, 2),
+            content_width,
+            1,
+        );
+        let status_block = self.status_text().map(|status_text| {
+            fit_wrapped_text(&status_text, TextStyle::new(accent, 2), content_width, 1)
+        });
+        let panel_height = compute_panel_height(&hint_block, status_block.as_ref());
+        let panel_y = (height - panel_height) / 2;
 
         fill_rect(
             buffer,
@@ -43,17 +51,10 @@ impl ShellState {
         fill_rect(buffer, panel_x, panel_y, panel_width, 6, accent);
 
         let hint_y = panel_y + 34;
-        draw_centered_text(
-            buffer,
-            panel_x,
-            panel_width,
-            hint_y,
-            &self.hint_text,
-            hint_style,
-        );
+        draw_centered_block(buffer, panel_x, panel_width, hint_y, &hint_block);
 
         let input_x = panel_x + 32;
-        let input_y = panel_y + 94;
+        let input_y = hint_y + hint_block.height as i32 + 22;
         let input_width = panel_width - 64;
         let input_height = 38;
 
@@ -99,15 +100,8 @@ impl ShellState {
 
         self.draw_secret(buffer, input_x, input_y, input_width, input_height, accent);
 
-        if let Some(status_text) = self.status_text() {
-            draw_centered_text(
-                buffer,
-                panel_x,
-                panel_width,
-                indicator_y + 22,
-                &status_text,
-                status_style,
-            );
+        if let Some(status_block) = status_block.as_ref() {
+            draw_centered_block(buffer, panel_x, panel_width, indicator_y + 22, status_block);
         }
     }
 
@@ -202,17 +196,22 @@ impl ShellState {
     }
 }
 
-fn draw_centered_text(
+fn compute_panel_height(hint_block: &TextBlock, status_block: Option<&TextBlock>) -> i32 {
+    let status_height = status_block
+        .map(|block| block.height as i32 + 22)
+        .unwrap_or(0);
+    34 + hint_block.height as i32 + 22 + 38 + 24 + 6 + status_height + 28
+}
+
+fn draw_centered_block(
     buffer: &mut SoftwareBuffer,
     panel_x: i32,
     panel_width: i32,
     y: i32,
-    text: &str,
-    style: TextStyle,
+    block: &TextBlock,
 ) {
-    let (width, _) = measure_text(text, style);
-    let x = panel_x + ((panel_width - width as i32) / 2);
-    draw_text(buffer, x, y, text, style);
+    let x = panel_x + ((panel_width - block.width as i32) / 2);
+    block.draw(buffer, x, y);
 }
 
 fn indicator_width(panel_width: i32, status: &ShellStatus) -> i32 {
