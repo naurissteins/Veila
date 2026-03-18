@@ -5,22 +5,29 @@ use crate::error::Result;
 /// Messages sent from UI-facing clients to the daemon.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
-    SubmitPassword { secret: String },
+    SubmitPassword { attempt_id: u64, secret: String },
     CancelAuthentication,
 }
 
 /// Messages sent from the daemon to UI-facing clients.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonMessage {
-    AuthenticationAccepted,
-    AuthenticationRejected { retry_after_ms: Option<u64> },
-    AuthenticationBusy,
+    AuthenticationAccepted {
+        attempt_id: u64,
+    },
+    AuthenticationRejected {
+        attempt_id: u64,
+        retry_after_ms: Option<u64>,
+    },
+    AuthenticationBusy {
+        attempt_id: u64,
+    },
 }
 
 /// Messages sent from the daemon to the secure curtain process.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CurtainControlMessage {
-    Unlock,
+    Unlock { attempt_id: Option<u64> },
 }
 
 /// Messages sent to the long-running daemon control socket.
@@ -69,7 +76,9 @@ mod tests {
 
     #[test]
     fn round_trips_control_messages() {
-        let message = CurtainControlMessage::Unlock;
+        let message = CurtainControlMessage::Unlock {
+            attempt_id: Some(7),
+        };
         let encoded = encode_message(&message).expect("control message should encode");
         let decoded = decode_message::<CurtainControlMessage>(&encoded)
             .expect("control message should decode");

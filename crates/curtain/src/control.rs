@@ -11,7 +11,7 @@ use kwylock_common::ipc::{CurtainControlMessage, decode_message};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
-    UnlockRequested,
+    UnlockRequested { attempt_id: Option<u64> },
 }
 
 pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>) -> Result<()> {
@@ -53,8 +53,8 @@ fn run_listener(listener: UnixListener, sender: Sender<ControlEvent>) -> Result<
         match decode_message::<CurtainControlMessage>(line.trim_end())
             .context("invalid curtain control message")?
         {
-            CurtainControlMessage::Unlock => {
-                let _ = sender.send(ControlEvent::UnlockRequested);
+            CurtainControlMessage::Unlock { attempt_id } => {
+                let _ = sender.send(ControlEvent::UnlockRequested { attempt_id });
                 return Ok(());
             }
         }

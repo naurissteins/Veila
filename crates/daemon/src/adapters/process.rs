@@ -38,14 +38,14 @@ pub async fn spawn_curtain(
         .with_context(|| format!("failed to spawn '{}'", binary.display()))
 }
 
-pub async fn request_curtain_unlock(control_socket: &Path) -> Result<()> {
+pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u64>) -> Result<()> {
     let mut stream = UnixStream::connect(control_socket).with_context(|| {
         format!(
             "failed to connect to curtain control socket {}",
             control_socket.display()
         )
     })?;
-    let mut payload = encode_message(&CurtainControlMessage::Unlock)
+    let mut payload = encode_message(&CurtainControlMessage::Unlock { attempt_id })
         .context("failed to encode unlock request")?;
     payload.push('\n');
     stream

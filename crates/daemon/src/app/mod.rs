@@ -141,6 +141,7 @@ pub async fn run(
                     ),
                     auth_policy,
                     &mut auth_state,
+                    None,
                 ).await {
                     tracing::error!("failed to deactivate lock: {error:#}");
                 }
@@ -203,9 +204,14 @@ pub async fn run(
                 };
 
                 match result {
-                    AuthResult::Succeeded { elapsed_ms } => {
-                        tracing::info!(elapsed_ms, "starting unlock after successful authentication");
+                    AuthResult::Succeeded {
+                        attempt_id,
+                        started_at,
+                        elapsed_ms,
+                    } => {
+                        tracing::info!(attempt_id, elapsed_ms, "starting unlock after successful authentication");
                         auth_state.finish_success();
+                        let unlock_started_at = Instant::now();
 
                         if let Err(error) = deactivate_lock(
                             &session_proxy,
@@ -220,12 +226,30 @@ pub async fn run(
                             ),
                             auth_policy,
                             &mut auth_state,
+                            Some(attempt_id),
                         ).await {
                             tracing::error!("failed to unlock after successful authentication: {error:#}");
+                        } else {
+                            tracing::info!(
+                                attempt_id,
+                                auth_elapsed_ms = elapsed_ms,
+                                unlock_elapsed_ms = unlock_started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                                daemon_total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                                "unlock timing summary"
+                            );
                         }
                     }
-                    AuthResult::Rejected { elapsed_ms } => {
-                        tracing::info!(elapsed_ms, "recording failed authentication attempt");
+                    AuthResult::Rejected {
+                        attempt_id,
+                        started_at,
+                        elapsed_ms,
+                    } => {
+                        tracing::info!(
+                            attempt_id,
+                            auth_elapsed_ms = elapsed_ms,
+                            daemon_total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                            "recording failed authentication attempt"
+                        );
                         auth_state.finish_failure(Instant::now())
                     }
                 }
@@ -292,6 +316,7 @@ pub async fn run(
         ),
         auth_policy,
         &mut auth_state,
+        None,
     )
     .await
     {

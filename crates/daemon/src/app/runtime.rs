@@ -73,8 +73,16 @@ impl<'a> ActiveRuntime<'a> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AuthResult {
-    Succeeded { elapsed_ms: u64 },
-    Rejected { elapsed_ms: u64 },
+    Succeeded {
+        attempt_id: u64,
+        started_at: Instant,
+        elapsed_ms: u64,
+    },
+    Rejected {
+        attempt_id: u64,
+        started_at: Instant,
+        elapsed_ms: u64,
+    },
 }
 
 pub(super) async fn activate_lock(
@@ -164,6 +172,7 @@ pub(super) async fn deactivate_lock(
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
+    attempt_id: Option<u64>,
 ) -> Result<()> {
     let started_at = Instant::now();
     if runtime.curtain.is_none() {
@@ -188,7 +197,7 @@ pub(super) async fn deactivate_lock(
     *state = LockState::Unlocking;
 
     if let Some(child) = runtime.curtain.take() {
-        stop_active_curtain(child, runtime.control_socket_path.as_deref()).await?;
+        stop_active_curtain(child, runtime.control_socket_path.as_deref(), attempt_id).await?;
     }
 
     reset_runtime(
@@ -203,10 +212,16 @@ pub(super) async fn deactivate_lock(
     *state = LockState::Unlocked;
     update_locked_hint(session_proxy, false).await;
 
-    tracing::info!(
-        elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-        "curtain stopped; session considered unlocked"
-    );
+    let elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+    if let Some(attempt_id) = attempt_id {
+        tracing::info!(
+            attempt_id,
+            elapsed_ms,
+            "curtain stopped; session considered unlocked"
+        );
+    } else {
+        tracing::info!(elapsed_ms, "curtain stopped; session considered unlocked");
+    }
     Ok(())
 }
 
@@ -218,8 +233,10 @@ pub(super) async fn handle_client_message(
     message: ClientMessage,
 ) -> Result<()> {
     match message {
-        ClientMessage::SubmitPassword { secret } => {
+        ClientMessage::SubmitPassword { attempt_id, secret } => {
+            let started_at = Instant::now();
             tracing::info!(
+                attempt_id,
                 secret_len = secret.chars().count(),
                 "received password submission"
             );
@@ -231,6 +248,8 @@ pub(super) async fn handle_client_message(
 
                     auth_state.start_attempt();
                     tokio::spawn(run_auth_attempt(
+                        attempt_id,
+                        started_at,
                         username.to_string(),
                         secret,
                         stream,
@@ -238,14 +257,18 @@ pub(super) async fn handle_client_message(
                     ));
                 }
                 AuthAdmission::Busy => {
-                    ipc::write_daemon_message(&mut stream, &DaemonMessage::AuthenticationBusy)
-                        .await?;
+                    ipc::write_daemon_message(
+                        &mut stream,
+                        &DaemonMessage::AuthenticationBusy { attempt_id },
+                    )
+                    .await?;
                 }
                 AuthAdmission::RateLimited(delay) => {
                     let retry_after_ms = delay.as_millis().min(u128::from(u64::MAX)) as u64;
                     ipc::write_daemon_message(
                         &mut stream,
                         &DaemonMessage::AuthenticationRejected {
+                            attempt_id,
                             retry_after_ms: Some(retry_after_ms),
                         },
                     )
@@ -260,30 +283,43 @@ pub(super) async fn handle_client_message(
 }
 
 async fn run_auth_attempt(
+    attempt_id: u64,
+    started_at: Instant,
     username: String,
     secret: String,
     mut stream: UnixStream,
     sender: UnboundedSender<AuthResult>,
 ) {
-    let started_at = Instant::now();
+    let auth_started_at = Instant::now();
     let result = tokio::task::spawn_blocking(move || pam::authenticate(&username, &secret)).await;
-    let elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+    let elapsed_ms = auth_started_at
+        .elapsed()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64;
 
     match result {
         Ok(Ok(())) => {
-            tracing::info!(elapsed_ms, "authentication accepted");
-            if let Err(write_error) =
-                ipc::write_daemon_message(&mut stream, &DaemonMessage::AuthenticationAccepted).await
+            tracing::info!(attempt_id, elapsed_ms, "authentication accepted");
+            if let Err(write_error) = ipc::write_daemon_message(
+                &mut stream,
+                &DaemonMessage::AuthenticationAccepted { attempt_id },
+            )
+            .await
             {
                 tracing::warn!("failed to report auth success: {write_error:#}");
             }
-            let _ = sender.send(AuthResult::Succeeded { elapsed_ms });
+            let _ = sender.send(AuthResult::Succeeded {
+                attempt_id,
+                started_at,
+                elapsed_ms,
+            });
         }
         Ok(Err(error)) => {
-            tracing::info!(elapsed_ms, "authentication rejected: {error}");
+            tracing::info!(attempt_id, elapsed_ms, "authentication rejected: {error}");
             if let Err(write_error) = ipc::write_daemon_message(
                 &mut stream,
                 &DaemonMessage::AuthenticationRejected {
+                    attempt_id,
                     retry_after_ms: None,
                 },
             )
@@ -291,13 +327,22 @@ async fn run_auth_attempt(
             {
                 tracing::warn!("failed to report auth rejection: {write_error:#}");
             }
-            let _ = sender.send(AuthResult::Rejected { elapsed_ms });
+            let _ = sender.send(AuthResult::Rejected {
+                attempt_id,
+                started_at,
+                elapsed_ms,
+            });
         }
         Err(error) => {
-            tracing::error!(elapsed_ms, "authentication worker failed: {error}");
+            tracing::error!(
+                attempt_id,
+                elapsed_ms,
+                "authentication worker failed: {error}"
+            );
             if let Err(write_error) = ipc::write_daemon_message(
                 &mut stream,
                 &DaemonMessage::AuthenticationRejected {
+                    attempt_id,
                     retry_after_ms: None,
                 },
             )
@@ -305,7 +350,11 @@ async fn run_auth_attempt(
             {
                 tracing::warn!("failed to report worker failure to client: {write_error:#}");
             }
-            let _ = sender.send(AuthResult::Rejected { elapsed_ms });
+            let _ = sender.send(AuthResult::Rejected {
+                attempt_id,
+                started_at,
+                elapsed_ms,
+            });
         }
     }
 }
@@ -331,9 +380,13 @@ pub(super) fn reset_runtime(
     *auth_state = AuthState::new(auth_policy);
 }
 
-async fn stop_active_curtain(child: Child, control_socket_path: Option<&Path>) -> Result<()> {
+async fn stop_active_curtain(
+    child: Child,
+    control_socket_path: Option<&Path>,
+    attempt_id: Option<u64>,
+) -> Result<()> {
     let child = if let Some(control_socket_path) = control_socket_path {
-        match process::request_curtain_unlock(control_socket_path).await {
+        match process::request_curtain_unlock(control_socket_path, attempt_id).await {
             Ok(()) => {
                 match process::wait_for_graceful_curtain_exit(child, Duration::from_secs(5)).await?
                 {

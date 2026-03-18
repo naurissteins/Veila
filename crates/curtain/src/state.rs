@@ -67,6 +67,7 @@ pub(crate) struct CurtainApp {
     pub(crate) ready_notified: bool,
     background_render_started: bool,
     auth_in_flight: bool,
+    next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
     pub(crate) failure_reason: Option<String>,
 }
@@ -143,6 +144,7 @@ impl CurtainApp {
             ready_notified: false,
             background_render_started: false,
             auth_in_flight: false,
+            next_auth_attempt_id: 1,
             has_keyboard_focus: false,
             failure_reason: None,
         })
@@ -253,8 +255,12 @@ impl CurtainApp {
     pub(crate) fn drain_control_events(&mut self) {
         while let Ok(event) = self.control_events.try_recv() {
             match event {
-                ControlEvent::UnlockRequested => {
-                    tracing::info!("received curtain unlock request from daemon");
+                ControlEvent::UnlockRequested { attempt_id } => {
+                    if let Some(attempt_id) = attempt_id {
+                        tracing::info!(attempt_id, "received curtain unlock request from daemon");
+                    } else {
+                        tracing::info!("received curtain unlock request from daemon");
+                    }
                     self.request_exit();
                 }
             }
@@ -312,12 +318,15 @@ impl CurtainApp {
                 return;
             };
 
+            let attempt_id = self.next_auth_attempt_id;
+            self.next_auth_attempt_id = self.next_auth_attempt_id.saturating_add(1);
             tracing::info!(
+                attempt_id,
                 secret_len = secret.chars().count(),
                 "submitting password attempt"
             );
             self.auth_in_flight = true;
-            submit_password(socket_path, secret, self.auth_sender.clone());
+            submit_password(socket_path, attempt_id, secret, self.auth_sender.clone());
         }
         self.render_all_surfaces(queue_handle);
     }
@@ -325,16 +334,24 @@ impl CurtainApp {
     pub(crate) fn drain_auth_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.auth_events.try_recv() {
             match event {
-                AuthEvent::Accepted => {
-                    tracing::info!("waiting for daemon-driven unlock after auth success");
+                AuthEvent::Accepted { attempt_id } => {
+                    tracing::info!(
+                        attempt_id,
+                        "waiting for daemon-driven unlock after auth success"
+                    );
                 }
-                AuthEvent::Rejected { retry_after_ms } => {
+                AuthEvent::Rejected {
+                    attempt_id,
+                    retry_after_ms,
+                } => {
                     self.auth_in_flight = false;
+                    tracing::info!(attempt_id, "updating UI after authentication rejection");
                     self.ui_shell.authentication_rejected(retry_after_ms);
                     self.render_all_surfaces(queue_handle);
                 }
-                AuthEvent::Busy => {
+                AuthEvent::Busy { attempt_id } => {
                     self.auth_in_flight = false;
+                    tracing::debug!(attempt_id, "updating UI after authentication busy response");
                     self.ui_shell.authentication_busy();
                     self.render_all_surfaces(queue_handle);
                 }
