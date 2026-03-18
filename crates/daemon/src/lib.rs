@@ -10,6 +10,8 @@ use std::path::PathBuf;
 
 use anyhow::{Result, bail};
 
+use crate::adapters::ipc;
+
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
     "kwylockd"
@@ -51,7 +53,23 @@ impl DaemonOptions {
 
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
-    app::run(options).await
+    let daemon_socket_path = ipc::daemon_socket_path();
+    match ipc::bind_single_instance_listener(&daemon_socket_path).await {
+        Ok(control_listener) => app::run(options, control_listener, daemon_socket_path).await,
+        Err(error) => {
+            if options.lock_now && daemon_socket_path.exists() {
+                ipc::send_daemon_control_message(
+                    &daemon_socket_path,
+                    &kwylock_common::ipc::DaemonControlMessage::LockNow,
+                )
+                .await?;
+                tracing::info!(path = %daemon_socket_path.display(), "forwarded lock request to running daemon");
+                Ok(())
+            } else {
+                Err(error)
+            }
+        }
+    }
 }
 
 #[cfg(test)]

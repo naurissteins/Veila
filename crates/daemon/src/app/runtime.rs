@@ -353,6 +353,16 @@ pub(super) async fn accept_auth_connection(
     }
 }
 
+pub(super) async fn accept_control_connection(
+    control_listener: &mut UnixListener,
+) -> Result<UnixStream> {
+    control_listener
+        .accept()
+        .await
+        .map(|(stream, _)| stream)
+        .context("failed to accept daemon control connection")
+}
+
 pub(super) async fn receive_auth_result(
     auth_results: &mut Option<UnboundedReceiver<AuthResult>>,
 ) -> Option<AuthResult> {

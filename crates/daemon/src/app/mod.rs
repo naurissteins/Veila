@@ -1,16 +1,23 @@
 mod runtime;
 
-use std::time::{Duration, Instant};
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context, Result, anyhow};
 use futures_util::StreamExt;
 use kwylock_common::AppConfig;
+use kwylock_common::ipc::{DaemonControlMessage, DaemonControlResponse};
 use nix::unistd::{Uid, User};
-use tokio::signal::unix::{SignalKind, signal};
+use tokio::{
+    net::UnixListener,
+    signal::unix::{SignalKind, signal},
+};
 
 use crate::{
     DaemonOptions,
-    adapters::logind,
+    adapters::{ipc, logind},
     domain::{
         auth::{AuthPolicy, AuthState},
         lock_state::LockState,
@@ -18,11 +25,16 @@ use crate::{
 };
 
 use self::runtime::{
-    ActiveRuntime, AuthResult, accept_auth_connection, activate_lock, deactivate_lock,
-    handle_client_message, receive_auth_result, reset_runtime, wait_for_curtain_exit,
+    ActiveRuntime, AuthResult, accept_auth_connection, accept_control_connection, activate_lock,
+    deactivate_lock, handle_client_message, receive_auth_result, reset_runtime,
+    wait_for_curtain_exit,
 };
 
-pub async fn run(options: DaemonOptions) -> Result<()> {
+pub async fn run(
+    options: DaemonOptions,
+    mut control_listener: UnixListener,
+    daemon_control_socket_path: PathBuf,
+) -> Result<()> {
     let loaded_config =
         AppConfig::load(options.config_path.as_deref()).context("failed to load daemon config")?;
     let auth_policy = AuthPolicy::new(
@@ -214,6 +226,44 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                     AuthResult::Rejected => auth_state.finish_failure(Instant::now()),
                 }
             }
+            result = accept_control_connection(&mut control_listener) => {
+                let mut stream = result?;
+                if let Some(message) = ipc::read_daemon_control_message(&mut stream).await? {
+                    match message {
+                        DaemonControlMessage::LockNow => {
+                            if !state.is_active() {
+                                if let Err(error) = activate_and_install(
+                                    &session_proxy,
+                                    &mut state,
+                                    options.config_path.as_deref(),
+                                    ActiveRuntime::new(
+                                        &mut curtain,
+                                        &mut auth_listener,
+                                        &mut auth_socket_path,
+                                        &mut control_socket_path,
+                                        &mut auth_results,
+                                        &mut auth_sender,
+                                    ),
+                                    auth_policy,
+                                    &mut auth_state,
+                                ).await {
+                                    tracing::error!("failed to activate forwarded lock request: {error:#}");
+                                }
+                            } else {
+                                tracing::debug!(state = %state, "ignoring forwarded lock request while already active");
+                            }
+                        }
+                    }
+
+                    if let Err(error) = ipc::write_daemon_control_response(
+                        &mut stream,
+                        &DaemonControlResponse::Accepted,
+                    )
+                    .await {
+                        tracing::warn!("failed to acknowledge daemon control request: {error:#}");
+                    }
+                }
+            }
             _ = sigint.recv() => {
                 tracing::info!("received SIGINT");
                 break;
@@ -244,6 +294,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         tracing::warn!("failed to stop curtain during shutdown: {error:#}");
     }
 
+    let _ = std::fs::remove_file(&daemon_control_socket_path);
     tracing::info!("kwylockd exiting");
     Ok(())
 }

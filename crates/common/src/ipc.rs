@@ -22,6 +22,18 @@ pub enum CurtainControlMessage {
     Unlock,
 }
 
+/// Messages sent to the long-running daemon control socket.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DaemonControlMessage {
+    LockNow,
+}
+
+/// Responses sent by the long-running daemon control socket.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DaemonControlResponse {
+    Accepted,
+}
+
 /// Encodes an IPC message as JSON for the initial control channel.
 pub fn encode_message<T>(message: &T) -> Result<String>
 where
@@ -40,7 +52,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{ClientMessage, CurtainControlMessage, decode_message, encode_message};
+    use super::{
+        ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
+        decode_message, encode_message,
+    };
 
     #[test]
     fn round_trips_json_messages() {
@@ -57,6 +72,26 @@ mod tests {
         let encoded = encode_message(&message).expect("control message should encode");
         let decoded = decode_message::<CurtainControlMessage>(&encoded)
             .expect("control message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_daemon_control_messages() {
+        let message = DaemonControlMessage::LockNow;
+        let encoded = encode_message(&message).expect("daemon control message should encode");
+        let decoded = decode_message::<DaemonControlMessage>(&encoded)
+            .expect("daemon control message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_daemon_control_responses() {
+        let message = DaemonControlResponse::Accepted;
+        let encoded = encode_message(&message).expect("daemon control response should encode");
+        let decoded = decode_message::<DaemonControlResponse>(&encoded)
+            .expect("daemon control response should decode");
 
         assert_eq!(decoded, message);
     }
