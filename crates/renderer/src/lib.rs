@@ -3,6 +3,8 @@
 //! Shared rendering primitives used by Kwylock components.
 
 pub mod background;
+mod background_render_cache;
+mod background_source_cache;
 pub mod masked;
 pub mod panel;
 pub mod progress;

@@ -1,3 +1,5 @@
+mod output_probe;
+mod prewarm;
 mod runtime;
 
 use std::{
@@ -37,6 +39,7 @@ pub async fn run(
 ) -> Result<()> {
     let loaded_config =
         AppConfig::load(options.config_path.as_deref()).context("failed to load daemon config")?;
+    prewarm::spawn_background_prewarm(&loaded_config.config);
     let auth_policy = AuthPolicy::new(
         Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
         Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),

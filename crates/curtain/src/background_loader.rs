@@ -5,9 +5,10 @@ use std::{
     time::Instant,
 };
 
-use kwylock_renderer::{ClearColor, FrameSize, SoftwareBuffer, background::BackgroundAsset};
-
-use crate::background_cache::{load_cached_buffer, store_cached_buffer};
+use kwylock_renderer::{
+    ClearColor, FrameSize, SoftwareBuffer,
+    background::{BackgroundAsset, load_cached_render, store_cached_render},
+};
 
 #[derive(Debug, Clone)]
 pub(crate) enum BackgroundEvent {
@@ -98,7 +99,7 @@ fn load_cached_buffers(path: &Path, sizes: &[FrameSize]) -> Vec<(FrameSize, Soft
     let mut buffers = Vec::with_capacity(sizes.len());
 
     for size in sizes {
-        match load_cached_buffer(path, *size) {
+        match load_cached_render(path, *size) {
             Ok(Some(buffer)) => buffers.push((*size, buffer)),
             Ok(None) => {}
             Err(error) => {
@@ -112,7 +113,7 @@ fn load_cached_buffers(path: &Path, sizes: &[FrameSize]) -> Vec<(FrameSize, Soft
 
 fn store_cached_buffers(path: &Path, buffers: &[(FrameSize, SoftwareBuffer)]) {
     for (size, buffer) in buffers {
-        if let Err(error) = store_cached_buffer(path, *size, buffer) {
+        if let Err(error) = store_cached_render(path, *size, buffer) {
             tracing::debug!("failed to store cached wallpaper buffer: {error:#}");
         }
     }

@@ -5,7 +5,6 @@
 mod app;
 mod auth;
 mod background;
-mod background_cache;
 mod background_loader;
 mod control;
 mod handlers;

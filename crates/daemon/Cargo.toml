@@ -13,10 +13,12 @@ path = "src/main.rs"
 
 [dependencies]
 kwylock-common = { path = "../common" }
+kwylock-renderer = { path = "../renderer" }
 anyhow = { workspace = true }
 futures-util = { workspace = true }
 nix = { workspace = true }
 nonstick = { workspace = true }
+smithay-client-toolkit = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

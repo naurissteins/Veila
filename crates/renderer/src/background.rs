@@ -2,7 +2,21 @@ use std::{path::Path, sync::Arc};
 
 use image::{RgbaImage, imageops::FilterType};
 
+use crate::background_render_cache::{load_cached_buffer, store_cached_buffer};
+use crate::background_source_cache::{load_cached_rgba, store_cached_rgba};
 use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SourceCacheStatus {
+    Hit,
+    Warmed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RenderCacheSummary {
+    pub cache_hits: usize,
+    pub warmed_sizes: usize,
+}
 
 #[derive(Debug, Clone)]
 pub struct BackgroundAsset {
@@ -19,7 +33,7 @@ impl BackgroundAsset {
     pub fn load(path: Option<&Path>, fallback: ClearColor) -> Result<Self> {
         match path {
             Some(path) => Ok(Self {
-                kind: BackgroundKind::Image(Arc::new(image::open(path)?.to_rgba8())),
+                kind: BackgroundKind::Image(Arc::new(load_rgba_image(path)?)),
             }),
             None => Ok(Self {
                 kind: BackgroundKind::Solid(fallback),
@@ -33,6 +47,82 @@ impl BackgroundAsset {
             BackgroundKind::Image(image) => render_image(image, size),
         }
     }
+}
+
+pub fn prewarm_source(path: &Path) -> Result<SourceCacheStatus> {
+    if load_cached_rgba(path)?.is_some() {
+        return Ok(SourceCacheStatus::Hit);
+    }
+
+    let image = image::open(path)?.to_rgba8();
+    store_cached_rgba(path, &image)?;
+    Ok(SourceCacheStatus::Warmed)
+}
+
+pub fn load_cached_render(path: &Path, size: FrameSize) -> Result<Option<SoftwareBuffer>> {
+    load_cached_buffer(path, size)
+}
+
+pub fn store_cached_render(path: &Path, size: FrameSize, buffer: &SoftwareBuffer) -> Result<()> {
+    store_cached_buffer(path, size, buffer)
+}
+
+pub fn prewarm_rendered(
+    path: &Path,
+    fallback: ClearColor,
+    sizes: &[FrameSize],
+) -> Result<RenderCacheSummary> {
+    let unique_sizes = unique_sizes(sizes);
+    let mut cache_hits = 0;
+    let mut missing_sizes = Vec::new();
+
+    for size in unique_sizes {
+        if load_cached_render(path, size)?.is_some() {
+            cache_hits += 1;
+        } else {
+            missing_sizes.push(size);
+        }
+    }
+
+    if missing_sizes.is_empty() {
+        return Ok(RenderCacheSummary {
+            cache_hits,
+            warmed_sizes: 0,
+        });
+    }
+
+    let asset = BackgroundAsset::load(Some(path), fallback)?;
+    for size in &missing_sizes {
+        let buffer = asset.render(*size)?;
+        store_cached_render(path, *size, &buffer)?;
+    }
+
+    Ok(RenderCacheSummary {
+        cache_hits,
+        warmed_sizes: missing_sizes.len(),
+    })
+}
+
+fn load_rgba_image(path: &Path) -> Result<RgbaImage> {
+    if let Some(image) = load_cached_rgba(path)? {
+        return Ok(image);
+    }
+
+    let image = image::open(path)?.to_rgba8();
+    let _ = store_cached_rgba(path, &image);
+    Ok(image)
+}
+
+fn unique_sizes(sizes: &[FrameSize]) -> Vec<FrameSize> {
+    let mut unique = Vec::with_capacity(sizes.len());
+
+    for size in sizes {
+        if !unique.contains(size) {
+            unique.push(*size);
+        }
+    }
+
+    unique
 }
 
 fn render_image(image: &RgbaImage, size: FrameSize) -> Result<SoftwareBuffer> {
@@ -83,7 +173,10 @@ mod tests {
 
     use image::{Rgba, RgbaImage};
 
-    use super::{BackgroundAsset, BackgroundKind, cover_dimensions};
+    use super::{
+        BackgroundAsset, BackgroundKind, RenderCacheSummary, SourceCacheStatus, cover_dimensions,
+        unique_sizes,
+    };
     use crate::{ClearColor, FrameSize};
 
     #[test]
@@ -111,5 +204,36 @@ mod tests {
     fn cover_dimensions_fill_target() {
         assert_eq!(cover_dimensions(4000, 3000, 1920, 1080), (1920, 1440));
         assert_eq!(cover_dimensions(3000, 4000, 1920, 1080), (1920, 2560));
+    }
+
+    #[test]
+    fn source_cache_status_is_comparable() {
+        assert_eq!(SourceCacheStatus::Hit, SourceCacheStatus::Hit);
+    }
+
+    #[test]
+    fn deduplicates_render_sizes() {
+        assert_eq!(
+            unique_sizes(&[
+                FrameSize::new(1920, 1080),
+                FrameSize::new(1920, 1080),
+                FrameSize::new(2560, 1440),
+            ]),
+            vec![FrameSize::new(1920, 1080), FrameSize::new(2560, 1440)]
+        );
+    }
+
+    #[test]
+    fn render_cache_summary_is_comparable() {
+        assert_eq!(
+            RenderCacheSummary {
+                cache_hits: 1,
+                warmed_sizes: 2,
+            },
+            RenderCacheSummary {
+                cache_hits: 1,
+                warmed_sizes: 2,
+            }
+        );
     }
 }
