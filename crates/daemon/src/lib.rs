@@ -19,6 +19,7 @@ pub const fn component_name() -> &'static str {
 pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
     pub session_id: Option<String>,
+    pub lock_now: bool,
 }
 
 impl DaemonOptions {
@@ -33,6 +34,11 @@ impl DaemonOptions {
 
             if let Some(session_id) = arg.strip_prefix("--session-id=") {
                 options.session_id = Some(session_id.to_string());
+                continue;
+            }
+
+            if arg == "--lock-now" {
+                options.lock_now = true;
                 continue;
             }
 
@@ -73,5 +79,13 @@ mod tests {
                 .expect("arguments should parse");
 
         assert_eq!(options.session_id.as_deref(), Some("c2"));
+    }
+
+    #[test]
+    fn parses_lock_now_argument() {
+        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--lock-now".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.lock_now);
     }
 }

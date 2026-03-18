@@ -16,6 +16,12 @@ pub enum DaemonMessage {
     AuthenticationBusy,
 }
 
+/// Messages sent from the daemon to the secure curtain process.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CurtainControlMessage {
+    Unlock,
+}
+
 /// Encodes an IPC message as JSON for the initial control channel.
 pub fn encode_message<T>(message: &T) -> Result<String>
 where
@@ -34,13 +40,23 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{ClientMessage, decode_message, encode_message};
+    use super::{ClientMessage, CurtainControlMessage, decode_message, encode_message};
 
     #[test]
     fn round_trips_json_messages() {
         let message = ClientMessage::CancelAuthentication;
         let encoded = encode_message(&message).expect("ipc message should encode");
         let decoded = decode_message::<ClientMessage>(&encoded).expect("ipc message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_control_messages() {
+        let message = CurtainControlMessage::Unlock;
+        let encoded = encode_message(&message).expect("control message should encode");
+        let decoded = decode_message::<CurtainControlMessage>(&encoded)
+            .expect("control message should decode");
 
         assert_eq!(decoded, message);
     }

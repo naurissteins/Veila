@@ -1,4 +1,9 @@
-use std::{future::pending, path::PathBuf, process::ExitStatus, time::Instant};
+use std::{
+    future::pending,
+    path::{Path, PathBuf},
+    process::ExitStatus,
+    time::Instant,
+};
 
 use anyhow::{Context, Result, anyhow};
 use kwylock_common::ipc::{ClientMessage, DaemonMessage};
@@ -23,6 +28,7 @@ pub(super) struct LockActivation {
     curtain: Child,
     auth_listener: UnixListener,
     auth_socket_path: PathBuf,
+    control_socket_path: PathBuf,
     auth_results: UnboundedReceiver<AuthResult>,
     auth_sender: UnboundedSender<AuthResult>,
 }
@@ -31,6 +37,7 @@ pub(super) struct ActiveRuntime<'a> {
     curtain: &'a mut Option<Child>,
     auth_listener: &'a mut Option<UnixListener>,
     auth_socket_path: &'a mut Option<PathBuf>,
+    control_socket_path: &'a mut Option<PathBuf>,
     auth_results: &'a mut Option<UnboundedReceiver<AuthResult>>,
     auth_sender: &'a mut Option<UnboundedSender<AuthResult>>,
 }
@@ -40,6 +47,7 @@ impl<'a> ActiveRuntime<'a> {
         curtain: &'a mut Option<Child>,
         auth_listener: &'a mut Option<UnixListener>,
         auth_socket_path: &'a mut Option<PathBuf>,
+        control_socket_path: &'a mut Option<PathBuf>,
         auth_results: &'a mut Option<UnboundedReceiver<AuthResult>>,
         auth_sender: &'a mut Option<UnboundedSender<AuthResult>>,
     ) -> Self {
@@ -47,9 +55,19 @@ impl<'a> ActiveRuntime<'a> {
             curtain,
             auth_listener,
             auth_socket_path,
+            control_socket_path,
             auth_results,
             auth_sender,
         }
+    }
+
+    pub(super) fn install_activation(self, activation: LockActivation) {
+        *self.curtain = Some(activation.curtain);
+        *self.auth_listener = Some(activation.auth_listener);
+        *self.auth_socket_path = Some(activation.auth_socket_path);
+        *self.control_socket_path = Some(activation.control_socket_path);
+        *self.auth_results = Some(activation.auth_results);
+        *self.auth_sender = Some(activation.auth_sender);
     }
 }
 
@@ -68,16 +86,27 @@ pub(super) async fn activate_lock(
 
     let notify_path = process::notify_socket_path();
     let auth_socket_path = ipc::auth_socket_path();
+    let control_socket_path = process::control_socket_path();
     let notify_listener = ipc::bind_listener(&notify_path).await?;
     let auth_listener = ipc::bind_listener(&auth_socket_path).await?;
-    let child = process::spawn_curtain(&notify_path, &auth_socket_path, config_path).await?;
+    let mut child = process::spawn_curtain(
+        &notify_path,
+        &auth_socket_path,
+        &control_socket_path,
+        config_path,
+    )
+    .await?;
     let (auth_sender, auth_results) = unbounded_channel();
-
-    let ready_result = timeout(Duration::from_secs(5), notify_listener.accept()).await;
+    let ready_result = tokio::select! {
+        ready = timeout(Duration::from_secs(5), notify_listener.accept()) => ReadyResult::Ready(ready),
+        status = child.wait() => ReadyResult::Exited(
+            status.context("failed while waiting for curtain exit before readiness")?
+        ),
+    };
     let _ = std::fs::remove_file(&notify_path);
 
     match ready_result {
-        Ok(Ok((_stream, _addr))) => {
+        ReadyResult::Ready(Ok(Ok((_stream, _addr)))) => {
             *state = LockState::Locked;
             update_locked_hint(session_proxy, true).await;
             tracing::info!("curtain ready; session considered locked");
@@ -85,25 +114,48 @@ pub(super) async fn activate_lock(
                 curtain: child,
                 auth_listener,
                 auth_socket_path,
+                control_socket_path,
                 auth_results,
                 auth_sender,
             })
         }
-        Ok(Err(error)) => {
+        ReadyResult::Ready(Ok(Err(error))) => {
             *state = LockState::Unlocked;
             let _ = std::fs::remove_file(&auth_socket_path);
-            process::stop_curtain(child).await?;
+            let _ = std::fs::remove_file(&control_socket_path);
+            process::force_stop_curtain(child).await?;
             update_locked_hint(session_proxy, false).await;
             Err(error).context("failed while waiting for curtain readiness")
         }
-        Err(_) => {
+        ReadyResult::Ready(Err(_)) => {
             *state = LockState::Unlocked;
             let _ = std::fs::remove_file(&auth_socket_path);
-            process::stop_curtain(child).await?;
+            let _ = std::fs::remove_file(&control_socket_path);
+            process::force_stop_curtain(child).await?;
             update_locked_hint(session_proxy, false).await;
             Err(anyhow!("timed out waiting for curtain readiness"))
         }
+        ReadyResult::Exited(status) => {
+            *state = LockState::Unlocked;
+            let _ = std::fs::remove_file(&auth_socket_path);
+            let _ = std::fs::remove_file(&control_socket_path);
+            update_locked_hint(session_proxy, false).await;
+            Err(anyhow!(
+                "curtain exited before readiness with status {status}. \
+If you ran `cargo run -p kwylock-daemon` after changing curtain startup arguments or shared runtime wiring, rebuild the workspace with `cargo build --workspace` so `target/debug/kwylock-curtain` matches the daemon"
+            ))
+        }
     }
+}
+
+enum ReadyResult {
+    Ready(
+        std::result::Result<
+            std::io::Result<(UnixStream, tokio::net::unix::SocketAddr)>,
+            tokio::time::error::Elapsed,
+        >,
+    ),
+    Exited(ExitStatus),
 }
 
 pub(super) async fn deactivate_lock(
@@ -115,9 +167,10 @@ pub(super) async fn deactivate_lock(
 ) -> Result<()> {
     if runtime.curtain.is_none() {
         *state = LockState::Unlocked;
-        reset_auth_runtime(
+        reset_runtime(
             runtime.auth_listener,
             runtime.auth_socket_path,
+            runtime.control_socket_path,
             runtime.auth_results,
             runtime.auth_sender,
             auth_policy,
@@ -130,12 +183,13 @@ pub(super) async fn deactivate_lock(
     *state = LockState::Unlocking;
 
     if let Some(child) = runtime.curtain.take() {
-        process::stop_curtain(child).await?;
+        stop_active_curtain(child, runtime.control_socket_path.as_deref()).await?;
     }
 
-    reset_auth_runtime(
+    reset_runtime(
         runtime.auth_listener,
         runtime.auth_socket_path,
+        runtime.control_socket_path,
         runtime.auth_results,
         runtime.auth_sender,
         auth_policy,
@@ -233,24 +287,10 @@ async fn run_auth_attempt(
     }
 }
 
-pub(super) fn install_activation(
-    activation: LockActivation,
-    curtain: &mut Option<Child>,
+pub(super) fn reset_runtime(
     auth_listener: &mut Option<UnixListener>,
     auth_socket_path: &mut Option<PathBuf>,
-    auth_results: &mut Option<UnboundedReceiver<AuthResult>>,
-    auth_sender: &mut Option<UnboundedSender<AuthResult>>,
-) {
-    *curtain = Some(activation.curtain);
-    *auth_listener = Some(activation.auth_listener);
-    *auth_socket_path = Some(activation.auth_socket_path);
-    *auth_results = Some(activation.auth_results);
-    *auth_sender = Some(activation.auth_sender);
-}
-
-pub(super) fn reset_auth_runtime(
-    auth_listener: &mut Option<UnixListener>,
-    auth_socket_path: &mut Option<PathBuf>,
+    control_socket_path: &mut Option<PathBuf>,
     auth_results: &mut Option<UnboundedReceiver<AuthResult>>,
     auth_sender: &mut Option<UnboundedSender<AuthResult>>,
     auth_policy: AuthPolicy,
@@ -262,7 +302,32 @@ pub(super) fn reset_auth_runtime(
     if let Some(path) = auth_socket_path.take() {
         let _ = std::fs::remove_file(path);
     }
+    if let Some(path) = control_socket_path.take() {
+        let _ = std::fs::remove_file(path);
+    }
     *auth_state = AuthState::new(auth_policy);
+}
+
+async fn stop_active_curtain(child: Child, control_socket_path: Option<&Path>) -> Result<()> {
+    let child = if let Some(control_socket_path) = control_socket_path {
+        match process::request_curtain_unlock(control_socket_path).await {
+            Ok(()) => {
+                match process::wait_for_graceful_curtain_exit(child, Duration::from_secs(5)).await?
+                {
+                    Some(child) => child,
+                    None => return Ok(()),
+                }
+            }
+            Err(error) => {
+                tracing::warn!("failed to request graceful curtain unlock: {error:#}");
+                child
+            }
+        }
+    } else {
+        child
+    };
+
+    process::force_stop_curtain(child).await
 }
 
 pub(super) async fn wait_for_curtain_exit(curtain: &mut Option<Child>) -> Result<ExitStatus> {

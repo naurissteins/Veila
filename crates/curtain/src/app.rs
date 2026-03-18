@@ -39,6 +39,8 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         event_loop
             .dispatch(Duration::from_millis(250), &mut app)
             .context("curtain event loop failed")?;
+        app.drain_control_events();
+        app.drain_background_events(&queue_handle);
         app.drain_auth_events(&queue_handle);
         app.advance_animated_scene(&queue_handle);
         app.check_lock_deadline()?;

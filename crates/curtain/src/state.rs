@@ -25,6 +25,8 @@ use smithay_client_toolkit::{
 use crate::{
     CurtainOptions,
     auth::{AuthEvent, submit_password},
+    background_loader::{BackgroundEvent, spawn_loader},
+    control::{ControlEvent, spawn_listener},
 };
 
 pub(crate) struct ManagedLockSurface {
@@ -47,8 +49,11 @@ pub(crate) struct CurtainApp {
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
+    control_socket: Option<PathBuf>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
+    background_events: Receiver<BackgroundEvent>,
+    control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) ui_shell: ShellState,
     lock_wait_timeout: Duration,
@@ -70,13 +75,15 @@ impl CurtainApp {
         options: CurtainOptions,
     ) -> Result<Self> {
         let (auth_sender, auth_events) = channel();
+        let (background_sender, background_events) = channel();
+        let (control_sender, control_events) = channel();
         let loaded_config = AppConfig::load(options.config_path.as_deref())
             .context("failed to load curtain config")?;
         let config = loaded_config.config;
         let theme = ShellTheme::from_config(&config);
-        let background_asset =
-            BackgroundAsset::load(config.background.path.as_deref(), theme.background)
-                .context("failed to load curtain background")?;
+        let background_color = theme.background;
+        let background_asset = BackgroundAsset::load(None, background_color)
+            .context("failed to prepare fallback background")?;
         let ui_shell = ShellState::new(theme, config.lock.user_hint.clone());
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 
@@ -94,6 +101,15 @@ impl CurtainApp {
             "loaded curtain config"
         );
 
+        if let Some(control_socket) = options.control_socket.clone() {
+            spawn_listener(control_socket, control_sender)
+                .context("failed to start curtain control listener")?;
+        }
+
+        if let Some(path) = config.background.path.clone() {
+            spawn_loader(path, background_color, background_sender);
+        }
+
         Ok(Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
@@ -109,8 +125,11 @@ impl CurtainApp {
             lock_surfaces: Vec::new(),
             notify_socket: options.notify_socket,
             daemon_socket: options.daemon_socket,
+            control_socket: options.control_socket,
             auth_events,
             auth_sender,
+            background_events,
+            control_events,
             background_asset,
             ui_shell,
             lock_wait_timeout,
@@ -205,6 +224,10 @@ impl CurtainApp {
     }
 
     pub(crate) fn shutdown(&mut self) -> Result<()> {
+        if let Some(path) = self.control_socket.take() {
+            let _ = std::fs::remove_file(path);
+        }
+
         if self.session_finished {
             self.session_lock.take();
             return Ok(());
@@ -221,6 +244,35 @@ impl CurtainApp {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn drain_control_events(&mut self) {
+        while let Ok(event) = self.control_events.try_recv() {
+            match event {
+                ControlEvent::UnlockRequested => {
+                    tracing::info!("received curtain unlock request from daemon");
+                    self.request_exit();
+                }
+            }
+        }
+    }
+
+    pub(crate) fn drain_background_events(&mut self, queue_handle: &QueueHandle<Self>) {
+        while let Ok(event) = self.background_events.try_recv() {
+            match event {
+                BackgroundEvent::Loaded(asset) => {
+                    tracing::info!("loaded deferred curtain background image");
+                    self.background_asset = asset;
+                    for surface in &mut self.lock_surfaces {
+                        surface.background = None;
+                    }
+                    self.render_all_surfaces(queue_handle);
+                }
+                BackgroundEvent::Failed(error) => {
+                    tracing::warn!("failed to load deferred curtain background image: {error}");
+                }
+            }
+        }
     }
 
     pub(crate) fn set_keyboard_focus(&mut self, focused: bool, queue_handle: &QueueHandle<Self>) {

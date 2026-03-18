@@ -19,8 +19,7 @@ use crate::{
 
 use self::runtime::{
     ActiveRuntime, AuthResult, accept_auth_connection, activate_lock, deactivate_lock,
-    handle_client_message, install_activation, receive_auth_result, reset_auth_runtime,
-    wait_for_curtain_exit,
+    handle_client_message, receive_auth_result, reset_runtime, wait_for_curtain_exit,
 };
 
 pub async fn run(options: DaemonOptions) -> Result<()> {
@@ -51,6 +50,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     let mut curtain = None;
     let mut auth_listener = None;
     let mut auth_socket_path = None;
+    let mut control_socket_path = None;
     let mut auth_results = None;
     let mut auth_sender = None;
     let mut auth_state = AuthState::new(auth_policy);
@@ -58,9 +58,31 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     tracing::info!(
         session = %session_path,
         session_id_override = options.session_id.as_deref().unwrap_or("none"),
+        manual_lock = options.lock_now,
         config = loaded_config.path.as_deref().map(|path| path.display().to_string()).unwrap_or_else(|| "defaults".to_string()),
         "kwylockd ready"
     );
+
+    if options.lock_now {
+        tracing::info!("manual lock requested via --lock-now");
+        activate_and_install(
+            &session_proxy,
+            &mut state,
+            options.config_path.as_deref(),
+            ActiveRuntime::new(
+                &mut curtain,
+                &mut auth_listener,
+                &mut auth_socket_path,
+                &mut control_socket_path,
+                &mut auth_results,
+                &mut auth_sender,
+            ),
+            auth_policy,
+            &mut auth_state,
+        )
+        .await
+        .context("failed to activate manual lock")?;
+    }
 
     loop {
         tokio::select! {
@@ -70,19 +92,22 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                     continue;
                 }
 
-                match activate_lock(&session_proxy, &mut state, options.config_path.as_deref()).await {
-                    Ok(activation) => {
-                        install_activation(
-                            activation,
-                            &mut curtain,
-                            &mut auth_listener,
-                            &mut auth_socket_path,
-                            &mut auth_results,
-                            &mut auth_sender,
-                        );
-                        auth_state = AuthState::new(auth_policy);
-                    }
-                    Err(error) => tracing::error!("failed to activate lock: {error:#}"),
+                if let Err(error) = activate_and_install(
+                    &session_proxy,
+                    &mut state,
+                    options.config_path.as_deref(),
+                    ActiveRuntime::new(
+                        &mut curtain,
+                        &mut auth_listener,
+                        &mut auth_socket_path,
+                        &mut control_socket_path,
+                        &mut auth_results,
+                        &mut auth_sender,
+                    ),
+                    auth_policy,
+                    &mut auth_state,
+                ).await {
+                    tracing::error!("failed to activate lock: {error:#}");
                 }
             }
             Some(_) = unlock_stream.next() => {
@@ -98,6 +123,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                         &mut curtain,
                         &mut auth_listener,
                         &mut auth_socket_path,
+                        &mut control_socket_path,
                         &mut auth_results,
                         &mut auth_sender,
                     ),
@@ -111,9 +137,10 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                 let status = result?;
                 tracing::warn!(?status, state = %state, "curtain exited");
                 curtain.take();
-                reset_auth_runtime(
+                reset_runtime(
                     &mut auth_listener,
                     &mut auth_socket_path,
+                    &mut control_socket_path,
                     &mut auth_results,
                     &mut auth_sender,
                     auth_policy,
@@ -125,16 +152,22 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                     state = LockState::Unlocked;
                     tracing::error!("curtain exited while the session should be locked; attempting restart");
 
-                    match activate_lock(&session_proxy, &mut state, options.config_path.as_deref()).await {
-                        Ok(activation) => install_activation(
-                            activation,
+                    if let Err(error) = activate_and_install(
+                        &session_proxy,
+                        &mut state,
+                        options.config_path.as_deref(),
+                        ActiveRuntime::new(
                             &mut curtain,
                             &mut auth_listener,
                             &mut auth_socket_path,
+                            &mut control_socket_path,
                             &mut auth_results,
                             &mut auth_sender,
                         ),
-                        Err(error) => tracing::error!("failed to restart curtain after unexpected exit: {error:#}"),
+                        auth_policy,
+                        &mut auth_state,
+                    ).await {
+                        tracing::error!("failed to restart curtain after unexpected exit: {error:#}");
                     }
                 }
             }
@@ -168,6 +201,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                                 &mut curtain,
                                 &mut auth_listener,
                                 &mut auth_socket_path,
+                                &mut control_socket_path,
                                 &mut auth_results,
                                 &mut auth_sender,
                             ),
@@ -198,6 +232,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
             &mut curtain,
             &mut auth_listener,
             &mut auth_socket_path,
+            &mut control_socket_path,
             &mut auth_results,
             &mut auth_sender,
         ),
@@ -210,6 +245,20 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     }
 
     tracing::info!("kwylockd exiting");
+    Ok(())
+}
+
+async fn activate_and_install(
+    session_proxy: &logind::SessionProxy<'_>,
+    state: &mut LockState,
+    config_path: Option<&std::path::Path>,
+    runtime: ActiveRuntime<'_>,
+    auth_policy: AuthPolicy,
+    auth_state: &mut AuthState,
+) -> Result<()> {
+    let activation = activate_lock(session_proxy, state, config_path).await?;
+    runtime.install_activation(activation);
+    *auth_state = AuthState::new(auth_policy);
     Ok(())
 }
 

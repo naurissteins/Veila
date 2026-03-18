@@ -1,9 +1,12 @@
 use std::{
+    io::Write,
+    os::unix::net::UnixStream,
     path::{Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Context, Result};
+use kwylock_common::ipc::{CurtainControlMessage, encode_message};
 use nix::{
     sys::signal::{Signal, kill},
     unistd::Pid,
@@ -16,12 +19,14 @@ use tokio::{
 pub async fn spawn_curtain(
     notify_socket: &Path,
     daemon_socket: &Path,
+    control_socket: &Path,
     config_path: Option<&Path>,
 ) -> Result<Child> {
     let binary = curtain_binary_path()?;
     let mut command = Command::new(&binary);
     command.arg(format!("--notify-socket={}", notify_socket.display()));
     command.arg(format!("--daemon-socket={}", daemon_socket.display()));
+    command.arg(format!("--control-socket={}", control_socket.display()));
     if let Some(config_path) = config_path {
         command.arg(format!("--config={}", config_path.display()));
     }
@@ -33,7 +38,23 @@ pub async fn spawn_curtain(
         .with_context(|| format!("failed to spawn '{}'", binary.display()))
 }
 
-pub async fn stop_curtain(mut child: Child) -> Result<()> {
+pub async fn request_curtain_unlock(control_socket: &Path) -> Result<()> {
+    let mut stream = UnixStream::connect(control_socket).with_context(|| {
+        format!(
+            "failed to connect to curtain control socket {}",
+            control_socket.display()
+        )
+    })?;
+    let mut payload = encode_message(&CurtainControlMessage::Unlock)
+        .context("failed to encode unlock request")?;
+    payload.push('\n');
+    stream
+        .write_all(payload.as_bytes())
+        .context("failed to write unlock request")?;
+    stream.flush().context("failed to flush unlock request")
+}
+
+pub async fn force_stop_curtain(mut child: Child) -> Result<()> {
     if let Some(raw_pid) = child.id() {
         kill(Pid::from_raw(raw_pid as i32), Signal::SIGTERM)
             .with_context(|| format!("failed to send SIGTERM to curtain process {raw_pid}"))?;
@@ -52,12 +73,38 @@ pub async fn stop_curtain(mut child: Child) -> Result<()> {
     }
 }
 
+pub async fn wait_for_graceful_curtain_exit(
+    mut child: Child,
+    window: Duration,
+) -> Result<Option<Child>> {
+    match timeout(window, child.wait()).await {
+        Ok(Ok(status)) => {
+            tracing::info!(?status, "curtain exited");
+            Ok(None)
+        }
+        Ok(Err(error)) => Err(error).context("failed while waiting for curtain to exit"),
+        Err(_) => Ok(Some(child)),
+    }
+}
+
 pub fn notify_socket_path() -> PathBuf {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_micros())
         .unwrap_or_default();
     std::env::temp_dir().join(format!("kwylock-curtain-{stamp}.sock"))
+}
+
+pub fn control_socket_path() -> PathBuf {
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_micros())
+        .unwrap_or_default();
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir());
+
+    runtime_dir.join(format!("kwylock-control-{stamp}.sock"))
 }
 
 fn curtain_binary_path() -> Result<PathBuf> {
