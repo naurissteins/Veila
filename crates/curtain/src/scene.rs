@@ -28,6 +28,7 @@ impl CurtainApp {
 
         let size = self.resolve_surface_size(index, configure.new_size);
         self.lock_surfaces[index].size = Some(size);
+        self.maybe_start_background_render();
 
         if let Err(error) = self.prepare_background(index, size) {
             self.failure_reason = Some(format!("failed to prepare curtain background: {error:#}"));
@@ -70,7 +71,6 @@ impl CurtainApp {
         }
 
         self.ready_notified = true;
-        self.maybe_start_background_render();
 
         if let Some(path) = self.notify_socket.as_deref() {
             if let Err(error) = notify_ready(path) {

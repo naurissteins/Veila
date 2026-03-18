@@ -126,6 +126,19 @@ impl SoftwareBuffer {
         Ok(buffer)
     }
 
+    /// Creates a buffer from owned ARGB8888 bytes.
+    pub fn from_argb8888_pixels(size: FrameSize, pixels: Vec<u8>) -> Result<Self> {
+        let Some(byte_len) = size.byte_len() else {
+            return Err(RendererError::InvalidFrameSize(size));
+        };
+
+        if pixels.len() != byte_len {
+            return Err(RendererError::InvalidFrameSize(size));
+        }
+
+        Ok(Self { size, pixels })
+    }
+
     /// Fills the buffer with a single color.
     pub fn clear(&mut self, color: ClearColor) {
         let pixel = color.to_argb8888_bytes();
@@ -171,5 +184,13 @@ mod tests {
             .expect("buffer should be created");
 
         assert_eq!(buffer.pixels(), &[30, 20, 10, 255, 30, 20, 10, 255]);
+    }
+
+    #[test]
+    fn creates_buffer_from_argb8888_pixels() {
+        let buffer = SoftwareBuffer::from_argb8888_pixels(FrameSize::new(1, 1), vec![4, 3, 2, 1])
+            .expect("buffer should be created");
+
+        assert_eq!(buffer.pixels(), &[4, 3, 2, 1]);
     }
 }

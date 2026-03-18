@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, anyhow, bail};
 use kwylock_common::AppConfig;
-use kwylock_renderer::{ClearColor, FrameSize, background::BackgroundAsset};
+use kwylock_renderer::{ClearColor, background::BackgroundAsset};
 use kwylock_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 use smithay_client_toolkit::{
     compositor::CompositorState,
@@ -25,7 +25,7 @@ use smithay_client_toolkit::{
 use crate::{
     CurtainOptions,
     auth::{AuthEvent, submit_password},
-    background_loader::{BackgroundEvent, spawn_loader},
+    background_loader::BackgroundEvent,
     control::{ControlEvent, spawn_listener},
 };
 
@@ -50,14 +50,14 @@ pub(crate) struct CurtainApp {
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     control_socket: Option<PathBuf>,
-    background_path: Option<PathBuf>,
+    pub(crate) background_path: Option<PathBuf>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
-    background_sender: Sender<BackgroundEvent>,
-    background_events: Receiver<BackgroundEvent>,
+    pub(crate) background_sender: Sender<BackgroundEvent>,
+    pub(crate) background_events: Receiver<BackgroundEvent>,
     control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
-    background_color: ClearColor,
+    pub(crate) background_color: ClearColor,
     pub(crate) ui_shell: ShellState,
     lock_wait_timeout: Duration,
     lock_started_at: Instant,
@@ -65,7 +65,7 @@ pub(crate) struct CurtainApp {
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
     pub(crate) ready_notified: bool,
-    background_render_started: bool,
+    pub(crate) background_render_started: bool,
     auth_in_flight: bool,
     next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
@@ -267,33 +267,6 @@ impl CurtainApp {
         }
     }
 
-    pub(crate) fn drain_background_events(&mut self, queue_handle: &QueueHandle<Self>) {
-        while let Ok(event) = self.background_events.try_recv() {
-            match event {
-                BackgroundEvent::Prepared { asset, buffers } => {
-                    tracing::info!("loaded deferred curtain background image");
-                    self.background_asset = asset;
-                    for surface in &mut self.lock_surfaces {
-                        let Some((width, height)) = surface.size else {
-                            surface.background = None;
-                            continue;
-                        };
-
-                        let size = FrameSize::new(width, height);
-                        surface.background = buffers
-                            .iter()
-                            .find(|(candidate, _)| *candidate == size)
-                            .map(|(_, buffer)| buffer.clone());
-                    }
-                    self.render_all_surfaces(queue_handle);
-                }
-                BackgroundEvent::Failed(error) => {
-                    tracing::warn!("failed to load deferred curtain background image: {error}");
-                }
-            }
-        }
-    }
-
     pub(crate) fn set_keyboard_focus(&mut self, focused: bool, queue_handle: &QueueHandle<Self>) {
         if self.has_keyboard_focus == focused {
             return;
@@ -372,31 +345,5 @@ impl CurtainApp {
         self.lock_surfaces
             .iter()
             .any(|entry| entry.surface.wl_surface() == surface)
-    }
-
-    pub(crate) fn maybe_start_background_render(&mut self) {
-        if self.background_render_started || !self.ready_notified {
-            return;
-        }
-
-        let Some(path) = self.background_path.clone() else {
-            return;
-        };
-
-        let mut sizes = Vec::with_capacity(self.lock_surfaces.len());
-        for surface in &self.lock_surfaces {
-            let Some((width, height)) = surface.size else {
-                return;
-            };
-            sizes.push(FrameSize::new(width, height));
-        }
-
-        self.background_render_started = true;
-        spawn_loader(
-            path,
-            self.background_color,
-            sizes,
-            self.background_sender.clone(),
-        );
     }
 }
