@@ -70,6 +70,7 @@ impl CurtainApp {
         }
 
         self.ready_notified = true;
+        self.maybe_start_background_render();
 
         if let Some(path) = self.notify_socket.as_deref() {
             if let Err(error) = notify_ready(path) {

@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, anyhow, bail};
 use kwylock_common::AppConfig;
-use kwylock_renderer::background::BackgroundAsset;
+use kwylock_renderer::{ClearColor, FrameSize, background::BackgroundAsset};
 use kwylock_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 use smithay_client_toolkit::{
     compositor::CompositorState,
@@ -50,11 +50,14 @@ pub(crate) struct CurtainApp {
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     control_socket: Option<PathBuf>,
+    background_path: Option<PathBuf>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
+    background_sender: Sender<BackgroundEvent>,
     background_events: Receiver<BackgroundEvent>,
     control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
+    background_color: ClearColor,
     pub(crate) ui_shell: ShellState,
     lock_wait_timeout: Duration,
     lock_started_at: Instant,
@@ -62,6 +65,7 @@ pub(crate) struct CurtainApp {
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
     pub(crate) ready_notified: bool,
+    background_render_started: bool,
     auth_in_flight: bool,
     pub(crate) has_keyboard_focus: bool,
     pub(crate) failure_reason: Option<String>,
@@ -106,10 +110,6 @@ impl CurtainApp {
                 .context("failed to start curtain control listener")?;
         }
 
-        if let Some(path) = config.background.path.clone() {
-            spawn_loader(path, background_color, background_sender);
-        }
-
         Ok(Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
@@ -126,11 +126,14 @@ impl CurtainApp {
             notify_socket: options.notify_socket,
             daemon_socket: options.daemon_socket,
             control_socket: options.control_socket,
+            background_path: config.background.path,
             auth_events,
             auth_sender,
+            background_sender,
             background_events,
             control_events,
             background_asset,
+            background_color,
             ui_shell,
             lock_wait_timeout,
             lock_started_at: Instant::now(),
@@ -138,6 +141,7 @@ impl CurtainApp {
             session_finished: false,
             exit_requested: false,
             ready_notified: false,
+            background_render_started: false,
             auth_in_flight: false,
             has_keyboard_focus: false,
             failure_reason: None,
@@ -260,11 +264,20 @@ impl CurtainApp {
     pub(crate) fn drain_background_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.background_events.try_recv() {
             match event {
-                BackgroundEvent::Loaded(asset) => {
+                BackgroundEvent::Prepared { asset, buffers } => {
                     tracing::info!("loaded deferred curtain background image");
                     self.background_asset = asset;
                     for surface in &mut self.lock_surfaces {
-                        surface.background = None;
+                        let Some((width, height)) = surface.size else {
+                            surface.background = None;
+                            continue;
+                        };
+
+                        let size = FrameSize::new(width, height);
+                        surface.background = buffers
+                            .iter()
+                            .find(|(candidate, _)| *candidate == size)
+                            .map(|(_, buffer)| buffer.clone());
                     }
                     self.render_all_surfaces(queue_handle);
                 }
@@ -335,5 +348,31 @@ impl CurtainApp {
         self.lock_surfaces
             .iter()
             .any(|entry| entry.surface.wl_surface() == surface)
+    }
+
+    pub(crate) fn maybe_start_background_render(&mut self) {
+        if self.background_render_started || !self.ready_notified {
+            return;
+        }
+
+        let Some(path) = self.background_path.clone() else {
+            return;
+        };
+
+        let mut sizes = Vec::with_capacity(self.lock_surfaces.len());
+        for surface in &self.lock_surfaces {
+            let Some((width, height)) = surface.size else {
+                return;
+            };
+            sizes.push(FrameSize::new(width, height));
+        }
+
+        self.background_render_started = true;
+        spawn_loader(
+            path,
+            self.background_color,
+            sizes,
+            self.background_sender.clone(),
+        );
     }
 }
