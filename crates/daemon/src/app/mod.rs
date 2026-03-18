@@ -31,7 +31,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
     );
     let connection = logind::connect_system().await?;
-    let session_path = logind::get_session_path(&connection).await?;
+    let session_path = logind::get_session_path(&connection, options.session_id.as_deref()).await?;
     let session_proxy = logind::session_proxy(&connection, &session_path).await?;
     let username = current_username()?;
     let mut lock_stream = session_proxy
@@ -57,6 +57,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
 
     tracing::info!(
         session = %session_path,
+        session_id_override = options.session_id.as_deref().unwrap_or("none"),
         config = loaded_config.path.as_deref().map(|path| path.display().to_string()).unwrap_or_else(|| "defaults".to_string()),
         "kwylockd ready"
     );

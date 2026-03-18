@@ -18,6 +18,7 @@ pub const fn component_name() -> &'static str {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
+    pub session_id: Option<String>,
 }
 
 impl DaemonOptions {
@@ -27,6 +28,11 @@ impl DaemonOptions {
         for arg in args.into_iter().skip(1) {
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(session_id) = arg.strip_prefix("--session-id=") {
+                options.session_id = Some(session_id.to_string());
                 continue;
             }
 
@@ -58,5 +64,14 @@ mod tests {
             options.config_path.as_deref(),
             Some(std::path::Path::new("/tmp/kwylock.toml"))
         );
+    }
+
+    #[test]
+    fn parses_session_id_argument() {
+        let options =
+            DaemonOptions::parse_args(["kwylockd".to_string(), "--session-id=c2".to_string()])
+                .expect("arguments should parse");
+
+        assert_eq!(options.session_id.as_deref(), Some("c2"));
     }
 }
