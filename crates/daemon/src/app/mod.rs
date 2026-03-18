@@ -203,7 +203,8 @@ pub async fn run(
                 };
 
                 match result {
-                    AuthResult::Succeeded => {
+                    AuthResult::Succeeded { elapsed_ms } => {
+                        tracing::info!(elapsed_ms, "starting unlock after successful authentication");
                         auth_state.finish_success();
 
                         if let Err(error) = deactivate_lock(
@@ -223,7 +224,10 @@ pub async fn run(
                             tracing::error!("failed to unlock after successful authentication: {error:#}");
                         }
                     }
-                    AuthResult::Rejected => auth_state.finish_failure(Instant::now()),
+                    AuthResult::Rejected { elapsed_ms } => {
+                        tracing::info!(elapsed_ms, "recording failed authentication attempt");
+                        auth_state.finish_failure(Instant::now())
+                    }
                 }
             }
             result = accept_control_connection(&mut control_listener) => {

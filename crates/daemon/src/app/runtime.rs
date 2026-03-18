@@ -73,8 +73,8 @@ impl<'a> ActiveRuntime<'a> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AuthResult {
-    Succeeded,
-    Rejected,
+    Succeeded { elapsed_ms: u64 },
+    Rejected { elapsed_ms: u64 },
 }
 
 pub(super) async fn activate_lock(
@@ -250,14 +250,17 @@ async fn run_auth_attempt(
     mut stream: UnixStream,
     sender: UnboundedSender<AuthResult>,
 ) {
+    let started_at = Instant::now();
     let result = tokio::task::spawn_blocking(move || pam::authenticate(&username, &secret)).await;
+    let elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
 
     match result {
         Ok(Ok(())) => {
-            let _ = sender.send(AuthResult::Succeeded);
+            tracing::info!(elapsed_ms, "authentication accepted");
+            let _ = sender.send(AuthResult::Succeeded { elapsed_ms });
         }
         Ok(Err(error)) => {
-            tracing::info!("authentication rejected: {error}");
+            tracing::info!(elapsed_ms, "authentication rejected: {error}");
             if let Err(write_error) = ipc::write_daemon_message(
                 &mut stream,
                 &DaemonMessage::AuthenticationRejected {
@@ -268,10 +271,10 @@ async fn run_auth_attempt(
             {
                 tracing::warn!("failed to report auth rejection: {write_error:#}");
             }
-            let _ = sender.send(AuthResult::Rejected);
+            let _ = sender.send(AuthResult::Rejected { elapsed_ms });
         }
         Err(error) => {
-            tracing::error!("authentication worker failed: {error}");
+            tracing::error!(elapsed_ms, "authentication worker failed: {error}");
             if let Err(write_error) = ipc::write_daemon_message(
                 &mut stream,
                 &DaemonMessage::AuthenticationRejected {
@@ -282,7 +285,7 @@ async fn run_auth_attempt(
             {
                 tracing::warn!("failed to report worker failure to client: {write_error:#}");
             }
-            let _ = sender.send(AuthResult::Rejected);
+            let _ = sender.send(AuthResult::Rejected { elapsed_ms });
         }
     }
 }
