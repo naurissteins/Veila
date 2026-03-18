@@ -12,6 +12,7 @@ pub enum ClientMessage {
 /// Messages sent from the daemon to UI-facing clients.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonMessage {
+    AuthenticationAccepted,
     AuthenticationRejected { retry_after_ms: Option<u64> },
     AuthenticationBusy,
 }

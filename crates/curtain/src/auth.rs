@@ -11,6 +11,7 @@ use kwylock_common::ipc::{ClientMessage, DaemonMessage, decode_message, encode_m
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum AuthEvent {
+    Accepted,
     Rejected { retry_after_ms: Option<u64> },
     Busy,
 }
@@ -50,6 +51,13 @@ fn run_attempt(
     }
 
     match decode_message::<DaemonMessage>(line.trim_end())? {
+        DaemonMessage::AuthenticationAccepted => {
+            tracing::info!(
+                elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                "daemon accepted authentication request"
+            );
+            let _ = sender.send(AuthEvent::Accepted);
+        }
         DaemonMessage::AuthenticationRejected { retry_after_ms } => {
             tracing::info!(
                 elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,

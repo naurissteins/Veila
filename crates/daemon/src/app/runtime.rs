@@ -272,6 +272,11 @@ async fn run_auth_attempt(
     match result {
         Ok(Ok(())) => {
             tracing::info!(elapsed_ms, "authentication accepted");
+            if let Err(write_error) =
+                ipc::write_daemon_message(&mut stream, &DaemonMessage::AuthenticationAccepted).await
+            {
+                tracing::warn!("failed to report auth success: {write_error:#}");
+            }
             let _ = sender.send(AuthResult::Succeeded { elapsed_ms });
         }
         Ok(Err(error)) => {

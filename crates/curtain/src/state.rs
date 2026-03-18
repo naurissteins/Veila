@@ -325,6 +325,9 @@ impl CurtainApp {
     pub(crate) fn drain_auth_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.auth_events.try_recv() {
             match event {
+                AuthEvent::Accepted => {
+                    tracing::info!("waiting for daemon-driven unlock after auth success");
+                }
                 AuthEvent::Rejected { retry_after_ms } => {
                     self.auth_in_flight = false;
                     self.ui_shell.authentication_rejected(retry_after_ms);
