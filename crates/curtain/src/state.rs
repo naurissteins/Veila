@@ -312,6 +312,10 @@ impl CurtainApp {
                 return;
             };
 
+            tracing::info!(
+                secret_len = secret.chars().count(),
+                "submitting password attempt"
+            );
             self.auth_in_flight = true;
             submit_password(socket_path, secret, self.auth_sender.clone());
         }

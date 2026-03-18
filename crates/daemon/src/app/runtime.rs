@@ -165,6 +165,7 @@ pub(super) async fn deactivate_lock(
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
 ) -> Result<()> {
+    let started_at = Instant::now();
     if runtime.curtain.is_none() {
         *state = LockState::Unlocked;
         reset_runtime(
@@ -177,6 +178,10 @@ pub(super) async fn deactivate_lock(
             auth_state,
         );
         update_locked_hint(session_proxy, false).await;
+        tracing::info!(
+            elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+            "deactivate_lock completed without active curtain"
+        );
         return Ok(());
     }
 
@@ -198,7 +203,10 @@ pub(super) async fn deactivate_lock(
     *state = LockState::Unlocked;
     update_locked_hint(session_proxy, false).await;
 
-    tracing::info!("curtain stopped; session considered unlocked");
+    tracing::info!(
+        elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        "curtain stopped; session considered unlocked"
+    );
     Ok(())
 }
 
@@ -210,34 +218,41 @@ pub(super) async fn handle_client_message(
     message: ClientMessage,
 ) -> Result<()> {
     match message {
-        ClientMessage::SubmitPassword { secret } => match auth_state.admit(Instant::now()) {
-            AuthAdmission::Allowed => {
-                let Some(sender) = auth_sender.clone() else {
-                    return Err(anyhow!("authentication channel is unavailable"));
-                };
+        ClientMessage::SubmitPassword { secret } => {
+            tracing::info!(
+                secret_len = secret.chars().count(),
+                "received password submission"
+            );
+            match auth_state.admit(Instant::now()) {
+                AuthAdmission::Allowed => {
+                    let Some(sender) = auth_sender.clone() else {
+                        return Err(anyhow!("authentication channel is unavailable"));
+                    };
 
-                auth_state.start_attempt();
-                tokio::spawn(run_auth_attempt(
-                    username.to_string(),
-                    secret,
-                    stream,
-                    sender,
-                ));
+                    auth_state.start_attempt();
+                    tokio::spawn(run_auth_attempt(
+                        username.to_string(),
+                        secret,
+                        stream,
+                        sender,
+                    ));
+                }
+                AuthAdmission::Busy => {
+                    ipc::write_daemon_message(&mut stream, &DaemonMessage::AuthenticationBusy)
+                        .await?;
+                }
+                AuthAdmission::RateLimited(delay) => {
+                    let retry_after_ms = delay.as_millis().min(u128::from(u64::MAX)) as u64;
+                    ipc::write_daemon_message(
+                        &mut stream,
+                        &DaemonMessage::AuthenticationRejected {
+                            retry_after_ms: Some(retry_after_ms),
+                        },
+                    )
+                    .await?;
+                }
             }
-            AuthAdmission::Busy => {
-                ipc::write_daemon_message(&mut stream, &DaemonMessage::AuthenticationBusy).await?;
-            }
-            AuthAdmission::RateLimited(delay) => {
-                let retry_after_ms = delay.as_millis().min(u128::from(u64::MAX)) as u64;
-                ipc::write_daemon_message(
-                    &mut stream,
-                    &DaemonMessage::AuthenticationRejected {
-                        retry_after_ms: Some(retry_after_ms),
-                    },
-                )
-                .await?;
-            }
-        },
+        }
         ClientMessage::CancelAuthentication => {}
     }
 
