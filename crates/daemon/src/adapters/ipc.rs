@@ -56,7 +56,7 @@ pub fn daemon_socket_path() -> PathBuf {
 pub async fn send_daemon_control_message(
     path: &Path,
     message: &DaemonControlMessage,
-) -> Result<()> {
+) -> Result<DaemonControlResponse> {
     let mut stream = UnixStream::connect(path)
         .await
         .with_context(|| format!("failed to connect to daemon socket {}", path.display()))?;
@@ -71,12 +71,9 @@ pub async fn send_daemon_control_message(
         .await
         .context("failed to flush daemon control message")?;
 
-    let response = read_daemon_control_response(&mut stream).await?;
-    if response != Some(DaemonControlResponse::Accepted) {
-        return Err(anyhow!("daemon did not acknowledge control message"));
-    }
-
-    Ok(())
+    read_daemon_control_response(&mut stream)
+        .await?
+        .ok_or_else(|| anyhow!("daemon closed control socket without a response"))
 }
 
 pub async fn read_client_message(stream: &mut UnixStream) -> Result<Option<ClientMessage>> {

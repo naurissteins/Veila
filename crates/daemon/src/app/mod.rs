@@ -10,7 +10,7 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use futures_util::StreamExt;
 use kwylock_common::AppConfig;
-use kwylock_common::ipc::{DaemonControlMessage, DaemonControlResponse};
+use kwylock_common::ipc::{DaemonControlMessage, DaemonControlResponse, DaemonStatus};
 use nix::unistd::{Uid, User};
 use tokio::{
     net::UnixListener,
@@ -260,7 +260,7 @@ pub async fn run(
             result = accept_control_connection(&mut control_listener) => {
                 let mut stream = result?;
                 if let Some(message) = ipc::read_daemon_control_message(&mut stream).await? {
-                    match message {
+                    let response = match message {
                         DaemonControlMessage::LockNow => {
                             if !state.is_active() {
                                 if let Err(error) = activate_and_install(
@@ -283,14 +283,25 @@ pub async fn run(
                             } else {
                                 tracing::debug!(state = %state, "ignoring forwarded lock request while already active");
                             }
-                        }
-                    }
 
-                    if let Err(error) = ipc::write_daemon_control_response(
-                        &mut stream,
-                        &DaemonControlResponse::Accepted,
-                    )
-                    .await {
+                            DaemonControlResponse::Accepted
+                        }
+                        DaemonControlMessage::Status => {
+                            DaemonControlResponse::Status(DaemonStatus {
+                                state: state.to_string(),
+                                session: session_path.to_string(),
+                                curtain_running: curtain.is_some(),
+                                config_path: loaded_config
+                                    .path
+                                    .as_deref()
+                                    .map(|path| path.display().to_string()),
+                            })
+                        }
+                    };
+
+                    if let Err(error) = ipc::write_daemon_control_response(&mut stream, &response)
+                        .await
+                    {
                         tracing::warn!("failed to acknowledge daemon control request: {error:#}");
                     }
                 }

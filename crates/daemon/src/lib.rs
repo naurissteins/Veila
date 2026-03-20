@@ -22,6 +22,7 @@ pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
     pub session_id: Option<String>,
     pub lock_now: bool,
+    pub status: bool,
 }
 
 impl DaemonOptions {
@@ -44,6 +45,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if arg == "--status" {
+                options.status = true;
+                continue;
+            }
+
             bail!("unknown daemon argument: {arg}");
         }
 
@@ -54,15 +60,46 @@ impl DaemonOptions {
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     let daemon_socket_path = ipc::daemon_socket_path();
+    if options.status {
+        if !daemon_socket_path.exists() {
+            bail!(
+                "kwylockd is not running; daemon socket does not exist at {}",
+                daemon_socket_path.display()
+            );
+        }
+
+        let response = ipc::send_daemon_control_message(
+            &daemon_socket_path,
+            &kwylock_common::ipc::DaemonControlMessage::Status,
+        )
+        .await?;
+
+        let kwylock_common::ipc::DaemonControlResponse::Status(status) = response else {
+            bail!("daemon returned an unexpected response to --status");
+        };
+
+        println!("state={}", status.state);
+        println!("session={}", status.session);
+        println!("curtain_running={}", status.curtain_running);
+        println!(
+            "config={}",
+            status.config_path.as_deref().unwrap_or("defaults")
+        );
+        return Ok(());
+    }
+
     match ipc::bind_single_instance_listener(&daemon_socket_path).await {
         Ok(control_listener) => app::run(options, control_listener, daemon_socket_path).await,
         Err(error) => {
             if options.lock_now && daemon_socket_path.exists() {
-                ipc::send_daemon_control_message(
+                let response = ipc::send_daemon_control_message(
                     &daemon_socket_path,
                     &kwylock_common::ipc::DaemonControlMessage::LockNow,
                 )
                 .await?;
+                if response != kwylock_common::ipc::DaemonControlResponse::Accepted {
+                    bail!("daemon did not acknowledge forwarded lock request");
+                }
                 tracing::info!(path = %daemon_socket_path.display(), "forwarded lock request to running daemon");
                 Ok(())
             } else {
@@ -105,5 +142,13 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.lock_now);
+    }
+
+    #[test]
+    fn parses_status_argument() {
+        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--status".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.status);
     }
 }

@@ -1,5 +1,7 @@
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let options = kwylock_daemon::DaemonOptions::parse_args(std::env::args())?;
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
@@ -7,11 +9,12 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    tracing::info!(
-        component = kwylock_daemon::component_name(),
-        "starting daemon"
-    );
+    if !options.status {
+        tracing::info!(
+            component = kwylock_daemon::component_name(),
+            "starting daemon"
+        );
+    }
 
-    let options = kwylock_daemon::DaemonOptions::parse_args(std::env::args())?;
     kwylock_daemon::run(options).await
 }
