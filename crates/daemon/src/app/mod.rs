@@ -20,7 +20,7 @@ use anyhow::{Context, Result};
 use futures_util::StreamExt;
 use kwylock_common::AppConfig;
 use kwylock_common::ipc::{
-    DaemonControlMessage, DaemonControlResponse, DaemonReloadStatus, DaemonStatus,
+    DaemonControlMessage, DaemonControlResponse, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
 use tokio::{
     net::UnixListener,
@@ -315,38 +315,54 @@ pub async fn run(
                                         auth_state = AuthState::new(auth_policy);
                                     }
                                     prewarm::spawn_background_prewarm(&loaded_config.config);
-                                    if state.is_active()
-                                        && let Some(control_socket_path) =
-                                            control_socket_path.as_deref()
-                                        && let Err(error) =
-                                            process::request_curtain_reload(control_socket_path)
-                                                .await
+                                    let live_reload = if !state.is_active() {
+                                        Ok(LiveReloadStatus::NotActive)
+                                    } else if let Some(control_socket_path) =
+                                        control_socket_path.as_deref()
                                     {
-                                        tracing::warn!(
-                                            "failed to forward live config reload to curtain: {error:#}"
-                                        );
-                                        DaemonControlResponse::Error {
-                                            reason: format!(
-                                                "failed to forward live config reload to curtain: {error:#}"
-                                            ),
-                                        }
+                                        process::request_curtain_reload(control_socket_path)
+                                            .await
+                                            .map_err(|error| {
+                                                format!(
+                                                    "failed to forward live config reload to curtain: {error:#}"
+                                                )
+                                            })
+                                            .map(|_| LiveReloadStatus::Forwarded)
                                     } else {
-                                    tracing::info!(
-                                        active_lock = state.is_active(),
-                                        config = loaded_config
-                                            .path
-                                            .as_deref()
-                                            .map(|path| path.display().to_string())
-                                            .unwrap_or_else(|| "defaults".to_string()),
-                                        "reloaded daemon config"
-                                    );
-                                        DaemonControlResponse::Reloaded(DaemonReloadStatus {
-                                            config_path: loaded_config
-                                                .path
-                                                .as_deref()
-                                                .map(|path| path.display().to_string()),
-                                            active_lock: state.is_active(),
-                                        })
+                                        Err(
+                                            "failed to forward live config reload to curtain: active lock has no control socket"
+                                                .to_string(),
+                                        )
+                                    };
+
+                                    match live_reload {
+                                        Ok(live_reload) => {
+                                            tracing::info!(
+                                                active_lock = state.is_active(),
+                                                live_reload = match live_reload {
+                                                    LiveReloadStatus::NotActive => "not-active",
+                                                    LiveReloadStatus::Forwarded => "forwarded",
+                                                },
+                                                config = loaded_config
+                                                    .path
+                                                    .as_deref()
+                                                    .map(|path| path.display().to_string())
+                                                    .unwrap_or_else(|| "defaults".to_string()),
+                                                "reloaded daemon config"
+                                            );
+                                            DaemonControlResponse::Reloaded(DaemonReloadStatus {
+                                                config_path: loaded_config
+                                                    .path
+                                                    .as_deref()
+                                                    .map(|path| path.display().to_string()),
+                                                active_lock: state.is_active(),
+                                                live_reload,
+                                            })
+                                        }
+                                        Err(reason) => {
+                                            tracing::warn!("{reason}");
+                                            DaemonControlResponse::Error { reason }
+                                        }
                                     }
                                 }
                                 Err(error) => DaemonControlResponse::Error {

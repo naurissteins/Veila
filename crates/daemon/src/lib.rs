@@ -122,6 +122,13 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
                     status.config_path.as_deref().unwrap_or("defaults")
                 );
                 println!("active_lock={}", status.active_lock);
+                println!(
+                    "live_reload={}",
+                    match status.live_reload {
+                        kwylock_common::ipc::LiveReloadStatus::NotActive => "not-active",
+                        kwylock_common::ipc::LiveReloadStatus::Forwarded => "forwarded",
+                    }
+                );
                 return Ok(());
             }
             kwylock_common::ipc::DaemonControlResponse::Error { reason } => {

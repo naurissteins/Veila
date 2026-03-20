@@ -51,6 +51,13 @@ pub struct DaemonStatus {
 pub struct DaemonReloadStatus {
     pub config_path: Option<String>,
     pub active_lock: bool,
+    pub live_reload: LiveReloadStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LiveReloadStatus {
+    NotActive,
+    Forwarded,
 }
 
 /// Responses sent by the long-running daemon control socket.
@@ -82,7 +89,7 @@ where
 mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
-        DaemonReloadStatus, decode_message, encode_message,
+        DaemonReloadStatus, LiveReloadStatus, decode_message, encode_message,
     };
 
     #[test]
@@ -121,6 +128,7 @@ mod tests {
         let message = DaemonControlResponse::Reloaded(DaemonReloadStatus {
             config_path: Some("/tmp/kwylock.toml".to_string()),
             active_lock: true,
+            live_reload: LiveReloadStatus::Forwarded,
         });
         let encoded = encode_message(&message).expect("daemon control response should encode");
         let decoded = decode_message::<DaemonControlResponse>(&encoded)
