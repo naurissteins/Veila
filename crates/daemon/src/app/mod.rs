@@ -10,7 +10,9 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use futures_util::StreamExt;
 use kwylock_common::AppConfig;
-use kwylock_common::ipc::{DaemonControlMessage, DaemonControlResponse, DaemonStatus};
+use kwylock_common::ipc::{
+    DaemonControlMessage, DaemonControlResponse, DaemonReloadStatus, DaemonStatus,
+};
 use nix::unistd::{Uid, User};
 use tokio::{
     net::UnixListener,
@@ -37,10 +39,10 @@ pub async fn run(
     mut control_listener: UnixListener,
     daemon_control_socket_path: PathBuf,
 ) -> Result<()> {
-    let loaded_config =
+    let mut loaded_config =
         AppConfig::load(options.config_path.as_deref()).context("failed to load daemon config")?;
     prewarm::spawn_background_prewarm(&loaded_config.config);
-    let auth_policy = AuthPolicy::new(
+    let mut auth_policy = AuthPolicy::new(
         Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
         Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
     );
@@ -296,6 +298,43 @@ pub async fn run(
                                     .as_deref()
                                     .map(|path| path.display().to_string()),
                             })
+                        }
+                        DaemonControlMessage::ReloadConfig => {
+                            match AppConfig::load(options.config_path.as_deref()) {
+                                Ok(new_loaded_config) => {
+                                    loaded_config = new_loaded_config;
+                                    auth_policy = AuthPolicy::new(
+                                        Duration::from_millis(
+                                            loaded_config.config.lock.auth_backoff_base_ms,
+                                        ),
+                                        Duration::from_secs(
+                                            loaded_config.config.lock.auth_backoff_max_seconds,
+                                        ),
+                                    );
+                                    if !state.is_active() {
+                                        auth_state = AuthState::new(auth_policy);
+                                    }
+                                    tracing::info!(
+                                        active_lock = state.is_active(),
+                                        config = loaded_config
+                                            .path
+                                            .as_deref()
+                                            .map(|path| path.display().to_string())
+                                            .unwrap_or_else(|| "defaults".to_string()),
+                                        "reloaded daemon config"
+                                    );
+                                    DaemonControlResponse::Reloaded(DaemonReloadStatus {
+                                        config_path: loaded_config
+                                            .path
+                                            .as_deref()
+                                            .map(|path| path.display().to_string()),
+                                        active_lock: state.is_active(),
+                                    })
+                                }
+                                Err(error) => DaemonControlResponse::Error {
+                                    reason: format!("failed to reload daemon config: {error:#}"),
+                                },
+                            }
                         }
                     };
 

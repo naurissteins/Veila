@@ -35,6 +35,7 @@ pub enum CurtainControlMessage {
 pub enum DaemonControlMessage {
     LockNow,
     Status,
+    ReloadConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -45,11 +46,19 @@ pub struct DaemonStatus {
     pub config_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DaemonReloadStatus {
+    pub config_path: Option<String>,
+    pub active_lock: bool,
+}
+
 /// Responses sent by the long-running daemon control socket.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonControlResponse {
     Accepted,
     Status(DaemonStatus),
+    Reloaded(DaemonReloadStatus),
+    Error { reason: String },
 }
 
 /// Encodes an IPC message as JSON for the initial control channel.
@@ -72,7 +81,7 @@ where
 mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
-        DaemonStatus, decode_message, encode_message,
+        DaemonReloadStatus, decode_message, encode_message,
     };
 
     #[test]
@@ -98,7 +107,7 @@ mod tests {
 
     #[test]
     fn round_trips_daemon_control_messages() {
-        let message = DaemonControlMessage::Status;
+        let message = DaemonControlMessage::ReloadConfig;
         let encoded = encode_message(&message).expect("daemon control message should encode");
         let decoded = decode_message::<DaemonControlMessage>(&encoded)
             .expect("daemon control message should decode");
@@ -108,11 +117,9 @@ mod tests {
 
     #[test]
     fn round_trips_daemon_control_responses() {
-        let message = DaemonControlResponse::Status(DaemonStatus {
-            state: "locked".to_string(),
-            session: "/org/freedesktop/login1/session/_32".to_string(),
-            curtain_running: true,
+        let message = DaemonControlResponse::Reloaded(DaemonReloadStatus {
             config_path: Some("/tmp/kwylock.toml".to_string()),
+            active_lock: true,
         });
         let encoded = encode_message(&message).expect("daemon control response should encode");
         let decoded = decode_message::<DaemonControlResponse>(&encoded)

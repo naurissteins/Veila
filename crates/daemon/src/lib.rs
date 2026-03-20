@@ -23,6 +23,7 @@ pub struct DaemonOptions {
     pub session_id: Option<String>,
     pub lock_now: bool,
     pub status: bool,
+    pub reload_config: bool,
 }
 
 impl DaemonOptions {
@@ -50,6 +51,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if arg == "--reload-config" {
+                options.reload_config = true;
+                continue;
+            }
+
             bail!("unknown daemon argument: {arg}");
         }
 
@@ -59,6 +65,13 @@ impl DaemonOptions {
 
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
+    let control_mode_count = usize::from(options.lock_now)
+        + usize::from(options.status)
+        + usize::from(options.reload_config);
+    if control_mode_count > 1 {
+        bail!("use only one of --lock-now, --status, or --reload-config at a time");
+    }
+
     let daemon_socket_path = ipc::daemon_socket_path();
     if options.status {
         if !daemon_socket_path.exists() {
@@ -86,6 +99,36 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
             status.config_path.as_deref().unwrap_or("defaults")
         );
         return Ok(());
+    }
+
+    if options.reload_config {
+        if !daemon_socket_path.exists() {
+            bail!(
+                "kwylockd is not running; daemon socket does not exist at {}",
+                daemon_socket_path.display()
+            );
+        }
+
+        let response = ipc::send_daemon_control_message(
+            &daemon_socket_path,
+            &kwylock_common::ipc::DaemonControlMessage::ReloadConfig,
+        )
+        .await?;
+
+        match response {
+            kwylock_common::ipc::DaemonControlResponse::Reloaded(status) => {
+                println!(
+                    "config={}",
+                    status.config_path.as_deref().unwrap_or("defaults")
+                );
+                println!("active_lock={}", status.active_lock);
+                return Ok(());
+            }
+            kwylock_common::ipc::DaemonControlResponse::Error { reason } => {
+                bail!(reason);
+            }
+            _ => bail!("daemon returned an unexpected response to --reload-config"),
+        }
     }
 
     match ipc::bind_single_instance_listener(&daemon_socket_path).await {
@@ -150,5 +193,14 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.status);
+    }
+
+    #[test]
+    fn parses_reload_config_argument() {
+        let options =
+            DaemonOptions::parse_args(["kwylockd".to_string(), "--reload-config".to_string()])
+                .expect("arguments should parse");
+
+        assert!(options.reload_config);
     }
 }
