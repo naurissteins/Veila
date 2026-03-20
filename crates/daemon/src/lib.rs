@@ -17,6 +17,21 @@ pub const fn component_name() -> &'static str {
     "kwylockd"
 }
 
+/// Returns machine-readable build information for the local binary.
+pub fn local_build_info() -> kwylock_common::ipc::DaemonHealth {
+    kwylock_common::ipc::DaemonHealth {
+        component: component_name().to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        build_profile: if cfg!(debug_assertions) {
+            "debug".to_string()
+        } else {
+            "release".to_string()
+        },
+        target_os: std::env::consts::OS.to_string(),
+        target_arch: std::env::consts::ARCH.to_string(),
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
@@ -24,6 +39,7 @@ pub struct DaemonOptions {
     pub lock_now: bool,
     pub status: bool,
     pub health: bool,
+    pub version: bool,
     pub reload_config: bool,
 }
 
@@ -57,6 +73,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if arg == "--version" {
+                options.version = true;
+                continue;
+            }
+
             if arg == "--reload-config" {
                 options.reload_config = true;
                 continue;
@@ -74,9 +95,12 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     let control_mode_count = usize::from(options.lock_now)
         + usize::from(options.status)
         + usize::from(options.health)
+        + usize::from(options.version)
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
-        bail!("use only one of --lock-now, --status, --health, or --reload-config at a time");
+        bail!(
+            "use only one of --lock-now, --status, --health, --version, or --reload-config at a time"
+        );
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
@@ -134,6 +158,41 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
         println!("build_profile={}", health.build_profile);
         println!("target_os={}", health.target_os);
         println!("target_arch={}", health.target_arch);
+        return Ok(());
+    }
+
+    if options.version {
+        let local = local_build_info();
+        println!("local_component={}", local.component);
+        println!("local_version={}", local.version);
+        println!("local_build_profile={}", local.build_profile);
+        println!("local_target_os={}", local.target_os);
+        println!("local_target_arch={}", local.target_arch);
+
+        match ipc::send_daemon_control_message(
+            &daemon_socket_path,
+            &kwylock_common::ipc::DaemonControlMessage::Health,
+        )
+        .await
+        {
+            Ok(kwylock_common::ipc::DaemonControlResponse::Health(daemon)) => {
+                println!("daemon_reachable=true");
+                println!("daemon_component={}", daemon.component);
+                println!("daemon_version={}", daemon.version);
+                println!("daemon_build_profile={}", daemon.build_profile);
+                println!("daemon_target_os={}", daemon.target_os);
+                println!("daemon_target_arch={}", daemon.target_arch);
+            }
+            Ok(_) => {
+                println!("daemon_reachable=false");
+                println!("daemon_error=unexpected-health-response");
+            }
+            Err(error) => {
+                println!("daemon_reachable=false");
+                println!("daemon_error={}", error);
+            }
+        }
+
         return Ok(());
     }
 
@@ -253,5 +312,13 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.health);
+    }
+
+    #[test]
+    fn parses_version_argument() {
+        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--version".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.version);
     }
 }

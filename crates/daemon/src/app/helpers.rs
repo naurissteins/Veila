@@ -65,17 +65,7 @@ pub(super) fn build_daemon_status(
 }
 
 pub(super) fn build_daemon_health() -> DaemonHealth {
-    DaemonHealth {
-        component: crate::component_name().to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        build_profile: if cfg!(debug_assertions) {
-            "debug".to_string()
-        } else {
-            "release".to_string()
-        },
-        target_os: std::env::consts::OS.to_string(),
-        target_arch: std::env::consts::ARCH.to_string(),
-    }
+    crate::local_build_info()
 }
 
 pub(super) async fn reload_config_response(
