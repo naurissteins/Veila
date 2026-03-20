@@ -93,7 +93,9 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
 
         println!("state={}", status.state);
         println!("session={}", status.session);
+        println!("active_lock={}", status.active_lock);
         println!("curtain_running={}", status.curtain_running);
+        println!("live_reload_available={}", status.live_reload_available);
         println!(
             "config={}",
             status.config_path.as_deref().unwrap_or("defaults")

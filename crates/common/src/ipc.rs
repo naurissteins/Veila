@@ -43,7 +43,9 @@ pub enum DaemonControlMessage {
 pub struct DaemonStatus {
     pub state: String,
     pub session: String,
+    pub active_lock: bool,
     pub curtain_running: bool,
+    pub live_reload_available: bool,
     pub config_path: Option<String>,
 }
 
@@ -89,7 +91,7 @@ where
 mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
-        DaemonReloadStatus, LiveReloadStatus, decode_message, encode_message,
+        DaemonReloadStatus, DaemonStatus, LiveReloadStatus, decode_message, encode_message,
     };
 
     #[test]
@@ -125,6 +127,23 @@ mod tests {
 
     #[test]
     fn round_trips_daemon_control_responses() {
+        let message = DaemonControlResponse::Status(DaemonStatus {
+            state: "locked".to_string(),
+            session: "/org/freedesktop/login1/session/_3".to_string(),
+            active_lock: true,
+            curtain_running: true,
+            live_reload_available: true,
+            config_path: Some("/tmp/kwylock.toml".to_string()),
+        });
+        let encoded = encode_message(&message).expect("daemon control response should encode");
+        let decoded = decode_message::<DaemonControlResponse>(&encoded)
+            .expect("daemon control response should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_reload_status_response() {
         let message = DaemonControlResponse::Reloaded(DaemonReloadStatus {
             config_path: Some("/tmp/kwylock.toml".to_string()),
             active_lock: true,
