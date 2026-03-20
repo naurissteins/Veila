@@ -35,6 +35,7 @@ pub enum CurtainControlMessage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonControlMessage {
     LockNow,
+    Stop,
     Status,
     Health,
     ReloadConfig,
@@ -129,7 +130,7 @@ mod tests {
 
     #[test]
     fn round_trips_daemon_control_messages() {
-        let message = DaemonControlMessage::Health;
+        let message = DaemonControlMessage::Stop;
         let encoded = encode_message(&message).expect("daemon control message should encode");
         let decoded = decode_message::<DaemonControlMessage>(&encoded)
             .expect("daemon control message should decode");

@@ -37,6 +37,7 @@ pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
     pub session_id: Option<String>,
     pub lock_now: bool,
+    pub stop: bool,
     pub status: bool,
     pub health: bool,
     pub version: bool,
@@ -60,6 +61,11 @@ impl DaemonOptions {
 
             if arg == "--lock-now" {
                 options.lock_now = true;
+                continue;
+            }
+
+            if arg == "--stop" {
+                options.stop = true;
                 continue;
             }
 
@@ -93,17 +99,40 @@ impl DaemonOptions {
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     let control_mode_count = usize::from(options.lock_now)
+        + usize::from(options.stop)
         + usize::from(options.status)
         + usize::from(options.health)
         + usize::from(options.version)
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
         bail!(
-            "use only one of --lock-now, --status, --health, --version, or --reload-config at a time"
+            "use only one of --lock-now, --stop, --status, --health, --version, or --reload-config at a time"
         );
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
+    if options.stop {
+        if !daemon_socket_path.exists() {
+            bail!(
+                "kwylockd is not running; daemon socket does not exist at {}",
+                daemon_socket_path.display()
+            );
+        }
+
+        let response = ipc::send_daemon_control_message(
+            &daemon_socket_path,
+            &kwylock_common::ipc::DaemonControlMessage::Stop,
+        )
+        .await?;
+
+        if response != kwylock_common::ipc::DaemonControlResponse::Accepted {
+            bail!("daemon returned an unexpected response to --stop");
+        }
+
+        println!("stopped=true");
+        return Ok(());
+    }
+
     if options.status {
         if !daemon_socket_path.exists() {
             bail!(
@@ -287,6 +316,14 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.lock_now);
+    }
+
+    #[test]
+    fn parses_stop_argument() {
+        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--stop".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.stop);
     }
 
     #[test]

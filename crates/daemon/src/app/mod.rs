@@ -263,7 +263,7 @@ pub async fn run(
             result = accept_control_connection(&mut control_listener) => {
                 let mut stream = result?;
                 if let Some(message) = ipc::read_daemon_control_message(&mut stream).await? {
-                    let response = match message {
+                    let (response, stop_requested) = match message {
                         DaemonControlMessage::LockNow => {
                             if !state.is_active() {
                                 if let Err(error) = activate_and_install(
@@ -287,34 +287,45 @@ pub async fn run(
                                 tracing::debug!(state = %state, "ignoring forwarded lock request while already active");
                             }
 
-                            DaemonControlResponse::Accepted
+                            (DaemonControlResponse::Accepted, false)
+                        }
+                        DaemonControlMessage::Stop => {
+                            tracing::info!("received daemon stop request over control socket");
+                            (DaemonControlResponse::Accepted, true)
                         }
                         DaemonControlMessage::Status => {
-                            DaemonControlResponse::Status(build_daemon_status(
+                            (DaemonControlResponse::Status(build_daemon_status(
                                 &state,
                                 &session_path,
                                 curtain.is_some(),
                                 control_socket_path.as_deref(),
                                 loaded_config.path.as_deref(),
-                            ))
+                            )), false)
                         }
                         DaemonControlMessage::Health => {
-                            DaemonControlResponse::Health(build_daemon_health())
+                            (DaemonControlResponse::Health(build_daemon_health()), false)
                         }
-                        DaemonControlMessage::ReloadConfig => reload_config_response(
-                            &options,
-                            &state,
-                            control_socket_path.as_deref(),
-                            &mut loaded_config,
-                            &mut auth_policy,
-                            &mut auth_state,
-                        ).await,
+                        DaemonControlMessage::ReloadConfig => (
+                            reload_config_response(
+                                &options,
+                                &state,
+                                control_socket_path.as_deref(),
+                                &mut loaded_config,
+                                &mut auth_policy,
+                                &mut auth_state,
+                            ).await,
+                            false,
+                        ),
                     };
 
                     if let Err(error) = ipc::write_daemon_control_response(&mut stream, &response)
                         .await
                     {
                         tracing::warn!("failed to acknowledge daemon control request: {error:#}");
+                    }
+
+                    if stop_requested {
+                        break;
                     }
                 }
             }
