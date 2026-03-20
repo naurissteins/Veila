@@ -18,7 +18,7 @@ repository = "https://github.com/kwimy/kwylock"
 [workspace.dependencies]
 anyhow = "1"
 calloop = { version = "0.14", features = ["signals"] }
-font8x8 = "0.3"
+cosmic-text = "0.14"
 futures-util = "0.3"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 nix = { version = "0.31", features = ["signal", "user"] }

@@ -1,20 +1,20 @@
 use kwylock_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
     masked::{MaskedInputStyle, draw_masked_input},
-    panel::{
-        PanelBodyMetrics, PanelBodyStyle, PanelHeaderStyle, draw_panel_header, layout_panel_body,
-        measure_panel_height,
-    },
+    panel::{PanelBodyMetrics, draw_panel_header, layout_panel_body, measure_panel_height},
     progress::{Progress, ProgressBarStyle, draw_progress_bar},
-    shape::{BorderStyle, BoxStyle, Rect, draw_box},
+    shape::{Rect, draw_box},
     symbol::{SymbolKind, SymbolStyle, draw_symbol_with_shadow, measure_symbol},
     text::{TextBlock, TextStyle, fit_wrapped_text},
 };
 
-use super::{ShellState, ShellStatus};
+use super::{
+    ShellState, ShellStatus,
+    style::{TypographyScale, visual_style_for_surface},
+};
 
 const STATUS_ROW_MAX_GAP: u32 = 12;
-const TEXT_SHADOW_COLOR: ClearColor = ClearColor::opaque(8, 10, 14);
+const TEXT_SHADOW_COLOR: ClearColor = ClearColor::rgba(4, 6, 10, 160);
 
 impl ShellState {
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
@@ -26,22 +26,25 @@ impl ShellState {
         let size = buffer.size();
         let width = size.width as i32;
         let height = size.height as i32;
-        let panel_width = ((width * 3) / 5).clamp(320, 620);
-        let panel_x = (width - panel_width) / 2;
         let accent = self.accent_color();
-        let panel_body = PanelBodyStyle::new();
+        let visuals = visual_style_for_surface(&self.theme, width, accent, self.focused);
+        let panel_width = visuals.panel_width;
+        let panel_x = (width - panel_width) / 2;
         let provisional_panel_rect = Rect::new(panel_x, 0, panel_width, 0);
-        let content_width = panel_body.content_width(provisional_panel_rect).max(160);
+        let content_width = visuals
+            .body_style
+            .content_width(provisional_panel_rect)
+            .max(180);
         let hint_block = fit_wrapped_text(
             &self.hint_text,
-            TextStyle::new(self.theme.foreground, 2),
+            TextStyle::new(self.theme.foreground, visuals.typography.hint_scale),
             content_width,
-            1,
+            visuals.typography.hint_min_scale,
         );
-        let status_row = self.status_row(content_width, accent);
+        let status_row = self.status_row(content_width, accent, visuals.typography);
         let panel_height = measure_panel_height(
-            PanelHeaderStyle::new(accent),
-            panel_body,
+            visuals.header_style,
+            visuals.body_style,
             PanelBodyMetrics {
                 hint_height: hint_block.height as i32,
                 status_height: status_row.as_ref().map(|row| row.height as i32),
@@ -50,17 +53,12 @@ impl ShellState {
         let panel_y = (height - panel_height) / 2;
         let panel_rect = Rect::new(panel_x, panel_y, panel_width, panel_height);
 
-        draw_box(
-            buffer,
-            panel_rect,
-            BoxStyle::new(self.theme.panel)
-                .with_border(BorderStyle::new(self.theme.panel_border, 2)),
-        );
-        let header = draw_panel_header(buffer, panel_rect, PanelHeaderStyle::new(accent));
+        draw_box(buffer, panel_rect, visuals.panel_style);
+        let header = draw_panel_header(buffer, panel_rect, visuals.header_style);
         let body = layout_panel_body(
             panel_rect,
             header,
-            panel_body,
+            visuals.body_style,
             PanelBodyMetrics {
                 hint_height: hint_block.height as i32,
                 status_height: status_row.as_ref().map(|row| row.height as i32),
@@ -69,18 +67,7 @@ impl ShellState {
 
         draw_centered_block(buffer, panel_x, panel_width, body.hint_y, &hint_block);
 
-        draw_box(
-            buffer,
-            body.input_rect,
-            BoxStyle::new(self.theme.input).with_border(BorderStyle::new(
-                if self.focused {
-                    accent
-                } else {
-                    self.theme.input_border
-                },
-                2,
-            )),
-        );
+        draw_box(buffer, body.input_rect, visuals.input_style);
 
         draw_progress_bar(
             buffer,
@@ -147,13 +134,24 @@ impl ShellState {
         }
     }
 
-    fn status_row(&self, max_width: u32, accent: ClearColor) -> Option<StatusRow> {
+    fn status_row(
+        &self,
+        max_width: u32,
+        accent: ClearColor,
+        typography: TypographyScale,
+    ) -> Option<StatusRow> {
         let symbol = self.status_symbol()?;
         let text = self.status_text()?;
-        let reserved_width = measure_symbol(SymbolStyle::new(accent, 2)).0 + STATUS_ROW_MAX_GAP;
+        let reserved_width = measure_symbol(SymbolStyle::new(accent, typography.status_scale)).0
+            + STATUS_ROW_MAX_GAP;
         let text_width = max_width.saturating_sub(reserved_width).max(96);
-        let text = fit_wrapped_text(&text, TextStyle::new(accent, 2), text_width, 1);
-        let symbol_style = SymbolStyle::new(accent, text.style.scale);
+        let text = fit_wrapped_text(
+            &text,
+            TextStyle::new(accent, typography.status_scale),
+            text_width,
+            typography.status_min_scale,
+        );
+        let symbol_style = SymbolStyle::new(accent, text.style.scale.max(2));
         let (symbol_width, symbol_height) = measure_symbol(symbol_style);
         let gap = status_row_gap(text.style.scale);
         let width = symbol_width + gap + text.width;

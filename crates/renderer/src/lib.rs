@@ -51,14 +51,19 @@ pub struct ClearColor {
 }
 
 impl ClearColor {
-    /// Creates an opaque RGB color.
-    pub const fn opaque(red: u8, green: u8, blue: u8) -> Self {
+    /// Creates an RGBA color.
+    pub const fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
         Self {
             red,
             green,
             blue,
-            alpha: u8::MAX,
+            alpha,
         }
+    }
+
+    /// Creates an opaque RGB color.
+    pub const fn opaque(red: u8, green: u8, blue: u8) -> Self {
+        Self::rgba(red, green, blue, u8::MAX)
     }
 
     pub const fn to_argb8888_bytes(self) -> [u8; 4] {

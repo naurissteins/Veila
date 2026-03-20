@@ -1,12 +1,14 @@
 use crate::{
     ClearColor, SoftwareBuffer,
-    shape::{Rect, fill_rect},
+    shape::{BoxStyle, Rect, draw_box},
 };
 
 /// Styling for a panel header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PanelHeaderStyle {
     pub accent: ClearColor,
+    pub top_padding: i32,
+    pub accent_width: i32,
     pub accent_height: i32,
     pub content_offset_y: i32,
 }
@@ -16,8 +18,10 @@ impl PanelHeaderStyle {
     pub const fn new(accent: ClearColor) -> Self {
         Self {
             accent,
+            top_padding: 18,
+            accent_width: 88,
             accent_height: 6,
-            content_offset_y: 34,
+            content_offset_y: 44,
         }
     }
 }
@@ -51,13 +55,13 @@ impl PanelBodyStyle {
     /// Creates a panel body style with Kwylock defaults.
     pub const fn new() -> Self {
         Self {
-            horizontal_padding: 32,
-            hint_to_input_gap: 22,
-            input_height: 38,
-            input_to_progress_gap: 24,
-            progress_height: 6,
-            progress_to_status_gap: 22,
-            footer_padding: 28,
+            horizontal_padding: 40,
+            hint_to_input_gap: 28,
+            input_height: 54,
+            input_to_progress_gap: 22,
+            progress_height: 8,
+            progress_to_status_gap: 20,
+            footer_padding: 34,
         }
     }
 
@@ -85,21 +89,26 @@ pub struct PanelBodyLayout {
     pub status_y: Option<i32>,
 }
 
-/// Draws a simple panel header and returns content anchors.
+/// Draws a panel header accent and returns content anchors.
 pub fn draw_panel_header(
     buffer: &mut SoftwareBuffer,
     panel_rect: Rect,
     style: PanelHeaderStyle,
 ) -> PanelHeaderLayout {
-    fill_rect(
+    let accent_width = style
+        .accent_width
+        .min(panel_rect.width.saturating_sub(48))
+        .max(44);
+    let accent_x = panel_rect.x + (panel_rect.width - accent_width) / 2;
+    draw_box(
         buffer,
         Rect::new(
-            panel_rect.x,
-            panel_rect.y,
-            panel_rect.width,
+            accent_x,
+            panel_rect.y + style.top_padding,
+            accent_width,
             style.accent_height,
         ),
-        style.accent,
+        BoxStyle::new(style.accent).with_radius(style.accent_height / 2),
     );
 
     PanelHeaderLayout {
@@ -172,14 +181,14 @@ mod tests {
 
     #[test]
     fn draws_panel_header_accent() {
-        let mut buffer = SoftwareBuffer::new(FrameSize::new(80, 40)).expect("buffer");
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(120, 80)).expect("buffer");
         let layout = draw_panel_header(
             &mut buffer,
-            Rect::new(10, 10, 60, 20),
+            Rect::new(10, 10, 100, 60),
             PanelHeaderStyle::new(ClearColor::opaque(255, 255, 255)),
         );
 
-        assert_eq!(layout.content_y, 44);
+        assert_eq!(layout.content_y, 54);
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
     }
 
@@ -189,33 +198,33 @@ mod tests {
             PanelHeaderStyle::new(ClearColor::opaque(255, 255, 255)),
             PanelBodyStyle::new(),
             PanelBodyMetrics {
-                hint_height: 16,
-                status_height: Some(20),
+                hint_height: 28,
+                status_height: Some(24),
             },
         );
 
-        assert_eq!(height, 210);
+        assert_eq!(height, 262);
     }
 
     #[test]
     fn lays_out_panel_body_regions() {
         let layout = layout_panel_body(
-            Rect::new(40, 50, 320, 186),
+            Rect::new(40, 50, 360, 242),
             draw_panel_header(
-                &mut SoftwareBuffer::new(FrameSize::new(400, 300)).expect("buffer"),
-                Rect::new(40, 50, 320, 186),
+                &mut SoftwareBuffer::new(FrameSize::new(440, 340)).expect("buffer"),
+                Rect::new(40, 50, 360, 242),
                 PanelHeaderStyle::new(ClearColor::opaque(255, 255, 255)),
             ),
             PanelBodyStyle::new(),
             PanelBodyMetrics {
-                hint_height: 16,
-                status_height: Some(20),
+                hint_height: 28,
+                status_height: Some(24),
             },
         );
 
-        assert_eq!(layout.hint_y, 84);
-        assert_eq!(layout.input_rect, Rect::new(72, 122, 256, 38));
-        assert_eq!(layout.progress_rect, Rect::new(72, 184, 256, 6));
-        assert_eq!(layout.status_y, Some(212));
+        assert_eq!(layout.hint_y, 94);
+        assert_eq!(layout.input_rect, Rect::new(80, 150, 280, 54));
+        assert_eq!(layout.progress_rect, Rect::new(80, 226, 280, 8));
+        assert_eq!(layout.status_y, Some(254));
     }
 }
