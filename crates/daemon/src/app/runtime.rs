@@ -22,8 +22,6 @@ use crate::{
     },
 };
 
-use super::update_locked_hint;
-
 pub(super) struct LockActivation {
     curtain: Child,
     auth_listener: UnixListener,
@@ -413,6 +411,12 @@ pub(super) async fn wait_for_curtain_exit(curtain: &mut Option<Child>) -> Result
             .await
             .context("failed while waiting for curtain process"),
         None => pending().await,
+    }
+}
+
+pub(super) async fn update_locked_hint(session_proxy: &logind::SessionProxy<'_>, locked: bool) {
+    if let Err(error) = session_proxy.set_locked_hint(locked).await {
+        tracing::warn!(locked, "failed to update logind LockedHint: {error}");
     }
 }
 

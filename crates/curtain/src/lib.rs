@@ -8,6 +8,7 @@ mod background;
 mod background_loader;
 mod control;
 mod handlers;
+mod reload;
 mod scene;
 mod state;
 

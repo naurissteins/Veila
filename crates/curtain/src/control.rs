@@ -12,6 +12,7 @@ use kwylock_common::ipc::{CurtainControlMessage, decode_message};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
     UnlockRequested { attempt_id: Option<u64> },
+    ReloadRequested,
 }
 
 pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>) -> Result<()> {
@@ -56,6 +57,9 @@ fn run_listener(listener: UnixListener, sender: Sender<ControlEvent>) -> Result<
             CurtainControlMessage::Unlock { attempt_id } => {
                 let _ = sender.send(ControlEvent::UnlockRequested { attempt_id });
                 return Ok(());
+            }
+            CurtainControlMessage::ReloadConfig => {
+                let _ = sender.send(ControlEvent::ReloadRequested);
             }
         }
     }

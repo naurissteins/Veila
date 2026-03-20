@@ -60,6 +60,13 @@ impl ShellState {
         self.focused = focused;
     }
 
+    pub fn apply_theme(&mut self, theme: ShellTheme, user_hint: Option<String>) {
+        self.theme = theme;
+        self.hint_text = user_hint
+            .filter(|hint| !hint.trim().is_empty())
+            .unwrap_or_else(|| String::from("Type your password to unlock"));
+    }
+
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
         match key {
             ShellKey::Character(character) => {

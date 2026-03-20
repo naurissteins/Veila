@@ -28,6 +28,7 @@ pub enum DaemonMessage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CurtainControlMessage {
     Unlock { attempt_id: Option<u64> },
+    ReloadConfig,
 }
 
 /// Messages sent to the long-running daemon control socket.

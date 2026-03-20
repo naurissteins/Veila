@@ -1,3 +1,4 @@
+mod helpers;
 mod output_probe;
 mod prewarm;
 mod runtime;
@@ -7,30 +8,29 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result, anyhow};
-use futures_util::StreamExt;
-use kwylock_common::AppConfig;
-use kwylock_common::ipc::{
-    DaemonControlMessage, DaemonControlResponse, DaemonReloadStatus, DaemonStatus,
-};
-use nix::unistd::{Uid, User};
-use tokio::{
-    net::UnixListener,
-    signal::unix::{SignalKind, signal},
-};
-
 use crate::{
     DaemonOptions,
-    adapters::{ipc, logind},
+    adapters::{ipc, logind, process},
     domain::{
         auth::{AuthPolicy, AuthState},
         lock_state::LockState,
     },
 };
+use anyhow::{Context, Result};
+use futures_util::StreamExt;
+use kwylock_common::AppConfig;
+use kwylock_common::ipc::{
+    DaemonControlMessage, DaemonControlResponse, DaemonReloadStatus, DaemonStatus,
+};
+use tokio::{
+    net::UnixListener,
+    signal::unix::{SignalKind, signal},
+};
 
+use self::helpers::{activate_and_install, current_username};
 use self::runtime::{
-    ActiveRuntime, AuthResult, accept_auth_connection, accept_control_connection, activate_lock,
-    deactivate_lock, handle_client_message, receive_auth_result, reset_runtime,
+    ActiveRuntime, AuthResult, accept_auth_connection, accept_control_connection, deactivate_lock,
+    handle_client_message, receive_auth_result, reset_runtime, update_locked_hint,
     wait_for_curtain_exit,
 };
 
@@ -314,6 +314,23 @@ pub async fn run(
                                     if !state.is_active() {
                                         auth_state = AuthState::new(auth_policy);
                                     }
+                                    prewarm::spawn_background_prewarm(&loaded_config.config);
+                                    if state.is_active()
+                                        && let Some(control_socket_path) =
+                                            control_socket_path.as_deref()
+                                        && let Err(error) =
+                                            process::request_curtain_reload(control_socket_path)
+                                                .await
+                                    {
+                                        tracing::warn!(
+                                            "failed to forward live config reload to curtain: {error:#}"
+                                        );
+                                        DaemonControlResponse::Error {
+                                            reason: format!(
+                                                "failed to forward live config reload to curtain: {error:#}"
+                                            ),
+                                        }
+                                    } else {
                                     tracing::info!(
                                         active_lock = state.is_active(),
                                         config = loaded_config
@@ -323,13 +340,14 @@ pub async fn run(
                                             .unwrap_or_else(|| "defaults".to_string()),
                                         "reloaded daemon config"
                                     );
-                                    DaemonControlResponse::Reloaded(DaemonReloadStatus {
-                                        config_path: loaded_config
-                                            .path
-                                            .as_deref()
-                                            .map(|path| path.display().to_string()),
-                                        active_lock: state.is_active(),
-                                    })
+                                        DaemonControlResponse::Reloaded(DaemonReloadStatus {
+                                            config_path: loaded_config
+                                                .path
+                                                .as_deref()
+                                                .map(|path| path.display().to_string()),
+                                            active_lock: state.is_active(),
+                                        })
+                                    }
                                 }
                                 Err(error) => DaemonControlResponse::Error {
                                     reason: format!("failed to reload daemon config: {error:#}"),
@@ -379,33 +397,4 @@ pub async fn run(
     let _ = std::fs::remove_file(&daemon_control_socket_path);
     tracing::info!("kwylockd exiting");
     Ok(())
-}
-
-async fn activate_and_install(
-    session_proxy: &logind::SessionProxy<'_>,
-    state: &mut LockState,
-    config_path: Option<&std::path::Path>,
-    runtime: ActiveRuntime<'_>,
-    auth_policy: AuthPolicy,
-    auth_state: &mut AuthState,
-) -> Result<()> {
-    let activation = activate_lock(session_proxy, state, config_path).await?;
-    runtime.install_activation(activation);
-    *auth_state = AuthState::new(auth_policy);
-    Ok(())
-}
-
-fn current_username() -> Result<String> {
-    let uid = Uid::current();
-    let Some(user) = User::from_uid(uid).context("failed to resolve current username")? else {
-        return Err(anyhow!("current uid {uid} does not resolve to a user"));
-    };
-
-    Ok(user.name)
-}
-
-pub(super) async fn update_locked_hint(session_proxy: &logind::SessionProxy<'_>, locked: bool) {
-    if let Err(error) = session_proxy.set_locked_hint(locked).await {
-        tracing::warn!(locked, "failed to update logind LockedHint: {error}");
-    }
 }

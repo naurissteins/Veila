@@ -50,6 +50,7 @@ pub(crate) struct CurtainApp {
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     control_socket: Option<PathBuf>,
+    pub(crate) config_path: Option<PathBuf>,
     pub(crate) background_path: Option<PathBuf>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
@@ -59,7 +60,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_color: ClearColor,
     pub(crate) ui_shell: ShellState,
-    lock_wait_timeout: Duration,
+    pub(crate) lock_wait_timeout: Duration,
     lock_started_at: Instant,
     pub(crate) session_locked: bool,
     pub(crate) session_finished: bool,
@@ -127,6 +128,7 @@ impl CurtainApp {
             notify_socket: options.notify_socket,
             daemon_socket: options.daemon_socket,
             control_socket: options.control_socket,
+            config_path: options.config_path,
             background_path: config.background.path,
             auth_events,
             auth_sender,
@@ -252,7 +254,7 @@ impl CurtainApp {
         Ok(())
     }
 
-    pub(crate) fn drain_control_events(&mut self) {
+    pub(crate) fn drain_control_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.control_events.try_recv() {
             match event {
                 ControlEvent::UnlockRequested { attempt_id } => {
@@ -262,6 +264,10 @@ impl CurtainApp {
                         tracing::info!("received curtain unlock request from daemon");
                     }
                     self.request_exit();
+                }
+                ControlEvent::ReloadRequested => {
+                    tracing::info!("received curtain reload request from daemon");
+                    self.reload_config(queue_handle);
                 }
             }
         }

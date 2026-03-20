@@ -39,19 +39,41 @@ pub async fn spawn_curtain(
 }
 
 pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u64>) -> Result<()> {
+    send_curtain_control_message(
+        control_socket,
+        &CurtainControlMessage::Unlock { attempt_id },
+        "unlock request",
+    )
+}
+
+pub async fn request_curtain_reload(control_socket: &Path) -> Result<()> {
+    send_curtain_control_message(
+        control_socket,
+        &CurtainControlMessage::ReloadConfig,
+        "reload request",
+    )
+}
+
+fn send_curtain_control_message(
+    control_socket: &Path,
+    message: &CurtainControlMessage,
+    label: &str,
+) -> Result<()> {
     let mut stream = UnixStream::connect(control_socket).with_context(|| {
         format!(
             "failed to connect to curtain control socket {}",
             control_socket.display()
         )
     })?;
-    let mut payload = encode_message(&CurtainControlMessage::Unlock { attempt_id })
-        .context("failed to encode unlock request")?;
+    let mut payload =
+        encode_message(message).with_context(|| format!("failed to encode {label}"))?;
     payload.push('\n');
     stream
         .write_all(payload.as_bytes())
-        .context("failed to write unlock request")?;
-    stream.flush().context("failed to flush unlock request")
+        .with_context(|| format!("failed to write {label}"))?;
+    stream
+        .flush()
+        .with_context(|| format!("failed to flush {label}"))
 }
 
 pub async fn force_stop_curtain(mut child: Child) -> Result<()> {
