@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow};
 use kwylock_common::ipc::{
-    DaemonControlResponse, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
+    DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
 use kwylock_common::{AppConfig, LoadedConfig};
 use nix::unistd::{Uid, User};
@@ -61,6 +61,20 @@ pub(super) fn build_daemon_status(
             && curtain_running
             && control_socket_path.is_some(),
         config_path: config_path.map(|path| path.display().to_string()),
+    }
+}
+
+pub(super) fn build_daemon_health() -> DaemonHealth {
+    DaemonHealth {
+        component: crate::component_name().to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        build_profile: if cfg!(debug_assertions) {
+            "debug".to_string()
+        } else {
+            "release".to_string()
+        },
+        target_os: std::env::consts::OS.to_string(),
+        target_arch: std::env::consts::ARCH.to_string(),
     }
 }
 

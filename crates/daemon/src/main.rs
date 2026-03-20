@@ -9,7 +9,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    if !options.status && !options.reload_config {
+    if !options.status && !options.health && !options.reload_config {
         tracing::info!(
             component = kwylock_daemon::component_name(),
             "starting daemon"

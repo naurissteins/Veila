@@ -23,6 +23,7 @@ pub struct DaemonOptions {
     pub session_id: Option<String>,
     pub lock_now: bool,
     pub status: bool,
+    pub health: bool,
     pub reload_config: bool,
 }
 
@@ -51,6 +52,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if arg == "--health" {
+                options.health = true;
+                continue;
+            }
+
             if arg == "--reload-config" {
                 options.reload_config = true;
                 continue;
@@ -67,9 +73,10 @@ impl DaemonOptions {
 pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     let control_mode_count = usize::from(options.lock_now)
         + usize::from(options.status)
+        + usize::from(options.health)
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
-        bail!("use only one of --lock-now, --status, or --reload-config at a time");
+        bail!("use only one of --lock-now, --status, --health, or --reload-config at a time");
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
@@ -100,6 +107,33 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
             "config={}",
             status.config_path.as_deref().unwrap_or("defaults")
         );
+        return Ok(());
+    }
+
+    if options.health {
+        if !daemon_socket_path.exists() {
+            bail!(
+                "kwylockd is not running; daemon socket does not exist at {}",
+                daemon_socket_path.display()
+            );
+        }
+
+        let response = ipc::send_daemon_control_message(
+            &daemon_socket_path,
+            &kwylock_common::ipc::DaemonControlMessage::Health,
+        )
+        .await?;
+
+        let kwylock_common::ipc::DaemonControlResponse::Health(health) = response else {
+            bail!("daemon returned an unexpected response to --health");
+        };
+
+        println!("health=ok");
+        println!("component={}", health.component);
+        println!("version={}", health.version);
+        println!("build_profile={}", health.build_profile);
+        println!("target_os={}", health.target_os);
+        println!("target_arch={}", health.target_arch);
         return Ok(());
     }
 
@@ -211,5 +245,13 @@ mod tests {
                 .expect("arguments should parse");
 
         assert!(options.reload_config);
+    }
+
+    #[test]
+    fn parses_health_argument() {
+        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--health".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.health);
     }
 }

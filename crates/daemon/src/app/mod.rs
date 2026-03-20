@@ -25,8 +25,10 @@ use tokio::{
     signal::unix::{SignalKind, signal},
 };
 
-use self::helpers::reload_config_response;
-use self::helpers::{activate_and_install, build_daemon_status, current_username};
+use self::helpers::{
+    activate_and_install, build_daemon_health, build_daemon_status, current_username,
+    reload_config_response,
+};
 use self::runtime::{
     ActiveRuntime, AuthResult, accept_auth_connection, accept_control_connection, deactivate_lock,
     handle_client_message, receive_auth_result, reset_runtime, update_locked_hint,
@@ -295,6 +297,9 @@ pub async fn run(
                                 control_socket_path.as_deref(),
                                 loaded_config.path.as_deref(),
                             ))
+                        }
+                        DaemonControlMessage::Health => {
+                            DaemonControlResponse::Health(build_daemon_health())
                         }
                         DaemonControlMessage::ReloadConfig => reload_config_response(
                             &options,
