@@ -1,6 +1,6 @@
 use crate::{
     ClearColor, SoftwareBuffer,
-    shape::{BoxStyle, Rect, draw_box},
+    shape::{Rect, fill_rect},
 };
 
 /// Normalized progress value for a progress bar.
@@ -51,18 +51,17 @@ pub fn draw_progress_bar(
     progress: Progress,
     style: ProgressBarStyle,
 ) {
-    let radius = (rect.height / 2).max(0);
-    draw_box(buffer, rect, BoxStyle::new(style.track).with_radius(radius));
+    fill_rect(buffer, rect, style.track);
 
     let filled_width = progress.filled_width(rect.width);
     if filled_width == 0 {
         return;
     }
 
-    draw_box(
+    fill_rect(
         buffer,
         Rect::new(rect.x, rect.y, filled_width, rect.height),
-        BoxStyle::new(style.fill).with_radius(radius),
+        style.fill,
     );
 }
 

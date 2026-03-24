@@ -1,6 +1,6 @@
 use crate::{
     ClearColor, SoftwareBuffer,
-    shape::{BoxStyle, Rect, draw_box},
+    shape::{Rect, fill_rect},
 };
 
 /// Styling for a masked input row.
@@ -62,16 +62,16 @@ pub fn draw_masked_input(
 
     for index in 0..bullet_count {
         let x = start_x + index as i32 * spacing;
-        draw_box(
+        fill_rect(
             buffer,
             Rect::new(x, bullet_y, bullet_size, bullet_size),
-            BoxStyle::new(style.bullet).with_radius(bullet_size / 2),
+            style.bullet,
         );
     }
 
     if focused {
         let cursor_x = start_x + bullet_count as i32 * spacing + 4;
-        draw_box(
+        fill_rect(
             buffer,
             Rect::new(
                 cursor_x,
@@ -79,7 +79,7 @@ pub fn draw_masked_input(
                 style.caret_width.max(1),
                 (rect.height - style.caret_vertical_inset * 2).max(1),
             ),
-            BoxStyle::new(style.caret).with_radius(style.caret_width.max(1) / 2),
+            style.caret,
         );
     }
 }
@@ -90,7 +90,7 @@ fn draw_empty_input(
     focused: bool,
     style: MaskedInputStyle,
 ) {
-    draw_box(
+    fill_rect(
         buffer,
         Rect::new(
             rect.x + style.horizontal_padding,
@@ -98,11 +98,11 @@ fn draw_empty_input(
             (rect.width / 3).max(style.placeholder_height),
             style.placeholder_height,
         ),
-        BoxStyle::new(style.placeholder).with_radius(style.placeholder_height / 2),
+        style.placeholder,
     );
 
     if focused {
-        draw_box(
+        fill_rect(
             buffer,
             Rect::new(
                 rect.x + style.horizontal_padding,
@@ -110,7 +110,7 @@ fn draw_empty_input(
                 style.caret_width.max(1),
                 (rect.height - (style.caret_vertical_inset + 1) * 2).max(1),
             ),
-            BoxStyle::new(style.caret).with_radius(style.caret_width.max(1) / 2),
+            style.caret,
         );
     }
 }

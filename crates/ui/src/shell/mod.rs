@@ -1,5 +1,4 @@
 mod render;
-mod style;
 
 use std::time::{Duration, Instant};
 
