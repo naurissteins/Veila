@@ -19,7 +19,10 @@ use smithay_client_toolkit::{
     shm::Shm,
 };
 use veila_common::AppConfig;
-use veila_renderer::{ClearColor, background::BackgroundAsset};
+use veila_renderer::{
+    ClearColor,
+    background::{BackgroundAsset, BackgroundTreatment},
+};
 use veila_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 
 use crate::{
@@ -58,6 +61,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_events: Receiver<BackgroundEvent>,
     control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
+    pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
     pub(crate) ui_shell: ShellState,
     pub(crate) lock_wait_timeout: Duration,
@@ -89,9 +93,18 @@ impl CurtainApp {
         let config = loaded_config.config;
         let theme = ShellTheme::from_config(&config);
         let background_color = theme.background;
-        let background_asset = BackgroundAsset::load(None, background_color)
-            .context("failed to prepare fallback background")?;
-        let ui_shell = ShellState::new(theme, config.lock.user_hint.clone());
+        let background_asset = BackgroundAsset::load(
+            None,
+            background_color,
+            background_treatment(&config.background),
+        )
+        .context("failed to prepare fallback background")?;
+        let background_treatment = background_treatment(&config.background);
+        let ui_shell = ShellState::new(
+            theme,
+            config.lock.user_hint.clone(),
+            config.lock.avatar_path.clone(),
+        );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 
         tracing::info!(
@@ -137,6 +150,7 @@ impl CurtainApp {
             background_events,
             control_events,
             background_asset,
+            background_treatment,
             background_color,
             ui_shell,
             lock_wait_timeout,
@@ -367,5 +381,18 @@ impl CurtainApp {
         self.lock_surfaces
             .iter()
             .any(|entry| entry.surface.wl_surface() == surface)
+    }
+}
+
+pub(crate) fn background_treatment(
+    config: &veila_common::config::BackgroundConfig,
+) -> BackgroundTreatment {
+    BackgroundTreatment {
+        blur_radius: config.blur_radius,
+        dim_strength: config.dim_strength,
+        tint: config
+            .tint
+            .map(|color| ClearColor::opaque(color.0, color.1, color.2)),
+        tint_opacity: config.tint_opacity,
     }
 }

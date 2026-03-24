@@ -7,7 +7,7 @@ pub mod draw;
 pub mod shm;
 
 // Re-export draw submodules at the crate root for ergonomic access.
-pub use draw::{masked, panel, progress, shape, symbol, text};
+pub use draw::{avatar, masked, panel, progress, shape, symbol, text};
 
 use thiserror::Error;
 
@@ -57,9 +57,31 @@ impl ClearColor {
         }
     }
 
-    pub const fn to_argb8888_bytes(self) -> [u8; 4] {
-        u32::from_be_bytes([self.alpha, self.red, self.green, self.blue]).to_le_bytes()
+    /// Creates an RGBA color.
+    pub const fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+        Self {
+            red,
+            green,
+            blue,
+            alpha,
+        }
     }
+
+    /// Returns the same color with a different alpha.
+    pub const fn with_alpha(self, alpha: u8) -> Self {
+        Self::rgba(self.red, self.green, self.blue, alpha)
+    }
+
+    pub const fn to_argb8888_bytes(self) -> [u8; 4] {
+        let red = premultiply_channel(self.red, self.alpha);
+        let green = premultiply_channel(self.green, self.alpha);
+        let blue = premultiply_channel(self.blue, self.alpha);
+        u32::from_be_bytes([self.alpha, red, green, blue]).to_le_bytes()
+    }
+}
+
+const fn premultiply_channel(channel: u8, alpha: u8) -> u8 {
+    ((channel as u16 * alpha as u16 + 127) / 255) as u8
 }
 
 /// Drop-shadow parameters for bitmap primitives.

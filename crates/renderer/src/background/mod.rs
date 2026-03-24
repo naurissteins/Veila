@@ -21,9 +21,18 @@ pub struct RenderCacheSummary {
     pub warmed_sizes: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BackgroundTreatment {
+    pub blur_radius: u8,
+    pub dim_strength: u8,
+    pub tint: Option<ClearColor>,
+    pub tint_opacity: u8,
+}
+
 #[derive(Debug, Clone)]
 pub struct BackgroundAsset {
     kind: BackgroundKind,
+    treatment: BackgroundTreatment,
 }
 
 #[derive(Debug, Clone)]
@@ -33,22 +42,30 @@ enum BackgroundKind {
 }
 
 impl BackgroundAsset {
-    pub fn load(path: Option<&Path>, fallback: ClearColor) -> Result<Self> {
+    pub fn load(
+        path: Option<&Path>,
+        fallback: ClearColor,
+        treatment: BackgroundTreatment,
+    ) -> Result<Self> {
         match path {
             Some(path) => Ok(Self {
                 kind: BackgroundKind::Image(Arc::new(load_rgba_image(path)?)),
+                treatment,
             }),
             None => Ok(Self {
                 kind: BackgroundKind::Solid(fallback),
+                treatment,
             }),
         }
     }
 
     pub fn render(&self, size: FrameSize) -> Result<SoftwareBuffer> {
-        match &self.kind {
+        let mut buffer = match &self.kind {
             BackgroundKind::Solid(color) => SoftwareBuffer::solid(size, *color),
-            BackgroundKind::Image(image) => render_image(image, size),
-        }
+            BackgroundKind::Image(image) => render_image(image, size, self.treatment),
+        }?;
+        apply_treatment(&mut buffer, self.treatment);
+        Ok(buffer)
     }
 }
 
@@ -62,17 +79,27 @@ pub fn prewarm_source(path: &Path) -> Result<SourceCacheStatus> {
     Ok(SourceCacheStatus::Warmed)
 }
 
-pub fn load_cached_render(path: &Path, size: FrameSize) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer(path, size)
+pub fn load_cached_render(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+) -> Result<Option<SoftwareBuffer>> {
+    load_cached_buffer(path, size, treatment)
 }
 
-pub fn store_cached_render(path: &Path, size: FrameSize, buffer: &SoftwareBuffer) -> Result<()> {
-    store_cached_buffer(path, size, buffer)
+pub fn store_cached_render(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+    buffer: &SoftwareBuffer,
+) -> Result<()> {
+    store_cached_buffer(path, size, treatment, buffer)
 }
 
 pub fn prewarm_rendered(
     path: &Path,
     fallback: ClearColor,
+    treatment: BackgroundTreatment,
     sizes: &[FrameSize],
 ) -> Result<RenderCacheSummary> {
     let unique_sizes = unique_sizes(sizes);
@@ -80,7 +107,7 @@ pub fn prewarm_rendered(
     let mut missing_sizes = Vec::new();
 
     for size in unique_sizes {
-        if load_cached_render(path, size)?.is_some() {
+        if load_cached_render(path, size, treatment)?.is_some() {
             cache_hits += 1;
         } else {
             missing_sizes.push(size);
@@ -94,10 +121,10 @@ pub fn prewarm_rendered(
         });
     }
 
-    let asset = BackgroundAsset::load(Some(path), fallback)?;
+    let asset = BackgroundAsset::load(Some(path), fallback, treatment)?;
     for size in &missing_sizes {
         let buffer = asset.render(*size)?;
-        store_cached_render(path, *size, &buffer)?;
+        store_cached_render(path, *size, treatment, &buffer)?;
     }
 
     Ok(RenderCacheSummary {
@@ -128,7 +155,11 @@ fn unique_sizes(sizes: &[FrameSize]) -> Vec<FrameSize> {
     unique
 }
 
-fn render_image(image: &RgbaImage, size: FrameSize) -> Result<SoftwareBuffer> {
+fn render_image(
+    image: &RgbaImage,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+) -> Result<SoftwareBuffer> {
     let (scaled_width, scaled_height) = cover_dimensions(
         image.width(),
         image.height(),
@@ -140,6 +171,11 @@ fn render_image(image: &RgbaImage, size: FrameSize) -> Result<SoftwareBuffer> {
     let crop_y = (scaled_height.saturating_sub(size.height)) / 2;
     let cropped =
         image::imageops::crop_imm(&resized, crop_x, crop_y, size.width, size.height).to_image();
+    let cropped = if treatment.blur_radius > 0 {
+        image::imageops::blur(&cropped, f32::from(treatment.blur_radius.min(12)))
+    } else {
+        cropped
+    };
     let mut buffer = SoftwareBuffer::new(size)?;
 
     for (target, pixel) in buffer
@@ -151,6 +187,42 @@ fn render_image(image: &RgbaImage, size: FrameSize) -> Result<SoftwareBuffer> {
     }
 
     Ok(buffer)
+}
+
+fn apply_treatment(buffer: &mut SoftwareBuffer, treatment: BackgroundTreatment) {
+    if treatment.dim_strength > 0 {
+        let multiplier = 255u16.saturating_sub(alpha_from_percent(treatment.dim_strength));
+        for pixel in buffer.pixels_mut().chunks_exact_mut(4) {
+            pixel[0] = ((u16::from(pixel[0]) * multiplier + 127) / 255) as u8;
+            pixel[1] = ((u16::from(pixel[1]) * multiplier + 127) / 255) as u8;
+            pixel[2] = ((u16::from(pixel[2]) * multiplier + 127) / 255) as u8;
+        }
+    }
+
+    if let Some(tint) = treatment.tint {
+        let tint_alpha = alpha_from_percent(treatment.tint_opacity);
+        if tint_alpha > 0 {
+            let tint = tint.with_alpha(tint_alpha as u8).to_argb8888_bytes();
+            let tint_alpha = u16::from(tint[3]);
+            let inverse_alpha = u16::from(u8::MAX) - tint_alpha;
+            for pixel in buffer.pixels_mut().chunks_exact_mut(4) {
+                pixel[0] = blend_component(pixel[0], tint[0], inverse_alpha);
+                pixel[1] = blend_component(pixel[1], tint[1], inverse_alpha);
+                pixel[2] = blend_component(pixel[2], tint[2], inverse_alpha);
+                pixel[3] = blend_component(pixel[3], tint[3], inverse_alpha);
+            }
+        }
+    }
+}
+
+fn alpha_from_percent(percent: u8) -> u16 {
+    let clamped = percent.min(100);
+    (u16::from(clamped) * 255 + 50) / 100
+}
+
+fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
+    blended.min(u16::from(u8::MAX)) as u8
 }
 
 fn cover_dimensions(
@@ -177,14 +249,19 @@ mod tests {
     use image::{Rgba, RgbaImage};
 
     use super::{
-        BackgroundAsset, BackgroundKind, RenderCacheSummary, SourceCacheStatus, cover_dimensions,
-        unique_sizes,
+        BackgroundAsset, BackgroundKind, BackgroundTreatment, RenderCacheSummary,
+        SourceCacheStatus, cover_dimensions, unique_sizes,
     };
     use crate::{ClearColor, FrameSize};
 
     #[test]
     fn renders_solid_backgrounds() {
-        let asset = BackgroundAsset::load(None, ClearColor::opaque(12, 16, 24)).expect("asset");
+        let asset = BackgroundAsset::load(
+            None,
+            ClearColor::opaque(12, 16, 24),
+            BackgroundTreatment::default(),
+        )
+        .expect("asset");
         let buffer = asset.render(FrameSize::new(2, 1)).expect("buffer");
 
         assert_eq!(buffer.pixels(), &[24, 16, 12, 255, 24, 16, 12, 255]);
@@ -196,6 +273,7 @@ mod tests {
         image.put_pixel(0, 0, Rgba([10, 20, 30, 255]));
         let asset = BackgroundAsset {
             kind: BackgroundKind::Image(Arc::new(image)),
+            treatment: BackgroundTreatment::default(),
         };
 
         let buffer = asset.render(FrameSize::new(2, 1)).expect("buffer");
@@ -238,5 +316,23 @@ mod tests {
                 warmed_sizes: 2,
             }
         );
+    }
+
+    #[test]
+    fn applies_dim_and_tint_treatment() {
+        let asset = BackgroundAsset::load(
+            None,
+            ClearColor::opaque(100, 120, 140),
+            BackgroundTreatment {
+                blur_radius: 0,
+                dim_strength: 20,
+                tint: Some(ClearColor::opaque(10, 20, 40)),
+                tint_opacity: 10,
+            },
+        )
+        .expect("asset");
+        let buffer = asset.render(FrameSize::new(1, 1)).expect("buffer");
+
+        assert_ne!(buffer.pixels(), &[140, 120, 100, 255]);
     }
 }

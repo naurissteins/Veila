@@ -6,7 +6,10 @@ use std::{
 use veila_common::AppConfig;
 use veila_renderer::{
     ClearColor,
-    background::{RenderCacheSummary, SourceCacheStatus, prewarm_rendered, prewarm_source},
+    background::{
+        BackgroundTreatment, RenderCacheSummary, SourceCacheStatus, prewarm_rendered,
+        prewarm_source,
+    },
 };
 
 use crate::app::output_probe;
@@ -16,11 +19,12 @@ pub(super) fn spawn_background_prewarm(config: &AppConfig) {
         return;
     };
     let fallback = to_clear_color(config.background.color);
+    let treatment = background_treatment(&config.background);
 
     tokio::spawn(async move {
         let started_at = Instant::now();
         let join_result =
-            tokio::task::spawn_blocking(move || prewarm_wallpaper(path, fallback)).await;
+            tokio::task::spawn_blocking(move || prewarm_wallpaper(path, fallback, treatment)).await;
 
         match join_result {
             Ok(Ok(report)) => {
@@ -62,6 +66,7 @@ pub(super) fn spawn_background_prewarm(config: &AppConfig) {
 fn prewarm_wallpaper(
     path: PathBuf,
     fallback: ClearColor,
+    treatment: BackgroundTreatment,
 ) -> Result<PrewarmReport, (PathBuf, anyhow::Error)> {
     let source_started_at = Instant::now();
     match prewarm_source(&path) {
@@ -70,7 +75,7 @@ fn prewarm_wallpaper(
                 .elapsed()
                 .as_millis()
                 .min(u128::from(u64::MAX)) as u64;
-            let rendered = prewarm_rendered_backgrounds(&path, fallback);
+            let rendered = prewarm_rendered_backgrounds(&path, fallback, treatment);
             Ok(PrewarmReport {
                 path,
                 source_status: status,
@@ -85,6 +90,7 @@ fn prewarm_wallpaper(
 fn prewarm_rendered_backgrounds(
     path: &Path,
     fallback: ClearColor,
+    treatment: BackgroundTreatment,
 ) -> Option<RenderedPrewarmReport> {
     let sizes = output_probe::current_output_sizes().ok()?;
     if sizes.is_empty() {
@@ -92,7 +98,7 @@ fn prewarm_rendered_backgrounds(
     }
 
     let started_at = Instant::now();
-    let summary = prewarm_rendered(path, fallback, &sizes).ok()?;
+    let summary = prewarm_rendered(path, fallback, treatment, &sizes).ok()?;
     Some(RenderedPrewarmReport {
         elapsed_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
         probed_outputs: sizes.len(),
@@ -102,6 +108,17 @@ fn prewarm_rendered_backgrounds(
 
 fn to_clear_color(color: veila_common::RgbColor) -> ClearColor {
     ClearColor::opaque(color.0, color.1, color.2)
+}
+
+fn background_treatment(config: &veila_common::config::BackgroundConfig) -> BackgroundTreatment {
+    BackgroundTreatment {
+        blur_radius: config.blur_radius,
+        dim_strength: config.dim_strength,
+        tint: config
+            .tint
+            .map(|color| ClearColor::opaque(color.0, color.1, color.2)),
+        tint_opacity: config.tint_opacity,
+    }
 }
 
 struct PrewarmReport {

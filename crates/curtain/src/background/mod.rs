@@ -68,6 +68,7 @@ impl CurtainApp {
         spawn_loader(
             path,
             self.background_color,
+            self.background_treatment,
             sizes,
             self.background_sender.clone(),
         );

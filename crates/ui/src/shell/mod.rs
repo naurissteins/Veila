@@ -1,9 +1,16 @@
+mod clock;
 mod render;
 mod theme;
 
 pub use theme::ShellTheme;
 
-use std::time::{Duration, Instant};
+use std::{
+    path::{Path, PathBuf},
+    time::{Duration, Instant},
+};
+
+use clock::ClockState;
+use veila_renderer::avatar::AvatarAsset;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {
@@ -29,31 +36,35 @@ enum ShellStatus {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ShellState {
     secret: String,
     focused: bool,
     status: ShellStatus,
+    clock: ClockState,
     theme: ShellTheme,
     hint_text: String,
+    avatar: AvatarAsset,
 }
 
 impl Default for ShellState {
     fn default() -> Self {
-        Self::new(ShellTheme::default(), None)
+        Self::new(ShellTheme::default(), None, None)
     }
 }
 
 impl ShellState {
-    pub fn new(theme: ShellTheme, user_hint: Option<String>) -> Self {
+    pub fn new(theme: ShellTheme, user_hint: Option<String>, avatar_path: Option<PathBuf>) -> Self {
         Self {
             secret: String::new(),
             focused: false,
             status: ShellStatus::Idle,
+            clock: ClockState::current(),
             theme,
             hint_text: user_hint
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
+            avatar: load_avatar(avatar_path),
         }
     }
 
@@ -61,11 +72,17 @@ impl ShellState {
         self.focused = focused;
     }
 
-    pub fn apply_theme(&mut self, theme: ShellTheme, user_hint: Option<String>) {
+    pub fn apply_theme(
+        &mut self,
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        avatar_path: Option<PathBuf>,
+    ) {
         self.theme = theme;
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
+        self.avatar = load_avatar(avatar_path);
     }
 
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
@@ -115,17 +132,18 @@ impl ShellState {
     }
 
     pub fn advance_animated_state(&mut self) -> bool {
+        let clock_changed = self.clock.refresh();
         let ShellStatus::Rejected {
             retry_until,
             displayed_retry_seconds,
         } = &mut self.status
         else {
-            return false;
+            return clock_changed;
         };
 
         let next_display = retry_until.and_then(current_retry_seconds);
         if *displayed_retry_seconds == next_display {
-            return false;
+            return clock_changed;
         }
 
         *displayed_retry_seconds = next_display;
@@ -135,6 +153,41 @@ impl ShellState {
 
         true
     }
+}
+
+fn load_avatar(avatar_path: Option<PathBuf>) -> AvatarAsset {
+    for path in avatar_candidates(avatar_path) {
+        match AvatarAsset::load(&path) {
+            Ok(avatar) => return avatar,
+            Err(error) => {
+                tracing::warn!(path = %path.display(), "failed to load avatar image: {error}")
+            }
+        }
+    }
+
+    AvatarAsset::placeholder()
+}
+
+fn avatar_candidates(explicit: Option<PathBuf>) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Some(path) = explicit {
+        candidates.push(path);
+    }
+
+    if let Some(face_path) = default_face_path()
+        && !candidates.iter().any(|path| path == &face_path)
+    {
+        candidates.push(face_path);
+    }
+
+    candidates
+}
+
+fn default_face_path() -> Option<PathBuf> {
+    let home = std::env::var_os("HOME")?;
+    let path = Path::new(&home).join(".face");
+    path.is_file().then_some(path)
 }
 
 fn current_retry_seconds(retry_until: Instant) -> Option<u64> {

@@ -70,6 +70,14 @@ pub struct BackgroundConfig {
     pub path: Option<PathBuf>,
     #[serde(default = "default_background_color")]
     pub color: RgbColor,
+    #[serde(default = "default_background_blur_radius")]
+    pub blur_radius: u8,
+    #[serde(default = "default_background_dim_strength")]
+    pub dim_strength: u8,
+    #[serde(default)]
+    pub tint: Option<RgbColor>,
+    #[serde(default = "default_background_tint_opacity")]
+    pub tint_opacity: u8,
 }
 
 impl Default for BackgroundConfig {
@@ -77,6 +85,10 @@ impl Default for BackgroundConfig {
         Self {
             path: None,
             color: default_background_color(),
+            blur_radius: default_background_blur_radius(),
+            dim_strength: default_background_dim_strength(),
+            tint: None,
+            tint_opacity: default_background_tint_opacity(),
         }
     }
 }
@@ -91,6 +103,8 @@ pub struct LockConfig {
     pub auth_backoff_max_seconds: u64,
     #[serde(default)]
     pub user_hint: Option<String>,
+    #[serde(default)]
+    pub avatar_path: Option<PathBuf>,
 }
 
 impl Default for LockConfig {
@@ -100,6 +114,7 @@ impl Default for LockConfig {
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
             user_hint: None,
+            avatar_path: None,
         }
     }
 }
@@ -161,6 +176,18 @@ fn default_path() -> Option<PathBuf> {
 
 const fn default_background_color() -> RgbColor {
     RgbColor::new(8, 12, 20)
+}
+
+const fn default_background_blur_radius() -> u8 {
+    0
+}
+
+const fn default_background_dim_strength() -> u8 {
+    34
+}
+
+const fn default_background_tint_opacity() -> u8 {
+    0
 }
 
 const fn default_lock_acquire_timeout_seconds() -> u64 {
@@ -229,8 +256,13 @@ mod tests {
 
         assert_eq!(config.lock.acquire_timeout_seconds, 5);
         assert!(config.lock.user_hint.is_none());
+        assert!(config.lock.avatar_path.is_none());
         assert_eq!(config.background.color, RgbColor(12, 16, 24));
         assert!(config.background.path.is_none());
+        assert_eq!(config.background.blur_radius, 0);
+        assert_eq!(config.background.dim_strength, 34);
+        assert!(config.background.tint.is_none());
+        assert_eq!(config.background.tint_opacity, 0);
     }
 
     #[test]
@@ -241,10 +273,17 @@ mod tests {
         fs::write(
             &path,
             r#"
+                [background]
+                blur_radius = 6
+                dim_strength = 40
+                tint = [8, 10, 14]
+                tint_opacity = 12
+
                 [lock]
                 acquire_timeout_seconds = 9
                 auth_backoff_base_ms = 250
                 user_hint = "Type your password"
+                avatar_path = "/tmp/avatar.png"
 
                 [visuals]
                 focus = [10, 120, 200]
@@ -258,9 +297,17 @@ mod tests {
         assert_eq!(loaded.config.lock.acquire_timeout_seconds, 9);
         assert_eq!(loaded.config.lock.auth_backoff_base_ms, 250);
         assert_eq!(
+            loaded.config.lock.avatar_path.as_deref(),
+            Some(std::path::Path::new("/tmp/avatar.png"))
+        );
+        assert_eq!(
             loaded.config.lock.user_hint.as_deref(),
             Some("Type your password")
         );
+        assert_eq!(loaded.config.background.blur_radius, 6);
+        assert_eq!(loaded.config.background.dim_strength, 40);
+        assert_eq!(loaded.config.background.tint, Some(RgbColor(8, 10, 14)));
+        assert_eq!(loaded.config.background.tint_opacity, 12);
         assert_eq!(loaded.config.visuals.focus, RgbColor(10, 120, 200));
 
         fs::remove_file(path).ok();

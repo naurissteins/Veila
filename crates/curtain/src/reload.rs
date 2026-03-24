@@ -4,7 +4,7 @@ use veila_common::AppConfig;
 use veila_renderer::background::BackgroundAsset;
 use veila_ui::ShellTheme;
 
-use crate::state::CurtainApp;
+use crate::state::{CurtainApp, background_treatment};
 
 impl CurtainApp {
     pub(crate) fn reload_config(&mut self, queue_handle: &QueueHandle<Self>) {
@@ -17,8 +17,12 @@ impl CurtainApp {
         };
         let config = loaded_config.config;
         let theme = ShellTheme::from_config(&config);
-        let background_asset = match BackgroundAsset::load(None, theme.background)
-            .context("failed to prepare fallback background")
+        let background_asset = match BackgroundAsset::load(
+            None,
+            theme.background,
+            background_treatment(&config.background),
+        )
+        .context("failed to prepare fallback background")
         {
             Ok(asset) => asset,
             Err(error) => {
@@ -30,11 +34,15 @@ impl CurtainApp {
 
         self.background_color = theme.background;
         self.background_asset = background_asset;
+        self.background_treatment = background_treatment(&config.background);
         self.background_path = background_path.clone();
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
-        self.ui_shell
-            .apply_theme(theme, config.lock.user_hint.clone());
+        self.ui_shell.apply_theme(
+            theme,
+            config.lock.user_hint.clone(),
+            config.lock.avatar_path.clone(),
+        );
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {
             surface.background = None;

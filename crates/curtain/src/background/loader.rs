@@ -7,7 +7,7 @@ use std::{
 
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
-    background::{BackgroundAsset, load_cached_render, store_cached_render},
+    background::{BackgroundAsset, BackgroundTreatment, load_cached_render, store_cached_render},
 };
 
 #[derive(Debug, Clone)]
@@ -30,13 +30,14 @@ pub(crate) enum BackgroundEvent {
 pub(crate) fn spawn_loader(
     path: PathBuf,
     fallback: ClearColor,
+    treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
     sender: Sender<BackgroundEvent>,
 ) {
     thread::spawn(move || {
         let unique_sizes = unique_sizes(sizes);
         let cached_started_at = Instant::now();
-        let cached_buffers = load_cached_buffers(&path, &unique_sizes);
+        let cached_buffers = load_cached_buffers(&path, treatment, &unique_sizes);
         let cached_sizes: Vec<_> = cached_buffers.iter().map(|(size, _)| *size).collect();
 
         if !cached_buffers.is_empty() {
@@ -48,7 +49,7 @@ pub(crate) fn spawn_loader(
         }
 
         let render_started_at = Instant::now();
-        match load_buffers(&path, fallback, unique_sizes, &cached_sizes) {
+        match load_buffers(&path, fallback, treatment, unique_sizes, &cached_sizes) {
             Ok((asset, rendered_buffers)) => {
                 let asset_elapsed_ms = render_started_at.elapsed().as_millis();
                 let _ = sender.send(BackgroundEvent::AssetReady {
@@ -64,7 +65,7 @@ pub(crate) fn spawn_loader(
                     elapsed_ms: asset_elapsed_ms,
                     cache_hit: false,
                 });
-                store_cached_buffers(&path, &rendered_buffers);
+                store_cached_buffers(&path, treatment, &rendered_buffers);
             }
             Err(error) => {
                 let _ = sender.send(BackgroundEvent::Failed {
@@ -79,10 +80,11 @@ pub(crate) fn spawn_loader(
 fn load_buffers(
     path: &Path,
     fallback: ClearColor,
+    treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
     cached_sizes: &[FrameSize],
 ) -> veila_renderer::Result<(BackgroundAsset, Vec<(FrameSize, SoftwareBuffer)>)> {
-    let asset = BackgroundAsset::load(Some(path), fallback)?;
+    let asset = BackgroundAsset::load(Some(path), fallback, treatment)?;
     let mut buffers = Vec::with_capacity(sizes.len());
 
     for size in sizes {
@@ -95,11 +97,15 @@ fn load_buffers(
     Ok((asset, buffers))
 }
 
-fn load_cached_buffers(path: &Path, sizes: &[FrameSize]) -> Vec<(FrameSize, SoftwareBuffer)> {
+fn load_cached_buffers(
+    path: &Path,
+    treatment: BackgroundTreatment,
+    sizes: &[FrameSize],
+) -> Vec<(FrameSize, SoftwareBuffer)> {
     let mut buffers = Vec::with_capacity(sizes.len());
 
     for size in sizes {
-        match load_cached_render(path, *size) {
+        match load_cached_render(path, *size, treatment) {
             Ok(Some(buffer)) => buffers.push((*size, buffer)),
             Ok(None) => {}
             Err(error) => {
@@ -111,9 +117,13 @@ fn load_cached_buffers(path: &Path, sizes: &[FrameSize]) -> Vec<(FrameSize, Soft
     buffers
 }
 
-fn store_cached_buffers(path: &Path, buffers: &[(FrameSize, SoftwareBuffer)]) {
+fn store_cached_buffers(
+    path: &Path,
+    treatment: BackgroundTreatment,
+    buffers: &[(FrameSize, SoftwareBuffer)],
+) {
     for (size, buffer) in buffers {
-        if let Err(error) = store_cached_render(path, *size, buffer) {
+        if let Err(error) = store_cached_render(path, *size, treatment, buffer) {
             tracing::debug!("failed to store cached wallpaper buffer: {error:#}");
         }
     }

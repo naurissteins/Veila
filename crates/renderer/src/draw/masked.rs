@@ -1,6 +1,6 @@
 use crate::{
     ClearColor, SoftwareBuffer,
-    shape::{Rect, fill_rect},
+    shape::{CircleStyle, PillStyle, Rect, draw_circle, draw_pill, fill_rect},
 };
 
 /// Styling for a masked input row.
@@ -24,12 +24,12 @@ impl MaskedInputStyle {
             bullet,
             placeholder,
             caret,
-            bullet_size: 10,
-            spacing: 16,
-            caret_width: 3,
-            horizontal_padding: 20,
-            caret_vertical_inset: 8,
-            placeholder_height: 4,
+            bullet_size: 8,
+            spacing: 18,
+            caret_width: 2,
+            horizontal_padding: 24,
+            caret_vertical_inset: 12,
+            placeholder_height: 6,
         }
     }
 }
@@ -61,11 +61,13 @@ pub fn draw_masked_input(
     let bullet_y = rect.y + (rect.height - bullet_size) / 2;
 
     for index in 0..bullet_count {
-        let x = start_x + index as i32 * spacing;
-        fill_rect(
+        let center_x = start_x + index as i32 * spacing + bullet_size / 2;
+        draw_circle(
             buffer,
-            Rect::new(x, bullet_y, bullet_size, bullet_size),
-            style.bullet,
+            center_x,
+            bullet_y + bullet_size / 2,
+            bullet_size / 2,
+            CircleStyle::new(style.bullet),
         );
     }
 
@@ -90,15 +92,15 @@ fn draw_empty_input(
     focused: bool,
     style: MaskedInputStyle,
 ) {
-    fill_rect(
+    draw_pill(
         buffer,
         Rect::new(
             rect.x + style.horizontal_padding,
             rect.y + (rect.height / 2) - (style.placeholder_height / 2),
-            (rect.width / 3).max(style.placeholder_height),
+            (rect.width / 3).max(style.placeholder_height * 6),
             style.placeholder_height,
         ),
-        style.placeholder,
+        PillStyle::new(style.placeholder),
     );
 
     if focused {

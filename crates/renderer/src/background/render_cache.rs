@@ -7,10 +7,16 @@ use std::{
 
 use crate::{FrameSize, RendererError, Result, SoftwareBuffer};
 
+use super::BackgroundTreatment;
+
 const CACHE_MAGIC: &[u8; 8] = b"KWYBG001";
 
-pub(crate) fn load_cached_buffer(path: &Path, size: FrameSize) -> Result<Option<SoftwareBuffer>> {
-    let cache_path = cache_path(path, size, None)?;
+pub(crate) fn load_cached_buffer(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+) -> Result<Option<SoftwareBuffer>> {
+    let cache_path = cache_path(path, size, treatment, None)?;
     let Ok(mut file) = fs::File::open(&cache_path) else {
         return Ok(None);
     };
@@ -45,9 +51,10 @@ pub(crate) fn load_cached_buffer(path: &Path, size: FrameSize) -> Result<Option<
 pub(crate) fn store_cached_buffer(
     path: &Path,
     size: FrameSize,
+    treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
-    let cache_path = cache_path(path, size, None)?;
+    let cache_path = cache_path(path, size, treatment, None)?;
     let Some(cache_dir) = cache_path.parent() else {
         return Err(RendererError::Image(image::ImageError::IoError(
             std::io::Error::other("cache path has no parent"),
@@ -89,7 +96,12 @@ pub(crate) fn store_cached_buffer(
     Ok(())
 }
 
-fn cache_path(path: &Path, size: FrameSize, cache_home: Option<&Path>) -> Result<PathBuf> {
+fn cache_path(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+    cache_home: Option<&Path>,
+) -> Result<PathBuf> {
     let metadata = fs::metadata(path)
         .map_err(image::ImageError::from)
         .map_err(RendererError::from)?;
@@ -106,6 +118,10 @@ fn cache_path(path: &Path, size: FrameSize, cache_home: Option<&Path>) -> Result
         modified,
         size.width,
         size.height
+    ));
+    let key = stable_hash(format!(
+        "{key}:{:?}:{:?}:{:?}:{:?}",
+        treatment.blur_radius, treatment.dim_strength, treatment.tint, treatment.tint_opacity
     ));
 
     Ok(cache_root(cache_home)?.join(format!("{key:016x}.argb")))
@@ -148,6 +164,8 @@ mod tests {
 
     use crate::{ClearColor, FrameSize, SoftwareBuffer};
 
+    use super::BackgroundTreatment;
+
     use super::cache_path;
 
     #[test]
@@ -164,9 +182,16 @@ mod tests {
 
         let size = FrameSize::new(2, 1);
         let buffer = SoftwareBuffer::solid(size, ClearColor::opaque(12, 16, 24)).expect("buffer");
-        store_cached_buffer_at(&wallpaper, size, &buffer, &root).expect("store");
+        store_cached_buffer_at(
+            &wallpaper,
+            size,
+            BackgroundTreatment::default(),
+            &buffer,
+            &root,
+        )
+        .expect("store");
 
-        let loaded = load_cached_buffer_at(&wallpaper, size, &root)
+        let loaded = load_cached_buffer_at(&wallpaper, size, BackgroundTreatment::default(), &root)
             .expect("load")
             .expect("cached buffer");
         assert_eq!(loaded, buffer);
@@ -177,9 +202,10 @@ mod tests {
     fn load_cached_buffer_at(
         wallpaper: &Path,
         size: FrameSize,
+        treatment: BackgroundTreatment,
         cache_home: &Path,
     ) -> crate::Result<Option<SoftwareBuffer>> {
-        let cache_path = cache_path(wallpaper, size, Some(cache_home))?;
+        let cache_path = cache_path(wallpaper, size, treatment, Some(cache_home))?;
         let Ok(mut file) = fs::File::open(&cache_path) else {
             return Ok(None);
         };
@@ -204,10 +230,11 @@ mod tests {
     fn store_cached_buffer_at(
         wallpaper: &Path,
         size: FrameSize,
+        treatment: BackgroundTreatment,
         buffer: &SoftwareBuffer,
         cache_home: &Path,
     ) -> crate::Result<()> {
-        let cache_path = cache_path(wallpaper, size, Some(cache_home))?;
+        let cache_path = cache_path(wallpaper, size, treatment, Some(cache_home))?;
         let cache_dir = cache_path.parent().expect("cache dir");
         fs::create_dir_all(cache_dir).expect("cache dir");
         let mut file = fs::File::create(cache_path).expect("cache file");

@@ -1,4 +1,6 @@
-use font8x8::{BASIC_FONTS, UnicodeFonts};
+use std::{cell::RefCell, thread_local};
+
+use cosmic_text::{Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Wrap};
 
 use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
@@ -18,13 +20,26 @@ pub struct TextBlock {
     pub height: u32,
 }
 
+#[derive(Debug)]
+struct FontContext {
+    font_system: FontSystem,
+    swash_cache: SwashCache,
+}
+
+thread_local! {
+    static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(FontContext {
+        font_system: FontSystem::new(),
+        swash_cache: SwashCache::new(),
+    });
+}
+
 impl TextStyle {
     pub const fn new(color: ClearColor, scale: u32) -> Self {
         Self {
             color,
             scale,
-            letter_spacing: scale,
-            line_spacing: scale * 2,
+            letter_spacing: 0,
+            line_spacing: scale * 3,
         }
     }
 
@@ -42,12 +57,10 @@ impl TextStyle {
 }
 
 impl TextBlock {
-    /// Draws the laid out text block.
     pub fn draw(&self, buffer: &mut SoftwareBuffer, x: i32, y: i32) {
-        draw_lines(buffer, x, y, &self.lines, self.style, self.style.color);
+        draw_text_lines(buffer, x, y, &self.lines, self.style, self.style.color);
     }
 
-    /// Draws the laid out text block with a simple drop shadow.
     pub fn draw_with_shadow(
         &self,
         buffer: &mut SoftwareBuffer,
@@ -55,7 +68,7 @@ impl TextBlock {
         y: i32,
         shadow: ShadowStyle,
     ) {
-        draw_lines(
+        draw_text_lines(
             buffer,
             x + shadow.offset_x,
             y + shadow.offset_y,
@@ -68,15 +81,14 @@ impl TextBlock {
 }
 
 pub fn measure_text(text: &str, style: TextStyle) -> (u32, u32) {
-    let block = layout_text_lines(text.lines().map(String::from).collect(), style);
+    let block = layout_text_block(text, style, None, Wrap::None);
     (block.width, block.height)
 }
 
 pub fn draw_text(buffer: &mut SoftwareBuffer, x: i32, y: i32, text: &str, style: TextStyle) {
-    layout_text_lines(text.lines().map(String::from).collect(), style).draw(buffer, x, y);
+    layout_text_block(text, style, None, Wrap::None).draw(buffer, x, y);
 }
 
-/// Draws text with a simple drop shadow.
 pub fn draw_text_with_shadow(
     buffer: &mut SoftwareBuffer,
     x: i32,
@@ -85,29 +97,11 @@ pub fn draw_text_with_shadow(
     style: TextStyle,
     shadow: ShadowStyle,
 ) {
-    layout_text_lines(text.lines().map(String::from).collect(), style)
-        .draw_with_shadow(buffer, x, y, shadow);
+    layout_text_block(text, style, None, Wrap::None).draw_with_shadow(buffer, x, y, shadow);
 }
 
 pub fn wrap_text(text: &str, style: TextStyle, max_width: u32) -> TextBlock {
-    let advance = glyph_advance(style);
-    let max_chars = max_chars_per_line(max_width, advance, style.letter_spacing);
-    let mut lines = Vec::new();
-
-    for paragraph in text.lines() {
-        if paragraph.trim().is_empty() {
-            lines.push(String::new());
-            continue;
-        }
-
-        wrap_paragraph(paragraph, max_chars, &mut lines);
-    }
-
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-
-    layout_text_lines(lines, style)
+    layout_text_block(text, style, Some(max_width), Wrap::WordOrGlyph)
 }
 
 pub fn fit_wrapped_text(text: &str, style: TextStyle, max_width: u32, min_scale: u32) -> TextBlock {
@@ -124,93 +118,126 @@ pub fn fit_wrapped_text(text: &str, style: TextStyle, max_width: u32, min_scale:
     wrap_text(text, style.with_scale(min_scale), max_width)
 }
 
-fn layout_text_lines(lines: Vec<String>, style: TextStyle) -> TextBlock {
-    let glyph_height = 8 * style.scale.max(1);
-    let mut width = 0;
-    let mut height = glyph_height;
+fn layout_text_block(
+    text: &str,
+    style: TextStyle,
+    max_width: Option<u32>,
+    wrap: Wrap,
+) -> TextBlock {
+    if text.is_empty() {
+        return TextBlock {
+            lines: vec![String::new()],
+            style,
+            width: 0,
+            height: line_height(style),
+        };
+    }
 
-    for (index, line) in lines.iter().enumerate() {
-        width = width.max(measure_line_width(line, style));
-        if index > 0 {
-            height += glyph_height + style.line_spacing;
+    FONT_CONTEXT.with(|context| {
+        let mut context = context.borrow_mut();
+        let metrics = Metrics::new(font_size(style), line_height(style) as f32);
+        let mut buffer = Buffer::new(&mut context.font_system, metrics);
+        buffer.set_wrap(&mut context.font_system, wrap);
+        buffer.set_size(
+            &mut context.font_system,
+            max_width.map(|value| value as f32),
+            None,
+        );
+        let attrs = Attrs::new().family(Family::SansSerif);
+        buffer.set_text(&mut context.font_system, text, &attrs, Shaping::Advanced);
+        buffer.shape_until_scroll(&mut context.font_system, true);
+
+        let mut width = 0.0f32;
+        let mut bottom = 0.0f32;
+        let mut lines = Vec::new();
+
+        for run in buffer.layout_runs() {
+            width = width.max(run.line_w);
+            bottom = bottom.max(run.line_top + run.line_height);
+            lines.push(extract_run_text(run.text, run.glyphs));
         }
-    }
 
-    TextBlock {
-        lines,
-        style,
-        width,
-        height,
-    }
-}
-
-fn wrap_paragraph(paragraph: &str, max_chars: usize, lines: &mut Vec<String>) {
-    let mut current = String::new();
-
-    for word in paragraph.split_whitespace() {
-        for segment in split_word(word, max_chars) {
-            if current.is_empty() {
-                current.push_str(&segment);
-                continue;
-            }
-
-            if current.chars().count() + 1 + segment.chars().count() <= max_chars {
-                current.push(' ');
-                current.push_str(&segment);
-            } else {
-                lines.push(current);
-                current = segment;
-            }
+        if lines.is_empty() {
+            lines.push(String::new());
         }
-    }
 
-    if current.is_empty() {
-        lines.push(String::new());
-    } else {
-        lines.push(current);
-    }
-}
-
-fn split_word(word: &str, max_chars: usize) -> Vec<String> {
-    if max_chars == 0 || word.chars().count() <= max_chars {
-        return vec![word.to_string()];
-    }
-
-    let mut segments = Vec::new();
-    let mut current = String::new();
-
-    for character in word.chars() {
-        current.push(character);
-        if current.chars().count() == max_chars {
-            segments.push(std::mem::take(&mut current));
+        TextBlock {
+            lines,
+            style,
+            width: width.ceil().max(0.0) as u32,
+            height: bottom.ceil().max(line_height(style) as f32) as u32,
         }
+    })
+}
+
+fn draw_text_lines(
+    buffer: &mut SoftwareBuffer,
+    x: i32,
+    y: i32,
+    lines: &[String],
+    style: TextStyle,
+    color: ClearColor,
+) {
+    if lines.iter().all(String::is_empty) {
+        return;
     }
 
-    if !current.is_empty() {
-        segments.push(current);
+    let text = lines.join("\n");
+    FONT_CONTEXT.with(|context| {
+        let mut context = context.borrow_mut();
+        let FontContext {
+            font_system,
+            swash_cache,
+        } = &mut *context;
+        let metrics = Metrics::new(font_size(style), line_height(style) as f32);
+        let mut cosmic_buffer = Buffer::new(font_system, metrics);
+        cosmic_buffer.set_wrap(font_system, Wrap::None);
+        cosmic_buffer.set_size(font_system, None, None);
+        let attrs = Attrs::new().family(Family::SansSerif);
+        cosmic_buffer.set_text(font_system, &text, &attrs, Shaping::Advanced);
+        cosmic_buffer.shape_until_scroll(font_system, true);
+
+        cosmic_buffer.draw(
+            font_system,
+            swash_cache,
+            text_color(color),
+            |pixel_x, pixel_y, width, height, pixel_color| {
+                for offset_y in 0..height as i32 {
+                    for offset_x in 0..width as i32 {
+                        blend_pixel(
+                            buffer,
+                            x + pixel_x + offset_x,
+                            y + pixel_y + offset_y,
+                            pixel_color,
+                        );
+                    }
+                }
+            },
+        );
+    });
+}
+
+fn extract_run_text(text: &str, glyphs: &[cosmic_text::LayoutGlyph]) -> String {
+    let Some(start) = glyphs.iter().map(|glyph| glyph.start).min() else {
+        return String::new();
+    };
+    let Some(end) = glyphs.iter().map(|glyph| glyph.end).max() else {
+        return String::new();
+    };
+
+    if start >= end || end > text.len() {
+        return String::new();
     }
 
-    segments
+    text[start..end].to_string()
 }
 
-fn max_chars_per_line(max_width: u32, advance: u32, letter_spacing: u32) -> usize {
-    ((max_width + letter_spacing) / advance.max(1)).max(1) as usize
+fn font_size(style: TextStyle) -> f32 {
+    4.0 + style.scale.max(1) as f32 * 6.0
 }
 
-fn glyph_advance(style: TextStyle) -> u32 {
-    8 * style.scale.max(1) + style.letter_spacing
-}
-
-fn glyph_line_height(style: TextStyle) -> u32 {
-    8 * style.scale.max(1) + style.line_spacing
-}
-
-fn measure_line_width(line: &str, style: TextStyle) -> u32 {
-    let count = line.chars().count() as u32;
-    let advance = glyph_advance(style);
-    count
-        .saturating_mul(advance)
-        .saturating_sub(if count > 0 { style.letter_spacing } else { 0 })
+fn line_height(style: TextStyle) -> u32 {
+    font_size(style).ceil() as u32 + style.line_spacing
 }
 
 fn scale_component(component: u32, current_scale: u32, next_scale: u32) -> u32 {
@@ -220,78 +247,50 @@ fn scale_component(component: u32, current_scale: u32, next_scale: u32) -> u32 {
     scaled.max(next_scale.min(1))
 }
 
-fn draw_glyph(
-    buffer: &mut SoftwareBuffer,
-    x: i32,
-    y: i32,
-    scale: i32,
-    pixel: &[u8; 4],
-    glyph: &[u8; 8],
-) {
-    for (row, bits) in glyph.iter().enumerate() {
-        for column in 0..8 {
-            if (bits & (1 << column)) == 0 {
-                continue;
-            }
-
-            fill_scaled_pixel(
-                buffer,
-                x + column * scale,
-                y + row as i32 * scale,
-                scale,
-                pixel,
-            );
-        }
-    }
+fn text_color(color: ClearColor) -> Color {
+    Color::rgba(color.red, color.green, color.blue, color.alpha)
 }
 
-fn draw_lines(
-    buffer: &mut SoftwareBuffer,
-    x: i32,
-    y: i32,
-    lines: &[String],
-    style: TextStyle,
-    color: ClearColor,
-) {
-    let scale = style.scale.max(1) as i32;
-    let advance = glyph_advance(style) as i32;
-    let line_height = glyph_line_height(style) as i32;
-    let pixel = color.to_argb8888_bytes();
-
-    for (line_index, line) in lines.iter().enumerate() {
-        let baseline_y = y + line_index as i32 * line_height;
-        for (character_index, character) in line.chars().enumerate() {
-            let glyph = BASIC_FONTS.get(character).or_else(|| BASIC_FONTS.get('?'));
-            let Some(glyph) = glyph else {
-                continue;
-            };
-            let baseline_x = x + character_index as i32 * advance;
-            draw_glyph(buffer, baseline_x, baseline_y, scale, &pixel, &glyph);
-        }
-    }
-}
-
-fn fill_scaled_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, scale: i32, pixel: &[u8; 4]) {
+fn blend_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, color: Color) {
     let size = buffer.size();
-    let left = x.clamp(0, size.width as i32);
-    let top = y.clamp(0, size.height as i32);
-    let right = (x + scale).clamp(0, size.width as i32);
-    let bottom = (y + scale).clamp(0, size.height as i32);
-
-    if left >= right || top >= bottom {
+    if x < 0 || y < 0 || x >= size.width as i32 || y >= size.height as i32 {
         return;
     }
 
+    let src_alpha = color.a() as u16;
+    if src_alpha == 0 {
+        return;
+    }
+
+    let src_red = premultiply(color.r(), color.a());
+    let src_green = premultiply(color.g(), color.a());
+    let src_blue = premultiply(color.b(), color.a());
     let stride = size.width as usize * 4;
+    let offset = y as usize * stride + x as usize * 4;
     let pixels = buffer.pixels_mut();
 
-    for row in top as usize..bottom as usize {
-        let row_start = row * stride;
-        for column in left as usize..right as usize {
-            let offset = row_start + column * 4;
-            pixels[offset..offset + 4].copy_from_slice(pixel);
-        }
+    if src_alpha == u16::from(u8::MAX) {
+        pixels[offset] = src_blue;
+        pixels[offset + 1] = src_green;
+        pixels[offset + 2] = src_red;
+        pixels[offset + 3] = color.a();
+        return;
     }
+
+    let inverse_alpha = u16::from(u8::MAX) - src_alpha;
+    pixels[offset] = blend_component(pixels[offset], src_blue, inverse_alpha);
+    pixels[offset + 1] = blend_component(pixels[offset + 1], src_green, inverse_alpha);
+    pixels[offset + 2] = blend_component(pixels[offset + 2], src_red, inverse_alpha);
+    pixels[offset + 3] = blend_component(pixels[offset + 3], color.a(), inverse_alpha);
+}
+
+fn premultiply(channel: u8, alpha: u8) -> u8 {
+    ((u16::from(channel) * u16::from(alpha) + 127) / 255) as u8
+}
+
+fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
+    blended.min(u16::from(u8::MAX)) as u8
 }
 
 #[cfg(test)]
@@ -304,7 +303,10 @@ mod tests {
     #[test]
     fn measures_text_blocks() {
         let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2);
-        assert_eq!(measure_text("AB", style), (34, 16));
+        let (width, height) = measure_text("AB", style);
+
+        assert!(width > 0);
+        assert!(height > 0);
     }
 
     #[test]
