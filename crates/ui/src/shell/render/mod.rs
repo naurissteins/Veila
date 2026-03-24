@@ -148,10 +148,10 @@ impl ShellState {
         let border = if self.focused {
             accent.with_alpha(240)
         } else {
-            self.theme.foreground.with_alpha(58)
+            self.theme.input_border.with_alpha(210)
         };
 
-        PillStyle::new(self.theme.input.with_alpha(188))
+        PillStyle::new(self.theme.input.with_alpha(232))
             .with_border(BorderStyle::new(border, 2))
             .with_shadow(ShadowStyle::new(ClearColor::rgba(0, 0, 0, 76), 0, 12))
     }
@@ -204,4 +204,33 @@ impl ShellState {
 
 fn clock_scale(metrics: SceneMetrics) -> u32 {
     if metrics.avatar_size < 100 { 4 } else { 5 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ShellState;
+
+    #[test]
+    fn idle_input_style_uses_configured_input_border() {
+        let shell = ShellState::default();
+        let style = shell.input_style();
+
+        assert_eq!(style.fill.alpha, 232);
+        assert_eq!(
+            style.border.expect("input border").color,
+            shell.theme.input_border.with_alpha(210)
+        );
+    }
+
+    #[test]
+    fn focused_input_style_uses_focus_accent() {
+        let mut shell = ShellState::default();
+        shell.set_focus(true);
+        let style = shell.input_style();
+
+        assert_eq!(
+            style.border.expect("focused border").color,
+            shell.theme.focus.with_alpha(240)
+        );
+    }
 }

@@ -347,9 +347,9 @@ fn stroke_pill_path(
     offset_y: f32,
 ) {
     let radius = rect.height.max(1) as f32 / 2.0;
-    let start_x = offset_x + rect.x as f32 + radius;
-    let end_x = offset_x + rect.x as f32 + (rect.width as f32 - radius).max(radius);
-    let center_y = offset_y + rect.y as f32 + radius;
+    let start_x = offset_x + radius;
+    let end_x = offset_x + (rect.width as f32 - radius).max(radius);
+    let center_y = offset_y + radius;
     let mut builder = PathBuilder::new();
     builder.move_to(start_x, center_y);
     builder.line_to(end_x, center_y);
@@ -448,6 +448,20 @@ mod tests {
         );
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn draws_pill_surface_at_large_offsets() {
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(960, 540)).expect("buffer");
+        draw_pill(
+            &mut buffer,
+            Rect::new(320, 240, 280, 56),
+            PillStyle::new(ClearColor::rgba(12, 18, 28, 232))
+                .with_border(BorderStyle::new(ClearColor::opaque(92, 108, 146), 2)),
+        );
+
+        let row_start = (268 * 960 + 460) * 4;
+        assert_ne!(&buffer.pixels()[row_start..row_start + 4], &[0, 0, 0, 0]);
     }
 
     #[test]
