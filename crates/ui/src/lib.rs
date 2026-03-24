@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! UI scene state and rendering helpers for Kwylock.
+//! UI scene state and rendering helpers for Veila.
 
 mod shell;
 mod theme;
@@ -10,5 +10,5 @@ pub use theme::ShellTheme;
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
-    "kwylock-ui"
+    "veila-ui"
 }

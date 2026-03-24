@@ -1,6 +1,6 @@
 [package]
-name = "kwylock-daemon"
-description = "Lock orchestration daemon for Kwylock"
+name = "veila-daemon"
+description = "Lock orchestration daemon for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,12 +8,12 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "kwylockd"
+name = "veilad"
 path = "src/main.rs"
 
 [dependencies]
-kwylock-common = { path = "../common" }
-kwylock-renderer = { path = "../renderer" }
+veila-common = { path = "../common" }
+veila-renderer = { path = "../renderer" }
 anyhow = { workspace = true }
 futures-util = { workspace = true }
 nix = { workspace = true }

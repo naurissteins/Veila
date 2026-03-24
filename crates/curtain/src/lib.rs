@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Secure session-lock curtain for Kwylock.
+//! Secure session-lock curtain for Veila.
 
 mod app;
 mod auth;
@@ -18,7 +18,7 @@ use anyhow::{Result, bail};
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
-    "kwylock-curtain"
+    "veila-curtain"
 }
 
 /// Command-line options for the curtain process.
@@ -75,29 +75,29 @@ mod tests {
     #[test]
     fn parses_notify_socket_argument() {
         let options = CurtainOptions::parse_args([
-            "kwylock-curtain".to_string(),
-            "--notify-socket=/tmp/kwylock.sock".to_string(),
-            "--daemon-socket=/tmp/kwylock-auth.sock".to_string(),
-            "--control-socket=/tmp/kwylock-control.sock".to_string(),
-            "--config=/tmp/kwylock.toml".to_string(),
+            "veila-curtain".to_string(),
+            "--notify-socket=/tmp/veila.sock".to_string(),
+            "--daemon-socket=/tmp/veila-auth.sock".to_string(),
+            "--control-socket=/tmp/veila-control.sock".to_string(),
+            "--config=/tmp/veila.toml".to_string(),
         ])
         .expect("arguments should parse");
 
         assert_eq!(
             options.notify_socket.as_deref(),
-            Some(std::path::Path::new("/tmp/kwylock.sock"))
+            Some(std::path::Path::new("/tmp/veila.sock"))
         );
         assert_eq!(
             options.daemon_socket.as_deref(),
-            Some(std::path::Path::new("/tmp/kwylock-auth.sock"))
+            Some(std::path::Path::new("/tmp/veila-auth.sock"))
         );
         assert_eq!(
             options.control_socket.as_deref(),
-            Some(std::path::Path::new("/tmp/kwylock-control.sock"))
+            Some(std::path::Path::new("/tmp/veila-control.sock"))
         );
         assert_eq!(
             options.config_path.as_deref(),
-            Some(std::path::Path::new("/tmp/kwylock.toml"))
+            Some(std::path::Path::new("/tmp/veila.toml"))
         );
     }
 }

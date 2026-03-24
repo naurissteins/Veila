@@ -11,9 +11,9 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-authors = ["Kwylock Contributors"]
+authors = ["Veila Contributors"]
 license = "GPL-3.0-or-later"
-repository = "https://github.com/kwimy/kwylock"
+repository = "https://github.com/kwimy/veila"
 
 [workspace.dependencies]
 anyhow = "1"

@@ -18,7 +18,7 @@ pub struct MaskedInputStyle {
 }
 
 impl MaskedInputStyle {
-    /// Creates a masked input style with Kwylock defaults.
+    /// Creates a masked input style with Veila defaults.
     pub const fn new(bullet: ClearColor, placeholder: ClearColor, caret: ClearColor) -> Self {
         Self {
             bullet,

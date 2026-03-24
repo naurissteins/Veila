@@ -7,10 +7,10 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     tracing::info!(
-        component = kwylock_curtain::component_name(),
+        component = veila_curtain::component_name(),
         "starting curtain"
     );
 
-    let options = kwylock_curtain::CurtainOptions::parse_args(std::env::args())?;
-    kwylock_curtain::run(options)
+    let options = veila_curtain::CurtainOptions::parse_args(std::env::args())?;
+    veila_curtain::run(options)
 }

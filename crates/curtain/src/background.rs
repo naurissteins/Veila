@@ -1,4 +1,4 @@
-use kwylock_renderer::FrameSize;
+use veila_renderer::FrameSize;
 use smithay_client_toolkit::reexports::client::QueueHandle;
 
 use crate::{

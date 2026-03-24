@@ -6,12 +6,12 @@ use nonstick::{
 };
 
 fn pam_service() -> String {
-    if let Ok(service) = std::env::var("KWYLOCK_PAM_SERVICE") {
+    if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
         return service;
     }
 
-    if std::path::Path::new("/etc/pam.d/kwylock").exists() {
-        return String::from("kwylock");
+    if std::path::Path::new("/etc/pam.d/veila").exists() {
+        return String::from("veila");
     }
 
     String::from("system-auth")

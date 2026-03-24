@@ -1,4 +1,4 @@
-use kwylock_renderer::{
+use veila_renderer::{
     ClearColor, ShadowStyle, SoftwareBuffer,
     masked::{MaskedInputStyle, draw_masked_input},
     panel::{

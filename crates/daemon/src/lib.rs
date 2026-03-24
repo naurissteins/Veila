@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Daemon entrypoints for Kwylock lock orchestration.
+//! Daemon entrypoints for Veila lock orchestration.
 
 mod adapters;
 mod app;
@@ -14,12 +14,12 @@ use crate::adapters::ipc;
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
-    "kwylockd"
+    "veilad"
 }
 
 /// Returns machine-readable build information for the local binary.
-pub fn local_build_info() -> kwylock_common::ipc::DaemonHealth {
-    kwylock_common::ipc::DaemonHealth {
+pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
+    veila_common::ipc::DaemonHealth {
         component: component_name().to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build_profile: if cfg!(debug_assertions) {
@@ -114,18 +114,18 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     if options.stop {
         if !daemon_socket_path.exists() {
             bail!(
-                "kwylockd is not running; daemon socket does not exist at {}",
+                "veilad is not running; daemon socket does not exist at {}",
                 daemon_socket_path.display()
             );
         }
 
         let response = ipc::send_daemon_control_message(
             &daemon_socket_path,
-            &kwylock_common::ipc::DaemonControlMessage::Stop,
+            &veila_common::ipc::DaemonControlMessage::Stop,
         )
         .await?;
 
-        if response != kwylock_common::ipc::DaemonControlResponse::Accepted {
+        if response != veila_common::ipc::DaemonControlResponse::Accepted {
             bail!("daemon returned an unexpected response to --stop");
         }
 
@@ -136,18 +136,18 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     if options.status {
         if !daemon_socket_path.exists() {
             bail!(
-                "kwylockd is not running; daemon socket does not exist at {}",
+                "veilad is not running; daemon socket does not exist at {}",
                 daemon_socket_path.display()
             );
         }
 
         let response = ipc::send_daemon_control_message(
             &daemon_socket_path,
-            &kwylock_common::ipc::DaemonControlMessage::Status,
+            &veila_common::ipc::DaemonControlMessage::Status,
         )
         .await?;
 
-        let kwylock_common::ipc::DaemonControlResponse::Status(status) = response else {
+        let veila_common::ipc::DaemonControlResponse::Status(status) = response else {
             bail!("daemon returned an unexpected response to --status");
         };
 
@@ -166,18 +166,18 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     if options.health {
         if !daemon_socket_path.exists() {
             bail!(
-                "kwylockd is not running; daemon socket does not exist at {}",
+                "veilad is not running; daemon socket does not exist at {}",
                 daemon_socket_path.display()
             );
         }
 
         let response = ipc::send_daemon_control_message(
             &daemon_socket_path,
-            &kwylock_common::ipc::DaemonControlMessage::Health,
+            &veila_common::ipc::DaemonControlMessage::Health,
         )
         .await?;
 
-        let kwylock_common::ipc::DaemonControlResponse::Health(health) = response else {
+        let veila_common::ipc::DaemonControlResponse::Health(health) = response else {
             bail!("daemon returned an unexpected response to --health");
         };
 
@@ -200,11 +200,11 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
 
         match ipc::send_daemon_control_message(
             &daemon_socket_path,
-            &kwylock_common::ipc::DaemonControlMessage::Health,
+            &veila_common::ipc::DaemonControlMessage::Health,
         )
         .await
         {
-            Ok(kwylock_common::ipc::DaemonControlResponse::Health(daemon)) => {
+            Ok(veila_common::ipc::DaemonControlResponse::Health(daemon)) => {
                 println!("daemon_reachable=true");
                 println!("daemon_component={}", daemon.component);
                 println!("daemon_version={}", daemon.version);
@@ -228,19 +228,19 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
     if options.reload_config {
         if !daemon_socket_path.exists() {
             bail!(
-                "kwylockd is not running; daemon socket does not exist at {}",
+                "veilad is not running; daemon socket does not exist at {}",
                 daemon_socket_path.display()
             );
         }
 
         let response = ipc::send_daemon_control_message(
             &daemon_socket_path,
-            &kwylock_common::ipc::DaemonControlMessage::ReloadConfig,
+            &veila_common::ipc::DaemonControlMessage::ReloadConfig,
         )
         .await?;
 
         match response {
-            kwylock_common::ipc::DaemonControlResponse::Reloaded(status) => {
+            veila_common::ipc::DaemonControlResponse::Reloaded(status) => {
                 println!(
                     "config={}",
                     status.config_path.as_deref().unwrap_or("defaults")
@@ -249,13 +249,13 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
                 println!(
                     "live_reload={}",
                     match status.live_reload {
-                        kwylock_common::ipc::LiveReloadStatus::NotActive => "not-active",
-                        kwylock_common::ipc::LiveReloadStatus::Forwarded => "forwarded",
+                        veila_common::ipc::LiveReloadStatus::NotActive => "not-active",
+                        veila_common::ipc::LiveReloadStatus::Forwarded => "forwarded",
                     }
                 );
                 return Ok(());
             }
-            kwylock_common::ipc::DaemonControlResponse::Error { reason } => {
+            veila_common::ipc::DaemonControlResponse::Error { reason } => {
                 bail!(reason);
             }
             _ => bail!("daemon returned an unexpected response to --reload-config"),
@@ -268,10 +268,10 @@ pub async fn run(options: DaemonOptions) -> anyhow::Result<()> {
             if options.lock_now && daemon_socket_path.exists() {
                 let response = ipc::send_daemon_control_message(
                     &daemon_socket_path,
-                    &kwylock_common::ipc::DaemonControlMessage::LockNow,
+                    &veila_common::ipc::DaemonControlMessage::LockNow,
                 )
                 .await?;
-                if response != kwylock_common::ipc::DaemonControlResponse::Accepted {
+                if response != veila_common::ipc::DaemonControlResponse::Accepted {
                     bail!("daemon did not acknowledge forwarded lock request");
                 }
                 tracing::info!(path = %daemon_socket_path.display(), "forwarded lock request to running daemon");
@@ -290,21 +290,21 @@ mod tests {
     #[test]
     fn parses_config_argument() {
         let options = DaemonOptions::parse_args([
-            "kwylockd".to_string(),
-            "--config=/tmp/kwylock.toml".to_string(),
+            "veilad".to_string(),
+            "--config=/tmp/veila.toml".to_string(),
         ])
         .expect("arguments should parse");
 
         assert_eq!(
             options.config_path.as_deref(),
-            Some(std::path::Path::new("/tmp/kwylock.toml"))
+            Some(std::path::Path::new("/tmp/veila.toml"))
         );
     }
 
     #[test]
     fn parses_session_id_argument() {
         let options =
-            DaemonOptions::parse_args(["kwylockd".to_string(), "--session-id=c2".to_string()])
+            DaemonOptions::parse_args(["veilad".to_string(), "--session-id=c2".to_string()])
                 .expect("arguments should parse");
 
         assert_eq!(options.session_id.as_deref(), Some("c2"));
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn parses_lock_now_argument() {
-        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--lock-now".to_string()])
+        let options = DaemonOptions::parse_args(["veilad".to_string(), "--lock-now".to_string()])
             .expect("arguments should parse");
 
         assert!(options.lock_now);
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn parses_stop_argument() {
-        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--stop".to_string()])
+        let options = DaemonOptions::parse_args(["veilad".to_string(), "--stop".to_string()])
             .expect("arguments should parse");
 
         assert!(options.stop);
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn parses_status_argument() {
-        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--status".to_string()])
+        let options = DaemonOptions::parse_args(["veilad".to_string(), "--status".to_string()])
             .expect("arguments should parse");
 
         assert!(options.status);
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn parses_reload_config_argument() {
         let options =
-            DaemonOptions::parse_args(["kwylockd".to_string(), "--reload-config".to_string()])
+            DaemonOptions::parse_args(["veilad".to_string(), "--reload-config".to_string()])
                 .expect("arguments should parse");
 
         assert!(options.reload_config);
@@ -345,7 +345,7 @@ mod tests {
 
     #[test]
     fn parses_health_argument() {
-        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--health".to_string()])
+        let options = DaemonOptions::parse_args(["veilad".to_string(), "--health".to_string()])
             .expect("arguments should parse");
 
         assert!(options.health);
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn parses_version_argument() {
-        let options = DaemonOptions::parse_args(["kwylockd".to_string(), "--version".to_string()])
+        let options = DaemonOptions::parse_args(["veilad".to_string(), "--version".to_string()])
             .expect("arguments should parse");
 
         assert!(options.version);

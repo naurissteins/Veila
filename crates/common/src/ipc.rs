@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn round_trips_daemon_control_responses() {
         let message = DaemonControlResponse::Health(DaemonHealth {
-            component: "kwylockd".to_string(),
+            component: "veilad".to_string(),
             version: "0.1.0".to_string(),
             build_profile: "debug".to_string(),
             target_os: "linux".to_string(),
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn round_trips_reload_status_response() {
         let message = DaemonControlResponse::Reloaded(DaemonReloadStatus {
-            config_path: Some("/tmp/kwylock.toml".to_string()),
+            config_path: Some("/tmp/veila.toml".to_string()),
             active_lock: true,
             live_reload: LiveReloadStatus::Forwarded,
         });
@@ -176,7 +176,7 @@ mod tests {
             active_lock: true,
             curtain_running: true,
             live_reload_available: true,
-            config_path: Some("/tmp/kwylock.toml".to_string()),
+            config_path: Some("/tmp/veila.toml".to_string()),
         });
         let encoded = encode_message(&message).expect("daemon control response should encode");
         let decoded = decode_message::<DaemonControlResponse>(&encoded)

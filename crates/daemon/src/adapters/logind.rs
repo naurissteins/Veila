@@ -143,7 +143,7 @@ fn build_resolution_error(
     format!(
         "failed to resolve logind session. attempts: {attempts}. context: \
 pid={pid}, cli_session_id={}, xdg_session_id={}, xdg_session_type={}, wayland_display={}, hyprland_signature_present={hyprland_present}. \
-Run kwylockd from your normal interactive session terminal, ensure logind authorizes the caller, or pass --session-id=<id> explicitly.",
+Run veilad from your normal interactive session terminal, ensure logind authorizes the caller, or pass --session-id=<id> explicitly.",
         display_option(session_id_override),
         display_option(xdg_session_id.as_deref()),
         display_option(xdg_session_type.as_deref()),

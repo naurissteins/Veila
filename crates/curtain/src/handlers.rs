@@ -1,4 +1,4 @@
-use kwylock_ui::ShellKey;
+use veila_ui::ShellKey;
 use smithay_client_toolkit::{
     compositor::CompositorHandler,
     output::{OutputHandler, OutputState},

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
-use kwylock_common::ipc::{
+use veila_common::ipc::{
     ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, decode_message,
     encode_message,
 };
@@ -24,7 +24,7 @@ pub async fn bind_single_instance_listener(path: &Path) -> Result<UnixListener> 
         match UnixStream::connect(path).await {
             Ok(_) => {
                 return Err(anyhow!(
-                    "kwylockd is already running and listening on {}",
+                    "veilad is already running and listening on {}",
                     path.display()
                 ));
             }
@@ -46,11 +46,11 @@ pub fn auth_socket_path() -> PathBuf {
         .unwrap_or_default();
     let runtime_dir = runtime_dir();
 
-    runtime_dir.join(format!("kwylock-auth-{stamp}.sock"))
+    runtime_dir.join(format!("veila-auth-{stamp}.sock"))
 }
 
 pub fn daemon_socket_path() -> PathBuf {
-    runtime_dir().join("kwylockd.sock")
+    runtime_dir().join("veilad.sock")
 }
 
 pub async fn send_daemon_control_message(

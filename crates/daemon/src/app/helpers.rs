@@ -2,10 +2,10 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow};
-use kwylock_common::ipc::{
+use veila_common::ipc::{
     DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
-use kwylock_common::{AppConfig, LoadedConfig};
+use veila_common::{AppConfig, LoadedConfig};
 use nix::unistd::{Uid, User};
 
 use crate::{

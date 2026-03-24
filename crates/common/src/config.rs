@@ -156,7 +156,7 @@ fn default_path() -> Option<PathBuf> {
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
 
-    Some(config_root.join("kwylock").join("config.toml"))
+    Some(config_root.join("veila").join("config.toml"))
 }
 
 const fn default_background_color() -> RgbColor {
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn loads_config_from_file() {
-        let dir = std::env::temp_dir().join(format!("kwylock-config-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("veila-config-{}", std::process::id()));
         fs::create_dir_all(&dir).expect("temp dir");
         let path = dir.join("config.toml");
         fs::write(

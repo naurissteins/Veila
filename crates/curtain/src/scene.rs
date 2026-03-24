@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
-use kwylock_renderer::{FrameSize, shm};
+use veila_renderer::{FrameSize, shm};
 use smithay_client_toolkit::{
     output::OutputInfo,
     reexports::client::QueueHandle,

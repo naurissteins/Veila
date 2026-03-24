@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use kwylock_common::ipc::{CurtainControlMessage, decode_message};
+use veila_common::ipc::{CurtainControlMessage, decode_message};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ControlEvent {

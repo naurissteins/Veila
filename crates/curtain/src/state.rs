@@ -5,9 +5,9 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use kwylock_common::AppConfig;
-use kwylock_renderer::{ClearColor, background::BackgroundAsset};
-use kwylock_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
+use veila_common::AppConfig;
+use veila_renderer::{ClearColor, background::BackgroundAsset};
+use veila_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
@@ -33,7 +33,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
     pub(crate) surface: SessionLockSurface,
     pub(crate) size: Option<(u32, u32)>,
-    pub(crate) background: Option<kwylock_renderer::SoftwareBuffer>,
+    pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
 }
 
 pub(crate) struct CurtainApp {

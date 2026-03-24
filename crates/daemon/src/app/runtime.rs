@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow};
-use kwylock_common::ipc::{ClientMessage, DaemonMessage};
+use veila_common::ipc::{ClientMessage, DaemonMessage};
 use tokio::{
     net::{UnixListener, UnixStream},
     process::Child,
@@ -148,7 +148,7 @@ pub(super) async fn activate_lock(
             update_locked_hint(session_proxy, false).await;
             Err(anyhow!(
                 "curtain exited before readiness with status {status}. \
-If you ran `cargo run -p kwylock-daemon` after changing curtain startup arguments or shared runtime wiring, rebuild the workspace with `cargo build --workspace` so `target/debug/kwylock-curtain` matches the daemon"
+If you ran `cargo run -p veila-daemon` after changing curtain startup arguments or shared runtime wiring, rebuild the workspace with `cargo build --workspace` so `target/debug/veila-curtain` matches the daemon"
             ))
         }
     }

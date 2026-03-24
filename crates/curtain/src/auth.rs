@@ -7,7 +7,7 @@ use std::{
     time::Instant,
 };
 
-use kwylock_common::ipc::{ClientMessage, DaemonMessage, decode_message, encode_message};
+use veila_common::ipc::{ClientMessage, DaemonMessage, decode_message, encode_message};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum AuthEvent {

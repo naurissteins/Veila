@@ -1,6 +1,6 @@
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let options = kwylock_daemon::DaemonOptions::parse_args(std::env::args())?;
+    let options = veila_daemon::DaemonOptions::parse_args(std::env::args())?;
 
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -16,10 +16,10 @@ async fn main() -> anyhow::Result<()> {
         && !options.reload_config
     {
         tracing::info!(
-            component = kwylock_daemon::component_name(),
+            component = veila_daemon::component_name(),
             "starting daemon"
         );
     }
 
-    kwylock_daemon::run(options).await
+    veila_daemon::run(options).await
 }

@@ -1,6 +1,6 @@
 [package]
-name = "kwylock-common"
-description = "Shared config, IPC, and error types for Kwylock"
+name = "veila-common"
+description = "Shared config, IPC, and error types for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

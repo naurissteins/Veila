@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Shared error type for config and IPC bootstrap code.
 #[derive(Debug, Error)]
-pub enum KwylockError {
+pub enum VeilaError {
     #[error("failed to parse config: {0}")]
     Config(#[from] toml::de::Error),
     #[error("failed to load config: {0}")]
@@ -11,5 +11,5 @@ pub enum KwylockError {
     IpcCodec(#[from] serde_json::Error),
 }
 
-/// Common result type for shared Kwylock libraries.
-pub type Result<T> = std::result::Result<T, KwylockError>;
+/// Common result type for shared Veila libraries.
+pub type Result<T> = std::result::Result<T, VeilaError>;

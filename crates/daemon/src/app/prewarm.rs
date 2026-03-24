@@ -3,8 +3,8 @@ use std::{
     time::Instant,
 };
 
-use kwylock_common::AppConfig;
-use kwylock_renderer::{
+use veila_common::AppConfig;
+use veila_renderer::{
     ClearColor,
     background::{RenderCacheSummary, SourceCacheStatus, prewarm_rendered, prewarm_source},
 };
@@ -100,7 +100,7 @@ fn prewarm_rendered_backgrounds(
     })
 }
 
-fn to_clear_color(color: kwylock_common::RgbColor) -> ClearColor {
+fn to_clear_color(color: veila_common::RgbColor) -> ClearColor {
     ClearColor::opaque(color.0, color.1, color.2)
 }
 

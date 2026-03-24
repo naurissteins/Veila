@@ -1,6 +1,6 @@
 [package]
-name = "kwylock-curtain"
-description = "Secure curtain bootstrap binary for Kwylock"
+name = "veila-curtain"
+description = "Secure curtain bootstrap binary for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,13 +8,13 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "kwylock-curtain"
+name = "veila-curtain"
 path = "src/main.rs"
 
 [dependencies]
-kwylock-common = { path = "../common" }
-kwylock-renderer = { path = "../renderer" }
-kwylock-ui = { path = "../ui" }
+veila-common = { path = "../common" }
+veila-renderer = { path = "../renderer" }
+veila-ui = { path = "../ui" }
 anyhow = { workspace = true }
 calloop = { workspace = true }
 smithay-client-toolkit = { workspace = true }

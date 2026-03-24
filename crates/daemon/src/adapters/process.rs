@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use kwylock_common::ipc::{CurtainControlMessage, encode_message};
+use veila_common::ipc::{CurtainControlMessage, encode_message};
 use nix::{
     sys::signal::{Signal, kill},
     unistd::Pid,
@@ -114,7 +114,7 @@ pub fn notify_socket_path() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_micros())
         .unwrap_or_default();
-    std::env::temp_dir().join(format!("kwylock-curtain-{stamp}.sock"))
+    std::env::temp_dir().join(format!("veila-curtain-{stamp}.sock"))
 }
 
 pub fn control_socket_path() -> PathBuf {
@@ -126,20 +126,20 @@ pub fn control_socket_path() -> PathBuf {
         .map(PathBuf::from)
         .unwrap_or_else(|_| std::env::temp_dir());
 
-    runtime_dir.join(format!("kwylock-control-{stamp}.sock"))
+    runtime_dir.join(format!("veila-control-{stamp}.sock"))
 }
 
 fn curtain_binary_path() -> Result<PathBuf> {
-    if let Ok(path) = std::env::var("KWYLOCK_CURTAIN_BIN") {
+    if let Ok(path) = std::env::var("VEILA_CURTAIN_BIN") {
         return Ok(PathBuf::from(path));
     }
 
     if let Ok(mut current_exe) = std::env::current_exe() {
-        current_exe.set_file_name("kwylock-curtain");
+        current_exe.set_file_name("veila-curtain");
         if current_exe.exists() {
             return Ok(current_exe);
         }
     }
 
-    Ok(PathBuf::from("kwylock-curtain"))
+    Ok(PathBuf::from("veila-curtain"))
 }

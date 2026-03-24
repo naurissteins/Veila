@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use kwylock_renderer::{
+use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     background::{BackgroundAsset, load_cached_render, store_cached_render},
 };
@@ -81,7 +81,7 @@ fn load_buffers(
     fallback: ClearColor,
     sizes: Vec<FrameSize>,
     cached_sizes: &[FrameSize],
-) -> kwylock_renderer::Result<(BackgroundAsset, Vec<(FrameSize, SoftwareBuffer)>)> {
+) -> veila_renderer::Result<(BackgroundAsset, Vec<(FrameSize, SoftwareBuffer)>)> {
     let asset = BackgroundAsset::load(Some(path), fallback)?;
     let mut buffers = Vec::with_capacity(sizes.len());
 
@@ -133,7 +133,7 @@ fn unique_sizes(sizes: Vec<FrameSize>) -> Vec<FrameSize> {
 
 #[cfg(test)]
 mod tests {
-    use kwylock_renderer::FrameSize;
+    use veila_renderer::FrameSize;
 
     use super::unique_sizes;
 

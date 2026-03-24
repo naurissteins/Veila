@@ -460,67 +460,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kwylock-common"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
- "toml",
-]
-
-[[package]]
-name = "kwylock-curtain"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "calloop",
- "kwylock-common",
- "kwylock-renderer",
- "kwylock-ui",
- "smithay-client-toolkit",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "kwylock-daemon"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures-util",
- "kwylock-common",
- "kwylock-renderer",
- "nix",
- "nonstick",
- "smithay-client-toolkit",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zbus",
-]
-
-[[package]]
-name = "kwylock-renderer"
-version = "0.1.0"
-dependencies = [
- "font8x8",
- "image",
- "smithay-client-toolkit",
- "thiserror",
-]
-
-[[package]]
-name = "kwylock-ui"
-version = "0.1.0"
-dependencies = [
- "kwylock-common",
- "kwylock-renderer",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1252,6 +1191,67 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
+
+[[package]]
+name = "veila-common"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "veila-curtain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "calloop",
+ "smithay-client-toolkit",
+ "tracing",
+ "tracing-subscriber",
+ "veila-common",
+ "veila-renderer",
+ "veila-ui",
+]
+
+[[package]]
+name = "veila-daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "nix",
+ "nonstick",
+ "smithay-client-toolkit",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "veila-common",
+ "veila-renderer",
+ "zbus",
+]
+
+[[package]]
+name = "veila-renderer"
+version = "0.1.0"
+dependencies = [
+ "font8x8",
+ "image",
+ "smithay-client-toolkit",
+ "thiserror",
+]
+
+[[package]]
+name = "veila-ui"
+version = "0.1.0"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
+ "veila-common",
+ "veila-renderer",
+]
 
 [[package]]
 name = "wasi"

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use kwylock_renderer::FrameSize;
+use veila_renderer::FrameSize;
 use smithay_client_toolkit::{
     output::{OutputHandler, OutputInfo, OutputState},
     reexports::client::{

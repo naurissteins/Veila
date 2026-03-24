@@ -4,7 +4,7 @@ fn main() {
         .try_init();
 
     tracing::info!(
-        component = kwylock_ui::component_name(),
+        component = veila_ui::component_name(),
         "ui scene library is currently hosted by the secure curtain client"
     );
 }

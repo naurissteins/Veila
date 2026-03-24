@@ -123,7 +123,7 @@ fn cache_root(cache_home: Option<&Path>) -> Result<PathBuf> {
             )))
         })?;
 
-    Ok(base.join("kwylock").join("backgrounds"))
+    Ok(base.join("veila").join("backgrounds"))
 }
 
 fn stable_hash(input: String) -> u64 {
@@ -156,7 +156,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("time")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("kwylock-render-cache-test-{unique}"));
+        let root = std::env::temp_dir().join(format!("veila-render-cache-test-{unique}"));
         fs::create_dir_all(&root).expect("cache root");
 
         let wallpaper = root.join("wallpaper.jpg");

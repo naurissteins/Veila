@@ -18,8 +18,8 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use futures_util::StreamExt;
-use kwylock_common::AppConfig;
-use kwylock_common::ipc::{DaemonControlMessage, DaemonControlResponse};
+use veila_common::AppConfig;
+use veila_common::ipc::{DaemonControlMessage, DaemonControlResponse};
 use tokio::{
     net::UnixListener,
     signal::unix::{SignalKind, signal},
@@ -78,7 +78,7 @@ pub async fn run(
         session_id_override = options.session_id.as_deref().unwrap_or("none"),
         manual_lock = options.lock_now,
         config = loaded_config.path.as_deref().map(|path| path.display().to_string()).unwrap_or_else(|| "defaults".to_string()),
-        "kwylockd ready"
+        "veilad ready"
     );
 
     if options.lock_now {
@@ -361,6 +361,6 @@ pub async fn run(
     }
 
     let _ = std::fs::remove_file(&daemon_control_socket_path);
-    tracing::info!("kwylockd exiting");
+    tracing::info!("veilad exiting");
     Ok(())
 }

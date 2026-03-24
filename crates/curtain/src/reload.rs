@@ -1,7 +1,7 @@
 use anyhow::Context;
-use kwylock_common::AppConfig;
-use kwylock_renderer::background::BackgroundAsset;
-use kwylock_ui::ShellTheme;
+use veila_common::AppConfig;
+use veila_renderer::background::BackgroundAsset;
+use veila_ui::ShellTheme;
 use smithay_client_toolkit::reexports::client::QueueHandle;
 
 use crate::state::CurtainApp;

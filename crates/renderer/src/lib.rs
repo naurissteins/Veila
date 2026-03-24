@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Shared rendering primitives used by Kwylock components.
+//! Shared rendering primitives used by Veila components.
 
 pub mod background;
 mod background_render_cache;

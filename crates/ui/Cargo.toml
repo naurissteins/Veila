@@ -1,6 +1,6 @@
 [package]
-name = "kwylock-ui"
-description = "Password and lock scene UI process for Kwylock"
+name = "veila-ui"
+description = "Password and lock scene UI process for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,12 +8,12 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "kwylock-ui"
+name = "veila-ui"
 path = "src/main.rs"
 
 [dependencies]
-kwylock-common = { path = "../common" }
-kwylock-renderer = { path = "../renderer" }
+veila-common = { path = "../common" }
+veila-renderer = { path = "../renderer" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 

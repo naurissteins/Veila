@@ -12,7 +12,7 @@ pub struct PanelHeaderStyle {
 }
 
 impl PanelHeaderStyle {
-    /// Creates a panel header style with Kwylock defaults.
+    /// Creates a panel header style with Veila defaults.
     pub const fn new(accent: ClearColor) -> Self {
         Self {
             accent,
@@ -48,7 +48,7 @@ pub struct PanelBodyStyle {
 }
 
 impl PanelBodyStyle {
-    /// Creates a panel body style with Kwylock defaults.
+    /// Creates a panel body style with Veila defaults.
     pub const fn new() -> Self {
         Self {
             horizontal_padding: 32,

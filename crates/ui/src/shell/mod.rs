@@ -152,7 +152,7 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use kwylock_renderer::{FrameSize, SoftwareBuffer};
+    use veila_renderer::{FrameSize, SoftwareBuffer};
 
     use super::{ShellAction, ShellKey, ShellState, ShellStatus};
 
