@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use veila_renderer::FrameSize;
 use smithay_client_toolkit::{
     output::{OutputHandler, OutputInfo, OutputState},
     reexports::client::{
@@ -8,6 +7,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
+use veila_renderer::FrameSize;
 
 pub(super) fn current_output_sizes() -> Result<Vec<FrameSize>> {
     let connection =

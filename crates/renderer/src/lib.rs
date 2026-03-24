@@ -3,15 +3,11 @@
 //! Shared rendering primitives used by Veila components.
 
 pub mod background;
-mod background_render_cache;
-mod background_source_cache;
-pub mod masked;
-pub mod panel;
-pub mod progress;
-pub mod shape;
+pub mod draw;
 pub mod shm;
-pub mod symbol;
-pub mod text;
+
+// Re-export draw submodules at the crate root for ergonomic access.
+pub use draw::{masked, panel, progress, shape, symbol, text};
 
 use thiserror::Error;
 

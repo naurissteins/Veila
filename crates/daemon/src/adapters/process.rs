@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use veila_common::ipc::{CurtainControlMessage, encode_message};
 use nix::{
     sys::signal::{Signal, kill},
     unistd::Pid,
@@ -15,6 +14,7 @@ use tokio::{
     process::{Child, Command},
     time::timeout,
 };
+use veila_common::ipc::{CurtainControlMessage, encode_message};
 
 pub async fn spawn_curtain(
     notify_socket: &Path,
@@ -38,11 +38,46 @@ pub async fn spawn_curtain(
         .with_context(|| format!("failed to spawn '{}'", binary.display()))
 }
 
+/// Spawns the curtain in standby mode.
+pub async fn spawn_standby_curtain(
+    control_socket: &Path,
+    config_path: Option<&Path>,
+) -> Result<Child> {
+    let binary = curtain_binary_path()?;
+    let mut command = Command::new(&binary);
+    command.arg(format!("--control-socket={}", control_socket.display()));
+    command.arg("--standby");
+    if let Some(config_path) = config_path {
+        command.arg(format!("--config={}", config_path.display()));
+    }
+
+    tracing::info!(binary = %binary.display(), "spawning standby curtain");
+
+    command
+        .spawn()
+        .with_context(|| format!("failed to spawn standby '{}'", binary.display()))
+}
+
 pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u64>) -> Result<()> {
     send_curtain_control_message(
         control_socket,
         &CurtainControlMessage::Unlock { attempt_id },
         "unlock request",
+    )
+}
+
+pub async fn send_curtain_lock_now(
+    control_socket: &Path,
+    notify_socket: String,
+    daemon_socket: String,
+) -> Result<()> {
+    send_curtain_control_message(
+        control_socket,
+        &CurtainControlMessage::LockNow {
+            notify_socket,
+            daemon_socket,
+        },
+        "lock-now request",
     )
 }
 

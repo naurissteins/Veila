@@ -1,8 +1,8 @@
 use anyhow::Context;
+use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_common::AppConfig;
 use veila_renderer::background::BackgroundAsset;
 use veila_ui::ShellTheme;
-use smithay_client_toolkit::reexports::client::QueueHandle;
 
 use crate::state::CurtainApp;
 

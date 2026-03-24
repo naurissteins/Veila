@@ -1,10 +1,12 @@
-use veila_renderer::FrameSize;
-use smithay_client_toolkit::reexports::client::QueueHandle;
+mod loader;
 
-use crate::{
-    background_loader::{BackgroundEvent, spawn_loader},
-    state::CurtainApp,
-};
+pub(crate) use loader::BackgroundEvent;
+
+use loader::spawn_loader;
+use smithay_client_toolkit::reexports::client::QueueHandle;
+use veila_renderer::FrameSize;
+
+use crate::state::CurtainApp;
 
 impl CurtainApp {
     pub(crate) fn drain_background_events(&mut self, queue_handle: &QueueHandle<Self>) {

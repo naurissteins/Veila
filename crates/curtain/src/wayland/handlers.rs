@@ -1,4 +1,3 @@
-use veila_ui::ShellKey;
 use smithay_client_toolkit::{
     compositor::CompositorHandler,
     output::{OutputHandler, OutputState},
@@ -17,6 +16,7 @@ use smithay_client_toolkit::{
     },
     shm::{Shm, ShmHandler},
 };
+use veila_ui::ShellKey;
 
 use crate::state::CurtainApp;
 

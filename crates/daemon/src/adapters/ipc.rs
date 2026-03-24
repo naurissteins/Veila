@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
-use veila_common::ipc::{
-    ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, decode_message,
-    encode_message,
-};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{UnixListener, UnixStream},
+};
+use veila_common::ipc::{
+    ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, decode_message,
+    encode_message,
 };
 
 pub async fn bind_listener(path: &Path) -> Result<UnixListener> {

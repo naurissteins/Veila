@@ -3,14 +3,11 @@
 //! Secure session-lock curtain for Veila.
 
 mod app;
-mod auth;
 mod background;
-mod background_loader;
-mod control;
-mod handlers;
+mod ipc;
 mod reload;
-mod scene;
 mod state;
+mod wayland;
 
 use std::path::PathBuf;
 
@@ -28,6 +25,8 @@ pub struct CurtainOptions {
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
+    /// Start in standby mode: connect to Wayland and wait for a LockNow control message.
+    pub standby: bool,
 }
 
 impl CurtainOptions {
@@ -53,6 +52,11 @@ impl CurtainOptions {
 
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if arg == "--standby" {
+                options.standby = true;
                 continue;
             }
 
@@ -99,5 +103,20 @@ mod tests {
             options.config_path.as_deref(),
             Some(std::path::Path::new("/tmp/veila.toml"))
         );
+        assert!(!options.standby);
+    }
+
+    #[test]
+    fn parses_standby_flag() {
+        let options = CurtainOptions::parse_args([
+            "veila-curtain".to_string(),
+            "--control-socket=/tmp/veila-control.sock".to_string(),
+            "--standby".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.standby);
+        assert!(options.notify_socket.is_none());
+        assert!(options.daemon_socket.is_none());
     }
 }

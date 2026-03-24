@@ -1,9 +1,12 @@
+mod render_cache;
+mod source_cache;
+
 use std::{path::Path, sync::Arc};
 
 use image::{RgbaImage, imageops::FilterType};
+use render_cache::{load_cached_buffer, store_cached_buffer};
+use source_cache::{load_cached_rgba, store_cached_rgba};
 
-use crate::background_render_cache::{load_cached_buffer, store_cached_buffer};
-use crate::background_source_cache::{load_cached_rgba, store_cached_rgba};
 use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

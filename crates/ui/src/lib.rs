@@ -3,10 +3,8 @@
 //! UI scene state and rendering helpers for Veila.
 
 mod shell;
-mod theme;
 
-pub use shell::{ShellAction, ShellKey, ShellState};
-pub use theme::ShellTheme;
+pub use shell::{ShellAction, ShellKey, ShellState, ShellTheme};
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {

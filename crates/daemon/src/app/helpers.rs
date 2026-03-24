@@ -1,12 +1,12 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow};
+use nix::unistd::{Uid, User};
 use veila_common::ipc::{
     DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
 use veila_common::{AppConfig, LoadedConfig};
-use nix::unistd::{Uid, User};
 
 use crate::{
     DaemonOptions,
@@ -16,10 +16,11 @@ use crate::{
         lock_state::LockState,
     },
 };
+use tokio::process::Child;
 
 use super::{
     prewarm,
-    runtime::{ActiveRuntime, activate_lock},
+    runtime::{ActiveRuntime, activate_lock, activate_lock_via_standby},
 };
 
 pub(super) async fn activate_and_install(
@@ -30,6 +31,38 @@ pub(super) async fn activate_and_install(
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
 ) -> Result<()> {
+    let activation = activate_lock(session_proxy, state, config_path).await?;
+    runtime.install_activation(activation);
+    *auth_state = AuthState::new(auth_policy);
+    Ok(())
+}
+
+/// Tries to activate the lock using a pre-warmed standby curtain
+pub(super) async fn try_activate_and_install(
+    session_proxy: &logind::SessionProxy<'_>,
+    state: &mut LockState,
+    standby: Option<(Child, PathBuf)>,
+    config_path: Option<&std::path::Path>,
+    runtime: ActiveRuntime<'_>,
+    auth_policy: AuthPolicy,
+    auth_state: &mut AuthState,
+) -> Result<()> {
+    if let Some((standby_child, standby_socket)) = standby {
+        match activate_lock_via_standby(session_proxy, state, standby_child, &standby_socket).await
+        {
+            Ok(activation) => {
+                runtime.install_activation(activation);
+                *auth_state = AuthState::new(auth_policy);
+                return Ok(());
+            }
+            Err(error) => {
+                tracing::warn!(
+                    "standby curtain activation failed ({error:#}); trying fresh curtain"
+                );
+            }
+        }
+    }
+
     let activation = activate_lock(session_proxy, state, config_path).await?;
     runtime.install_activation(activation);
     *auth_state = AuthState::new(auth_policy);

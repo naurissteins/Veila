@@ -5,9 +5,6 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use veila_common::AppConfig;
-use veila_renderer::{ClearColor, background::BackgroundAsset};
-use veila_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
@@ -21,12 +18,15 @@ use smithay_client_toolkit::{
     session_lock::{SessionLock, SessionLockState, SessionLockSurface},
     shm::Shm,
 };
+use veila_common::AppConfig;
+use veila_renderer::{ClearColor, background::BackgroundAsset};
+use veila_ui::{ShellAction, ShellKey, ShellState, ShellTheme};
 
 use crate::{
     CurtainOptions,
-    auth::{AuthEvent, submit_password},
-    background_loader::BackgroundEvent,
-    control::{ControlEvent, spawn_listener},
+    background::BackgroundEvent,
+    ipc::auth::{AuthEvent, submit_password},
+    ipc::control::{ControlEvent, spawn_listener},
 };
 
 pub(crate) struct ManagedLockSurface {
@@ -62,6 +62,7 @@ pub(crate) struct CurtainApp {
     pub(crate) ui_shell: ShellState,
     pub(crate) lock_wait_timeout: Duration,
     lock_started_at: Instant,
+    lock_acquisition_started: bool,
     pub(crate) session_locked: bool,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
@@ -149,6 +150,7 @@ impl CurtainApp {
             next_auth_attempt_id: 1,
             has_keyboard_focus: false,
             failure_reason: None,
+            lock_acquisition_started: false,
         })
     }
 
@@ -164,6 +166,7 @@ impl CurtainApp {
             .context("compositor does not support ext-session-lock-v1")?;
         self.session_lock = Some(session_lock);
         self.lock_started_at = Instant::now();
+        self.lock_acquisition_started = true;
 
         for output in outputs {
             self.create_surface_for_output(output, queue_handle)?;
@@ -216,7 +219,7 @@ impl CurtainApp {
     }
 
     pub(crate) fn check_lock_deadline(&mut self) -> Result<()> {
-        if self.session_locked || self.session_finished {
+        if !self.lock_acquisition_started || self.session_locked || self.session_finished {
             return Ok(());
         }
 
@@ -257,7 +260,20 @@ impl CurtainApp {
     pub(crate) fn drain_control_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.control_events.try_recv() {
             match event {
-                ControlEvent::UnlockRequested { attempt_id } => {
+                ControlEvent::Lock {
+                    notify_socket,
+                    daemon_socket,
+                } => {
+                    tracing::info!("received lock-now from daemon; acquiring session lock");
+                    self.notify_socket = Some(notify_socket);
+                    self.daemon_socket = Some(daemon_socket);
+                    if let Err(error) = self.acquire_lock(queue_handle) {
+                        self.failure_reason =
+                            Some(format!("failed to acquire lock after standby: {error:#}"));
+                        self.exit_requested = true;
+                    }
+                }
+                ControlEvent::Unlock { attempt_id } => {
                     if let Some(attempt_id) = attempt_id {
                         tracing::info!(attempt_id, "received curtain unlock request from daemon");
                     } else {
@@ -265,7 +281,7 @@ impl CurtainApp {
                     }
                     self.request_exit();
                 }
-                ControlEvent::ReloadRequested => {
+                ControlEvent::Reload => {
                     tracing::info!("received curtain reload request from daemon");
                     self.reload_config(queue_handle);
                 }

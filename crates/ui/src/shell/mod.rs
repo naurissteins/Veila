@@ -1,8 +1,9 @@
 mod render;
+mod theme;
+
+pub use theme::ShellTheme;
 
 use std::time::{Duration, Instant};
-
-use crate::ShellTheme;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {

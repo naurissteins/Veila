@@ -1,12 +1,12 @@
 use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
-use veila_renderer::{FrameSize, shm};
 use smithay_client_toolkit::{
     output::OutputInfo,
     reexports::client::QueueHandle,
     session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
 };
+use veila_renderer::{FrameSize, shm};
 
 use crate::state::CurtainApp;
 
