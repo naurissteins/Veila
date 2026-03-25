@@ -6,7 +6,7 @@ use smithay_client_toolkit::{
     reexports::client::QueueHandle,
     session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
 };
-use veila_renderer::{FrameSize, shm};
+use veila_renderer::{FrameSize, background::load_cached_render, shm};
 
 use crate::state::CurtainApp;
 
@@ -91,6 +91,30 @@ impl CurtainApp {
 
         if !needs_refresh {
             return Ok(());
+        }
+
+        if let Some(path) = self.background_path.as_deref() {
+            match load_cached_render(path, frame_size, self.background_treatment) {
+                Ok(Some(buffer)) => {
+                    tracing::debug!(
+                        path = %path.display(),
+                        width = frame_size.width,
+                        height = frame_size.height,
+                        "using cached rendered background for initial lock frame"
+                    );
+                    self.lock_surfaces[index].background = Some(buffer);
+                    return Ok(());
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    tracing::debug!(
+                        path = %path.display(),
+                        width = frame_size.width,
+                        height = frame_size.height,
+                        "failed to load cached rendered background for initial frame: {error:#}"
+                    );
+                }
+            }
         }
 
         self.lock_surfaces[index].background = Some(

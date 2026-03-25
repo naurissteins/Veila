@@ -57,7 +57,7 @@ impl ShellState {
     pub fn new(theme: ShellTheme, user_hint: Option<String>, avatar_path: Option<PathBuf>) -> Self {
         Self {
             secret: String::new(),
-            focused: false,
+            focused: true,
             status: ShellStatus::Idle,
             clock: ClockState::current(),
             theme,
@@ -264,5 +264,12 @@ mod tests {
         shell.render(&mut buffer);
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn starts_visually_focused() {
+        let shell = ShellState::default();
+
+        assert!(shell.focused);
     }
 }

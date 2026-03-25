@@ -1,6 +1,6 @@
 use veila_renderer::text::TextBlock;
 
-use super::{super::ShellStatus, layout::SceneMetrics, widgets::indicator_height};
+use super::{super::ShellStatus, layout::SceneMetrics};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SceneTextBlocks {
@@ -36,7 +36,6 @@ pub(super) enum SceneWidget {
     Avatar,
     Hint(TextBlock),
     Input,
-    Indicator,
     Status(TextBlock),
 }
 
@@ -47,15 +46,12 @@ impl SceneModel {
             SceneSection::new(LayoutRole::Hero, SceneWidget::Date(blocks.date), 30),
             SceneSection::new(LayoutRole::Hero, SceneWidget::Avatar, 18),
             SceneSection::new(LayoutRole::Auth, SceneWidget::Hint(blocks.hint), 26),
-            SceneSection::new(LayoutRole::Auth, SceneWidget::Input, 12),
+            SceneSection::new(
+                LayoutRole::Auth,
+                SceneWidget::Input,
+                if blocks.status.is_some() { 14 } else { 0 },
+            ),
         ];
-
-        let indicator_gap = if blocks.status.is_some() { 14 } else { 0 };
-        sections.push(SceneSection::new(
-            LayoutRole::Auth,
-            SceneWidget::Indicator,
-            indicator_gap,
-        ));
 
         if let Some(status) = blocks.status {
             sections.push(SceneSection::new(
@@ -104,14 +100,13 @@ impl SceneSection {
 }
 
 impl SceneWidget {
-    fn height(&self, metrics: SceneMetrics, status: &ShellStatus) -> i32 {
+    fn height(&self, metrics: SceneMetrics, _status: &ShellStatus) -> i32 {
         match self {
             Self::Clock(block) | Self::Date(block) | Self::Hint(block) | Self::Status(block) => {
                 block.height as i32
             }
             Self::Avatar => metrics.avatar_size,
             Self::Input => metrics.input_height,
-            Self::Indicator => indicator_height(status),
         }
     }
 }
@@ -143,13 +138,12 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(hero_sections.len(), 3);
-        assert_eq!(auth_sections.len(), 3);
+        assert_eq!(auth_sections.len(), 2);
         assert!(matches!(hero_sections[0].widget, SceneWidget::Clock(_)));
         assert!(matches!(hero_sections[1].widget, SceneWidget::Date(_)));
         assert!(matches!(hero_sections[2].widget, SceneWidget::Avatar));
         assert!(matches!(auth_sections[0].widget, SceneWidget::Hint(_)));
         assert!(matches!(auth_sections[1].widget, SceneWidget::Input));
-        assert!(matches!(auth_sections[2].widget, SceneWidget::Indicator));
     }
 
     #[test]

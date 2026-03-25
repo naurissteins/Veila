@@ -3,7 +3,7 @@ mod model;
 mod widgets;
 
 use veila_renderer::{
-    ClearColor, ShadowStyle, SoftwareBuffer,
+    ClearColor, SoftwareBuffer,
     avatar::AvatarStyle,
     masked::MaskedInputStyle,
     shape::{BorderStyle, PillStyle},
@@ -13,7 +13,7 @@ use veila_renderer::{
 use self::{
     layout::{SceneMetrics, role_anchors},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
-    widgets::{draw_avatar_widget, draw_centered_block, draw_indicator_widget, draw_input_widget},
+    widgets::{draw_avatar_widget, draw_centered_block, draw_input_widget},
 };
 use super::{ShellState, ShellStatus};
 
@@ -123,21 +123,7 @@ impl ShellState {
                     self.secret.chars().count(),
                     self.focused,
                     self.input_style(),
-                    MaskedInputStyle::new(
-                        self.theme.foreground,
-                        self.theme.foreground.with_alpha(72),
-                        self.accent_color(),
-                    ),
-                );
-            }
-            SceneWidget::Indicator => {
-                draw_indicator_widget(
-                    buffer,
-                    metrics.center_x,
-                    y,
-                    metrics.input_width,
-                    &self.status,
-                    self.accent_color(),
+                    MaskedInputStyle::new(self.theme.foreground),
                 );
             }
         }
@@ -146,14 +132,19 @@ impl ShellState {
     fn input_style(&self) -> PillStyle {
         let accent = self.accent_color();
         let border = if self.focused {
-            accent.with_alpha(240)
+            accent.with_alpha(styled_alpha(accent.alpha, 240))
         } else {
-            self.theme.input_border.with_alpha(210)
+            self.theme
+                .input_border
+                .with_alpha(styled_alpha(self.theme.input_border.alpha, 210))
         };
 
-        PillStyle::new(self.theme.input.with_alpha(232))
-            .with_border(BorderStyle::new(border, 2))
-            .with_shadow(ShadowStyle::new(ClearColor::rgba(0, 0, 0, 76), 0, 12))
+        PillStyle::new(
+            self.theme
+                .input
+                .with_alpha(styled_alpha(self.theme.input.alpha, 232)),
+        )
+        .with_border(BorderStyle::new(border, 2))
     }
 
     fn avatar_style(&self) -> AvatarStyle {
@@ -168,7 +159,6 @@ impl ShellState {
             self.theme.foreground.with_alpha(224),
         )
         .with_ring(BorderStyle::new(ring, 2))
-        .with_shadow(ShadowStyle::new(ClearColor::rgba(0, 0, 0, 82), 0, 14))
     }
 
     fn accent_color(&self) -> ClearColor {
@@ -206,19 +196,41 @@ fn clock_scale(metrics: SceneMetrics) -> u32 {
     if metrics.avatar_size < 100 { 4 } else { 5 }
 }
 
+fn styled_alpha(configured_alpha: u8, fallback_alpha: u8) -> u8 {
+    if configured_alpha == u8::MAX {
+        fallback_alpha
+    } else {
+        configured_alpha
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ShellState;
+    use crate::shell::ShellTheme;
+    use veila_renderer::ClearColor;
 
     #[test]
-    fn idle_input_style_uses_configured_input_border() {
-        let shell = ShellState::default();
+    fn unfocused_input_style_uses_configured_input_border() {
+        let mut shell = ShellState::default();
+        shell.set_focus(false);
         let style = shell.input_style();
 
         assert_eq!(style.fill.alpha, 232);
         assert_eq!(
             style.border.expect("input border").color,
             shell.theme.input_border.with_alpha(210)
+        );
+    }
+
+    #[test]
+    fn default_input_style_uses_focus_accent() {
+        let shell = ShellState::default();
+        let style = shell.input_style();
+
+        assert_eq!(
+            style.border.expect("default border").color,
+            shell.theme.focus.with_alpha(240)
         );
     }
 
@@ -232,5 +244,20 @@ mod tests {
             style.border.expect("focused border").color,
             shell.theme.focus.with_alpha(240)
         );
+    }
+
+    #[test]
+    fn explicit_input_alpha_is_preserved() {
+        let theme = ShellTheme {
+            input: ClearColor::rgba(96, 164, 255, 51),
+            input_border: ClearColor::rgba(96, 164, 255, 64),
+            ..ShellTheme::default()
+        };
+        let mut shell = ShellState::new(theme, None, None);
+        shell.set_focus(false);
+        let style = shell.input_style();
+
+        assert_eq!(style.fill.alpha, 51);
+        assert_eq!(style.border.expect("input border").color.alpha, 64);
     }
 }
