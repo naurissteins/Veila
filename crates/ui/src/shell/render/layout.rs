@@ -21,7 +21,7 @@ impl SceneMetrics {
     pub(super) fn from_frame(width: i32, height: i32) -> Self {
         let scene_center_x = width / 2;
         let scene_width = ((width as f32) * 0.34) as i32;
-        let input_width = scene_width.clamp(280, 430);
+        let input_width = (((scene_width as f32) * 0.7) as i32).clamp(220, 320);
         let input_height = (((height as f32) * 0.072) as i32).clamp(48, 58);
         let avatar_size = (width.min(height) / 7).clamp(84, 108);
 
@@ -108,6 +108,13 @@ mod tests {
         let metrics = SceneMetrics::from_frame(1280, 720);
 
         assert_eq!(metrics.input_height, 51);
+    }
+
+    #[test]
+    fn uses_narrower_input_width() {
+        let metrics = SceneMetrics::from_frame(1280, 720);
+
+        assert_eq!(metrics.input_width, 304);
     }
 
     #[test]

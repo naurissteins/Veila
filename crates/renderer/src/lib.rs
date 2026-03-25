@@ -7,7 +7,7 @@ pub mod draw;
 pub mod shm;
 
 // Re-export draw submodules at the crate root for ergonomic access.
-pub use draw::{avatar, masked, panel, progress, shape, symbol, text};
+pub use draw::{avatar, icon, masked, panel, progress, shape, symbol, text};
 
 use thiserror::Error;
 

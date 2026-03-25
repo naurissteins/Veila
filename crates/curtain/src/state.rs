@@ -11,7 +11,7 @@ use smithay_client_toolkit::{
     reexports::client::{
         Connection, QueueHandle,
         globals::GlobalList,
-        protocol::{wl_keyboard, wl_output},
+        protocol::{wl_keyboard, wl_output, wl_pointer, wl_surface},
     },
     registry::RegistryState,
     seat::SeatState,
@@ -49,6 +49,7 @@ pub(crate) struct CurtainApp {
     pub(crate) session_lock: Option<SessionLock>,
     pub(crate) shm: Shm,
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
+    pub(crate) pointer: Option<wl_pointer::WlPointer>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
@@ -139,6 +140,7 @@ impl CurtainApp {
             shm: Shm::bind(globals, queue_handle)
                 .context("compositor does not advertise wl_shm")?,
             keyboard: None,
+            pointer: None,
             lock_surfaces: Vec::new(),
             notify_socket: options.notify_socket,
             daemon_socket: options.daemon_socket,
@@ -339,6 +341,89 @@ impl CurtainApp {
             submit_password(socket_path, attempt_id, secret, self.auth_sender.clone());
         }
         self.render_all_surfaces(queue_handle);
+    }
+
+    pub(crate) fn handle_shell_pointer_press(
+        &mut self,
+        surface: &wl_surface::WlSurface,
+        position: (f64, f64),
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.auth_in_flight {
+            return;
+        }
+
+        let Some((width, height)) = self
+            .lock_surfaces
+            .iter()
+            .find(|entry| entry.surface.wl_surface() == surface)
+            .and_then(|entry| entry.size)
+        else {
+            return;
+        };
+
+        if self
+            .ui_shell
+            .handle_pointer_press(width as i32, height as i32, position.0, position.1)
+        {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
+    pub(crate) fn handle_shell_pointer_motion(
+        &mut self,
+        surface: &wl_surface::WlSurface,
+        position: (f64, f64),
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        let Some((width, height)) = self
+            .lock_surfaces
+            .iter()
+            .find(|entry| entry.surface.wl_surface() == surface)
+            .and_then(|entry| entry.size)
+        else {
+            return;
+        };
+
+        if self
+            .ui_shell
+            .handle_pointer_motion(width as i32, height as i32, position.0, position.1)
+        {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
+    pub(crate) fn handle_shell_pointer_release(
+        &mut self,
+        surface: &wl_surface::WlSurface,
+        position: (f64, f64),
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.auth_in_flight {
+            return;
+        }
+
+        let Some((width, height)) = self
+            .lock_surfaces
+            .iter()
+            .find(|entry| entry.surface.wl_surface() == surface)
+            .and_then(|entry| entry.size)
+        else {
+            return;
+        };
+
+        if self
+            .ui_shell
+            .handle_pointer_release(width as i32, height as i32, position.0, position.1)
+        {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
+    pub(crate) fn handle_shell_pointer_leave(&mut self, queue_handle: &QueueHandle<Self>) {
+        if self.ui_shell.handle_pointer_leave() {
+            self.render_all_surfaces(queue_handle);
+        }
     }
 
     pub(crate) fn drain_auth_events(&mut self, queue_handle: &QueueHandle<Self>) {

@@ -28,6 +28,10 @@ impl Rect {
     pub const fn is_empty(self) -> bool {
         self.width <= 0 || self.height <= 0
     }
+
+    pub const fn contains(self, x: i32, y: i32) -> bool {
+        x >= self.x && y >= self.y && x < self.x + self.width && y < self.y + self.height
+    }
 }
 
 /// Border configuration for a filled box.

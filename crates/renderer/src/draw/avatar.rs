@@ -1,16 +1,14 @@
 use std::path::Path;
 
 use image::RgbaImage;
-use tiny_skia::{
-    FillRule, FilterQuality, LineCap, Mask, Paint, PathBuilder, Pixmap, PixmapPaint, Stroke,
-    Transform,
-};
+use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
 use crate::{ClearColor, FrameSize, RendererError, Result, ShadowStyle, SoftwareBuffer};
 
 use super::{
+    icon::{AssetIcon, IconStyle, draw_icon},
     shape::{BorderStyle, CircleStyle, draw_circle},
-    skia::{color as skia_color, draw_overlay},
+    skia::draw_overlay,
 };
 
 #[derive(Debug, Clone)]
@@ -104,7 +102,7 @@ impl AvatarAsset {
             }
             Self::Placeholder => draw_placeholder(
                 buffer,
-                center_x,
+                content_left,
                 content_top,
                 content_size,
                 style.placeholder,
@@ -143,53 +141,16 @@ fn draw_avatar_image(buffer: &mut SoftwareBuffer, left: i32, top: i32, size: u32
 
 fn draw_placeholder(
     buffer: &mut SoftwareBuffer,
-    center_x: i32,
-    top_y: i32,
+    left: i32,
+    top: i32,
     size: u32,
     color: ClearColor,
 ) {
-    let radius = size as i32 / 2;
-    let overlay_left = center_x - radius;
-    draw_overlay(buffer, overlay_left, top_y, size, size, |overlay| {
-        let center = size as f32 / 2.0;
-        let head_radius = size as f32 * 0.18;
-        fill_circle(overlay, center, size as f32 * 0.36, head_radius, color);
-
-        let mut builder = PathBuilder::new();
-        let shoulders_y = size as f32 * 0.74;
-        builder.move_to(size as f32 * 0.28, shoulders_y);
-        builder.line_to(size as f32 * 0.72, shoulders_y);
-        let Some(path) = builder.finish() else {
-            return;
-        };
-
-        let mut paint = Paint::default();
-        paint.set_color(skia_color(color));
-        paint.anti_alias = true;
-
-        let stroke = Stroke {
-            width: size as f32 * 0.22,
-            line_cap: LineCap::Round,
-            ..Stroke::default()
-        };
-        overlay.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-    });
-}
-
-fn fill_circle(overlay: &mut Pixmap, center_x: f32, center_y: f32, radius: f32, color: ClearColor) {
-    let Some(path) = PathBuilder::from_circle(center_x, center_y, radius.max(1.0)) else {
-        return;
-    };
-
-    let mut paint = Paint::default();
-    paint.set_color(skia_color(color));
-    paint.anti_alias = true;
-    overlay.fill_path(
-        &path,
-        &paint,
-        FillRule::Winding,
-        Transform::identity(),
-        None,
+    draw_icon(
+        buffer,
+        crate::shape::Rect::new(left, top, size as i32, size as i32),
+        AssetIcon::User,
+        IconStyle::new(color).with_padding((size as i32 / 10).clamp(6, 14)),
     );
 }
 

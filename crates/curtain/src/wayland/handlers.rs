@@ -3,13 +3,14 @@ use smithay_client_toolkit::{
     output::{OutputHandler, OutputState},
     reexports::client::{
         Connection, Proxy, QueueHandle,
-        protocol::{wl_buffer, wl_keyboard, wl_output, wl_seat, wl_surface},
+        protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_surface},
     },
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         Capability, SeatHandler, SeatState,
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
+        pointer::{PointerEvent, PointerEventKind, PointerHandler},
     },
     session_lock::{
         SessionLock, SessionLockHandler, SessionLockSurface, SessionLockSurfaceConfigure,
@@ -167,6 +168,20 @@ impl SeatHandler for CurtainApp {
                 }
             }
         }
+
+        if capability == Capability::Pointer && self.pointer.is_none() {
+            match self.seat_state.get_pointer(queue_handle, &seat) {
+                Ok(pointer) => {
+                    tracing::info!("pointer capability acquired");
+                    self.pointer = Some(pointer);
+                }
+                Err(error) => {
+                    self.failure_reason =
+                        Some(format!("failed to acquire pointer capability: {error}"));
+                    self.exit_requested = true;
+                }
+            }
+        }
     }
 
     fn remove_capability(
@@ -181,6 +196,13 @@ impl SeatHandler for CurtainApp {
         {
             tracing::warn!("keyboard capability removed");
             keyboard.release();
+        }
+
+        if capability == Capability::Pointer
+            && let Some(pointer) = self.pointer.take()
+        {
+            tracing::warn!("pointer capability removed");
+            pointer.release();
         }
     }
 
@@ -261,6 +283,38 @@ impl KeyboardHandler for CurtainApp {
     }
 }
 
+impl PointerHandler for CurtainApp {
+    fn pointer_frame(
+        &mut self,
+        _conn: &Connection,
+        queue_handle: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        events: &[PointerEvent],
+    ) {
+        for event in events {
+            if !self.surface_has_focus_target(&event.surface) {
+                continue;
+            }
+
+            match event.kind {
+                PointerEventKind::Enter { .. } | PointerEventKind::Motion { .. } => {
+                    self.handle_shell_pointer_motion(&event.surface, event.position, queue_handle);
+                }
+                PointerEventKind::Leave { .. } => {
+                    self.handle_shell_pointer_leave(queue_handle);
+                }
+                PointerEventKind::Press { button, .. } if button == BTN_LEFT => {
+                    self.handle_shell_pointer_press(&event.surface, event.position, queue_handle);
+                }
+                PointerEventKind::Release { button, .. } if button == BTN_LEFT => {
+                    self.handle_shell_pointer_release(&event.surface, event.position, queue_handle);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 impl ProvidesRegistryState for CurtainApp {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
@@ -294,9 +348,12 @@ fn handle_key_event(app: &mut CurtainApp, queue_handle: &QueueHandle<CurtainApp>
     }
 }
 
+const BTN_LEFT: u32 = 0x110;
+
 smithay_client_toolkit::delegate_compositor!(CurtainApp);
 smithay_client_toolkit::delegate_keyboard!(CurtainApp);
 smithay_client_toolkit::delegate_output!(CurtainApp);
+smithay_client_toolkit::delegate_pointer!(CurtainApp);
 smithay_client_toolkit::delegate_registry!(CurtainApp);
 smithay_client_toolkit::delegate_seat!(CurtainApp);
 smithay_client_toolkit::delegate_session_lock!(CurtainApp);

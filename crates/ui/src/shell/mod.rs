@@ -39,6 +39,9 @@ enum ShellStatus {
 #[derive(Debug, Clone)]
 pub struct ShellState {
     secret: String,
+    reveal_secret: bool,
+    reveal_toggle_hovered: bool,
+    reveal_toggle_pressed: bool,
     focused: bool,
     status: ShellStatus,
     clock: ClockState,
@@ -63,6 +66,9 @@ impl ShellState {
     ) -> Self {
         Self {
             secret: String::new(),
+            reveal_secret: false,
+            reveal_toggle_hovered: false,
+            reveal_toggle_pressed: false,
             focused: true,
             status: ShellStatus::Idle,
             clock: ClockState::current(),
@@ -110,6 +116,8 @@ impl ShellState {
             }
             ShellKey::Escape => {
                 self.secret.clear();
+                self.reveal_secret = false;
+                self.reveal_toggle_pressed = false;
                 self.status = ShellStatus::Idle;
                 ShellAction::None
             }
@@ -130,6 +138,8 @@ impl ShellState {
 
     pub fn authentication_rejected(&mut self, retry_after_ms: Option<u64>) {
         self.secret.clear();
+        self.reveal_secret = false;
+        self.reveal_toggle_pressed = false;
         let retry_until = retry_after_ms
             .filter(|retry_after_ms| *retry_after_ms > 0)
             .map(|retry_after_ms| Instant::now() + Duration::from_millis(retry_after_ms));
@@ -161,6 +171,75 @@ impl ShellState {
         }
 
         true
+    }
+
+    pub fn handle_pointer_motion(
+        &mut self,
+        frame_width: i32,
+        frame_height: i32,
+        x: f64,
+        y: f64,
+    ) -> bool {
+        let x = x.floor() as i32;
+        let y = y.floor() as i32;
+        let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
+        let hovered = toggle_rect.contains(x, y);
+        let changed = self.reveal_toggle_hovered != hovered;
+        self.reveal_toggle_hovered = hovered;
+        if !hovered && self.reveal_toggle_pressed {
+            self.reveal_toggle_pressed = false;
+            return true;
+        }
+
+        changed
+    }
+
+    pub fn handle_pointer_leave(&mut self) -> bool {
+        let changed = self.reveal_toggle_hovered || self.reveal_toggle_pressed;
+        self.reveal_toggle_hovered = false;
+        self.reveal_toggle_pressed = false;
+        changed
+    }
+
+    pub fn handle_pointer_press(
+        &mut self,
+        frame_width: i32,
+        frame_height: i32,
+        x: f64,
+        y: f64,
+    ) -> bool {
+        let x = x.floor() as i32;
+        let y = y.floor() as i32;
+        let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
+        let pressed = toggle_rect.contains(x, y);
+        let changed =
+            self.reveal_toggle_pressed != pressed || self.reveal_toggle_hovered != pressed;
+        self.reveal_toggle_hovered = pressed;
+        self.reveal_toggle_pressed = pressed;
+        changed
+    }
+
+    pub fn handle_pointer_release(
+        &mut self,
+        frame_width: i32,
+        frame_height: i32,
+        x: f64,
+        y: f64,
+    ) -> bool {
+        let x = x.floor() as i32;
+        let y = y.floor() as i32;
+        let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
+        let hovered = toggle_rect.contains(x, y);
+        let toggled = self.reveal_toggle_pressed && hovered;
+        let changed =
+            self.reveal_toggle_pressed || self.reveal_toggle_hovered != hovered || toggled;
+        self.reveal_toggle_pressed = false;
+        self.reveal_toggle_hovered = hovered;
+        if toggled {
+            self.reveal_secret = !self.reveal_secret;
+        }
+
+        changed
     }
 }
 
@@ -292,6 +371,46 @@ mod tests {
         let shell = ShellState::default();
 
         assert!(shell.focused);
+    }
+
+    #[test]
+    fn toggles_password_reveal_when_eye_is_pressed() {
+        let mut shell = ShellState::default();
+        shell.handle_key(ShellKey::Character('s'));
+        let toggle = shell.reveal_toggle_rect_for_frame(1280, 720);
+
+        assert!(shell.handle_pointer_motion(
+            1280,
+            720,
+            (toggle.x + 2) as f64,
+            (toggle.y + 2) as f64,
+        ));
+        assert!(shell.reveal_toggle_hovered);
+        assert!(shell.handle_pointer_press(
+            1280,
+            720,
+            (toggle.x + 2) as f64,
+            (toggle.y + 2) as f64,
+        ));
+        assert!(shell.reveal_toggle_pressed);
+        assert!(shell.handle_pointer_release(
+            1280,
+            720,
+            (toggle.x + 2) as f64,
+            (toggle.y + 2) as f64,
+        ));
+        assert!(shell.reveal_secret);
+    }
+
+    #[test]
+    fn clears_hover_state_when_pointer_leaves_toggle() {
+        let mut shell = ShellState::default();
+        let toggle = shell.reveal_toggle_rect_for_frame(1280, 720);
+        shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64);
+
+        assert!(shell.handle_pointer_leave());
+        assert!(!shell.reveal_toggle_hovered);
+        assert!(!shell.reveal_toggle_pressed);
     }
 
     #[test]

@@ -5,6 +5,7 @@ mod widgets;
 use veila_renderer::{
     ClearColor, SoftwareBuffer,
     avatar::AvatarStyle,
+    icon::IconStyle,
     masked::MaskedInputStyle,
     shape::{BorderStyle, PillStyle},
     text::{TextStyle, fit_wrapped_text},
@@ -13,7 +14,10 @@ use veila_renderer::{
 use self::{
     layout::{SceneMetrics, role_anchors},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
-    widgets::{draw_avatar_widget, draw_centered_block, draw_input_widget},
+    widgets::{
+        InputWidget, draw_avatar_widget, draw_centered_block, draw_input_widget,
+        input_toggle_hitbox,
+    },
 };
 use super::{ShellState, ShellStatus};
 
@@ -125,17 +129,58 @@ impl ShellState {
                 );
             }
             SceneWidget::Input(placeholder) => {
-                draw_input_widget(
-                    buffer,
-                    metrics.input_rect(y),
-                    self.secret.chars().count(),
-                    self.focused,
-                    self.input_style(),
-                    MaskedInputStyle::new(self.theme.foreground),
-                    Some(placeholder),
-                );
+                let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
+                    Some(fit_wrapped_text(
+                        &self.secret,
+                        TextStyle::new(self.theme.foreground.with_alpha(236), 2),
+                        metrics.input_width.saturating_sub(92) as u32,
+                        1,
+                    ))
+                } else {
+                    None
+                };
+                let widget = InputWidget {
+                    rect: metrics.input_rect(y),
+                    secret_len: self.secret.chars().count(),
+                    focused: self.focused,
+                    shell_style: self.input_style(),
+                    mask_style: MaskedInputStyle::new(self.theme.foreground),
+                    placeholder: Some(placeholder.clone()),
+                    revealed_secret,
+                    reveal_secret: self.reveal_secret,
+                    toggle_hovered: self.reveal_toggle_hovered,
+                    toggle_pressed: self.reveal_toggle_pressed,
+                    toggle_style: self.toggle_style(),
+                };
+                draw_input_widget(buffer, &widget);
             }
         }
+    }
+
+    pub(super) fn reveal_toggle_rect_for_frame(
+        &self,
+        frame_width: i32,
+        frame_height: i32,
+    ) -> veila_renderer::shape::Rect {
+        let size = frame_width.max(1);
+        let metrics = SceneMetrics::from_frame(size, frame_height.max(1));
+        let model = SceneModel::standard(self.scene_text_blocks(metrics));
+        let anchors = role_anchors(
+            frame_height.max(1),
+            model.total_height_for_role(LayoutRole::Hero, metrics, &self.status),
+            model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
+            model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+        );
+        let mut y = anchors.auth_y;
+
+        for section in model.sections_for_role(LayoutRole::Auth) {
+            if matches!(section.widget, SceneWidget::Input(_)) {
+                return input_toggle_hitbox(metrics.input_rect(y));
+            }
+            y += section.height(metrics, &self.status) + section.gap_after;
+        }
+
+        veila_renderer::shape::Rect::new(0, 0, 0, 0)
     }
 
     fn input_style(&self) -> PillStyle {
@@ -172,6 +217,17 @@ impl ShellState {
             self.theme.foreground.with_alpha(224),
         )
         .with_ring(BorderStyle::new(ring, 2))
+    }
+
+    fn toggle_style(&self) -> IconStyle {
+        let alpha = if self.reveal_toggle_pressed {
+            255
+        } else if self.reveal_toggle_hovered || self.reveal_secret {
+            236
+        } else {
+            184
+        };
+        IconStyle::new(self.theme.foreground.with_alpha(alpha)).with_padding(4)
     }
 
     fn accent_color(&self) -> ClearColor {
