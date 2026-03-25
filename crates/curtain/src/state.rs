@@ -101,9 +101,10 @@ impl CurtainApp {
         )
         .context("failed to prepare fallback background")?;
         let background_treatment = background_treatment(&config.background);
-        let ui_shell = ShellState::new(
+        let ui_shell = ShellState::new_with_username(
             theme,
             config.lock.user_hint.clone(),
+            config.lock.username.clone(),
             config.lock.avatar_path.clone(),
             config.lock.show_username,
         );

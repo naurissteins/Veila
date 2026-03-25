@@ -40,6 +40,7 @@ impl ShellState {
         );
         let model = SceneModel::standard(
             self.scene_text_blocks(metrics),
+            self.theme.clock_gap,
             self.theme.avatar_gap,
             self.theme.username_gap,
             self.theme.status_gap,
@@ -50,6 +51,7 @@ impl ShellState {
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+            self.theme.header_top_offset,
         );
 
         self.render_role(buffer, metrics, &model, LayoutRole::Hero, anchors.hero_y);
@@ -153,7 +155,7 @@ impl ShellState {
                     secret_len: self.secret.chars().count(),
                     focused: self.focused,
                     shell_style: self.input_style(),
-                    mask_style: MaskedInputStyle::new(self.theme.foreground),
+                    mask_style: self.mask_style(),
                     placeholder: Some(placeholder.clone()),
                     revealed_secret,
                     reveal_secret: self.reveal_secret,
@@ -181,6 +183,7 @@ impl ShellState {
         );
         let model = SceneModel::standard(
             self.scene_text_blocks(metrics),
+            self.theme.clock_gap,
             self.theme.avatar_gap,
             self.theme.username_gap,
             self.theme.status_gap,
@@ -191,6 +194,7 @@ impl ShellState {
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+            self.theme.header_top_offset,
         );
         let mut y = anchors.auth_y;
 
@@ -228,6 +232,10 @@ impl ShellState {
         } else {
             style.with_border(BorderStyle::new(border, border_width))
         }
+    }
+
+    fn mask_style(&self) -> MaskedInputStyle {
+        MaskedInputStyle::new(self.theme.input_mask_color.unwrap_or(self.theme.foreground))
     }
 
     fn clock_text_style(&self, metrics: SceneMetrics) -> TextStyle {
@@ -610,6 +618,18 @@ mod tests {
         let style = shell.toggle_style();
 
         assert_eq!(style.color.alpha, 92);
+    }
+
+    #[test]
+    fn mask_style_uses_configured_input_mask_color() {
+        let theme = ShellTheme {
+            input_mask_color: Some(ClearColor::opaque(169, 196, 255)),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.mask_style();
+
+        assert_eq!(style.bullet, ClearColor::opaque(169, 196, 255));
     }
 
     #[test]

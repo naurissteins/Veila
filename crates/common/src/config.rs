@@ -109,6 +109,8 @@ pub struct LockConfig {
     #[serde(default = "default_lock_show_username")]
     pub show_username: bool,
     #[serde(default)]
+    pub username: Option<String>,
+    #[serde(default)]
     pub user_hint: Option<String>,
     #[serde(default)]
     pub avatar_path: Option<PathBuf>,
@@ -121,6 +123,7 @@ impl Default for LockConfig {
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
             show_username: default_lock_show_username(),
+            username: None,
             user_hint: None,
             avatar_path: None,
         }
@@ -176,6 +179,10 @@ pub struct VisualConfig {
     #[serde(default)]
     pub status_gap: Option<u16>,
     #[serde(default)]
+    pub clock_gap: Option<u16>,
+    #[serde(default)]
+    pub header_top_offset: Option<i16>,
+    #[serde(default)]
     pub clock_color: Option<RgbColor>,
     #[serde(default)]
     pub clock_opacity: Option<u8>,
@@ -199,6 +206,8 @@ pub struct VisualConfig {
     pub status_color: Option<RgbColor>,
     #[serde(default)]
     pub status_opacity: Option<u8>,
+    #[serde(default)]
+    pub input_mask_color: Option<RgbColor>,
     #[serde(default = "default_foreground_color")]
     pub foreground: RgbColor,
     #[serde(default = "default_muted_color")]
@@ -235,6 +244,8 @@ impl Default for VisualConfig {
             avatar_gap: None,
             username_gap: None,
             status_gap: None,
+            clock_gap: None,
+            header_top_offset: None,
             clock_color: None,
             clock_opacity: None,
             date_color: None,
@@ -247,6 +258,7 @@ impl Default for VisualConfig {
             eye_icon_opacity: None,
             status_color: None,
             status_opacity: None,
+            input_mask_color: None,
             foreground: default_foreground_color(),
             muted: default_muted_color(),
             pending: default_pending_color(),
@@ -349,6 +361,7 @@ mod tests {
 
         assert_eq!(config.lock.acquire_timeout_seconds, 5);
         assert!(config.lock.show_username);
+        assert!(config.lock.username.is_none());
         assert!(config.lock.user_hint.is_none());
         assert!(config.lock.avatar_path.is_none());
         assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));
@@ -376,6 +389,8 @@ mod tests {
         assert!(config.visuals.avatar_gap.is_none());
         assert!(config.visuals.username_gap.is_none());
         assert!(config.visuals.status_gap.is_none());
+        assert!(config.visuals.clock_gap.is_none());
+        assert!(config.visuals.header_top_offset.is_none());
         assert!(config.visuals.clock_color.is_none());
         assert!(config.visuals.clock_opacity.is_none());
         assert!(config.visuals.date_color.is_none());
@@ -388,6 +403,7 @@ mod tests {
         assert!(config.visuals.eye_icon_opacity.is_none());
         assert!(config.visuals.status_color.is_none());
         assert!(config.visuals.status_opacity.is_none());
+        assert!(config.visuals.input_mask_color.is_none());
     }
 
     #[test]
@@ -408,6 +424,7 @@ mod tests {
                 acquire_timeout_seconds = 9
                 auth_backoff_base_ms = 250
                 show_username = false
+                username = "anonymous"
                 user_hint = "Type your password"
                 avatar_path = "/tmp/avatar.png"
 
@@ -433,6 +450,8 @@ mod tests {
                 avatar_gap = 14
                 username_gap = 28
                 status_gap = 18
+                clock_gap = 10
+                header_top_offset = -12
                 clock_color = "#F8FBFF"
                 clock_opacity = 96
                 date_color = "#C8D4EC"
@@ -445,6 +464,7 @@ mod tests {
                 eye_icon_opacity = 72
                 status_color = "#FFE0A0"
                 status_opacity = 88
+                input_mask_color = "#A9C4FF"
             "##,
         )
         .expect("config file");
@@ -455,6 +475,7 @@ mod tests {
         assert_eq!(loaded.config.lock.acquire_timeout_seconds, 9);
         assert_eq!(loaded.config.lock.auth_backoff_base_ms, 250);
         assert!(!loaded.config.lock.show_username);
+        assert_eq!(loaded.config.lock.username.as_deref(), Some("anonymous"));
         assert_eq!(
             loaded.config.lock.avatar_path.as_deref(),
             Some(std::path::Path::new("/tmp/avatar.png"))
@@ -506,6 +527,8 @@ mod tests {
         assert_eq!(loaded.config.visuals.avatar_gap, Some(14));
         assert_eq!(loaded.config.visuals.username_gap, Some(28));
         assert_eq!(loaded.config.visuals.status_gap, Some(18));
+        assert_eq!(loaded.config.visuals.clock_gap, Some(10));
+        assert_eq!(loaded.config.visuals.header_top_offset, Some(-12));
         assert_eq!(
             loaded.config.visuals.clock_color,
             Some(RgbColor::rgb(248, 251, 255))
@@ -533,6 +556,10 @@ mod tests {
             Some(RgbColor::rgb(255, 224, 160))
         );
         assert_eq!(loaded.config.visuals.status_opacity, Some(88));
+        assert_eq!(
+            loaded.config.visuals.input_mask_color,
+            Some(RgbColor::rgb(169, 196, 255))
+        );
 
         fs::remove_file(path).ok();
         fs::remove_dir(dir).ok();

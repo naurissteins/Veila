@@ -43,6 +43,7 @@ pub(super) enum SceneWidget {
 impl SceneModel {
     pub(super) fn standard(
         blocks: SceneTextBlocks,
+        clock_gap: Option<i32>,
         avatar_gap: Option<i32>,
         username_gap: Option<i32>,
         status_gap: Option<i32>,
@@ -54,12 +55,13 @@ impl SceneModel {
             placeholder,
             status,
         } = blocks;
+        let clock_gap = clock_gap.unwrap_or(4).clamp(0, 48);
         let avatar_gap = avatar_gap.unwrap_or(10).clamp(0, 96);
         let username_gap = username_gap.unwrap_or(34).clamp(0, 96);
         let status_gap = status_gap.unwrap_or(14).clamp(0, 96);
 
         let mut sections = vec![
-            SceneSection::new(LayoutRole::Hero, SceneWidget::Clock(clock), 4),
+            SceneSection::new(LayoutRole::Hero, SceneWidget::Clock(clock), clock_gap),
             SceneSection::new(LayoutRole::Hero, SceneWidget::Date(date), 0),
             SceneSection::new(LayoutRole::Auth, SceneWidget::Avatar, avatar_gap),
         ];
@@ -187,6 +189,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
         let hero_sections = model
@@ -218,6 +221,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let without_status = SceneModel::standard(
             SceneTextBlocks {
@@ -227,6 +231,7 @@ mod tests {
                 placeholder: block("Type your password to unlock"),
                 status: None,
             },
+            None,
             None,
             None,
             None,
@@ -267,6 +272,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
         assert_eq!(model.sections_for_role(LayoutRole::Footer).count(), 0);
@@ -282,6 +288,7 @@ mod tests {
                 placeholder: block("Type your password to unlock"),
                 status: None,
             },
+            None,
             None,
             None,
             None,
@@ -306,6 +313,7 @@ mod tests {
                 status: None,
             },
             None,
+            None,
             Some(24),
             None,
         );
@@ -327,6 +335,7 @@ mod tests {
                 placeholder: block("Type your password to unlock"),
                 status: None,
             },
+            None,
             Some(18),
             None,
             None,
@@ -349,6 +358,7 @@ mod tests {
                 placeholder: block("Type your password to unlock"),
                 status: Some(block("Authentication failed")),
             },
+            None,
             None,
             None,
             Some(20),
@@ -374,6 +384,7 @@ mod tests {
             },
             None,
             None,
+            None,
             Some(20),
         );
         let with_status = SceneModel::standard(
@@ -386,6 +397,7 @@ mod tests {
             },
             None,
             None,
+            None,
             Some(20),
         );
 
@@ -393,6 +405,29 @@ mod tests {
             without_status.anchor_height_for_role(LayoutRole::Auth, metrics, &ShellStatus::Idle),
             with_status.anchor_height_for_role(LayoutRole::Auth, metrics, &ShellStatus::Idle),
         );
+    }
+
+    #[test]
+    fn uses_configured_clock_gap() {
+        let model = SceneModel::standard(
+            SceneTextBlocks {
+                clock: block("09:05"),
+                date: block("Tuesday, March 24"),
+                username: Some(block("ramces")),
+                placeholder: block("Type your password to unlock"),
+                status: None,
+            },
+            Some(12),
+            None,
+            None,
+            None,
+        );
+
+        let hero_sections = model
+            .sections_for_role(LayoutRole::Hero)
+            .collect::<Vec<_>>();
+
+        assert_eq!(hero_sections[0].gap_after, 12);
     }
 
     fn block(text: &str) -> TextBlock {

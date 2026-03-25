@@ -64,6 +64,16 @@ impl ShellState {
         avatar_path: Option<PathBuf>,
         show_username: bool,
     ) -> Self {
+        Self::new_with_username(theme, user_hint, None, avatar_path, show_username)
+    }
+
+    pub fn new_with_username(
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        username_override: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+    ) -> Self {
         Self {
             secret: String::new(),
             reveal_secret: false,
@@ -76,7 +86,7 @@ impl ShellState {
             hint_text: user_hint
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
-            username_text: username_text(show_username),
+            username_text: username_text(show_username, username_override),
             avatar: load_avatar(avatar_path),
         }
     }
@@ -92,11 +102,22 @@ impl ShellState {
         avatar_path: Option<PathBuf>,
         show_username: bool,
     ) {
+        self.apply_theme_with_username(theme, user_hint, None, avatar_path, show_username);
+    }
+
+    pub fn apply_theme_with_username(
+        &mut self,
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        username_override: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+    ) {
         self.theme = theme;
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
-        self.username_text = username_text(show_username);
+        self.username_text = username_text(show_username, username_override);
         self.avatar = load_avatar(avatar_path);
     }
 
@@ -287,13 +308,15 @@ fn current_retry_seconds(retry_until: Instant) -> Option<u64> {
     if seconds == 0 { None } else { Some(seconds) }
 }
 
-fn username_text(show_username: bool) -> Option<String> {
+fn username_text(show_username: bool, username_override: Option<String>) -> Option<String> {
     if !show_username {
         return None;
     }
 
-    std::env::var("USER")
-        .ok()
+    username_override
+        .map(|username| username.trim().to_string())
+        .filter(|username| !username.is_empty())
+        .or_else(|| std::env::var("USER").ok())
         .or_else(|| std::env::var("LOGNAME").ok())
         .map(|username| username.trim().to_string())
         .filter(|username| !username.is_empty())
@@ -418,5 +441,18 @@ mod tests {
         let shell = ShellState::new(Default::default(), None, None, false);
 
         assert!(shell.username_text.is_none());
+    }
+
+    #[test]
+    fn uses_configured_username_override() {
+        let shell = ShellState::new_with_username(
+            Default::default(),
+            None,
+            Some(String::from("guest")),
+            None,
+            true,
+        );
+
+        assert_eq!(shell.username_text.as_deref(), Some("guest"));
     }
 }

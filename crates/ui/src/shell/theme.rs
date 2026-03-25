@@ -23,6 +23,8 @@ pub struct ShellTheme {
     pub avatar_gap: Option<i32>,
     pub username_gap: Option<i32>,
     pub status_gap: Option<i32>,
+    pub clock_gap: Option<i32>,
+    pub header_top_offset: Option<i32>,
     pub clock_color: Option<ClearColor>,
     pub clock_opacity: Option<u8>,
     pub date_color: Option<ClearColor>,
@@ -35,6 +37,7 @@ pub struct ShellTheme {
     pub eye_icon_opacity: Option<u8>,
     pub status_color: Option<ClearColor>,
     pub status_opacity: Option<u8>,
+    pub input_mask_color: Option<ClearColor>,
     pub foreground: ClearColor,
     pub muted: ClearColor,
     pub pending: ClearColor,
@@ -77,6 +80,8 @@ impl ShellTheme {
             avatar_gap: config.visuals.avatar_gap.map(i32::from),
             username_gap: config.visuals.username_gap.map(i32::from),
             status_gap: config.visuals.status_gap.map(i32::from),
+            clock_gap: config.visuals.clock_gap.map(i32::from),
+            header_top_offset: config.visuals.header_top_offset.map(i32::from),
             clock_color: config.visuals.clock_color.map(to_color),
             clock_opacity: config.visuals.clock_opacity,
             date_color: config.visuals.date_color.map(to_color),
@@ -89,6 +94,7 @@ impl ShellTheme {
             eye_icon_opacity: config.visuals.eye_icon_opacity,
             status_color: config.visuals.status_color.map(to_color),
             status_opacity: config.visuals.status_opacity,
+            input_mask_color: config.visuals.input_mask_color.map(to_color),
             foreground: to_color(config.visuals.foreground),
             muted: to_color(config.visuals.muted),
             pending: to_color(config.visuals.pending),
@@ -144,6 +150,8 @@ mod tests {
         config.visuals.avatar_gap = Some(14);
         config.visuals.username_gap = Some(28);
         config.visuals.status_gap = Some(18);
+        config.visuals.clock_gap = Some(10);
+        config.visuals.header_top_offset = Some(-12);
         config.visuals.clock_color = Some(ConfigColor::rgb(248, 251, 255));
         config.visuals.clock_opacity = Some(96);
         config.visuals.date_color = Some(ConfigColor::rgb(200, 212, 236));
@@ -156,6 +164,7 @@ mod tests {
         config.visuals.eye_icon_opacity = Some(72);
         config.visuals.status_color = Some(ConfigColor::rgb(255, 224, 160));
         config.visuals.status_opacity = Some(88);
+        config.visuals.input_mask_color = Some(ConfigColor::rgb(169, 196, 255));
 
         let theme = ShellTheme::from_config(&config);
 
@@ -186,6 +195,8 @@ mod tests {
         assert_eq!(theme.avatar_gap, Some(14));
         assert_eq!(theme.username_gap, Some(28));
         assert_eq!(theme.status_gap, Some(18));
+        assert_eq!(theme.clock_gap, Some(10));
+        assert_eq!(theme.header_top_offset, Some(-12));
         assert_eq!(theme.clock_color, Some(ClearColor::opaque(248, 251, 255)));
         assert_eq!(theme.clock_opacity, Some(96));
         assert_eq!(theme.date_color, Some(ClearColor::opaque(200, 212, 236)));
@@ -204,6 +215,10 @@ mod tests {
         assert_eq!(theme.eye_icon_opacity, Some(72));
         assert_eq!(theme.status_color, Some(ClearColor::opaque(255, 224, 160)));
         assert_eq!(theme.status_opacity, Some(88));
+        assert_eq!(
+            theme.input_mask_color,
+            Some(ClearColor::opaque(169, 196, 255))
+        );
     }
 
     #[test]
