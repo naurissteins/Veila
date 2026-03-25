@@ -21,6 +21,7 @@ pub enum AvatarAsset {
 pub struct AvatarStyle {
     pub background: ClearColor,
     pub placeholder: ClearColor,
+    pub placeholder_padding: Option<i32>,
     pub ring: Option<BorderStyle>,
     pub shadow: Option<ShadowStyle>,
 }
@@ -30,8 +31,19 @@ impl AvatarStyle {
         Self {
             background,
             placeholder,
+            placeholder_padding: None,
             ring: None,
             shadow: None,
+        }
+    }
+
+    pub const fn with_placeholder_padding(self, placeholder_padding: i32) -> Self {
+        Self {
+            background: self.background,
+            placeholder: self.placeholder,
+            placeholder_padding: Some(placeholder_padding),
+            ring: self.ring,
+            shadow: self.shadow,
         }
     }
 
@@ -39,6 +51,7 @@ impl AvatarStyle {
         Self {
             background: self.background,
             placeholder: self.placeholder,
+            placeholder_padding: self.placeholder_padding,
             ring: Some(ring),
             shadow: self.shadow,
         }
@@ -48,6 +61,7 @@ impl AvatarStyle {
         Self {
             background: self.background,
             placeholder: self.placeholder,
+            placeholder_padding: self.placeholder_padding,
             ring: self.ring,
             shadow: Some(shadow),
         }
@@ -106,6 +120,7 @@ impl AvatarAsset {
                 content_top,
                 content_size,
                 style.placeholder,
+                style.placeholder_padding,
             ),
         }
     }
@@ -145,13 +160,20 @@ fn draw_placeholder(
     top: i32,
     size: u32,
     color: ClearColor,
+    placeholder_padding: Option<i32>,
 ) {
     draw_icon(
         buffer,
         crate::shape::Rect::new(left, top, size as i32, size as i32),
         AssetIcon::User,
-        IconStyle::new(color).with_padding((size as i32 / 10).clamp(6, 14)),
+        IconStyle::new(color).with_padding(style_placeholder_padding(size, placeholder_padding)),
     );
+}
+
+fn style_placeholder_padding(size: u32, configured_padding: Option<i32>) -> i32 {
+    configured_padding
+        .unwrap_or_else(|| (size as i32 / 10).clamp(6, 14))
+        .clamp(0, size as i32 / 3)
 }
 
 fn rgba_to_pixmap(image: RgbaImage) -> Result<Pixmap> {
@@ -180,7 +202,7 @@ fn premultiply(channel: u8, alpha: u8) -> u8 {
 mod tests {
     use image::{Rgba, RgbaImage};
 
-    use super::{AvatarAsset, AvatarStyle, rgba_to_pixmap};
+    use super::{AvatarAsset, AvatarStyle, rgba_to_pixmap, style_placeholder_padding};
     use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::BorderStyle};
 
     #[test]
@@ -208,5 +230,12 @@ mod tests {
         );
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn placeholder_padding_uses_responsive_default_until_overridden() {
+        assert_eq!(style_placeholder_padding(96, None), 9);
+        assert_eq!(style_placeholder_padding(96, Some(12)), 12);
+        assert_eq!(style_placeholder_padding(96, Some(80)), 32);
     }
 }

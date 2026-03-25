@@ -202,6 +202,7 @@ fn draw_text_lines(
             swash_cache,
             text_color(color),
             |pixel_x, pixel_y, width, height, pixel_color| {
+                let pixel_color = modulate_alpha(pixel_color, color.alpha);
                 for offset_y in 0..height as i32 {
                     for offset_x in 0..width as i32 {
                         blend_pixel(
@@ -249,6 +250,11 @@ fn scale_component(component: u32, current_scale: u32, next_scale: u32) -> u32 {
 
 fn text_color(color: ClearColor) -> Color {
     Color::rgba(color.red, color.green, color.blue, color.alpha)
+}
+
+fn modulate_alpha(color: Color, alpha: u8) -> Color {
+    let modulated_alpha = ((u16::from(color.a()) * u16::from(alpha) + 127) / 255) as u8;
+    Color::rgba(color.r(), color.g(), color.b(), modulated_alpha)
 }
 
 fn blend_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, color: Color) {
@@ -335,6 +341,43 @@ mod tests {
         draw_text(&mut buffer, 0, 0, "K", style);
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn respects_text_alpha_when_rendering() {
+        let mut faint = SoftwareBuffer::solid(FrameSize::new(64, 32), ClearColor::opaque(0, 0, 0))
+            .expect("buffer");
+        let mut opaque = SoftwareBuffer::solid(FrameSize::new(64, 32), ClearColor::opaque(0, 0, 0))
+            .expect("buffer");
+
+        draw_text(
+            &mut faint,
+            0,
+            0,
+            "88:88",
+            TextStyle::new(ClearColor::rgba(255, 255, 255, 5), 3),
+        );
+        draw_text(
+            &mut opaque,
+            0,
+            0,
+            "88:88",
+            TextStyle::new(ClearColor::opaque(255, 255, 255), 3),
+        );
+
+        let faint_total: u64 = faint
+            .pixels()
+            .chunks_exact(4)
+            .map(|pixel| u64::from(pixel[0]) + u64::from(pixel[1]) + u64::from(pixel[2]))
+            .sum();
+        let opaque_total: u64 = opaque
+            .pixels()
+            .chunks_exact(4)
+            .map(|pixel| u64::from(pixel[0]) + u64::from(pixel[1]) + u64::from(pixel[2]))
+            .sum();
+
+        assert!(faint_total > 0);
+        assert!(faint_total < opaque_total);
     }
 
     #[test]

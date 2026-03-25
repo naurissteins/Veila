@@ -18,12 +18,14 @@ pub(super) struct RoleAnchors {
 }
 
 impl SceneMetrics {
-    pub(super) fn from_frame(width: i32, height: i32) -> Self {
+    pub(super) fn from_frame(width: i32, height: i32, configured_avatar_size: Option<i32>) -> Self {
         let scene_center_x = width / 2;
         let scene_width = ((width as f32) * 0.34) as i32;
         let input_width = (((scene_width as f32) * 0.7) as i32).clamp(220, 320);
         let input_height = (((height as f32) * 0.072) as i32).clamp(48, 58);
-        let avatar_size = (width.min(height) / 7).clamp(84, 108);
+        let avatar_size = configured_avatar_size
+            .unwrap_or_else(|| (width.min(height) / 7).clamp(84, 108))
+            .clamp(56, 160);
 
         Self {
             center_x: scene_center_x,
@@ -105,23 +107,30 @@ mod tests {
 
     #[test]
     fn uses_slimmer_input_height() {
-        let metrics = SceneMetrics::from_frame(1280, 720);
+        let metrics = SceneMetrics::from_frame(1280, 720, None);
 
         assert_eq!(metrics.input_height, 51);
     }
 
     #[test]
     fn uses_narrower_input_width() {
-        let metrics = SceneMetrics::from_frame(1280, 720);
+        let metrics = SceneMetrics::from_frame(1280, 720, None);
 
         assert_eq!(metrics.input_width, 304);
     }
 
     #[test]
     fn uses_smaller_avatar_size_for_compact_hero_stack() {
-        let metrics = SceneMetrics::from_frame(1280, 720);
+        let metrics = SceneMetrics::from_frame(1280, 720, None);
 
         assert_eq!(metrics.avatar_size, 102);
+    }
+
+    #[test]
+    fn uses_configured_avatar_size_when_present() {
+        let metrics = SceneMetrics::from_frame(1280, 720, Some(88));
+
+        assert_eq!(metrics.avatar_size, 88);
     }
 
     #[test]

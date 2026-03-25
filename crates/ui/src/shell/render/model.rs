@@ -193,11 +193,11 @@ mod tests {
         assert_eq!(
             with_status.total_height_for_role(
                 LayoutRole::Auth,
-                SceneMetrics::from_frame(1280, 720),
+                SceneMetrics::from_frame(1280, 720, None),
                 &ShellStatus::Idle,
             ) - without_status.total_height_for_role(
                 LayoutRole::Auth,
-                SceneMetrics::from_frame(1280, 720),
+                SceneMetrics::from_frame(1280, 720, None),
                 &ShellStatus::Idle,
             ),
             38

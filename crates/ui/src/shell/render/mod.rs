@@ -21,6 +21,8 @@ use self::{
 };
 use super::{ShellState, ShellStatus};
 
+const MAX_HEADER_TEXT_SCALE: u32 = 24;
+
 impl ShellState {
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
         buffer.clear(self.theme.background);
@@ -29,7 +31,11 @@ impl ShellState {
 
     pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
         let size = buffer.size();
-        let metrics = SceneMetrics::from_frame(size.width as i32, size.height as i32);
+        let metrics = SceneMetrics::from_frame(
+            size.width as i32,
+            size.height as i32,
+            self.theme.avatar_size,
+        );
         let model = SceneModel::standard(self.scene_text_blocks(metrics));
         let anchors = role_anchors(
             size.height as i32,
@@ -69,20 +75,20 @@ impl ShellState {
         SceneTextBlocks {
             clock: fit_wrapped_text(
                 self.clock.time_text(),
-                TextStyle::new(self.theme.foreground.with_alpha(246), clock_scale(metrics)),
+                self.clock_text_style(metrics),
                 metrics.clock_width,
                 3,
             ),
             date: fit_wrapped_text(
                 self.clock.date_text(),
-                TextStyle::new(self.theme.foreground.with_alpha(188), 2),
+                self.date_text_style(),
                 metrics.clock_width,
                 1,
             ),
             username: self.username_text.as_ref().map(|username| {
                 fit_wrapped_text(
                     username,
-                    TextStyle::new(self.theme.foreground.with_alpha(214), 2),
+                    self.username_text_style(),
                     metrics.content_width,
                     1,
                 )
@@ -163,7 +169,7 @@ impl ShellState {
         frame_height: i32,
     ) -> veila_renderer::shape::Rect {
         let size = frame_width.max(1);
-        let metrics = SceneMetrics::from_frame(size, frame_height.max(1));
+        let metrics = SceneMetrics::from_frame(size, frame_height.max(1), self.theme.avatar_size);
         let model = SceneModel::standard(self.scene_text_blocks(metrics));
         let anchors = role_anchors(
             frame_height.max(1),
@@ -203,7 +209,35 @@ impl ShellState {
         .with_border(BorderStyle::new(border, 2))
     }
 
+    fn clock_text_style(&self, metrics: SceneMetrics) -> TextStyle {
+        TextStyle::new(
+            header_color(self.theme.foreground, self.theme.clock_opacity, 246),
+            self.theme
+                .clock_size
+                .unwrap_or_else(|| clock_scale(metrics))
+                .clamp(1, MAX_HEADER_TEXT_SCALE),
+        )
+    }
+
+    fn date_text_style(&self) -> TextStyle {
+        TextStyle::new(
+            header_color(self.theme.foreground, self.theme.date_opacity, 188),
+            self.theme
+                .date_size
+                .unwrap_or(2)
+                .clamp(1, MAX_HEADER_TEXT_SCALE),
+        )
+    }
+
+    fn username_text_style(&self) -> TextStyle {
+        TextStyle::new(
+            username_color(self.theme.foreground, self.theme.username_opacity),
+            self.theme.username_size.unwrap_or(2).clamp(1, 6),
+        )
+    }
+
     fn avatar_style(&self) -> AvatarStyle {
+        let ring_width = self.theme.avatar_ring_width.unwrap_or(2).clamp(0, 12);
         let ring = if self.focused {
             self.theme
                 .input_border
@@ -211,12 +245,17 @@ impl ShellState {
         } else {
             self.theme.foreground.with_alpha(54)
         };
+        let background =
+            avatar_background_color(self.theme.panel, self.theme.avatar_background_opacity);
 
-        AvatarStyle::new(
-            self.theme.panel.with_alpha(104),
-            self.theme.foreground.with_alpha(224),
-        )
-        .with_ring(BorderStyle::new(ring, 2))
+        let mut style = AvatarStyle::new(background, self.theme.foreground.with_alpha(224));
+        if ring_width > 0 {
+            style = style.with_ring(BorderStyle::new(ring, ring_width));
+        }
+        if let Some(padding) = self.theme.avatar_placeholder_padding {
+            style = style.with_placeholder_padding(padding);
+        }
+        style
     }
 
     fn toggle_style(&self) -> IconStyle {
@@ -259,6 +298,40 @@ fn clock_scale(metrics: SceneMetrics) -> u32 {
     if metrics.avatar_size < 100 { 4 } else { 5 }
 }
 
+fn avatar_background_color(base: ClearColor, opacity_percent: Option<u8>) -> ClearColor {
+    let alpha = match opacity_percent {
+        Some(percent) => percent_to_alpha(percent),
+        None if base.alpha == u8::MAX => 104,
+        None => base.alpha,
+    };
+
+    base.with_alpha(alpha)
+}
+
+fn username_color(base: ClearColor, opacity_percent: Option<u8>) -> ClearColor {
+    let alpha = match opacity_percent {
+        Some(percent) => percent_to_alpha(percent),
+        None if base.alpha == u8::MAX => 214,
+        None => base.alpha,
+    };
+
+    base.with_alpha(alpha)
+}
+
+fn header_color(base: ClearColor, opacity_percent: Option<u8>, fallback_alpha: u8) -> ClearColor {
+    let alpha = match opacity_percent {
+        Some(percent) => percent_to_alpha(percent),
+        None if base.alpha == u8::MAX => fallback_alpha,
+        None => base.alpha,
+    };
+
+    base.with_alpha(alpha)
+}
+
+fn percent_to_alpha(percent: u8) -> u8 {
+    ((u16::from(percent.min(100)) * 255 + 50) / 100) as u8
+}
+
 fn styled_alpha(configured_alpha: u8, fallback_alpha: u8) -> u8 {
     if configured_alpha == u8::MAX {
         fallback_alpha
@@ -269,9 +342,9 @@ fn styled_alpha(configured_alpha: u8, fallback_alpha: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::ShellState;
+    use super::{ShellState, layout::SceneMetrics};
     use crate::shell::ShellTheme;
-    use veila_renderer::ClearColor;
+    use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer};
 
     #[test]
     fn unfocused_input_style_uses_configured_input_border() {
@@ -349,5 +422,199 @@ mod tests {
 
         assert_eq!(style.fill.alpha, 26);
         assert_eq!(style.border.expect("input border").color.alpha, 31);
+    }
+
+    #[test]
+    fn avatar_style_uses_configured_placeholder_padding() {
+        let theme = ShellTheme {
+            avatar_placeholder_padding: Some(16),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.avatar_style();
+
+        assert_eq!(style.placeholder_padding, Some(16));
+    }
+
+    #[test]
+    fn avatar_style_uses_configured_ring_width() {
+        let theme = ShellTheme {
+            avatar_ring_width: Some(4),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.avatar_style();
+
+        assert_eq!(style.ring.expect("avatar ring").thickness, 4);
+    }
+
+    #[test]
+    fn avatar_style_allows_disabling_ring() {
+        let theme = ShellTheme {
+            avatar_ring_width: Some(0),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.avatar_style();
+
+        assert!(style.ring.is_none());
+    }
+
+    #[test]
+    fn avatar_style_uses_configured_background_opacity() {
+        let theme = ShellTheme {
+            panel: ClearColor::rgba(24, 30, 42, 255),
+            avatar_background_opacity: Some(36),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.avatar_style();
+
+        assert_eq!(style.background.alpha, 92);
+    }
+
+    #[test]
+    fn avatar_style_preserves_explicit_panel_alpha_when_unset() {
+        let theme = ShellTheme {
+            panel: ClearColor::rgba(24, 30, 42, 80),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.avatar_style();
+
+        assert_eq!(style.background.alpha, 80);
+    }
+
+    #[test]
+    fn scene_metrics_use_configured_avatar_size() {
+        let theme = ShellTheme {
+            avatar_size: Some(88),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(1280, 720)).expect("buffer");
+
+        shell.render_overlay(&mut buffer);
+
+        let metrics = SceneMetrics::from_frame(1280, 720, shell.theme.avatar_size);
+        assert_eq!(metrics.avatar_size, 88);
+    }
+
+    #[test]
+    fn username_style_uses_configured_opacity_and_size() {
+        let theme = ShellTheme {
+            foreground: ClearColor::rgba(240, 244, 250, 255),
+            username_opacity: Some(72),
+            username_size: Some(3),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.username_text_style();
+
+        assert_eq!(style.color.alpha, 184);
+        assert_eq!(style.scale, 3);
+    }
+
+    #[test]
+    fn username_style_preserves_explicit_foreground_alpha_when_unset() {
+        let theme = ShellTheme {
+            foreground: ClearColor::rgba(240, 244, 250, 90),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.username_text_style();
+
+        assert_eq!(style.color.alpha, 90);
+        assert_eq!(style.scale, 2);
+    }
+
+    #[test]
+    fn clock_style_uses_configured_opacity() {
+        let theme = ShellTheme {
+            foreground: ClearColor::rgba(240, 244, 250, 255),
+            clock_opacity: Some(96),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None));
+
+        assert_eq!(style.color.alpha, 245);
+        assert_eq!(style.scale, 5);
+    }
+
+    #[test]
+    fn date_style_uses_configured_opacity() {
+        let theme = ShellTheme {
+            foreground: ClearColor::rgba(240, 244, 250, 255),
+            date_opacity: Some(74),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.date_text_style();
+
+        assert_eq!(style.color.alpha, 189);
+        assert_eq!(style.scale, 2);
+    }
+
+    #[test]
+    fn clock_style_uses_configured_size() {
+        let theme = ShellTheme {
+            clock_size: Some(4),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None));
+
+        assert_eq!(style.scale, 4);
+    }
+
+    #[test]
+    fn clock_style_allows_sizes_above_previous_cap() {
+        let theme = ShellTheme {
+            clock_size: Some(12),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None));
+
+        assert_eq!(style.scale, 12);
+    }
+
+    #[test]
+    fn date_style_uses_configured_size() {
+        let theme = ShellTheme {
+            date_size: Some(3),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.date_text_style();
+
+        assert_eq!(style.scale, 3);
+    }
+
+    #[test]
+    fn date_style_allows_sizes_above_previous_cap() {
+        let theme = ShellTheme {
+            date_size: Some(12),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.date_text_style();
+
+        assert_eq!(style.scale, 12);
+    }
+
+    #[test]
+    fn header_styles_preserve_explicit_foreground_alpha_when_unset() {
+        let theme = ShellTheme {
+            foreground: ClearColor::rgba(240, 244, 250, 90),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let clock_style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None));
+        let date_style = shell.date_text_style();
+
+        assert_eq!(clock_style.color.alpha, 90);
+        assert_eq!(date_style.color.alpha, 90);
     }
 }

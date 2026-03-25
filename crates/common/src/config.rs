@@ -143,6 +143,26 @@ pub struct VisualConfig {
     pub input_border_opacity: Option<u8>,
     #[serde(default = "default_input_radius")]
     pub input_radius: u16,
+    #[serde(default)]
+    pub avatar_size: Option<u16>,
+    #[serde(default)]
+    pub avatar_placeholder_padding: Option<u16>,
+    #[serde(default)]
+    pub avatar_ring_width: Option<u16>,
+    #[serde(default)]
+    pub avatar_background_opacity: Option<u8>,
+    #[serde(default)]
+    pub username_opacity: Option<u8>,
+    #[serde(default)]
+    pub username_size: Option<u16>,
+    #[serde(default)]
+    pub clock_opacity: Option<u8>,
+    #[serde(default)]
+    pub date_opacity: Option<u8>,
+    #[serde(default)]
+    pub clock_size: Option<u16>,
+    #[serde(default)]
+    pub date_size: Option<u16>,
     #[serde(default = "default_foreground_color")]
     pub foreground: RgbColor,
     #[serde(default = "default_muted_color")]
@@ -163,6 +183,16 @@ impl Default for VisualConfig {
             input_border: default_input_border_color(),
             input_border_opacity: None,
             input_radius: default_input_radius(),
+            avatar_size: None,
+            avatar_placeholder_padding: None,
+            avatar_ring_width: None,
+            avatar_background_opacity: None,
+            username_opacity: None,
+            username_size: None,
+            clock_opacity: None,
+            date_opacity: None,
+            clock_size: None,
+            date_size: None,
             foreground: default_foreground_color(),
             muted: default_muted_color(),
             pending: default_pending_color(),
@@ -276,6 +306,16 @@ mod tests {
         assert!(config.visuals.input_opacity.is_none());
         assert!(config.visuals.input_border_opacity.is_none());
         assert_eq!(config.visuals.input_radius, 32);
+        assert!(config.visuals.avatar_size.is_none());
+        assert!(config.visuals.avatar_placeholder_padding.is_none());
+        assert!(config.visuals.avatar_ring_width.is_none());
+        assert!(config.visuals.avatar_background_opacity.is_none());
+        assert!(config.visuals.username_opacity.is_none());
+        assert!(config.visuals.username_size.is_none());
+        assert!(config.visuals.clock_opacity.is_none());
+        assert!(config.visuals.date_opacity.is_none());
+        assert!(config.visuals.clock_size.is_none());
+        assert!(config.visuals.date_size.is_none());
     }
 
     #[test]
@@ -306,6 +346,16 @@ mod tests {
                 input_border = "#FFFFFF"
                 input_border_opacity = 12
                 input_radius = 20
+                avatar_size = 92
+                avatar_placeholder_padding = 12
+                avatar_ring_width = 3
+                avatar_background_opacity = 36
+                username_opacity = 72
+                username_size = 3
+                clock_opacity = 96
+                date_opacity = 74
+                clock_size = 4
+                date_size = 3
             "##,
         )
         .expect("config file");
@@ -340,6 +390,16 @@ mod tests {
         );
         assert_eq!(loaded.config.visuals.input_border_opacity, Some(12));
         assert_eq!(loaded.config.visuals.input_radius, 20);
+        assert_eq!(loaded.config.visuals.avatar_size, Some(92));
+        assert_eq!(loaded.config.visuals.avatar_placeholder_padding, Some(12));
+        assert_eq!(loaded.config.visuals.avatar_ring_width, Some(3));
+        assert_eq!(loaded.config.visuals.avatar_background_opacity, Some(36));
+        assert_eq!(loaded.config.visuals.username_opacity, Some(72));
+        assert_eq!(loaded.config.visuals.username_size, Some(3));
+        assert_eq!(loaded.config.visuals.clock_opacity, Some(96));
+        assert_eq!(loaded.config.visuals.date_opacity, Some(74));
+        assert_eq!(loaded.config.visuals.clock_size, Some(4));
+        assert_eq!(loaded.config.visuals.date_size, Some(3));
 
         fs::remove_file(path).ok();
         fs::remove_dir(dir).ok();
