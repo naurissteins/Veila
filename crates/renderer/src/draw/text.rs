@@ -1,15 +1,24 @@
 use std::{cell::RefCell, thread_local};
 
-use cosmic_text::{Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Wrap};
+use cosmic_text::{
+    Attrs, Buffer, Color, Family, FamilyOwned, FontSystem, Metrics, Shaping, SwashCache, Wrap,
+};
 
 use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+const BUNDLED_CLOCK_FONT: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/fonts/prototype.regular.ttf"
+));
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextStyle {
     pub color: ClearColor,
     pub scale: u32,
     pub letter_spacing: u32,
     pub line_spacing: u32,
+    pub font_family: Option<FamilyOwned>,
+    pub font_weight: Option<u16>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,7 +37,11 @@ struct FontContext {
 
 thread_local! {
     static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(FontContext {
-        font_system: FontSystem::new(),
+        font_system: {
+            let mut font_system = FontSystem::new();
+            font_system.db_mut().load_font_data(BUNDLED_CLOCK_FONT.to_vec());
+            font_system
+        },
         swash_cache: SwashCache::new(),
     });
 }
@@ -40,10 +53,12 @@ impl TextStyle {
             scale,
             letter_spacing: 0,
             line_spacing: scale * 3,
+            font_family: None,
+            font_weight: None,
         }
     }
 
-    pub fn with_scale(self, scale: u32) -> Self {
+    pub fn with_scale(&self, scale: u32) -> Self {
         let current_scale = self.scale.max(1);
         let next_scale = scale.max(1);
 
@@ -52,13 +67,40 @@ impl TextStyle {
             scale: next_scale,
             letter_spacing: scale_component(self.letter_spacing, current_scale, next_scale),
             line_spacing: scale_component(self.line_spacing, current_scale, next_scale),
+            font_family: self.font_family.clone(),
+            font_weight: self.font_weight,
         }
+    }
+
+    pub fn with_line_spacing(mut self, line_spacing: u32) -> Self {
+        self.line_spacing = line_spacing;
+        self
+    }
+
+    pub fn with_font_family(mut self, family: &str) -> Self {
+        let trimmed = family.trim();
+        if !trimmed.is_empty() {
+            self.font_family = Some(FamilyOwned::new(Family::Name(trimmed)));
+        }
+        self
+    }
+
+    pub fn with_font_weight(mut self, weight: u16) -> Self {
+        self.font_weight = Some(weight);
+        self
     }
 }
 
 impl TextBlock {
     pub fn draw(&self, buffer: &mut SoftwareBuffer, x: i32, y: i32) {
-        draw_text_lines(buffer, x, y, &self.lines, self.style, self.style.color);
+        draw_text_lines(
+            buffer,
+            x,
+            y,
+            &self.lines,
+            self.style.clone(),
+            self.style.color,
+        );
     }
 
     pub fn draw_with_shadow(
@@ -73,7 +115,7 @@ impl TextBlock {
             x + shadow.offset_x,
             y + shadow.offset_y,
             &self.lines,
-            self.style,
+            self.style.clone(),
             shadow.color,
         );
         self.draw(buffer, x, y);
@@ -118,6 +160,42 @@ pub fn fit_wrapped_text(text: &str, style: TextStyle, max_width: u32, min_scale:
     wrap_text(text, style.with_scale(min_scale), max_width)
 }
 
+pub fn bundled_clock_font_family() -> Option<String> {
+    FONT_CONTEXT.with(|context| {
+        let context = context.borrow();
+        context
+            .font_system
+            .db()
+            .faces()
+            .find(|face| matches!(&face.source, cosmic_text::fontdb::Source::Binary(_)))
+            .and_then(|face| face.families.first().map(|(family, _)| family.clone()))
+    })
+}
+
+pub fn bundled_clock_font_postscript_name() -> Option<String> {
+    FONT_CONTEXT.with(|context| {
+        let context = context.borrow();
+        context
+            .font_system
+            .db()
+            .faces()
+            .find(|face| matches!(&face.source, cosmic_text::fontdb::Source::Binary(_)))
+            .map(|face| face.post_script_name.clone())
+    })
+}
+
+pub fn resolve_font_family(requested: &str) -> Option<String> {
+    let requested = requested.trim();
+    if requested.is_empty() {
+        return None;
+    }
+
+    FONT_CONTEXT.with(|context| {
+        let context = context.borrow();
+        resolve_font_family_in_db(context.font_system.db(), requested)
+    })
+}
+
 fn layout_text_block(
     text: &str,
     style: TextStyle,
@@ -125,17 +203,18 @@ fn layout_text_block(
     wrap: Wrap,
 ) -> TextBlock {
     if text.is_empty() {
+        let height = line_height(&style);
         return TextBlock {
             lines: vec![String::new()],
             style,
             width: 0,
-            height: line_height(style),
+            height,
         };
     }
 
     FONT_CONTEXT.with(|context| {
         let mut context = context.borrow_mut();
-        let metrics = Metrics::new(font_size(style), line_height(style) as f32);
+        let metrics = Metrics::new(font_size(&style), line_height(&style) as f32);
         let mut buffer = Buffer::new(&mut context.font_system, metrics);
         buffer.set_wrap(&mut context.font_system, wrap);
         buffer.set_size(
@@ -143,7 +222,7 @@ fn layout_text_block(
             max_width.map(|value| value as f32),
             None,
         );
-        let attrs = Attrs::new().family(Family::SansSerif);
+        let attrs = text_attrs(&style);
         buffer.set_text(&mut context.font_system, text, &attrs, Shaping::Advanced);
         buffer.shape_until_scroll(&mut context.font_system, true);
 
@@ -161,13 +240,55 @@ fn layout_text_block(
             lines.push(String::new());
         }
 
+        let height = bottom.ceil().max(line_height(&style) as f32) as u32;
+
         TextBlock {
             lines,
             style,
             width: width.ceil().max(0.0) as u32,
-            height: bottom.ceil().max(line_height(style) as f32) as u32,
+            height,
         }
     })
+}
+
+fn resolve_font_family_in_db(
+    db: &cosmic_text::fontdb::Database,
+    requested: &str,
+) -> Option<String> {
+    let requested = normalize_font_name(requested);
+    let mut partial_match = None;
+
+    for face in db.faces() {
+        for (family, _) in &face.families {
+            let normalized_family = normalize_font_name(family);
+            if normalized_family == requested {
+                return Some(family.clone());
+            }
+
+            if partial_match.is_none()
+                && (normalized_family.contains(&requested)
+                    || requested.contains(&normalized_family))
+            {
+                partial_match = Some(family.clone());
+            }
+        }
+
+        if normalize_font_name(&face.post_script_name) == requested
+            && let Some((family, _)) = face.families.first()
+        {
+            return Some(family.clone());
+        }
+    }
+
+    partial_match
+}
+
+fn normalize_font_name(value: &str) -> String {
+    value
+        .chars()
+        .filter(|char| char.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 fn draw_text_lines(
@@ -189,11 +310,11 @@ fn draw_text_lines(
             font_system,
             swash_cache,
         } = &mut *context;
-        let metrics = Metrics::new(font_size(style), line_height(style) as f32);
+        let metrics = Metrics::new(font_size(&style), line_height(&style) as f32);
         let mut cosmic_buffer = Buffer::new(font_system, metrics);
         cosmic_buffer.set_wrap(font_system, Wrap::None);
         cosmic_buffer.set_size(font_system, None, None);
-        let attrs = Attrs::new().family(Family::SansSerif);
+        let attrs = text_attrs(&style);
         cosmic_buffer.set_text(font_system, &text, &attrs, Shaping::Advanced);
         cosmic_buffer.shape_until_scroll(font_system, true);
 
@@ -233,11 +354,23 @@ fn extract_run_text(text: &str, glyphs: &[cosmic_text::LayoutGlyph]) -> String {
     text[start..end].to_string()
 }
 
-fn font_size(style: TextStyle) -> f32 {
+fn text_attrs(style: &TextStyle) -> Attrs<'_> {
+    let attrs = match style.font_family.as_ref() {
+        Some(family) => Attrs::new().family(family.as_family()),
+        None => Attrs::new().family(Family::SansSerif),
+    };
+
+    match style.font_weight {
+        Some(weight) => attrs.weight(cosmic_text::Weight(weight)),
+        None => attrs,
+    }
+}
+
+fn font_size(style: &TextStyle) -> f32 {
     4.0 + style.scale.max(1) as f32 * 6.0
 }
 
-fn line_height(style: TextStyle) -> u32 {
+fn line_height(style: &TextStyle) -> u32 {
     font_size(style).ceil() as u32 + style.line_spacing
 }
 
@@ -302,7 +435,8 @@ fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::{
-        TextStyle, draw_text, draw_text_with_shadow, fit_wrapped_text, measure_text, wrap_text,
+        TextStyle, bundled_clock_font_family, bundled_clock_font_postscript_name, draw_text,
+        draw_text_with_shadow, fit_wrapped_text, measure_text, resolve_font_family, wrap_text,
     };
     use crate::{ClearColor, FrameSize, ShadowStyle, SoftwareBuffer};
 
@@ -389,5 +523,21 @@ mod tests {
         draw_text_with_shadow(&mut buffer, 0, 0, "K", style, shadow);
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn resolves_bundled_clock_font_family_from_loaded_database() {
+        assert!(bundled_clock_font_family().is_some());
+    }
+
+    #[test]
+    fn resolves_postscript_font_name_to_family_name() {
+        let family = bundled_clock_font_family().expect("bundled family");
+        let postscript = bundled_clock_font_postscript_name().expect("bundled postscript name");
+
+        assert_eq!(
+            resolve_font_family(&postscript).as_deref(),
+            Some(family.as_str())
+        );
     }
 }

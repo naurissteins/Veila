@@ -24,7 +24,9 @@ pub struct ShellTheme {
     pub username_gap: Option<i32>,
     pub status_gap: Option<i32>,
     pub clock_gap: Option<i32>,
+    pub auth_stack_offset: Option<i32>,
     pub header_top_offset: Option<i32>,
+    pub clock_font_family: Option<String>,
     pub clock_color: Option<ClearColor>,
     pub clock_opacity: Option<u8>,
     pub date_color: Option<ClearColor>,
@@ -81,7 +83,9 @@ impl ShellTheme {
             username_gap: config.visuals.username_gap.map(i32::from),
             status_gap: config.visuals.status_gap.map(i32::from),
             clock_gap: config.visuals.clock_gap.map(i32::from),
+            auth_stack_offset: config.visuals.auth_stack_offset.map(i32::from),
             header_top_offset: config.visuals.header_top_offset.map(i32::from),
+            clock_font_family: config.visuals.clock_font_family.clone(),
             clock_color: config.visuals.clock_color.map(to_color),
             clock_opacity: config.visuals.clock_opacity,
             date_color: config.visuals.date_color.map(to_color),
@@ -151,7 +155,9 @@ mod tests {
         config.visuals.username_gap = Some(28);
         config.visuals.status_gap = Some(18);
         config.visuals.clock_gap = Some(10);
+        config.visuals.auth_stack_offset = Some(16);
         config.visuals.header_top_offset = Some(-12);
+        config.visuals.clock_font_family = Some(String::from("Bebas Neue"));
         config.visuals.clock_color = Some(ConfigColor::rgb(248, 251, 255));
         config.visuals.clock_opacity = Some(96);
         config.visuals.date_color = Some(ConfigColor::rgb(200, 212, 236));
@@ -196,7 +202,9 @@ mod tests {
         assert_eq!(theme.username_gap, Some(28));
         assert_eq!(theme.status_gap, Some(18));
         assert_eq!(theme.clock_gap, Some(10));
+        assert_eq!(theme.auth_stack_offset, Some(16));
         assert_eq!(theme.header_top_offset, Some(-12));
+        assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
         assert_eq!(theme.clock_color, Some(ClearColor::opaque(248, 251, 255)));
         assert_eq!(theme.clock_opacity, Some(96));
         assert_eq!(theme.date_color, Some(ClearColor::opaque(200, 212, 236)));

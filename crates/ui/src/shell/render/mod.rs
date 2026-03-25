@@ -8,7 +8,7 @@ use veila_renderer::{
     icon::IconStyle,
     masked::MaskedInputStyle,
     shape::{BorderStyle, PillStyle},
-    text::{TextStyle, fit_wrapped_text},
+    text::{TextStyle, bundled_clock_font_family, fit_wrapped_text, resolve_font_family},
 };
 
 use self::{
@@ -22,6 +22,7 @@ use self::{
 use super::{ShellState, ShellStatus};
 
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
+const DEFAULT_CLOCK_FONT_FAMILY: &str = "Prototype";
 
 impl ShellState {
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
@@ -51,6 +52,7 @@ impl ShellState {
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+            self.theme.auth_stack_offset,
             self.theme.header_top_offset,
         );
 
@@ -194,6 +196,7 @@ impl ShellState {
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+            self.theme.auth_stack_offset,
             self.theme.header_top_offset,
         );
         let mut y = anchors.auth_y;
@@ -239,7 +242,7 @@ impl ShellState {
     }
 
     fn clock_text_style(&self, metrics: SceneMetrics) -> TextStyle {
-        TextStyle::new(
+        let style = TextStyle::new(
             header_color(
                 self.theme.clock_color.unwrap_or(self.theme.foreground),
                 self.theme.clock_opacity,
@@ -250,6 +253,18 @@ impl ShellState {
                 .unwrap_or_else(|| clock_scale(metrics))
                 .clamp(1, MAX_HEADER_TEXT_SCALE),
         )
+        .with_line_spacing(0);
+
+        let family = self
+            .theme
+            .clock_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(bundled_clock_font_family)
+            .or_else(|| self.theme.clock_font_family.clone())
+            .unwrap_or_else(|| String::from(DEFAULT_CLOCK_FONT_FAMILY));
+
+        style.with_font_family(&family)
     }
 
     fn date_text_style(&self) -> TextStyle {
@@ -264,6 +279,7 @@ impl ShellState {
                 .unwrap_or(2)
                 .clamp(1, MAX_HEADER_TEXT_SCALE),
         )
+        .with_line_spacing(0)
     }
 
     fn username_text_style(&self) -> TextStyle {
@@ -455,7 +471,7 @@ fn eye_icon_alpha(base_alpha: u8, opacity_percent: Option<u8>, interaction_alpha
 mod tests {
     use super::{ShellState, layout::SceneMetrics};
     use crate::shell::{ShellStatus, ShellTheme};
-    use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer};
+    use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer, text::bundled_clock_font_family};
 
     #[test]
     fn unfocused_input_style_uses_configured_input_border() {
@@ -804,6 +820,45 @@ mod tests {
     }
 
     #[test]
+    fn clock_style_uses_configured_font_family() {
+        let bundled_family =
+            bundled_clock_font_family().expect("bundled clock font family should resolve");
+        let theme = ShellTheme {
+            clock_font_family: Some(bundled_family.clone()),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None, true);
+        let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+
+        assert!(
+            style
+                .font_family
+                .as_ref()
+                .map(|family| format!("{family:?}"))
+                .is_some_and(|debug| debug.contains(&bundled_family))
+        );
+    }
+
+    #[test]
+    fn clock_style_defaults_to_bundled_font_family() {
+        let shell = ShellState::default();
+        let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+
+        assert!(
+            style
+                .font_family
+                .as_ref()
+                .map(|family| format!("{family:?}"))
+                .is_some_and(|debug| {
+                    bundled_clock_font_family()
+                        .as_ref()
+                        .is_some_and(|family| debug.contains(family))
+                })
+        );
+        assert_eq!(style.font_weight, None);
+    }
+
+    #[test]
     fn date_style_uses_configured_opacity() {
         let theme = ShellTheme {
             foreground: ClearColor::rgba(240, 244, 250, 255),
@@ -843,6 +898,17 @@ mod tests {
         let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
         assert_eq!(style.scale, 4);
+    }
+
+    #[test]
+    fn header_styles_do_not_add_extra_line_spacing() {
+        let shell = ShellState::default();
+        let clock_style =
+            shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+        let date_style = shell.date_text_style();
+
+        assert_eq!(clock_style.line_spacing, 0);
+        assert_eq!(date_style.line_spacing, 0);
     }
 
     #[test]

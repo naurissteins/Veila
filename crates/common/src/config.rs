@@ -181,7 +181,11 @@ pub struct VisualConfig {
     #[serde(default)]
     pub clock_gap: Option<u16>,
     #[serde(default)]
+    pub auth_stack_offset: Option<i16>,
+    #[serde(default)]
     pub header_top_offset: Option<i16>,
+    #[serde(default)]
+    pub clock_font_family: Option<String>,
     #[serde(default)]
     pub clock_color: Option<RgbColor>,
     #[serde(default)]
@@ -245,7 +249,9 @@ impl Default for VisualConfig {
             username_gap: None,
             status_gap: None,
             clock_gap: None,
+            auth_stack_offset: None,
             header_top_offset: None,
+            clock_font_family: None,
             clock_color: None,
             clock_opacity: None,
             date_color: None,
@@ -390,7 +396,9 @@ mod tests {
         assert!(config.visuals.username_gap.is_none());
         assert!(config.visuals.status_gap.is_none());
         assert!(config.visuals.clock_gap.is_none());
+        assert!(config.visuals.auth_stack_offset.is_none());
         assert!(config.visuals.header_top_offset.is_none());
+        assert!(config.visuals.clock_font_family.is_none());
         assert!(config.visuals.clock_color.is_none());
         assert!(config.visuals.clock_opacity.is_none());
         assert!(config.visuals.date_color.is_none());
@@ -451,7 +459,9 @@ mod tests {
                 username_gap = 28
                 status_gap = 18
                 clock_gap = 10
+                auth_stack_offset = 16
                 header_top_offset = -12
+                clock_font_family = "Bebas Neue"
                 clock_color = "#F8FBFF"
                 clock_opacity = 96
                 date_color = "#C8D4EC"
@@ -528,7 +538,12 @@ mod tests {
         assert_eq!(loaded.config.visuals.username_gap, Some(28));
         assert_eq!(loaded.config.visuals.status_gap, Some(18));
         assert_eq!(loaded.config.visuals.clock_gap, Some(10));
+        assert_eq!(loaded.config.visuals.auth_stack_offset, Some(16));
         assert_eq!(loaded.config.visuals.header_top_offset, Some(-12));
+        assert_eq!(
+            loaded.config.visuals.clock_font_family.as_deref(),
+            Some("Bebas Neue")
+        );
         assert_eq!(
             loaded.config.visuals.clock_color,
             Some(RgbColor::rgb(248, 251, 255))
