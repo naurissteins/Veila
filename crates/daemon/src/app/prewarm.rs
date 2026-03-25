@@ -107,7 +107,7 @@ fn prewarm_rendered_backgrounds(
 }
 
 fn to_clear_color(color: veila_common::RgbColor) -> ClearColor {
-    ClearColor::opaque(color.0, color.1, color.2)
+    ClearColor::rgba(color.0, color.1, color.2, color.3)
 }
 
 fn background_treatment(config: &veila_common::config::BackgroundConfig) -> BackgroundTreatment {
@@ -116,7 +116,7 @@ fn background_treatment(config: &veila_common::config::BackgroundConfig) -> Back
         dim_strength: config.dim_strength,
         tint: config
             .tint
-            .map(|color| ClearColor::opaque(color.0, color.1, color.2)),
+            .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
         tint_opacity: config.tint_opacity,
     }
 }

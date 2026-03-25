@@ -200,7 +200,7 @@ fn apply_treatment(buffer: &mut SoftwareBuffer, treatment: BackgroundTreatment) 
     }
 
     if let Some(tint) = treatment.tint {
-        let tint_alpha = alpha_from_percent(treatment.tint_opacity);
+        let tint_alpha = effective_tint_alpha(tint.alpha, treatment.tint_opacity);
         if tint_alpha > 0 {
             let tint = tint.with_alpha(tint_alpha as u8).to_argb8888_bytes();
             let tint_alpha = u16::from(tint[3]);
@@ -218,6 +218,19 @@ fn apply_treatment(buffer: &mut SoftwareBuffer, treatment: BackgroundTreatment) 
 fn alpha_from_percent(percent: u8) -> u16 {
     let clamped = percent.min(100);
     (u16::from(clamped) * 255 + 50) / 100
+}
+
+fn effective_tint_alpha(base_alpha: u8, opacity_percent: u8) -> u16 {
+    let percent_alpha = alpha_from_percent(opacity_percent);
+    if percent_alpha == 0 {
+        if base_alpha == u8::MAX {
+            0
+        } else {
+            u16::from(base_alpha)
+        }
+    } else {
+        (u16::from(base_alpha) * percent_alpha + 127) / 255
+    }
 }
 
 fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {

@@ -1,3 +1,5 @@
+mod color;
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -6,6 +8,9 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
+
+pub use color::ConfigColor;
+pub type RgbColor = ConfigColor;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoadedConfig {
@@ -157,15 +162,6 @@ impl Default for VisualConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RgbColor(pub u8, pub u8, pub u8);
-
-impl RgbColor {
-    pub const fn new(red: u8, green: u8, blue: u8) -> Self {
-        Self(red, green, blue)
-    }
-}
-
 fn default_path() -> Option<PathBuf> {
     let config_root = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
@@ -175,7 +171,7 @@ fn default_path() -> Option<PathBuf> {
 }
 
 const fn default_background_color() -> RgbColor {
-    RgbColor::new(8, 12, 20)
+    RgbColor::rgb(8, 12, 20)
 }
 
 const fn default_background_blur_radius() -> u8 {
@@ -203,39 +199,39 @@ const fn default_auth_backoff_max_seconds() -> u64 {
 }
 
 const fn default_panel_color() -> RgbColor {
-    RgbColor::new(22, 28, 38)
+    RgbColor::rgb(22, 28, 38)
 }
 
 const fn default_panel_border_color() -> RgbColor {
-    RgbColor::new(74, 86, 110)
+    RgbColor::rgb(74, 86, 110)
 }
 
 const fn default_input_color() -> RgbColor {
-    RgbColor::new(13, 18, 28)
+    RgbColor::rgb(13, 18, 28)
 }
 
 const fn default_input_border_color() -> RgbColor {
-    RgbColor::new(92, 108, 146)
+    RgbColor::rgb(92, 108, 146)
 }
 
 const fn default_foreground_color() -> RgbColor {
-    RgbColor::new(240, 244, 250)
+    RgbColor::rgb(240, 244, 250)
 }
 
 const fn default_muted_color() -> RgbColor {
-    RgbColor::new(68, 78, 102)
+    RgbColor::rgb(68, 78, 102)
 }
 
 const fn default_focus_color() -> RgbColor {
-    RgbColor::new(116, 161, 255)
+    RgbColor::rgb(116, 161, 255)
 }
 
 const fn default_pending_color() -> RgbColor {
-    RgbColor::new(255, 194, 92)
+    RgbColor::rgb(255, 194, 92)
 }
 
 const fn default_rejected_color() -> RgbColor {
-    RgbColor::new(220, 96, 96)
+    RgbColor::rgb(220, 96, 96)
 }
 
 #[cfg(test)]
@@ -257,7 +253,7 @@ mod tests {
         assert_eq!(config.lock.acquire_timeout_seconds, 5);
         assert!(config.lock.user_hint.is_none());
         assert!(config.lock.avatar_path.is_none());
-        assert_eq!(config.background.color, RgbColor(12, 16, 24));
+        assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));
         assert!(config.background.path.is_none());
         assert_eq!(config.background.blur_radius, 0);
         assert_eq!(config.background.dim_strength, 34);
@@ -272,11 +268,11 @@ mod tests {
         let path = dir.join("config.toml");
         fs::write(
             &path,
-            r#"
+            r##"
                 [background]
                 blur_radius = 6
                 dim_strength = 40
-                tint = [8, 10, 14]
+                tint = "#080A0E99"
                 tint_opacity = 12
 
                 [lock]
@@ -286,8 +282,9 @@ mod tests {
                 avatar_path = "/tmp/avatar.png"
 
                 [visuals]
-                focus = [10, 120, 200]
-            "#,
+                panel = "rgba(24, 30, 42, 0.82)"
+                focus = "#0A78C8"
+            "##,
         )
         .expect("config file");
 
@@ -306,9 +303,13 @@ mod tests {
         );
         assert_eq!(loaded.config.background.blur_radius, 6);
         assert_eq!(loaded.config.background.dim_strength, 40);
-        assert_eq!(loaded.config.background.tint, Some(RgbColor(8, 10, 14)));
+        assert_eq!(
+            loaded.config.background.tint,
+            Some(RgbColor::rgba(8, 10, 14, 153))
+        );
         assert_eq!(loaded.config.background.tint_opacity, 12);
-        assert_eq!(loaded.config.visuals.focus, RgbColor(10, 120, 200));
+        assert_eq!(loaded.config.visuals.panel, RgbColor::rgba(24, 30, 42, 209));
+        assert_eq!(loaded.config.visuals.focus, RgbColor::rgb(10, 120, 200));
 
         fs::remove_file(path).ok();
         fs::remove_dir(dir).ok();

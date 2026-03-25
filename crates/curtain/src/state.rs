@@ -392,7 +392,7 @@ pub(crate) fn background_treatment(
         dim_strength: config.dim_strength,
         tint: config
             .tint
-            .map(|color| ClearColor::opaque(color.0, color.1, color.2)),
+            .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
         tint_opacity: config.tint_opacity,
     }
 }

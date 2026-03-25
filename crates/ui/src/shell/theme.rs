@@ -39,5 +39,5 @@ impl ShellTheme {
 }
 
 fn to_color(color: veila_common::RgbColor) -> ClearColor {
-    ClearColor::opaque(color.0, color.1, color.2)
+    ClearColor::rgba(color.0, color.1, color.2, color.3)
 }

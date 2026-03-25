@@ -6,5 +6,5 @@ pub mod config;
 pub mod error;
 pub mod ipc;
 
-pub use config::{AppConfig, LoadedConfig, RgbColor};
+pub use config::{AppConfig, ConfigColor, LoadedConfig, RgbColor};
 pub use error::{Result, VeilaError};
