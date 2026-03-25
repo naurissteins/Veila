@@ -24,7 +24,7 @@ impl MaskedInputStyle {
     }
 }
 
-/// Draws a masked input row with centered bullets.
+/// Draws a masked input row with left-aligned bullets.
 pub fn draw_masked_input(
     buffer: &mut SoftwareBuffer,
     rect: Rect,
@@ -40,9 +40,7 @@ pub fn draw_masked_input(
     let spacing = style.spacing.max(bullet_size);
     let visible = ((rect.width - style.horizontal_padding * 2) / spacing).max(1) as usize;
     let bullet_count = secret_len.min(visible);
-    let row_width = bullet_count as i32 * bullet_size
-        + bullet_count.saturating_sub(1) as i32 * (spacing - bullet_size);
-    let start_x = rect.x + ((rect.width - row_width) / 2).max(style.horizontal_padding);
+    let start_x = rect.x + style.horizontal_padding.max(0);
     let bullet_y = rect.y + (rect.height - bullet_size) / 2;
 
     for index in 0..bullet_count {
@@ -88,5 +86,25 @@ mod tests {
         );
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn left_aligns_bullets_to_padding() {
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(120, 40)).expect("buffer");
+        let style = MaskedInputStyle::new(ClearColor::opaque(255, 255, 255));
+        draw_masked_input(&mut buffer, Rect::new(0, 0, 120, 40), 4, true, style);
+
+        let width = buffer.size().width as usize;
+        let first_drawn_x = buffer
+            .pixels()
+            .chunks_exact(4)
+            .enumerate()
+            .find_map(|(index, pixel)| {
+                let alpha = pixel[3];
+                (alpha != 0).then_some(index % width)
+            })
+            .expect("rendered pixel");
+
+        assert!(first_drawn_x <= (style.horizontal_padding + 2) as usize);
     }
 }

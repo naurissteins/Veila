@@ -131,6 +131,8 @@ impl Default for LockConfig {
 pub struct VisualConfig {
     #[serde(default = "default_panel_color")]
     pub panel: RgbColor,
+    #[serde(default)]
+    pub avatar_background_color: Option<RgbColor>,
     #[serde(default = "default_panel_border_color")]
     pub panel_border: RgbColor,
     #[serde(default = "default_input_color")]
@@ -141,28 +143,62 @@ pub struct VisualConfig {
     pub input_border: RgbColor,
     #[serde(default)]
     pub input_border_opacity: Option<u8>,
+    #[serde(default)]
+    pub input_width: Option<u16>,
+    #[serde(default)]
+    pub input_height: Option<u16>,
     #[serde(default = "default_input_radius")]
     pub input_radius: u16,
+    #[serde(default)]
+    pub input_border_width: Option<u16>,
     #[serde(default)]
     pub avatar_size: Option<u16>,
     #[serde(default)]
     pub avatar_placeholder_padding: Option<u16>,
     #[serde(default)]
+    pub avatar_icon_color: Option<RgbColor>,
+    #[serde(default)]
+    pub avatar_ring_color: Option<RgbColor>,
+    #[serde(default)]
     pub avatar_ring_width: Option<u16>,
     #[serde(default)]
     pub avatar_background_opacity: Option<u8>,
+    #[serde(default)]
+    pub username_color: Option<RgbColor>,
     #[serde(default)]
     pub username_opacity: Option<u8>,
     #[serde(default)]
     pub username_size: Option<u16>,
     #[serde(default)]
+    pub avatar_gap: Option<u16>,
+    #[serde(default)]
+    pub username_gap: Option<u16>,
+    #[serde(default)]
+    pub status_gap: Option<u16>,
+    #[serde(default)]
+    pub clock_color: Option<RgbColor>,
+    #[serde(default)]
     pub clock_opacity: Option<u8>,
+    #[serde(default)]
+    pub date_color: Option<RgbColor>,
     #[serde(default)]
     pub date_opacity: Option<u8>,
     #[serde(default)]
     pub clock_size: Option<u16>,
     #[serde(default)]
     pub date_size: Option<u16>,
+    #[serde(default)]
+    pub placeholder_color: Option<RgbColor>,
+    #[serde(default)]
+    pub placeholder_opacity: Option<u8>,
+    #[serde(default)]
+    pub eye_icon_color: Option<RgbColor>,
+    #[serde(default)]
+    pub eye_icon_opacity: Option<u8>,
+    #[serde(default)]
+    pub status_color: Option<RgbColor>,
+    #[serde(default)]
+    pub status_opacity: Option<u8>,
     #[serde(default = "default_foreground_color")]
     pub foreground: RgbColor,
     #[serde(default = "default_muted_color")]
@@ -177,22 +213,40 @@ impl Default for VisualConfig {
     fn default() -> Self {
         Self {
             panel: default_panel_color(),
+            avatar_background_color: None,
             panel_border: default_panel_border_color(),
             input: default_input_color(),
             input_opacity: None,
             input_border: default_input_border_color(),
             input_border_opacity: None,
+            input_width: None,
+            input_height: None,
             input_radius: default_input_radius(),
+            input_border_width: None,
             avatar_size: None,
             avatar_placeholder_padding: None,
+            avatar_icon_color: None,
+            avatar_ring_color: None,
             avatar_ring_width: None,
             avatar_background_opacity: None,
+            username_color: None,
             username_opacity: None,
             username_size: None,
+            avatar_gap: None,
+            username_gap: None,
+            status_gap: None,
+            clock_color: None,
             clock_opacity: None,
+            date_color: None,
             date_opacity: None,
             clock_size: None,
             date_size: None,
+            placeholder_color: None,
+            placeholder_opacity: None,
+            eye_icon_color: None,
+            eye_icon_opacity: None,
+            status_color: None,
+            status_opacity: None,
             foreground: default_foreground_color(),
             muted: default_muted_color(),
             pending: default_pending_color(),
@@ -305,17 +359,35 @@ mod tests {
         assert_eq!(config.background.tint_opacity, 0);
         assert!(config.visuals.input_opacity.is_none());
         assert!(config.visuals.input_border_opacity.is_none());
+        assert!(config.visuals.input_width.is_none());
+        assert!(config.visuals.input_height.is_none());
         assert_eq!(config.visuals.input_radius, 32);
+        assert!(config.visuals.input_border_width.is_none());
+        assert!(config.visuals.avatar_background_color.is_none());
         assert!(config.visuals.avatar_size.is_none());
         assert!(config.visuals.avatar_placeholder_padding.is_none());
+        assert!(config.visuals.avatar_icon_color.is_none());
+        assert!(config.visuals.avatar_ring_color.is_none());
         assert!(config.visuals.avatar_ring_width.is_none());
         assert!(config.visuals.avatar_background_opacity.is_none());
+        assert!(config.visuals.username_color.is_none());
         assert!(config.visuals.username_opacity.is_none());
         assert!(config.visuals.username_size.is_none());
+        assert!(config.visuals.avatar_gap.is_none());
+        assert!(config.visuals.username_gap.is_none());
+        assert!(config.visuals.status_gap.is_none());
+        assert!(config.visuals.clock_color.is_none());
         assert!(config.visuals.clock_opacity.is_none());
+        assert!(config.visuals.date_color.is_none());
         assert!(config.visuals.date_opacity.is_none());
         assert!(config.visuals.clock_size.is_none());
         assert!(config.visuals.date_size.is_none());
+        assert!(config.visuals.placeholder_color.is_none());
+        assert!(config.visuals.placeholder_opacity.is_none());
+        assert!(config.visuals.eye_icon_color.is_none());
+        assert!(config.visuals.eye_icon_opacity.is_none());
+        assert!(config.visuals.status_color.is_none());
+        assert!(config.visuals.status_opacity.is_none());
     }
 
     #[test]
@@ -340,22 +412,39 @@ mod tests {
                 avatar_path = "/tmp/avatar.png"
 
                 [visuals]
-                panel = "rgba(24, 30, 42, 0.82)"
+                avatar_background_color = "rgba(24, 30, 42, 0.82)"
                 input = "#FFFFFF"
                 input_opacity = 10
                 input_border = "#FFFFFF"
                 input_border_opacity = 12
+                input_width = 280
+                input_height = 54
                 input_radius = 20
+                input_border_width = 3
                 avatar_size = 92
                 avatar_placeholder_padding = 12
+                avatar_icon_color = "#E8EEF9"
+                avatar_ring_color = "#94B2FF"
                 avatar_ring_width = 3
                 avatar_background_opacity = 36
+                username_color = "#D7E3FF"
                 username_opacity = 72
                 username_size = 3
+                avatar_gap = 14
+                username_gap = 28
+                status_gap = 18
+                clock_color = "#F8FBFF"
                 clock_opacity = 96
+                date_color = "#C8D4EC"
                 date_opacity = 74
                 clock_size = 4
                 date_size = 3
+                placeholder_color = "#8694B4"
+                placeholder_opacity = 60
+                eye_icon_color = "#F4F8FF"
+                eye_icon_opacity = 72
+                status_color = "#FFE0A0"
+                status_opacity = 88
             "##,
         )
         .expect("config file");
@@ -381,7 +470,10 @@ mod tests {
             Some(RgbColor::rgba(8, 10, 14, 153))
         );
         assert_eq!(loaded.config.background.tint_opacity, 12);
-        assert_eq!(loaded.config.visuals.panel, RgbColor::rgba(24, 30, 42, 209));
+        assert_eq!(
+            loaded.config.visuals.avatar_background_color,
+            Some(RgbColor::rgba(24, 30, 42, 209))
+        );
         assert_eq!(loaded.config.visuals.input, RgbColor::rgb(255, 255, 255));
         assert_eq!(loaded.config.visuals.input_opacity, Some(10));
         assert_eq!(
@@ -389,17 +481,58 @@ mod tests {
             RgbColor::rgb(255, 255, 255)
         );
         assert_eq!(loaded.config.visuals.input_border_opacity, Some(12));
+        assert_eq!(loaded.config.visuals.input_width, Some(280));
+        assert_eq!(loaded.config.visuals.input_height, Some(54));
         assert_eq!(loaded.config.visuals.input_radius, 20);
+        assert_eq!(loaded.config.visuals.input_border_width, Some(3));
         assert_eq!(loaded.config.visuals.avatar_size, Some(92));
         assert_eq!(loaded.config.visuals.avatar_placeholder_padding, Some(12));
+        assert_eq!(
+            loaded.config.visuals.avatar_icon_color,
+            Some(RgbColor::rgb(232, 238, 249))
+        );
+        assert_eq!(
+            loaded.config.visuals.avatar_ring_color,
+            Some(RgbColor::rgb(148, 178, 255))
+        );
         assert_eq!(loaded.config.visuals.avatar_ring_width, Some(3));
         assert_eq!(loaded.config.visuals.avatar_background_opacity, Some(36));
+        assert_eq!(
+            loaded.config.visuals.username_color,
+            Some(RgbColor::rgb(215, 227, 255))
+        );
         assert_eq!(loaded.config.visuals.username_opacity, Some(72));
         assert_eq!(loaded.config.visuals.username_size, Some(3));
+        assert_eq!(loaded.config.visuals.avatar_gap, Some(14));
+        assert_eq!(loaded.config.visuals.username_gap, Some(28));
+        assert_eq!(loaded.config.visuals.status_gap, Some(18));
+        assert_eq!(
+            loaded.config.visuals.clock_color,
+            Some(RgbColor::rgb(248, 251, 255))
+        );
         assert_eq!(loaded.config.visuals.clock_opacity, Some(96));
+        assert_eq!(
+            loaded.config.visuals.date_color,
+            Some(RgbColor::rgb(200, 212, 236))
+        );
         assert_eq!(loaded.config.visuals.date_opacity, Some(74));
         assert_eq!(loaded.config.visuals.clock_size, Some(4));
         assert_eq!(loaded.config.visuals.date_size, Some(3));
+        assert_eq!(
+            loaded.config.visuals.placeholder_color,
+            Some(RgbColor::rgb(134, 148, 180))
+        );
+        assert_eq!(loaded.config.visuals.placeholder_opacity, Some(60));
+        assert_eq!(
+            loaded.config.visuals.eye_icon_color,
+            Some(RgbColor::rgb(244, 248, 255))
+        );
+        assert_eq!(loaded.config.visuals.eye_icon_opacity, Some(72));
+        assert_eq!(
+            loaded.config.visuals.status_color,
+            Some(RgbColor::rgb(255, 224, 160))
+        );
+        assert_eq!(loaded.config.visuals.status_opacity, Some(88));
 
         fs::remove_file(path).ok();
         fs::remove_dir(dir).ok();

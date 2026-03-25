@@ -1,4 +1,4 @@
-use tiny_skia::{FillRule, Paint, PathBuilder, Transform};
+use tiny_skia::{FillRule, Paint, PathBuilder, Stroke, Transform};
 
 use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
@@ -385,9 +385,19 @@ pub fn draw_circle(
             }
 
             if let Some(border) = style.border {
-                fill_circle_path(overlay, center_x, center_y, radius as f32, border.color);
-                let inner_radius = (radius - border.thickness.max(1)).max(1) as f32;
-                fill_circle_path(overlay, center_x, center_y, inner_radius, style.fill);
+                let border_thickness = border.thickness.max(1).min(radius);
+                let inner_radius = (radius - border_thickness).max(0) as f32;
+                if inner_radius > 0.0 {
+                    fill_circle_path(overlay, center_x, center_y, inner_radius, style.fill);
+                }
+                stroke_circle_path(
+                    overlay,
+                    center_x,
+                    center_y,
+                    radius as f32 - border_thickness as f32 / 2.0,
+                    border_thickness as f32,
+                    border.color,
+                );
             } else {
                 fill_circle_path(overlay, center_x, center_y, radius as f32, style.fill);
             }
@@ -477,6 +487,33 @@ fn fill_circle_path(
         Transform::identity(),
         None,
     );
+}
+
+fn stroke_circle_path(
+    overlay: &mut tiny_skia::Pixmap,
+    center_x: f32,
+    center_y: f32,
+    radius: f32,
+    width: f32,
+    color: ClearColor,
+) {
+    if radius <= 0.0 || width <= 0.0 {
+        return;
+    }
+
+    let Some(path) = PathBuilder::from_circle(center_x, center_y, radius) else {
+        return;
+    };
+
+    let mut paint = Paint::default();
+    paint.set_color(skia_color(color));
+    paint.anti_alias = true;
+
+    let stroke = Stroke {
+        width,
+        ..Stroke::default()
+    };
+    overlay.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
 }
 
 #[cfg(test)]
@@ -607,5 +644,23 @@ mod tests {
         );
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn keeps_translucent_circle_fill_free_from_border_tint() {
+        let mut buffer =
+            SoftwareBuffer::solid(FrameSize::new(64, 64), ClearColor::opaque(200, 100, 0))
+                .expect("buffer");
+        draw_circle(
+            &mut buffer,
+            32,
+            32,
+            20,
+            CircleStyle::new(ClearColor::rgba(255, 255, 255, 15))
+                .with_border(BorderStyle::new(ClearColor::rgba(148, 178, 255, 108), 2)),
+        );
+
+        let center = (32 * 64 + 32) * 4;
+        assert_eq!(&buffer.pixels()[center..center + 4], &[15, 109, 203, 255]);
     }
 }
