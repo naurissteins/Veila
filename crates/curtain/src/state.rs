@@ -104,6 +104,7 @@ impl CurtainApp {
             theme,
             config.lock.user_hint.clone(),
             config.lock.avatar_path.clone(),
+            config.lock.show_username,
         );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 

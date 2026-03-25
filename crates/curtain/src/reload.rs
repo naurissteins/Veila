@@ -42,6 +42,7 @@ impl CurtainApp {
             theme,
             config.lock.user_hint.clone(),
             config.lock.avatar_path.clone(),
+            config.lock.show_username,
         );
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {

@@ -106,6 +106,8 @@ pub struct LockConfig {
     pub auth_backoff_base_ms: u64,
     #[serde(default = "default_auth_backoff_max_seconds")]
     pub auth_backoff_max_seconds: u64,
+    #[serde(default = "default_lock_show_username")]
+    pub show_username: bool,
     #[serde(default)]
     pub user_hint: Option<String>,
     #[serde(default)]
@@ -118,6 +120,7 @@ impl Default for LockConfig {
             acquire_timeout_seconds: default_lock_acquire_timeout_seconds(),
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
+            show_username: default_lock_show_username(),
             user_hint: None,
             avatar_path: None,
         }
@@ -204,6 +207,10 @@ const fn default_auth_backoff_max_seconds() -> u64 {
     16
 }
 
+const fn default_lock_show_username() -> bool {
+    true
+}
+
 const fn default_panel_color() -> RgbColor {
     RgbColor::rgb(22, 28, 38)
 }
@@ -257,6 +264,7 @@ mod tests {
         .expect("config should parse");
 
         assert_eq!(config.lock.acquire_timeout_seconds, 5);
+        assert!(config.lock.show_username);
         assert!(config.lock.user_hint.is_none());
         assert!(config.lock.avatar_path.is_none());
         assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));
@@ -287,6 +295,7 @@ mod tests {
                 [lock]
                 acquire_timeout_seconds = 9
                 auth_backoff_base_ms = 250
+                show_username = false
                 user_hint = "Type your password"
                 avatar_path = "/tmp/avatar.png"
 
@@ -306,6 +315,7 @@ mod tests {
         assert_eq!(loaded.path.as_deref(), Some(path.as_path()));
         assert_eq!(loaded.config.lock.acquire_timeout_seconds, 9);
         assert_eq!(loaded.config.lock.auth_backoff_base_ms, 250);
+        assert!(!loaded.config.lock.show_username);
         assert_eq!(
             loaded.config.lock.avatar_path.as_deref(),
             Some(std::path::Path::new("/tmp/avatar.png"))

@@ -1,12 +1,10 @@
 use veila_renderer::{
-    ClearColor, ShadowStyle, SoftwareBuffer,
+    SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{PillStyle, Rect, draw_pill},
     text::TextBlock,
 };
-
-const TEXT_SHADOW_COLOR: ClearColor = ClearColor::rgba(6, 8, 12, 140);
 
 pub(super) fn draw_centered_block(
     buffer: &mut SoftwareBuffer,
@@ -15,7 +13,7 @@ pub(super) fn draw_centered_block(
     block: &TextBlock,
 ) {
     let x = center_x - block.width as i32 / 2;
-    block.draw_with_shadow(buffer, x, y, text_shadow(block.style.scale));
+    block.draw(buffer, x, y);
 }
 
 pub(super) fn draw_avatar_widget(
@@ -36,12 +34,15 @@ pub(super) fn draw_input_widget(
     focused: bool,
     shell_style: PillStyle,
     mask_style: MaskedInputStyle,
+    placeholder: Option<&TextBlock>,
 ) {
     draw_pill(buffer, rect, shell_style);
+    if secret_len == 0
+        && let Some(placeholder) = placeholder
+    {
+        let x = rect.x + mask_style.horizontal_padding.saturating_sub(4);
+        let y = rect.y + (rect.height - placeholder.height as i32) / 2 - 1;
+        placeholder.draw(buffer, x, y);
+    }
     draw_masked_input(buffer, rect, secret_len, focused, mask_style);
-}
-
-fn text_shadow(scale: u32) -> ShadowStyle {
-    let offset = scale.max(1) as i32;
-    ShadowStyle::new(TEXT_SHADOW_COLOR, 0, offset)
 }

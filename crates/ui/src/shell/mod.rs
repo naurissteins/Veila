@@ -44,17 +44,23 @@ pub struct ShellState {
     clock: ClockState,
     theme: ShellTheme,
     hint_text: String,
+    username_text: Option<String>,
     avatar: AvatarAsset,
 }
 
 impl Default for ShellState {
     fn default() -> Self {
-        Self::new(ShellTheme::default(), None, None)
+        Self::new(ShellTheme::default(), None, None, true)
     }
 }
 
 impl ShellState {
-    pub fn new(theme: ShellTheme, user_hint: Option<String>, avatar_path: Option<PathBuf>) -> Self {
+    pub fn new(
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+    ) -> Self {
         Self {
             secret: String::new(),
             focused: true,
@@ -64,6 +70,7 @@ impl ShellState {
             hint_text: user_hint
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
+            username_text: username_text(show_username),
             avatar: load_avatar(avatar_path),
         }
     }
@@ -77,11 +84,13 @@ impl ShellState {
         theme: ShellTheme,
         user_hint: Option<String>,
         avatar_path: Option<PathBuf>,
+        show_username: bool,
     ) {
         self.theme = theme;
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
+        self.username_text = username_text(show_username);
         self.avatar = load_avatar(avatar_path);
     }
 
@@ -199,6 +208,18 @@ fn current_retry_seconds(retry_until: Instant) -> Option<u64> {
     if seconds == 0 { None } else { Some(seconds) }
 }
 
+fn username_text(show_username: bool) -> Option<String> {
+    if !show_username {
+        return None;
+    }
+
+    std::env::var("USER")
+        .ok()
+        .or_else(|| std::env::var("LOGNAME").ok())
+        .map(|username| username.trim().to_string())
+        .filter(|username| !username.is_empty())
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -271,5 +292,12 @@ mod tests {
         let shell = ShellState::default();
 
         assert!(shell.focused);
+    }
+
+    #[test]
+    fn can_disable_username_label() {
+        let shell = ShellState::new(Default::default(), None, None, false);
+
+        assert!(shell.username_text.is_none());
     }
 }

@@ -75,10 +75,18 @@ impl ShellState {
                 metrics.clock_width,
                 1,
             ),
-            hint: fit_wrapped_text(
+            username: self.username_text.as_ref().map(|username| {
+                fit_wrapped_text(
+                    username,
+                    TextStyle::new(self.theme.foreground.with_alpha(214), 2),
+                    metrics.content_width,
+                    1,
+                )
+            }),
+            placeholder: fit_wrapped_text(
                 &self.hint_text,
-                TextStyle::new(self.theme.foreground.with_alpha(236), 2),
-                metrics.content_width,
+                TextStyle::new(self.theme.muted.with_alpha(154), 2),
+                metrics.input_width.saturating_sub(48) as u32,
                 1,
             ),
             status: self.status_text().map(|text| {
@@ -102,7 +110,7 @@ impl ShellState {
         match &section.widget {
             SceneWidget::Clock(block)
             | SceneWidget::Date(block)
-            | SceneWidget::Hint(block)
+            | SceneWidget::Username(block)
             | SceneWidget::Status(block) => {
                 draw_centered_block(buffer, metrics.center_x, y, block);
             }
@@ -116,7 +124,7 @@ impl ShellState {
                     self.avatar_style(),
                 );
             }
-            SceneWidget::Input => {
+            SceneWidget::Input(placeholder) => {
                 draw_input_widget(
                     buffer,
                     metrics.input_rect(y),
@@ -124,6 +132,7 @@ impl ShellState {
                     self.focused,
                     self.input_style(),
                     MaskedInputStyle::new(self.theme.foreground),
+                    Some(placeholder),
                 );
             }
         }
@@ -251,7 +260,7 @@ mod tests {
             input_border: ClearColor::rgba(96, 164, 255, 64),
             ..ShellTheme::default()
         };
-        let mut shell = ShellState::new(theme, None, None);
+        let mut shell = ShellState::new(theme, None, None, true);
         shell.set_focus(false);
         let style = shell.input_style();
 
@@ -265,7 +274,7 @@ mod tests {
             input_radius: 18,
             ..ShellTheme::default()
         };
-        let shell = ShellState::new(theme, None, None);
+        let shell = ShellState::new(theme, None, None, true);
         let style = shell.input_style();
 
         assert_eq!(style.radius, 18);
@@ -278,7 +287,7 @@ mod tests {
             input_border: ClearColor::rgba(255, 255, 255, 31),
             ..ShellTheme::default()
         };
-        let mut shell = ShellState::new(theme, None, None);
+        let mut shell = ShellState::new(theme, None, None, true);
         shell.set_focus(false);
         let style = shell.input_style();
 

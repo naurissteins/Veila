@@ -6,7 +6,8 @@ use super::{super::ShellStatus, layout::SceneMetrics};
 pub(super) struct SceneTextBlocks {
     pub clock: TextBlock,
     pub date: TextBlock,
-    pub hint: TextBlock,
+    pub username: Option<TextBlock>,
+    pub placeholder: TextBlock,
     pub status: Option<TextBlock>,
 }
 
@@ -34,26 +35,42 @@ pub(super) enum SceneWidget {
     Clock(TextBlock),
     Date(TextBlock),
     Avatar,
-    Hint(TextBlock),
-    Input,
+    Username(TextBlock),
+    Input(TextBlock),
     Status(TextBlock),
 }
 
 impl SceneModel {
     pub(super) fn standard(blocks: SceneTextBlocks) -> Self {
+        let SceneTextBlocks {
+            clock,
+            date,
+            username,
+            placeholder,
+            status,
+        } = blocks;
+
         let mut sections = vec![
-            SceneSection::new(LayoutRole::Hero, SceneWidget::Clock(blocks.clock), 4),
-            SceneSection::new(LayoutRole::Hero, SceneWidget::Date(blocks.date), 30),
-            SceneSection::new(LayoutRole::Hero, SceneWidget::Avatar, 18),
-            SceneSection::new(LayoutRole::Auth, SceneWidget::Hint(blocks.hint), 26),
-            SceneSection::new(
-                LayoutRole::Auth,
-                SceneWidget::Input,
-                if blocks.status.is_some() { 14 } else { 0 },
-            ),
+            SceneSection::new(LayoutRole::Hero, SceneWidget::Clock(clock), 4),
+            SceneSection::new(LayoutRole::Hero, SceneWidget::Date(date), 0),
+            SceneSection::new(LayoutRole::Auth, SceneWidget::Avatar, 10),
         ];
 
-        if let Some(status) = blocks.status {
+        if let Some(username) = username {
+            sections.push(SceneSection::new(
+                LayoutRole::Auth,
+                SceneWidget::Username(username),
+                34,
+            ));
+        }
+
+        sections.push(SceneSection::new(
+            LayoutRole::Auth,
+            SceneWidget::Input(placeholder),
+            if status.is_some() { 14 } else { 0 },
+        ));
+
+        if let Some(status) = status {
             sections.push(SceneSection::new(
                 LayoutRole::Auth,
                 SceneWidget::Status(status),
@@ -102,11 +119,12 @@ impl SceneSection {
 impl SceneWidget {
     fn height(&self, metrics: SceneMetrics, _status: &ShellStatus) -> i32 {
         match self {
-            Self::Clock(block) | Self::Date(block) | Self::Hint(block) | Self::Status(block) => {
-                block.height as i32
-            }
+            Self::Clock(block)
+            | Self::Date(block)
+            | Self::Username(block)
+            | Self::Status(block) => block.height as i32,
             Self::Avatar => metrics.avatar_size,
-            Self::Input => metrics.input_height,
+            Self::Input(_) => metrics.input_height,
         }
     }
 }
@@ -126,7 +144,8 @@ mod tests {
         let model = SceneModel::standard(SceneTextBlocks {
             clock: block("09:05"),
             date: block("Tuesday, March 24"),
-            hint: block("Type your password to unlock"),
+            username: Some(block("ramces")),
+            placeholder: block("Type your password to unlock"),
             status: None,
         });
 
@@ -137,13 +156,13 @@ mod tests {
             .sections_for_role(LayoutRole::Auth)
             .collect::<Vec<_>>();
 
-        assert_eq!(hero_sections.len(), 3);
-        assert_eq!(auth_sections.len(), 2);
+        assert_eq!(hero_sections.len(), 2);
+        assert_eq!(auth_sections.len(), 3);
         assert!(matches!(hero_sections[0].widget, SceneWidget::Clock(_)));
         assert!(matches!(hero_sections[1].widget, SceneWidget::Date(_)));
-        assert!(matches!(hero_sections[2].widget, SceneWidget::Avatar));
-        assert!(matches!(auth_sections[0].widget, SceneWidget::Hint(_)));
-        assert!(matches!(auth_sections[1].widget, SceneWidget::Input));
+        assert!(matches!(auth_sections[0].widget, SceneWidget::Avatar));
+        assert!(matches!(auth_sections[1].widget, SceneWidget::Username(_)));
+        assert!(matches!(auth_sections[2].widget, SceneWidget::Input(_)));
     }
 
     #[test]
@@ -151,13 +170,15 @@ mod tests {
         let with_status = SceneModel::standard(SceneTextBlocks {
             clock: block("09:05"),
             date: block("Tuesday, March 24"),
-            hint: block("Type your password to unlock"),
+            username: Some(block("ramces")),
+            placeholder: block("Type your password to unlock"),
             status: Some(block("Authentication failed")),
         });
         let without_status = SceneModel::standard(SceneTextBlocks {
             clock: block("09:05"),
             date: block("Tuesday, March 24"),
-            hint: block("Type your password to unlock"),
+            username: Some(block("ramces")),
+            placeholder: block("Type your password to unlock"),
             status: None,
         });
 
@@ -188,11 +209,30 @@ mod tests {
         let model = SceneModel::standard(SceneTextBlocks {
             clock: block("09:05"),
             date: block("Tuesday, March 24"),
-            hint: block("Type your password to unlock"),
+            username: Some(block("ramces")),
+            placeholder: block("Type your password to unlock"),
             status: None,
         });
 
         assert_eq!(model.sections_for_role(LayoutRole::Footer).count(), 0);
+    }
+
+    #[test]
+    fn omits_username_widget_when_disabled() {
+        let model = SceneModel::standard(SceneTextBlocks {
+            clock: block("09:05"),
+            date: block("Tuesday, March 24"),
+            username: None,
+            placeholder: block("Type your password to unlock"),
+            status: None,
+        });
+
+        assert_eq!(model.sections_for_role(LayoutRole::Hero).count(), 2);
+        assert!(
+            model
+                .sections_for_role(LayoutRole::Auth)
+                .all(|section| !matches!(section.widget, SceneWidget::Username(_)))
+        );
     }
 
     fn block(text: &str) -> TextBlock {
