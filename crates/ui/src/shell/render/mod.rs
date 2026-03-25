@@ -270,4 +270,19 @@ mod tests {
 
         assert_eq!(style.radius, 18);
     }
+
+    #[test]
+    fn explicit_input_opacity_is_preserved_without_style_boost() {
+        let theme = ShellTheme {
+            input: ClearColor::rgba(255, 255, 255, 26),
+            input_border: ClearColor::rgba(255, 255, 255, 31),
+            ..ShellTheme::default()
+        };
+        let mut shell = ShellState::new(theme, None, None);
+        shell.set_focus(false);
+        let style = shell.input_style();
+
+        assert_eq!(style.fill.alpha, 26);
+        assert_eq!(style.border.expect("input border").color.alpha, 31);
+    }
 }

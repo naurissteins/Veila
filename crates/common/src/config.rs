@@ -132,8 +132,12 @@ pub struct VisualConfig {
     pub panel_border: RgbColor,
     #[serde(default = "default_input_color")]
     pub input: RgbColor,
+    #[serde(default)]
+    pub input_opacity: Option<u8>,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
+    #[serde(default)]
+    pub input_border_opacity: Option<u8>,
     #[serde(default = "default_input_radius")]
     pub input_radius: u16,
     #[serde(default = "default_foreground_color")]
@@ -152,7 +156,9 @@ impl Default for VisualConfig {
             panel: default_panel_color(),
             panel_border: default_panel_border_color(),
             input: default_input_color(),
+            input_opacity: None,
             input_border: default_input_border_color(),
+            input_border_opacity: None,
             input_radius: default_input_radius(),
             foreground: default_foreground_color(),
             muted: default_muted_color(),
@@ -259,6 +265,8 @@ mod tests {
         assert_eq!(config.background.dim_strength, 34);
         assert!(config.background.tint.is_none());
         assert_eq!(config.background.tint_opacity, 0);
+        assert!(config.visuals.input_opacity.is_none());
+        assert!(config.visuals.input_border_opacity.is_none());
         assert_eq!(config.visuals.input_radius, 32);
     }
 
@@ -284,6 +292,10 @@ mod tests {
 
                 [visuals]
                 panel = "rgba(24, 30, 42, 0.82)"
+                input = "#FFFFFF"
+                input_opacity = 10
+                input_border = "#FFFFFF"
+                input_border_opacity = 12
                 input_radius = 20
             "##,
         )
@@ -310,6 +322,13 @@ mod tests {
         );
         assert_eq!(loaded.config.background.tint_opacity, 12);
         assert_eq!(loaded.config.visuals.panel, RgbColor::rgba(24, 30, 42, 209));
+        assert_eq!(loaded.config.visuals.input, RgbColor::rgb(255, 255, 255));
+        assert_eq!(loaded.config.visuals.input_opacity, Some(10));
+        assert_eq!(
+            loaded.config.visuals.input_border,
+            RgbColor::rgb(255, 255, 255)
+        );
+        assert_eq!(loaded.config.visuals.input_border_opacity, Some(12));
         assert_eq!(loaded.config.visuals.input_radius, 20);
 
         fs::remove_file(path).ok();
