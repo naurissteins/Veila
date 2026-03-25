@@ -1,4 +1,4 @@
-use tiny_skia::{FillRule, LineCap, Paint, PathBuilder, Stroke, Transform};
+use tiny_skia::{FillRule, Paint, PathBuilder, Transform};
 
 use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
@@ -72,6 +72,7 @@ pub struct PillStyle {
     pub fill: ClearColor,
     pub border: Option<BorderStyle>,
     pub shadow: Option<ShadowStyle>,
+    pub radius: i32,
 }
 
 impl PillStyle {
@@ -80,6 +81,7 @@ impl PillStyle {
             fill,
             border: None,
             shadow: None,
+            radius: i32::MAX,
         }
     }
 
@@ -88,6 +90,7 @@ impl PillStyle {
             fill: self.fill,
             border: Some(border),
             shadow: self.shadow,
+            radius: self.radius,
         }
     }
 
@@ -96,6 +99,16 @@ impl PillStyle {
             fill: self.fill,
             border: self.border,
             shadow: Some(shadow),
+            radius: self.radius,
+        }
+    }
+
+    pub const fn with_radius(self, radius: i32) -> Self {
+        Self {
+            fill: self.fill,
+            border: self.border,
+            shadow: self.shadow,
+            radius,
         }
     }
 }
@@ -152,15 +165,43 @@ pub fn fill_rect(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor) {
 
     let stride = size.width as usize * 4;
     let pixel = color.to_argb8888_bytes();
+    let alpha = pixel[3];
     let pixels = buffer.pixels_mut();
 
     for row in top as usize..bottom as usize {
         let row_start = row * stride;
         for column in left as usize..right as usize {
             let offset = row_start + column * 4;
-            pixels[offset..offset + 4].copy_from_slice(&pixel);
+            if alpha == u8::MAX {
+                pixels[offset..offset + 4].copy_from_slice(&pixel);
+            } else {
+                blend_argb8888_pixel(&mut pixels[offset..offset + 4], &pixel);
+            }
         }
     }
+}
+
+fn blend_argb8888_pixel(dst: &mut [u8], src: &[u8; 4]) {
+    let src_alpha = u16::from(src[3]);
+    if src_alpha == 0 {
+        return;
+    }
+
+    if src_alpha == u16::from(u8::MAX) {
+        dst.copy_from_slice(src);
+        return;
+    }
+
+    let inverse_alpha = u16::from(u8::MAX) - src_alpha;
+    dst[0] = blend_component(dst[0], src[0], inverse_alpha);
+    dst[1] = blend_component(dst[1], src[1], inverse_alpha);
+    dst[2] = blend_component(dst[2], src[2], inverse_alpha);
+    dst[3] = blend_component(dst[3], src[3], inverse_alpha);
+}
+
+fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
+    blended.min(u16::from(u8::MAX)) as u8
 }
 
 /// Draws a border around a rectangle.
@@ -216,29 +257,80 @@ pub fn draw_pill(buffer: &mut SoftwareBuffer, rect: Rect, style: PillStyle) {
         return;
     }
 
-    if let Some(shadow) = style.shadow {
-        let shadow_rect = Rect::new(
-            rect.x + shadow.offset_x,
-            rect.y + shadow.offset_y,
-            rect.width,
-            rect.height,
-        );
-        draw_pill_stroke(buffer, shadow_rect, shadow.color, None);
-    }
+    let radius = resolved_corner_radius(rect, style.radius);
+    let overlay_padding = style
+        .shadow
+        .map(|shadow| shadow.offset_x.abs().max(shadow.offset_y.abs()))
+        .unwrap_or(0)
+        + style
+            .border
+            .map(|border| border.thickness.max(0))
+            .unwrap_or(0)
+        + 2;
+    let overlay_origin_x = rect.x - overlay_padding;
+    let overlay_origin_y = rect.y - overlay_padding;
+    let overlay_width = (rect.width + overlay_padding * 2).max(1) as u32;
+    let overlay_height = (rect.height + overlay_padding * 2).max(1) as u32;
 
-    if let Some(border) = style.border {
-        draw_pill_stroke(buffer, rect, border.color, None);
-        let inset = border.thickness.max(1);
-        let inner_rect = Rect::new(
-            rect.x + inset,
-            rect.y + inset,
-            rect.width - inset * 2,
-            rect.height - inset * 2,
-        );
-        draw_pill_stroke(buffer, inner_rect, style.fill, None);
-    } else {
-        draw_pill_stroke(buffer, rect, style.fill, None);
-    }
+    draw_overlay(
+        buffer,
+        overlay_origin_x,
+        overlay_origin_y,
+        overlay_width,
+        overlay_height,
+        |overlay| {
+            let offset_x = overlay_padding as f32;
+            let offset_y = overlay_padding as f32;
+
+            if let Some(shadow) = style.shadow {
+                fill_rounded_rect_path(
+                    overlay,
+                    rect.width,
+                    rect.height,
+                    radius,
+                    shadow.color,
+                    offset_x + shadow.offset_x as f32,
+                    offset_y + shadow.offset_y as f32,
+                );
+            }
+
+            if let Some(border) = style.border {
+                fill_rounded_rect_path(
+                    overlay,
+                    rect.width,
+                    rect.height,
+                    radius,
+                    border.color,
+                    offset_x,
+                    offset_y,
+                );
+                let inset = border.thickness.max(1);
+                let inner_width = rect.width - inset * 2;
+                let inner_height = rect.height - inset * 2;
+                if inner_width > 0 && inner_height > 0 {
+                    fill_rounded_rect_path(
+                        overlay,
+                        inner_width,
+                        inner_height,
+                        (radius - inset).max(0),
+                        style.fill,
+                        offset_x + inset as f32,
+                        offset_y + inset as f32,
+                    );
+                }
+            } else {
+                fill_rounded_rect_path(
+                    overlay,
+                    rect.width,
+                    rect.height,
+                    radius,
+                    style.fill,
+                    offset_x,
+                    offset_y,
+                );
+            }
+        },
+    );
 }
 
 /// Draws a filled circle with optional border and shadow using tiny-skia.
@@ -299,60 +391,51 @@ pub fn draw_circle(
     );
 }
 
-fn draw_pill_stroke(
-    buffer: &mut SoftwareBuffer,
-    rect: Rect,
-    color: ClearColor,
-    shadow: Option<ShadowStyle>,
-) {
-    if rect.width <= 0 || rect.height <= 0 {
-        return;
+fn resolved_corner_radius(rect: Rect, radius: i32) -> i32 {
+    let max_radius = (rect.width.min(rect.height) / 2).max(0);
+    if radius == i32::MAX {
+        max_radius
+    } else {
+        radius.clamp(0, max_radius)
     }
-
-    let overlay_padding = rect.height.max(1) / 2 + 2;
-    let overlay_origin_x = rect.x - overlay_padding;
-    let overlay_origin_y = rect.y - overlay_padding;
-    let overlay_width = (rect.width + overlay_padding * 2).max(1) as u32;
-    let overlay_height = (rect.height + overlay_padding * 2).max(1) as u32;
-
-    draw_overlay(
-        buffer,
-        overlay_origin_x,
-        overlay_origin_y,
-        overlay_width,
-        overlay_height,
-        |overlay| {
-            let offset_x = overlay_padding as f32;
-            let offset_y = overlay_padding as f32;
-            if let Some(shadow) = shadow {
-                stroke_pill_path(
-                    overlay,
-                    rect,
-                    shadow.color,
-                    offset_x + shadow.offset_x as f32,
-                    offset_y + shadow.offset_y as f32,
-                );
-            }
-
-            stroke_pill_path(overlay, rect, color, offset_x, offset_y);
-        },
-    );
 }
 
-fn stroke_pill_path(
+fn fill_rounded_rect_path(
     overlay: &mut tiny_skia::Pixmap,
-    rect: Rect,
+    width: i32,
+    height: i32,
+    radius: i32,
     color: ClearColor,
     offset_x: f32,
     offset_y: f32,
 ) {
-    let radius = rect.height.max(1) as f32 / 2.0;
-    let start_x = offset_x + radius;
-    let end_x = offset_x + (rect.width as f32 - radius).max(radius);
-    let center_y = offset_y + radius;
+    if width <= 0 || height <= 0 {
+        return;
+    }
+
+    let right = offset_x + width as f32;
+    let bottom = offset_y + height as f32;
+    let radius = radius.max(0) as f32;
     let mut builder = PathBuilder::new();
-    builder.move_to(start_x, center_y);
-    builder.line_to(end_x, center_y);
+
+    if radius <= 0.0 {
+        builder.move_to(offset_x, offset_y);
+        builder.line_to(right, offset_y);
+        builder.line_to(right, bottom);
+        builder.line_to(offset_x, bottom);
+    } else {
+        builder.move_to(offset_x + radius, offset_y);
+        builder.line_to(right - radius, offset_y);
+        builder.quad_to(right, offset_y, right, offset_y + radius);
+        builder.line_to(right, bottom - radius);
+        builder.quad_to(right, bottom, right - radius, bottom);
+        builder.line_to(offset_x + radius, bottom);
+        builder.quad_to(offset_x, bottom, offset_x, bottom - radius);
+        builder.line_to(offset_x, offset_y + radius);
+        builder.quad_to(offset_x, offset_y, offset_x + radius, offset_y);
+    }
+
+    builder.close();
     let Some(path) = builder.finish() else {
         return;
     };
@@ -360,13 +443,13 @@ fn stroke_pill_path(
     let mut paint = Paint::default();
     paint.set_color(skia_color(color));
     paint.anti_alias = true;
-
-    let stroke = Stroke {
-        width: rect.height.max(1) as f32,
-        line_cap: LineCap::Round,
-        ..Stroke::default()
-    };
-    overlay.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+    overlay.fill_path(
+        &path,
+        &paint,
+        FillRule::Winding,
+        Transform::identity(),
+        None,
+    );
 }
 
 fn fill_circle_path(
@@ -410,6 +493,20 @@ mod tests {
         );
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn blends_translucent_rectangles_over_existing_pixels() {
+        let mut buffer =
+            SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(10, 20, 30))
+                .expect("buffer");
+        fill_rect(
+            &mut buffer,
+            Rect::new(0, 0, 1, 1),
+            ClearColor::rgba(255, 255, 255, 128),
+        );
+
+        assert_eq!(buffer.pixels(), &[143, 138, 133, 255]);
     }
 
     #[test]
@@ -462,6 +559,35 @@ mod tests {
 
         let row_start = (268 * 960 + 460) * 4;
         assert_ne!(&buffer.pixels()[row_start..row_start + 4], &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn draws_pill_surface_with_custom_radius() {
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(96, 72)).expect("buffer");
+        draw_pill(
+            &mut buffer,
+            Rect::new(12, 16, 72, 32),
+            PillStyle::new(ClearColor::rgba(12, 18, 28, 232))
+                .with_border(BorderStyle::new(ClearColor::opaque(92, 108, 146), 2))
+                .with_radius(10),
+        );
+
+        assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn blends_translucent_pill_fill_without_overdarkening() {
+        let mut buffer =
+            SoftwareBuffer::solid(FrameSize::new(24, 24), ClearColor::opaque(200, 100, 0))
+                .expect("buffer");
+        draw_pill(
+            &mut buffer,
+            Rect::new(4, 4, 16, 16),
+            PillStyle::new(ClearColor::rgba(255, 255, 255, 51)),
+        );
+
+        let center = (12 * 24 + 12) * 4;
+        assert_eq!(&buffer.pixels()[center..center + 4], &[51, 131, 211, 255]);
     }
 
     #[test]

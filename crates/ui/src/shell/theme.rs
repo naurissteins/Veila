@@ -8,9 +8,9 @@ pub struct ShellTheme {
     pub panel_border: ClearColor,
     pub input: ClearColor,
     pub input_border: ClearColor,
+    pub input_radius: i32,
     pub foreground: ClearColor,
     pub muted: ClearColor,
-    pub focus: ClearColor,
     pub pending: ClearColor,
     pub rejected: ClearColor,
 }
@@ -29,9 +29,9 @@ impl ShellTheme {
             panel_border: to_color(config.visuals.panel_border),
             input: to_color(config.visuals.input),
             input_border: to_color(config.visuals.input_border),
+            input_radius: i32::from(config.visuals.input_radius),
             foreground: to_color(config.visuals.foreground),
             muted: to_color(config.visuals.muted),
-            focus: to_color(config.visuals.focus),
             pending: to_color(config.visuals.pending),
             rejected: to_color(config.visuals.rejected),
         }

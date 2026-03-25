@@ -130,9 +130,10 @@ impl ShellState {
     }
 
     fn input_style(&self) -> PillStyle {
-        let accent = self.accent_color();
         let border = if self.focused {
-            accent.with_alpha(styled_alpha(accent.alpha, 240))
+            self.theme
+                .input_border
+                .with_alpha(styled_alpha(self.theme.input_border.alpha, 240))
         } else {
             self.theme
                 .input_border
@@ -144,12 +145,15 @@ impl ShellState {
                 .input
                 .with_alpha(styled_alpha(self.theme.input.alpha, 232)),
         )
+        .with_radius(self.theme.input_radius)
         .with_border(BorderStyle::new(border, 2))
     }
 
     fn avatar_style(&self) -> AvatarStyle {
         let ring = if self.focused {
-            self.accent_color().with_alpha(108)
+            self.theme
+                .input_border
+                .with_alpha(styled_alpha(self.theme.input_border.alpha, 108))
         } else {
             self.theme.foreground.with_alpha(54)
         };
@@ -163,13 +167,7 @@ impl ShellState {
 
     fn accent_color(&self) -> ClearColor {
         match &self.status {
-            ShellStatus::Idle => {
-                if self.focused {
-                    self.theme.focus
-                } else {
-                    self.theme.foreground.with_alpha(132)
-                }
-            }
+            ShellStatus::Idle => self.theme.input_border.with_alpha(210),
             ShellStatus::Pending => self.theme.pending,
             ShellStatus::Rejected { .. } => self.theme.rejected,
         }
@@ -224,25 +222,25 @@ mod tests {
     }
 
     #[test]
-    fn default_input_style_uses_focus_accent() {
+    fn default_input_style_uses_input_border() {
         let shell = ShellState::default();
         let style = shell.input_style();
 
         assert_eq!(
             style.border.expect("default border").color,
-            shell.theme.focus.with_alpha(240)
+            shell.theme.input_border.with_alpha(240)
         );
     }
 
     #[test]
-    fn focused_input_style_uses_focus_accent() {
+    fn focused_input_style_uses_input_border() {
         let mut shell = ShellState::default();
         shell.set_focus(true);
         let style = shell.input_style();
 
         assert_eq!(
             style.border.expect("focused border").color,
-            shell.theme.focus.with_alpha(240)
+            shell.theme.input_border.with_alpha(240)
         );
     }
 
@@ -259,5 +257,17 @@ mod tests {
 
         assert_eq!(style.fill.alpha, 51);
         assert_eq!(style.border.expect("input border").color.alpha, 64);
+    }
+
+    #[test]
+    fn input_style_uses_configured_radius() {
+        let theme = ShellTheme {
+            input_radius: 18,
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new(theme, None, None);
+        let style = shell.input_style();
+
+        assert_eq!(style.radius, 18);
     }
 }

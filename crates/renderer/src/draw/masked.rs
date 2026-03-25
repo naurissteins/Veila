@@ -17,9 +17,9 @@ impl MaskedInputStyle {
     pub const fn new(bullet: ClearColor) -> Self {
         Self {
             bullet,
-            bullet_size: 8,
-            spacing: 18,
-            horizontal_padding: 24,
+            bullet_size: 7,
+            spacing: 16,
+            horizontal_padding: 22,
         }
     }
 }

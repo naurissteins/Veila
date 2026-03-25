@@ -134,12 +134,12 @@ pub struct VisualConfig {
     pub input: RgbColor,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
+    #[serde(default = "default_input_radius")]
+    pub input_radius: u16,
     #[serde(default = "default_foreground_color")]
     pub foreground: RgbColor,
     #[serde(default = "default_muted_color")]
     pub muted: RgbColor,
-    #[serde(default = "default_focus_color")]
-    pub focus: RgbColor,
     #[serde(default = "default_pending_color")]
     pub pending: RgbColor,
     #[serde(default = "default_rejected_color")]
@@ -153,9 +153,9 @@ impl Default for VisualConfig {
             panel_border: default_panel_border_color(),
             input: default_input_color(),
             input_border: default_input_border_color(),
+            input_radius: default_input_radius(),
             foreground: default_foreground_color(),
             muted: default_muted_color(),
-            focus: default_focus_color(),
             pending: default_pending_color(),
             rejected: default_rejected_color(),
         }
@@ -214,16 +214,16 @@ const fn default_input_border_color() -> RgbColor {
     RgbColor::rgb(92, 108, 146)
 }
 
+const fn default_input_radius() -> u16 {
+    32
+}
+
 const fn default_foreground_color() -> RgbColor {
     RgbColor::rgb(240, 244, 250)
 }
 
 const fn default_muted_color() -> RgbColor {
     RgbColor::rgb(68, 78, 102)
-}
-
-const fn default_focus_color() -> RgbColor {
-    RgbColor::rgb(116, 161, 255)
 }
 
 const fn default_pending_color() -> RgbColor {
@@ -259,6 +259,7 @@ mod tests {
         assert_eq!(config.background.dim_strength, 34);
         assert!(config.background.tint.is_none());
         assert_eq!(config.background.tint_opacity, 0);
+        assert_eq!(config.visuals.input_radius, 32);
     }
 
     #[test]
@@ -283,7 +284,7 @@ mod tests {
 
                 [visuals]
                 panel = "rgba(24, 30, 42, 0.82)"
-                focus = "#0A78C8"
+                input_radius = 20
             "##,
         )
         .expect("config file");
@@ -309,7 +310,7 @@ mod tests {
         );
         assert_eq!(loaded.config.background.tint_opacity, 12);
         assert_eq!(loaded.config.visuals.panel, RgbColor::rgba(24, 30, 42, 209));
-        assert_eq!(loaded.config.visuals.focus, RgbColor::rgb(10, 120, 200));
+        assert_eq!(loaded.config.visuals.input_radius, 20);
 
         fs::remove_file(path).ok();
         fs::remove_dir(dir).ok();
