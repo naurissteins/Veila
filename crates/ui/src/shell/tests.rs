@@ -147,6 +147,17 @@ fn typing_does_not_change_static_scene_revision() {
 }
 
 #[test]
+fn caps_lock_toggle_does_not_change_static_scene_revision() {
+    let mut shell = ShellState::default();
+    let original = shell.static_scene_revision();
+
+    assert!(shell.set_caps_lock_active(true));
+    assert_eq!(shell.static_scene_revision(), original);
+    assert!(shell.caps_lock_active);
+    assert!(!shell.set_caps_lock_active(true));
+}
+
+#[test]
 fn weather_widget_requires_location_and_snapshot() {
     let shell = ShellState::new_with_username_and_weather(
         Default::default(),

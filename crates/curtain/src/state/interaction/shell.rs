@@ -43,6 +43,16 @@ impl CurtainApp {
         self.render_all_surfaces(queue_handle);
     }
 
+    pub(crate) fn handle_shell_caps_lock(
+        &mut self,
+        active: bool,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.ui_shell.set_caps_lock_active(active) {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
     pub(crate) fn handle_shell_pointer_press(
         &mut self,
         surface: &wl_surface::WlSurface,

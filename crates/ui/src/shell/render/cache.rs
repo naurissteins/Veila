@@ -16,6 +16,7 @@ pub(crate) struct TextLayoutCache {
     pub(super) username: CachedTextBlock,
     pub(super) placeholder: CachedTextBlock,
     pub(super) revealed_secret: CachedTextBlock,
+    pub(super) caps_lock: CachedTextBlock,
     pub(super) status: CachedTextBlock,
     pub(super) weather_temperature: CachedTextBlock,
     pub(super) weather_location: CachedTextBlock,
@@ -153,6 +154,10 @@ impl TextLayoutCache {
         max_width: u32,
     ) -> TextBlock {
         self.revealed_secret.resolve(secret, style, max_width, 1)
+    }
+
+    pub(super) fn caps_lock_block(&mut self, style: TextStyle, max_width: u32) -> TextBlock {
+        self.caps_lock.resolve("Caps Lock On", style, max_width, 1)
     }
 }
 

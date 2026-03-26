@@ -75,6 +75,7 @@ impl ShellState {
     ) -> Self {
         Self {
             secret: String::new(),
+            caps_lock_active: false,
             reveal_secret: false,
             reveal_toggle_hovered: false,
             reveal_toggle_pressed: false,
@@ -98,6 +99,15 @@ impl ShellState {
             self.bump_static_scene_revision();
         }
         self.focused = focused;
+    }
+
+    pub fn set_caps_lock_active(&mut self, active: bool) -> bool {
+        if self.caps_lock_active == active {
+            return false;
+        }
+
+        self.caps_lock_active = active;
+        true
     }
 
     pub fn apply_theme(

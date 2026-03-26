@@ -215,6 +215,15 @@ impl ShellState {
                 draw_weather_widget(buffer, y, weather);
             }
             SceneWidget::Input(placeholder) => {
+                let caps_lock_indicator =
+                    if dynamic && self.caps_lock_active {
+                        Some(self.text_layout_cache.borrow_mut().caps_lock_block(
+                            self.caps_lock_text_style(),
+                            metrics.input_width as u32,
+                        ))
+                    } else {
+                        None
+                    };
                 let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
                     Some(self.text_layout_cache.borrow_mut().revealed_secret_block(
                         &self.secret,
@@ -236,6 +245,7 @@ impl ShellState {
                     toggle_hovered: self.reveal_toggle_hovered,
                     toggle_pressed: self.reveal_toggle_pressed,
                     toggle_style: self.toggle_style(),
+                    caps_lock_indicator,
                 };
                 if dynamic {
                     draw_input_content(buffer, &widget);

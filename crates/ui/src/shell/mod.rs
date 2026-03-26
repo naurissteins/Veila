@@ -45,6 +45,7 @@ enum ShellStatus {
 #[derive(Debug, Clone)]
 pub struct ShellState {
     secret: String,
+    caps_lock_active: bool,
     reveal_secret: bool,
     reveal_toggle_hovered: bool,
     reveal_toggle_pressed: bool,

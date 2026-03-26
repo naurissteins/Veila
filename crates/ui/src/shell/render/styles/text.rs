@@ -84,6 +84,18 @@ impl ShellState {
         )
     }
 
+    pub(crate) fn caps_lock_text_style(&self) -> TextStyle {
+        TextStyle::new(
+            secondary_text_color(
+                self.theme.status_color.unwrap_or(self.accent_color()),
+                self.theme.status_opacity,
+                214,
+            ),
+            1,
+        )
+        .with_line_spacing(0)
+    }
+
     pub(crate) fn weather_temperature_text_style(&self) -> TextStyle {
         let base_color = self
             .theme

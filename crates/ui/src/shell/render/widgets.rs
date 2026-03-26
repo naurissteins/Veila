@@ -27,6 +27,7 @@ pub(super) struct InputWidget {
     pub toggle_hovered: bool,
     pub toggle_pressed: bool,
     pub toggle_style: IconStyle,
+    pub caps_lock_indicator: Option<TextBlock>,
 }
 
 pub(super) fn draw_centered_block(
@@ -88,6 +89,12 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
         widget.toggle_pressed,
         widget.toggle_style,
     );
+
+    if let Some(caps_lock_indicator) = widget.caps_lock_indicator.as_ref() {
+        let x = widget.rect.x + widget.rect.width - caps_lock_indicator.width as i32;
+        let y = (widget.rect.y - caps_lock_indicator.height as i32 - 6).max(0);
+        caps_lock_indicator.draw(buffer, x, y);
+    }
 }
 
 pub(super) fn draw_weather_widget(

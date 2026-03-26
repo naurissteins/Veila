@@ -145,13 +145,14 @@ impl KeyboardHandler for CurtainApp {
     fn update_modifiers(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         _keyboard: &wl_keyboard::WlKeyboard,
         _serial: u32,
-        _modifiers: Modifiers,
+        modifiers: Modifiers,
         _raw_modifiers: RawModifiers,
         _layout: u32,
     ) {
+        self.handle_shell_caps_lock(modifiers.caps_lock, qh);
     }
 }
 
