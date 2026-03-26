@@ -16,7 +16,7 @@ use self::{
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
         InputWidget, draw_avatar_widget, draw_centered_block, draw_input_content, draw_input_shell,
-        input_toggle_hitbox,
+        draw_weather_widget, input_toggle_hitbox,
     },
 };
 use super::{ShellState, ShellStatus};
@@ -147,6 +147,9 @@ impl ShellState {
         let placeholder_style = self.placeholder_text_style();
         let status_text = self.status_text();
         let status_style = self.status_text_style();
+        let weather = self.weather.as_ref();
+        let weather_temperature_style = self.weather_temperature_text_style();
+        let weather_location_style = self.weather_location_text_style();
 
         self.text_layout_cache
             .borrow_mut()
@@ -161,6 +164,14 @@ impl ShellState {
                 placeholder_style,
                 status_text: status_text.as_deref(),
                 status_style,
+                weather_temperature_text: weather.map(|weather| weather.temperature_text.as_str()),
+                weather_temperature_style,
+                weather_location_text: weather.map(|weather| weather.location.as_str()),
+                weather_location_style,
+                weather_icon: weather.map(|weather| weather.icon),
+                weather_icon_size: self.theme.weather_icon_size,
+                weather_icon_gap: self.theme.weather_icon_gap,
+                weather_location_gap: self.theme.weather_location_gap,
                 metrics,
             })
     }
@@ -191,6 +202,9 @@ impl ShellState {
                     metrics.avatar_size as u32,
                     self.avatar_style(),
                 );
+            }
+            SceneWidget::Weather(weather) if !dynamic => {
+                draw_weather_widget(buffer, y, weather);
             }
             SceneWidget::Input(placeholder) => {
                 let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {

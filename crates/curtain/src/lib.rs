@@ -11,7 +11,8 @@ mod wayland;
 
 use std::path::PathBuf;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
+use veila_common::{WeatherSnapshot, ipc::decode_message};
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
@@ -25,6 +26,7 @@ pub struct CurtainOptions {
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
+    pub weather_snapshot: Option<WeatherSnapshot>,
 }
 
 impl CurtainOptions {
@@ -50,6 +52,12 @@ impl CurtainOptions {
 
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(snapshot) = arg.strip_prefix("--weather-snapshot=") {
+                options.weather_snapshot =
+                    Some(decode_message(snapshot).context("failed to decode weather snapshot")?);
                 continue;
             }
 

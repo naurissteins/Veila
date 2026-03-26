@@ -1,5 +1,6 @@
 mod parser;
 mod raster;
+mod weather;
 
 #[cfg(test)]
 mod tests;
@@ -10,12 +11,20 @@ use crate::{ClearColor, SoftwareBuffer, shape::Rect};
 
 use parser::{ParsedIcon, eye_icon, eye_off_icon, user_icon};
 use raster::{blend_icon_raster, rasterize_icon};
+pub use weather::WeatherIcon;
+use weather::weather_svg;
+
+pub(super) enum IconRasterSource {
+    Parsed(&'static ParsedIcon),
+    Svg(&'static [u8]),
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssetIcon {
     Eye,
     EyeOff,
     User,
+    Weather(WeatherIcon),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,7 +88,7 @@ pub fn draw_icon(buffer: &mut SoftwareBuffer, rect: Rect, icon: AssetIcon, style
             .unwrap_or_else(|| {
                 cache.push(CachedRasterIcon {
                     key,
-                    pixels: rasterize_icon(key, parsed_icon(key.icon)),
+                    pixels: rasterize_icon(key, icon_source(key.icon)),
                 });
                 cache.len() - 1
             });
@@ -95,10 +104,11 @@ pub fn draw_icon(buffer: &mut SoftwareBuffer, rect: Rect, icon: AssetIcon, style
     });
 }
 
-fn parsed_icon(icon: AssetIcon) -> &'static ParsedIcon {
+fn icon_source(icon: AssetIcon) -> IconRasterSource {
     match icon {
-        AssetIcon::Eye => eye_icon(),
-        AssetIcon::EyeOff => eye_off_icon(),
-        AssetIcon::User => user_icon(),
+        AssetIcon::Eye => IconRasterSource::Parsed(eye_icon()),
+        AssetIcon::EyeOff => IconRasterSource::Parsed(eye_off_icon()),
+        AssetIcon::User => IconRasterSource::Parsed(user_icon()),
+        AssetIcon::Weather(icon) => IconRasterSource::Svg(weather_svg(icon)),
     }
 }

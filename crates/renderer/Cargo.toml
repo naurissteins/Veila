@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 cosmic-text = { workspace = true }
 image = { workspace = true }
+resvg = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 thiserror = { workspace = true }
 tiny-skia = { workspace = true }

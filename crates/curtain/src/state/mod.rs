@@ -22,6 +22,7 @@ use smithay_client_toolkit::{
     shm::Shm,
 };
 use veila_common::AppConfig;
+use veila_common::WeatherSnapshot;
 use veila_renderer::{
     ClearColor,
     background::{BackgroundAsset, BackgroundTreatment},
@@ -73,6 +74,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
+    pub(crate) weather_snapshot: Option<WeatherSnapshot>,
     pub(crate) ui_shell: ShellState,
     pub(crate) lock_wait_timeout: Duration,
     lock_started_at: Instant,
@@ -111,12 +113,14 @@ impl CurtainApp {
         )
         .context("failed to prepare fallback background")?;
         let background_treatment = background_treatment(&config.background);
-        let ui_shell = ShellState::new_with_username(
+        let ui_shell = ShellState::new_with_username_and_weather(
             theme,
             config.lock.user_hint.clone(),
             config.lock.username.clone(),
             config.lock.avatar_path.clone(),
             config.lock.show_username,
+            config.weather.normalized_location(),
+            options.weather_snapshot.clone(),
         );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 
@@ -166,6 +170,7 @@ impl CurtainApp {
             background_asset,
             background_treatment,
             background_color,
+            weather_snapshot: options.weather_snapshot,
             ui_shell,
             lock_wait_timeout,
             lock_started_at: Instant::now(),

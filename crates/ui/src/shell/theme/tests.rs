@@ -1,7 +1,7 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, InputVisualConfig, InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -56,6 +56,17 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.eye = Some(EyeVisualConfig {
         color: Some(ConfigColor::rgb(244, 248, 255)),
         opacity: Some(72),
+    });
+    config.visuals.weather = Some(WeatherVisualConfig {
+        size: Some(3),
+        temperature_color: Some(ConfigColor::rgb(255, 255, 255)),
+        location_color: Some(ConfigColor::rgb(214, 227, 255)),
+        temperature_font_family: Some(String::from("Prototype")),
+        temperature_size: Some(4),
+        location_size: Some(2),
+        icon_size: Some(36),
+        icon_gap: Some(10),
+        location_gap: Some(3),
     });
     config.visuals.status = Some(StatusVisualConfig {
         color: Some(ConfigColor::rgb(255, 224, 160)),
@@ -116,6 +127,24 @@ fn input_opacity_overrides_embedded_alpha() {
         Some(ClearColor::opaque(244, 248, 255))
     );
     assert_eq!(theme.eye_icon_opacity, Some(72));
+    assert_eq!(theme.weather_size, Some(3));
+    assert_eq!(
+        theme.weather_temperature_color,
+        Some(ClearColor::opaque(255, 255, 255))
+    );
+    assert_eq!(
+        theme.weather_location_color,
+        Some(ClearColor::opaque(214, 227, 255))
+    );
+    assert_eq!(
+        theme.weather_temperature_font_family.as_deref(),
+        Some("Prototype")
+    );
+    assert_eq!(theme.weather_temperature_size, Some(4));
+    assert_eq!(theme.weather_location_size, Some(2));
+    assert_eq!(theme.weather_icon_size, Some(36));
+    assert_eq!(theme.weather_icon_gap, Some(10));
+    assert_eq!(theme.weather_location_gap, Some(3));
     assert_eq!(theme.status_color, Some(ClearColor::opaque(255, 224, 160)));
     assert_eq!(theme.status_opacity, Some(88));
     assert_eq!(

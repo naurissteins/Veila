@@ -120,6 +120,28 @@ pub struct EyeVisualConfig {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WeatherVisualConfig {
+    #[serde(default)]
+    pub size: Option<u16>,
+    #[serde(default)]
+    pub temperature_color: Option<RgbColor>,
+    #[serde(default)]
+    pub location_color: Option<RgbColor>,
+    #[serde(default)]
+    pub temperature_font_family: Option<String>,
+    #[serde(default)]
+    pub temperature_size: Option<u16>,
+    #[serde(default)]
+    pub location_size: Option<u16>,
+    #[serde(default)]
+    pub icon_size: Option<u16>,
+    #[serde(default)]
+    pub icon_gap: Option<u16>,
+    #[serde(default)]
+    pub location_gap: Option<u16>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LayoutVisualConfig {
     #[serde(default)]
     pub auth_stack_offset: Option<i16>,
@@ -216,6 +238,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub eye_icon_opacity: Option<u8>,
     #[serde(default)]
+    pub weather_size: Option<u16>,
+    #[serde(default)]
     pub status_color: Option<RgbColor>,
     #[serde(default)]
     pub status_opacity: Option<u8>,
@@ -243,6 +267,8 @@ pub struct VisualConfig {
     pub status: Option<StatusVisualConfig>,
     #[serde(default)]
     pub eye: Option<EyeVisualConfig>,
+    #[serde(default)]
+    pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
     pub layout: Option<LayoutVisualConfig>,
     #[serde(default)]
@@ -289,6 +315,7 @@ impl Default for VisualConfig {
             placeholder_opacity: None,
             eye_icon_color: None,
             eye_icon_opacity: None,
+            weather_size: None,
             status_color: None,
             status_opacity: None,
             input_mask_color: None,
@@ -303,6 +330,7 @@ impl Default for VisualConfig {
             placeholder: None,
             status: None,
             eye: None,
+            weather: None,
             layout: None,
             palette: None,
         }
@@ -564,6 +592,58 @@ impl VisualConfig {
             .as_ref()
             .and_then(|eye| eye.opacity)
             .or(self.eye_icon_opacity)
+    }
+
+    pub fn weather_size(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.size)
+            .or(self.weather_size)
+    }
+
+    pub fn weather_temperature_size(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_size)
+            .or_else(|| self.weather_size())
+    }
+
+    pub fn weather_temperature_color(&self) -> Option<RgbColor> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_color)
+    }
+
+    pub fn weather_temperature_font_family(&self) -> Option<&str> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_font_family.as_deref())
+    }
+
+    pub fn weather_location_size(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_size)
+    }
+
+    pub fn weather_location_color(&self) -> Option<RgbColor> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_color)
+    }
+
+    pub fn weather_icon_size(&self) -> Option<u16> {
+        self.weather.as_ref().and_then(|weather| weather.icon_size)
+    }
+
+    pub fn weather_icon_gap(&self) -> Option<u16> {
+        self.weather.as_ref().and_then(|weather| weather.icon_gap)
+    }
+
+    pub fn weather_location_gap(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_gap)
     }
 
     pub fn status_color(&self) -> Option<RgbColor> {

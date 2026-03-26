@@ -104,3 +104,19 @@ fn resolves_postscript_font_name_to_family_name() {
         Some(family.as_str())
     );
 }
+
+#[test]
+fn resolves_bundled_weather_font_family_from_loaded_database() {
+    assert_eq!(
+        resolve_font_family("Alte Haas Grotesk").as_deref(),
+        Some("Alte Haas Grotesk")
+    );
+}
+
+#[test]
+fn resolves_bundled_weather_postscript_name_to_family_name() {
+    assert_eq!(
+        resolve_font_family("Alte-Haas-Grotesk-Bold").as_deref(),
+        Some("Alte Haas Grotesk")
+    );
+}

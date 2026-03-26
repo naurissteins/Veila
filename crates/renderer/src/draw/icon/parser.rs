@@ -3,15 +3,15 @@ use std::sync::OnceLock;
 use tiny_skia::{Path, PathBuilder};
 
 #[derive(Debug)]
-pub(super) struct ParsedIcon {
-    pub(super) path: Path,
-    pub(super) viewbox: ViewBox,
+pub(in crate::draw) struct ParsedIcon {
+    pub(in crate::draw) path: Path,
+    pub(in crate::draw) viewbox: ViewBox,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(super) struct ViewBox {
-    pub(super) width: f32,
-    pub(super) height: f32,
+pub(in crate::draw) struct ViewBox {
+    pub(in crate::draw) width: f32,
+    pub(in crate::draw) height: f32,
 }
 
 pub(super) fn eye_icon() -> &'static ParsedIcon {

@@ -14,6 +14,7 @@ impl SceneModel {
             username,
             placeholder,
             status,
+            weather,
         } = blocks;
         let clock_gap = clock_gap.unwrap_or(4).clamp(0, 48);
         let avatar_gap = avatar_gap.unwrap_or(10).clamp(0, 96);
@@ -44,6 +45,14 @@ impl SceneModel {
             sections.push(SceneSection::new(
                 LayoutRole::Auth,
                 SceneWidget::Status(status),
+                0,
+            ));
+        }
+
+        if let Some(weather) = weather {
+            sections.push(SceneSection::new(
+                LayoutRole::Footer,
+                SceneWidget::Weather(weather),
                 0,
             ));
         }

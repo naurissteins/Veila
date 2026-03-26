@@ -1,6 +1,12 @@
-use veila_renderer::text::{TextBlock, TextStyle, fit_wrapped_text};
+use veila_renderer::{
+    icon::WeatherIcon,
+    text::{TextBlock, TextStyle, fit_wrapped_text},
+};
 
-use super::{layout::SceneMetrics, model::SceneTextBlocks};
+use super::{
+    layout::SceneMetrics,
+    model::{SceneTextBlocks, SceneWeatherBlocks},
+};
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct TextLayoutCache {
@@ -10,6 +16,8 @@ pub(crate) struct TextLayoutCache {
     pub(super) placeholder: CachedTextBlock,
     pub(super) revealed_secret: CachedTextBlock,
     pub(super) status: CachedTextBlock,
+    pub(super) weather_temperature: CachedTextBlock,
+    pub(super) weather_location: CachedTextBlock,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -37,6 +45,14 @@ pub(super) struct SceneTextInputs<'a> {
     pub(super) placeholder_style: TextStyle,
     pub(super) status_text: Option<&'a str>,
     pub(super) status_style: TextStyle,
+    pub(super) weather_temperature_text: Option<&'a str>,
+    pub(super) weather_temperature_style: TextStyle,
+    pub(super) weather_location_text: Option<&'a str>,
+    pub(super) weather_location_style: TextStyle,
+    pub(super) weather_icon: Option<WeatherIcon>,
+    pub(super) weather_icon_size: Option<i32>,
+    pub(super) weather_icon_gap: Option<i32>,
+    pub(super) weather_location_gap: Option<i32>,
     pub(super) metrics: SceneMetrics,
 }
 
@@ -73,6 +89,46 @@ impl TextLayoutCache {
                 inputs.metrics.content_width,
                 1,
             ),
+            weather: match (
+                inputs.weather_temperature_text,
+                inputs.weather_location_text,
+                inputs.weather_icon,
+            ) {
+                (Some(temperature), Some(location), Some(icon)) => {
+                    let temperature = self.weather_temperature.resolve(
+                        temperature,
+                        inputs.weather_temperature_style,
+                        inputs.metrics.content_width,
+                        1,
+                    );
+                    let location = self.weather_location.resolve(
+                        location,
+                        inputs.weather_location_style,
+                        inputs.metrics.content_width,
+                        1,
+                    );
+                    let derived_icon_size =
+                        SceneWeatherBlocks::clamped_icon_size(temperature.height as i32 + 6);
+
+                    Some(SceneWeatherBlocks {
+                        temperature,
+                        location,
+                        icon,
+                        icon_size: inputs.weather_icon_size.map_or(derived_icon_size, |size| {
+                            SceneWeatherBlocks::clamped_icon_size(size)
+                        }),
+                        icon_gap: inputs.weather_icon_gap.map_or(
+                            SceneWeatherBlocks::default_icon_gap(),
+                            SceneWeatherBlocks::clamped_icon_gap,
+                        ),
+                        location_gap: inputs.weather_location_gap.map_or(
+                            SceneWeatherBlocks::default_location_gap(),
+                            SceneWeatherBlocks::clamped_location_gap,
+                        ),
+                    })
+                }
+                _ => None,
+            },
         }
     }
 

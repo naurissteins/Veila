@@ -6,6 +6,11 @@ const BUNDLED_CLOCK_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/fonts/prototype.regular.ttf"
 ));
+const BUNDLED_WEATHER_FONT: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/fonts/alte-haas-grotesk.bold.ttf"
+));
+const BUNDLED_FONTS: [&[u8]; 2] = [BUNDLED_CLOCK_FONT, BUNDLED_WEATHER_FONT];
 
 #[derive(Debug)]
 pub(super) struct FontContext {
@@ -17,7 +22,9 @@ thread_local! {
     pub(super) static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(FontContext {
         font_system: {
             let mut font_system = FontSystem::new();
-            font_system.db_mut().load_font_data(BUNDLED_CLOCK_FONT.to_vec());
+            for font in BUNDLED_FONTS {
+                font_system.db_mut().load_font_data(font.to_vec());
+            }
             font_system
         },
         swash_cache: SwashCache::new(),

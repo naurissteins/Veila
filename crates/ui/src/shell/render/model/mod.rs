@@ -2,6 +2,7 @@ mod standard;
 #[cfg(test)]
 mod tests;
 
+use veila_renderer::icon::WeatherIcon;
 use veila_renderer::text::TextBlock;
 
 use super::{super::ShellStatus, layout::SceneMetrics};
@@ -13,6 +14,17 @@ pub(super) struct SceneTextBlocks {
     pub username: Option<TextBlock>,
     pub placeholder: TextBlock,
     pub status: Option<TextBlock>,
+    pub weather: Option<SceneWeatherBlocks>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SceneWeatherBlocks {
+    pub temperature: TextBlock,
+    pub location: TextBlock,
+    pub icon: WeatherIcon,
+    pub icon_size: i32,
+    pub icon_gap: i32,
+    pub location_gap: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +54,7 @@ pub(super) enum SceneWidget {
     Username(TextBlock),
     Input(TextBlock),
     Status(TextBlock),
+    Weather(SceneWeatherBlocks),
 }
 
 impl SceneModel {
@@ -116,6 +129,43 @@ impl SceneWidget {
             | Self::Status(block) => block.height as i32,
             Self::Avatar => metrics.avatar_size,
             Self::Input(_) => metrics.input_height,
+            Self::Weather(blocks) => blocks.height(),
         }
+    }
+}
+
+impl SceneWeatherBlocks {
+    const DEFAULT_ICON_GAP: i32 = 8;
+    const DEFAULT_LOCATION_GAP: i32 = 2;
+    const MIN_ICON_SIZE: i32 = 18;
+    const MAX_ICON_SIZE: i32 = 96;
+    const MAX_GAP: i32 = 64;
+
+    pub(super) fn height(&self) -> i32 {
+        self.icon_size
+            + self.icon_gap
+            + self.temperature.height as i32
+            + self.location_gap
+            + self.location.height as i32
+    }
+
+    pub(super) fn clamped_icon_size(size: i32) -> i32 {
+        size.clamp(Self::MIN_ICON_SIZE, Self::MAX_ICON_SIZE)
+    }
+
+    pub(super) fn clamped_icon_gap(size: i32) -> i32 {
+        size.clamp(0, Self::MAX_GAP)
+    }
+
+    pub(super) fn clamped_location_gap(size: i32) -> i32 {
+        size.clamp(0, Self::MAX_GAP)
+    }
+
+    pub(super) const fn default_icon_gap() -> i32 {
+        Self::DEFAULT_ICON_GAP
+    }
+
+    pub(super) const fn default_location_gap() -> i32 {
+        Self::DEFAULT_LOCATION_GAP
     }
 }

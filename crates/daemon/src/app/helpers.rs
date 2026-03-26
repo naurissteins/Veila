@@ -6,11 +6,12 @@ use nix::unistd::{Uid, User};
 use veila_common::ipc::{
     DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
-use veila_common::{AppConfig, LoadedConfig};
+use veila_common::{AppConfig, LoadedConfig, WeatherSnapshot};
 
 use super::{
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
+    weather::WeatherHandle,
 };
 use crate::{
     DaemonOptions,
@@ -25,21 +26,24 @@ pub(super) async fn activate_and_install(
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
+    weather_snapshot: Option<&WeatherSnapshot>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
 ) -> Result<()> {
-    let activation = activate_lock(session_proxy, state, config_path).await?;
+    let activation = activate_lock(session_proxy, state, config_path, weather_snapshot).await?;
     runtime.install_activation(activation);
     *auth_state = AuthState::new(auth_policy);
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn activate_and_log(
     trigger: &'static str,
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
+    weather_snapshot: Option<&WeatherSnapshot>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
@@ -49,6 +53,7 @@ pub(super) async fn activate_and_log(
         session_proxy,
         state,
         config_path,
+        weather_snapshot,
         runtime,
         auth_policy,
         auth_state,
@@ -101,6 +106,7 @@ pub(super) async fn reload_config_response(
     loaded_config: &mut LoadedConfig,
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
+    weather: &WeatherHandle,
 ) -> DaemonControlResponse {
     match AppConfig::load(options.config_path.as_deref()) {
         Ok(new_loaded_config) => {
@@ -113,6 +119,7 @@ pub(super) async fn reload_config_response(
                 *auth_state = AuthState::new(*auth_policy);
             }
             prewarm::spawn_background_prewarm(&loaded_config.config);
+            weather.update_config(&loaded_config.config.weather);
 
             let live_reload = if !state.is_active() {
                 Ok(LiveReloadStatus::NotActive)

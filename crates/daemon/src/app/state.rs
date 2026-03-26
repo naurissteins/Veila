@@ -13,11 +13,12 @@ use crate::domain::{
     lock_state::LockState,
 };
 
-use super::runtime::AuthResult;
+use super::{runtime::AuthResult, weather::WeatherHandle};
 
 pub(super) struct AppRuntime {
     pub(super) loaded_config: LoadedConfig,
     pub(super) auth_policy: AuthPolicy,
+    pub(super) weather: WeatherHandle,
     pub(super) state: LockState,
     pub(super) curtain: Option<Child>,
     pub(super) auth_listener: Option<UnixListener>,
@@ -34,10 +35,12 @@ impl AppRuntime {
             Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
             Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
         );
+        let weather = WeatherHandle::spawn(&loaded_config.config.weather);
 
         Self {
             loaded_config,
             auth_policy,
+            weather,
             state: LockState::Unlocked,
             curtain: None,
             auth_listener: None,
@@ -80,6 +83,7 @@ impl AppRuntime {
             auth_results,
             auth_sender,
             auth_state,
+            ..
         } = self;
 
         (

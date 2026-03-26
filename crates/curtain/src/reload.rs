@@ -38,12 +38,14 @@ impl CurtainApp {
         self.background_path = background_path.clone();
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
-        self.ui_shell.apply_theme_with_username(
+        self.ui_shell.apply_theme_with_username_and_weather(
             theme,
             config.lock.user_hint.clone(),
             config.lock.username.clone(),
             config.lock.avatar_path.clone(),
             config.lock.show_username,
+            config.weather.normalized_location(),
+            self.weather_snapshot.clone(),
         );
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {

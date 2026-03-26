@@ -6,6 +6,8 @@ use super::{
 };
 
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
+const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
+const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Prototype";
 
 impl ShellState {
@@ -80,5 +82,55 @@ impl ShellState {
             ),
             2,
         )
+    }
+
+    pub(crate) fn weather_temperature_text_style(&self) -> TextStyle {
+        let style = TextStyle::new(
+            self.theme
+                .weather_temperature_color
+                .unwrap_or(self.theme.foreground)
+                .with_alpha(232),
+            self.theme
+                .weather_temperature_size
+                .or(self.theme.weather_size)
+                .unwrap_or(2)
+                .clamp(1, MAX_WEATHER_TEMPERATURE_SCALE),
+        );
+
+        let family = self
+            .theme
+            .weather_temperature_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.weather_temperature_font_family.clone());
+
+        match family {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        }
+        .with_line_spacing(0)
+    }
+
+    pub(crate) fn weather_location_text_style(&self) -> TextStyle {
+        let temperature_scale = self
+            .theme
+            .weather_temperature_size
+            .or(self.theme.weather_size)
+            .unwrap_or(2)
+            .clamp(1, 6);
+        let location_scale = self
+            .theme
+            .weather_location_size
+            .unwrap_or_else(|| temperature_scale.saturating_sub(1).max(1))
+            .clamp(1, MAX_WEATHER_LOCATION_SCALE);
+
+        TextStyle::new(
+            self.theme
+                .weather_location_color
+                .unwrap_or(self.theme.muted)
+                .with_alpha(184),
+            location_scale,
+        )
+        .with_line_spacing(0)
     }
 }

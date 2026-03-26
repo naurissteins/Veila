@@ -1,0 +1,44 @@
+use veila_common::{WeatherCondition, WeatherSnapshot};
+use veila_renderer::icon::WeatherIcon;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WeatherWidgetData {
+    pub(super) location: String,
+    pub(super) temperature_text: String,
+    pub(super) icon: WeatherIcon,
+}
+
+pub(super) fn widget_data(
+    location: Option<String>,
+    snapshot: Option<WeatherSnapshot>,
+) -> Option<WeatherWidgetData> {
+    let location = location
+        .as_deref()
+        .map(str::trim)
+        .filter(|location| !location.is_empty())
+        .map(str::to_owned)?;
+    let snapshot = snapshot?;
+
+    Some(WeatherWidgetData {
+        location,
+        temperature_text: format!("{}°C", snapshot.temperature_celsius),
+        icon: icon_for_condition(snapshot.condition),
+    })
+}
+
+fn icon_for_condition(condition: WeatherCondition) -> WeatherIcon {
+    match condition {
+        WeatherCondition::ClearDay => WeatherIcon::ClearDay,
+        WeatherCondition::ClearNight => WeatherIcon::ClearNight,
+        WeatherCondition::PartlyCloudyDay => WeatherIcon::PartlyCloudyDay,
+        WeatherCondition::PartlyCloudyNight => WeatherIcon::PartlyCloudyNight,
+        WeatherCondition::Cloudy => WeatherIcon::Cloudy,
+        WeatherCondition::Overcast => WeatherIcon::Overcast,
+        WeatherCondition::Fog => WeatherIcon::Fog,
+        WeatherCondition::Drizzle => WeatherIcon::Drizzle,
+        WeatherCondition::Rain => WeatherIcon::Rain,
+        WeatherCondition::Snow => WeatherIcon::Snow,
+        WeatherCondition::Thunderstorm => WeatherIcon::Thunderstorm,
+        WeatherCondition::Unknown => WeatherIcon::Unknown,
+    }
+}

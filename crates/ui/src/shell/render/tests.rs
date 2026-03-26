@@ -479,6 +479,101 @@ fn date_style_allows_sizes_above_previous_cap() {
 }
 
 #[test]
+fn weather_styles_use_configured_widget_size() {
+    let theme = ShellTheme {
+        foreground: ClearColor::rgba(240, 244, 250, 255),
+        muted: ClearColor::rgba(180, 190, 210, 255),
+        weather_temperature_color: Some(ClearColor::opaque(255, 255, 255)),
+        weather_location_color: Some(ClearColor::opaque(214, 227, 255)),
+        weather_size: Some(4),
+        weather_temperature_font_family: Some(String::from("Prototype")),
+        weather_temperature_size: Some(12),
+        weather_location_size: Some(2),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let temperature_style = shell.weather_temperature_text_style();
+    let location_style = shell.weather_location_text_style();
+
+    assert_eq!(temperature_style.scale, 12);
+    assert_eq!(location_style.scale, 2);
+    assert_eq!(temperature_style.color.red, 255);
+    assert_eq!(location_style.color.red, 214);
+    assert_eq!(temperature_style.line_spacing, 0);
+    assert_eq!(location_style.line_spacing, 0);
+    assert!(
+        temperature_style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Prototype"))
+    );
+}
+
+#[test]
+fn text_layout_cache_uses_configured_weather_icon_size() {
+    let mut cache = TextLayoutCache::default();
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+
+    let blocks = cache.scene_text_blocks(SceneTextInputs {
+        clock_text: "09:41",
+        clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+        date_text: "Tuesday",
+        date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        username_text: None,
+        username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+        placeholder_text: "Type your password to unlock",
+        placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+        status_text: None,
+        status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: Some("12°"),
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 4),
+        weather_location_text: Some("Riga"),
+        weather_location_style: TextStyle::new(ClearColor::opaque(180, 190, 210), 2),
+        weather_icon: Some(veila_renderer::icon::WeatherIcon::Cloudy),
+        weather_icon_size: Some(34),
+        weather_icon_gap: Some(10),
+        weather_location_gap: Some(3),
+        metrics,
+    });
+
+    let weather = blocks.weather.expect("weather blocks");
+    assert_eq!(weather.icon_size, 34);
+    assert_eq!(weather.icon_gap, 10);
+    assert_eq!(weather.location_gap, 3);
+}
+
+#[test]
+fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
+    let mut cache = TextLayoutCache::default();
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+
+    let blocks = cache.scene_text_blocks(SceneTextInputs {
+        clock_text: "09:41",
+        clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+        date_text: "Tuesday",
+        date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        username_text: None,
+        username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+        placeholder_text: "Type your password to unlock",
+        placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+        status_text: None,
+        status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: Some("12°"),
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 4),
+        weather_location_text: Some("Riga"),
+        weather_location_style: TextStyle::new(ClearColor::opaque(180, 190, 210), 2),
+        weather_icon: Some(veila_renderer::icon::WeatherIcon::Cloudy),
+        weather_icon_size: Some(64),
+        weather_icon_gap: None,
+        weather_location_gap: None,
+        metrics,
+    });
+
+    assert_eq!(blocks.weather.expect("weather blocks").icon_size, 64);
+}
+
+#[test]
 fn header_styles_preserve_explicit_foreground_alpha_when_unset() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 90),
@@ -614,6 +709,14 @@ fn text_layout_cache_reuses_matching_clock_layout() {
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: None,
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        weather_location_text: None,
+        weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
+        weather_icon: None,
+        weather_icon_size: None,
+        weather_icon_gap: None,
+        weather_location_gap: None,
         metrics,
     });
     let cached_clock = cache.clock.block.clone().expect("cached clock block");
@@ -628,6 +731,14 @@ fn text_layout_cache_reuses_matching_clock_layout() {
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: None,
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        weather_location_text: None,
+        weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
+        weather_icon: None,
+        weather_icon_size: None,
+        weather_icon_gap: None,
+        weather_location_gap: None,
         metrics,
     });
 
@@ -651,6 +762,14 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: None,
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        weather_location_text: None,
+        weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
+        weather_icon: None,
+        weather_icon_size: None,
+        weather_icon_gap: None,
+        weather_location_gap: None,
         metrics,
     });
     let second = cache.scene_text_blocks(SceneTextInputs {
@@ -664,6 +783,14 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: None,
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        weather_location_text: None,
+        weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
+        weather_icon: None,
+        weather_icon_size: None,
+        weather_icon_gap: None,
+        weather_location_gap: None,
         metrics,
     });
 

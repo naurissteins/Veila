@@ -5,11 +5,13 @@
 pub mod config;
 pub mod error;
 pub mod ipc;
+pub mod weather;
 
 pub use config::{
     AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
-    EyeVisualConfig, InputVisualConfig, InputVisualEntry, LayoutVisualConfig, LoadedConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, RgbColor, StatusVisualConfig,
-    UsernameVisualConfig,
+    EyeVisualConfig, GeoCoordinate, InputVisualConfig, InputVisualEntry, LayoutVisualConfig,
+    LoadedConfig, PaletteVisualConfig, PlaceholderVisualConfig, RgbColor, StatusVisualConfig,
+    UsernameVisualConfig, WeatherConfig, WeatherVisualConfig,
 };
 pub use error::{Result, VeilaError};
+pub use weather::{WeatherCondition, WeatherSnapshot};

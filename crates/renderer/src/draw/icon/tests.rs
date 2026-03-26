@@ -1,6 +1,9 @@
 use super::{
-    AssetIcon, ICON_RASTER_CACHE, IconStyle, draw_icon, parser::extract_path_data,
-    parser::extract_viewbox, parser::parse_path_data,
+    AssetIcon, ICON_RASTER_CACHE, IconRasterKey, IconStyle, WeatherIcon, draw_icon, icon_source,
+    parser::extract_path_data,
+    parser::extract_viewbox,
+    parser::parse_path_data,
+    raster::{rasterize_icon, visible_alpha_bounds},
 };
 use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::Rect};
 
@@ -80,4 +83,43 @@ fn reuses_cached_raster_for_matching_icon_draws() {
     ICON_RASTER_CACHE.with(|cache| {
         assert_eq!(cache.borrow().len(), 1);
     });
+}
+
+#[test]
+fn weather_svg_icons_preserve_source_fill_colors() {
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(48, 48)).expect("buffer");
+    draw_icon(
+        &mut buffer,
+        Rect::new(0, 0, 48, 48),
+        AssetIcon::Weather(WeatherIcon::ClearDay),
+        IconStyle::new(ClearColor::opaque(255, 255, 255)).with_padding(0),
+    );
+
+    assert!(
+        buffer
+            .pixels()
+            .chunks_exact(4)
+            .any(|pixel| pixel[3] > 0 && pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0)
+    );
+}
+
+#[test]
+fn weather_svg_icons_trim_internal_transparent_bounds() {
+    let key = IconRasterKey {
+        icon: AssetIcon::Weather(WeatherIcon::ClearDay),
+        width: 64,
+        height: 64,
+        color: ClearColor::opaque(255, 255, 255),
+        padding: 0,
+    };
+
+    let pixels = rasterize_icon(key, icon_source(key.icon));
+    let bounds = visible_alpha_bounds(&pixels, key.width, key.height).expect("alpha bounds");
+
+    assert!(bounds.width() >= 60);
+    assert!(bounds.height() >= 60);
+    assert!(bounds.left <= 2);
+    assert!(bounds.top <= 2);
+    assert!(key.width - bounds.right <= 2);
+    assert!(key.height - bounds.bottom <= 2);
 }

@@ -15,6 +15,7 @@ use crate::{
         lock_state::LockState,
     },
 };
+use veila_common::WeatherSnapshot;
 
 use super::state::{ActiveRuntime, LockActivation, reset_runtime, update_locked_hint};
 
@@ -22,6 +23,7 @@ pub(crate) async fn activate_lock(
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
+    weather_snapshot: Option<&WeatherSnapshot>,
 ) -> Result<LockActivation> {
     *state = LockState::Locking;
 
@@ -35,6 +37,7 @@ pub(crate) async fn activate_lock(
         &auth_socket_path,
         &control_socket_path,
         config_path,
+        weather_snapshot,
     )
     .await?;
     let (auth_sender, auth_results) = unbounded_channel();

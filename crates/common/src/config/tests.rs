@@ -23,6 +23,10 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());
     assert_eq!(config.background.tint_opacity, 0);
+    assert!(!config.weather.enabled);
+    assert!(config.weather.location.is_none());
+    assert!(config.weather.clone().coordinates().is_none());
+    assert_eq!(config.weather.refresh_minutes, 15);
     assert!(matches!(config.visuals.input, InputVisualEntry::Color(_)));
     assert!(config.visuals.input_background_opacity().is_none());
     assert!(config.visuals.input_border_opacity().is_none());
@@ -57,6 +61,15 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.placeholder_opacity().is_none());
     assert!(config.visuals.eye_icon_color().is_none());
     assert!(config.visuals.eye_icon_opacity().is_none());
+    assert!(config.visuals.weather_size().is_none());
+    assert!(config.visuals.weather_temperature_color().is_none());
+    assert!(config.visuals.weather_location_color().is_none());
+    assert!(config.visuals.weather_temperature_font_family().is_none());
+    assert!(config.visuals.weather_temperature_size().is_none());
+    assert!(config.visuals.weather_location_size().is_none());
+    assert!(config.visuals.weather_icon_size().is_none());
+    assert!(config.visuals.weather_icon_gap().is_none());
+    assert!(config.visuals.weather_location_gap().is_none());
     assert!(config.visuals.status_color().is_none());
     assert!(config.visuals.status_opacity().is_none());
     assert!(config.visuals.input_mask_color().is_none());
@@ -83,6 +96,13 @@ fn loads_config_from_file() {
             username = "anonymous"
             user_hint = "Type your password"
             avatar_path = "/tmp/avatar.png"
+
+            [weather]
+            enabled = true
+            location = "Riga"
+            latitude = 56.9496
+            longitude = 24.1052
+            refresh_minutes = 20
 
             [visuals]
             avatar_background_color = "rgba(24, 30, 42, 0.82)"
@@ -142,6 +162,13 @@ fn loads_config_from_file() {
         loaded.config.lock.user_hint.as_deref(),
         Some("Type your password")
     );
+    assert!(loaded.config.weather.enabled);
+    assert_eq!(loaded.config.weather.location.as_deref(), Some("Riga"));
+    assert_eq!(
+        loaded.config.weather.clone().coordinates(),
+        Some((56.9496, 24.1052))
+    );
+    assert_eq!(loaded.config.weather.refresh_minutes, 20);
     assert_eq!(loaded.config.background.blur_radius, 6);
     assert_eq!(loaded.config.background.dim_strength, 40);
     assert_eq!(
@@ -293,6 +320,17 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             color = "#ffffff"
             opacity = 72
 
+            [visuals.weather]
+            size = 3
+            temperature_color = "#FFFFFF"
+            location_color = "#D6E3FF"
+            temperature_font_family = "Prototype"
+            temperature_size = 4
+            location_size = 2
+            icon_size = 36
+            icon_gap = 10
+            location_gap = 3
+
             [visuals.layout]
             header_top_offset = -12
             auth_stack_offset = 0
@@ -363,6 +401,24 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         Some(RgbColor::rgb(255, 255, 255))
     );
     assert_eq!(config.visuals.eye_icon_opacity(), Some(72));
+    assert_eq!(config.visuals.weather_size(), Some(3));
+    assert_eq!(
+        config.visuals.weather_temperature_color(),
+        Some(RgbColor::rgb(255, 255, 255))
+    );
+    assert_eq!(
+        config.visuals.weather_location_color(),
+        Some(RgbColor::rgb(214, 227, 255))
+    );
+    assert_eq!(
+        config.visuals.weather_temperature_font_family(),
+        Some("Prototype")
+    );
+    assert_eq!(config.visuals.weather_temperature_size(), Some(4));
+    assert_eq!(config.visuals.weather_location_size(), Some(2));
+    assert_eq!(config.visuals.weather_icon_size(), Some(36));
+    assert_eq!(config.visuals.weather_icon_gap(), Some(10));
+    assert_eq!(config.visuals.weather_location_gap(), Some(3));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(

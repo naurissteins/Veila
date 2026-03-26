@@ -1,5 +1,7 @@
 use std::{path::Path, process::ExitStatus};
 
+use veila_common::WeatherSnapshot;
+
 use crate::{
     adapters::logind,
     domain::{auth::AuthPolicy, lock_state::LockState},
@@ -15,6 +17,7 @@ pub(crate) async fn handle_lock_signal(
     trigger: &'static str,
     session_proxy: &logind::SessionProxy<'_>,
     config_path: Option<&Path>,
+    weather_snapshot: Option<&WeatherSnapshot>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
 ) {
@@ -39,6 +42,7 @@ pub(crate) async fn handle_lock_signal(
         session_proxy,
         state,
         config_path,
+        weather_snapshot,
         ActiveRuntime::new(
             curtain,
             auth_listener,
@@ -102,6 +106,7 @@ pub(crate) async fn handle_curtain_exit(
     status: ExitStatus,
     session_proxy: &logind::SessionProxy<'_>,
     config_path: Option<&Path>,
+    weather_snapshot: Option<&WeatherSnapshot>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
 ) {
@@ -138,6 +143,7 @@ pub(crate) async fn handle_curtain_exit(
             session_proxy,
             state,
             config_path,
+            weather_snapshot,
             ActiveRuntime::new(
                 curtain,
                 auth_listener,

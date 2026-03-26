@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio::net::UnixStream;
 use veila_common::{
-    LoadedConfig,
+    LoadedConfig, WeatherSnapshot,
     ipc::{DaemonControlMessage, DaemonControlResponse},
 };
 
@@ -15,14 +15,18 @@ use super::super::{
     helpers::{activate_and_log, build_daemon_health, build_daemon_status, reload_config_response},
     runtime::ActiveRuntime,
     state::RuntimeSlots,
+    weather::WeatherHandle,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_control_connection(
     mut stream: UnixStream,
     options: &DaemonOptions,
     session_proxy: &logind::SessionProxy<'_>,
     session_path: &str,
     loaded_config: &mut LoadedConfig,
+    weather_snapshot: Option<&WeatherSnapshot>,
+    weather: &WeatherHandle,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
 ) -> Result<bool> {
@@ -49,6 +53,7 @@ pub(crate) async fn handle_control_connection(
                     session_proxy,
                     state,
                     options.config_path.as_deref(),
+                    weather_snapshot,
                     ActiveRuntime::new(
                         curtain,
                         auth_listener,
@@ -98,6 +103,7 @@ pub(crate) async fn handle_control_connection(
                 loaded_config,
                 auth_policy,
                 auth_state,
+                weather,
             )
             .await,
             false,

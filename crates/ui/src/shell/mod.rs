@@ -7,6 +7,7 @@ mod state;
 #[cfg(test)]
 mod tests;
 mod theme;
+mod weather;
 
 pub use theme::ShellTheme;
 
@@ -15,6 +16,7 @@ use std::{cell::RefCell, time::Instant};
 use clock::ClockState;
 use render::TextLayoutCache;
 use veila_renderer::avatar::AvatarAsset;
+use weather::WeatherWidgetData;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {
@@ -53,6 +55,7 @@ pub struct ShellState {
     theme: ShellTheme,
     hint_text: String,
     username_text: Option<String>,
+    weather: Option<WeatherWidgetData>,
     avatar: AvatarAsset,
     text_layout_cache: RefCell<TextLayoutCache>,
 }

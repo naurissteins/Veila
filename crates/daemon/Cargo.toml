@@ -18,9 +18,12 @@ anyhow = { workspace = true }
 futures-util = { workspace = true }
 nix = { workspace = true }
 nonstick = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 tokio = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+ureq = { workspace = true }
 zbus = { workspace = true }

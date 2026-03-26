@@ -1,8 +1,11 @@
 use std::{cell::RefCell, path::PathBuf};
 
+use veila_common::WeatherSnapshot;
+
 use super::{
     ClockState, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
     avatar::{load_avatar, username_text},
+    weather::widget_data,
 };
 
 impl ShellState {
@@ -12,7 +15,15 @@ impl ShellState {
         avatar_path: Option<PathBuf>,
         show_username: bool,
     ) -> Self {
-        Self::new_with_username(theme, user_hint, None, avatar_path, show_username)
+        Self::new_with_weather(
+            theme,
+            user_hint,
+            None,
+            avatar_path,
+            show_username,
+            None,
+            None,
+        )
     }
 
     pub fn new_with_username(
@@ -21,6 +32,46 @@ impl ShellState {
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
         show_username: bool,
+    ) -> Self {
+        Self::new_with_weather(
+            theme,
+            user_hint,
+            username_override,
+            avatar_path,
+            show_username,
+            None,
+            None,
+        )
+    }
+
+    pub fn new_with_username_and_weather(
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        username_override: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
+    ) -> Self {
+        Self::new_with_weather(
+            theme,
+            user_hint,
+            username_override,
+            avatar_path,
+            show_username,
+            weather_location,
+            weather_snapshot,
+        )
+    }
+
+    fn new_with_weather(
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        username_override: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
     ) -> Self {
         Self {
             secret: String::new(),
@@ -36,6 +87,7 @@ impl ShellState {
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
             username_text: username_text(show_username, username_override),
+            weather: widget_data(weather_location, weather_snapshot),
             avatar: load_avatar(avatar_path),
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
         }
@@ -66,11 +118,34 @@ impl ShellState {
         avatar_path: Option<PathBuf>,
         show_username: bool,
     ) {
+        self.apply_theme_with_username_and_weather(
+            theme,
+            user_hint,
+            username_override,
+            avatar_path,
+            show_username,
+            None,
+            None,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn apply_theme_with_username_and_weather(
+        &mut self,
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        username_override: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
+    ) {
         self.theme = theme;
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
         self.username_text = username_text(show_username, username_override);
+        self.weather = widget_data(weather_location, weather_snapshot);
         self.avatar = load_avatar(avatar_path);
         self.bump_static_scene_revision();
     }

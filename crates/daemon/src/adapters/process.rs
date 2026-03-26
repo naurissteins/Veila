@@ -14,13 +14,17 @@ use tokio::{
     process::{Child, Command},
     time::timeout,
 };
-use veila_common::ipc::{CurtainControlMessage, encode_message};
+use veila_common::{
+    WeatherSnapshot,
+    ipc::{CurtainControlMessage, encode_message},
+};
 
 pub async fn spawn_curtain(
     notify_socket: &Path,
     daemon_socket: &Path,
     control_socket: &Path,
     config_path: Option<&Path>,
+    weather_snapshot: Option<&WeatherSnapshot>,
 ) -> Result<Child> {
     let binary = curtain_binary_path()?;
     let mut command = Command::new(&binary);
@@ -29,6 +33,12 @@ pub async fn spawn_curtain(
     command.arg(format!("--control-socket={}", control_socket.display()));
     if let Some(config_path) = config_path {
         command.arg(format!("--config={}", config_path.display()));
+    }
+    if let Some(weather_snapshot) = weather_snapshot {
+        command.arg(format!(
+            "--weather-snapshot={}",
+            encode_message(weather_snapshot).context("failed to encode weather snapshot")?
+        ));
     }
 
     tracing::info!(binary = %binary.display(), "spawning curtain");

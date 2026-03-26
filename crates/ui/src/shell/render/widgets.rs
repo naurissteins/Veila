@@ -7,9 +7,12 @@ use veila_renderer::{
     text::TextBlock,
 };
 
+use super::model::SceneWeatherBlocks;
+
 const TOGGLE_HITBOX_SIZE: i32 = 28;
 const TOGGLE_RIGHT_INSET: i32 = 14;
 const CONTENT_GAP_TO_TOGGLE: i32 = 10;
+const WEATHER_WIDGET_LEFT_INSET: i32 = 48;
 
 pub(super) struct InputWidget {
     pub rect: Rect,
@@ -83,6 +86,32 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
         widget.toggle_hovered,
         widget.toggle_pressed,
         widget.toggle_style,
+    );
+}
+
+pub(super) fn draw_weather_widget(
+    buffer: &mut SoftwareBuffer,
+    top_y: i32,
+    weather: &SceneWeatherBlocks,
+) {
+    let icon_size = weather.icon_size;
+    let origin_x = WEATHER_WIDGET_LEFT_INSET;
+    let icon_y = top_y;
+    let icon_rect = Rect::new(origin_x, icon_y, icon_size, icon_size);
+    let text_x = origin_x;
+    let text_y = icon_y + icon_size + weather.icon_gap;
+
+    draw_icon(
+        buffer,
+        icon_rect,
+        AssetIcon::Weather(weather.icon),
+        IconStyle::new(veila_renderer::ClearColor::opaque(255, 255, 255)).with_padding(0),
+    );
+    weather.temperature.draw(buffer, text_x, text_y);
+    weather.location.draw(
+        buffer,
+        text_x,
+        text_y + weather.temperature.height as i32 + weather.location_gap,
     );
 }
 

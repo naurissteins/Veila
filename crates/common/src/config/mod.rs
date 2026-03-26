@@ -4,6 +4,7 @@ mod lock;
 #[cfg(test)]
 mod tests;
 mod visuals;
+mod weather;
 
 use std::{
     fs,
@@ -20,8 +21,9 @@ pub use lock::LockConfig;
 pub use visuals::{
     AvatarVisualConfig, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, InputVisualConfig,
     InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
-    StatusVisualConfig, UsernameVisualConfig, VisualConfig,
+    StatusVisualConfig, UsernameVisualConfig, VisualConfig, WeatherVisualConfig,
 };
+pub use weather::{GeoCoordinate, WeatherConfig};
 
 pub type RgbColor = ConfigColor;
 
@@ -37,6 +39,8 @@ pub struct AppConfig {
     pub background: BackgroundConfig,
     #[serde(default)]
     pub lock: LockConfig,
+    #[serde(default)]
+    pub weather: WeatherConfig,
     #[serde(default)]
     pub visuals: VisualConfig,
 }
