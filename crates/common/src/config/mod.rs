@@ -17,7 +17,11 @@ use crate::error::Result;
 pub use background::BackgroundConfig;
 pub use color::ConfigColor;
 pub use lock::LockConfig;
-pub use visuals::VisualConfig;
+pub use visuals::{
+    AvatarVisualConfig, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, InputVisualConfig,
+    InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
+    StatusVisualConfig, UsernameVisualConfig, VisualConfig,
+};
 
 pub type RgbColor = ConfigColor;
 
