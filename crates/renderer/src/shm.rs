@@ -8,6 +8,54 @@ use smithay_client_toolkit::{
 
 use crate::{RendererError, Result, SoftwareBuffer};
 
+#[derive(Debug)]
+pub struct SurfaceBufferPool {
+    pool: RawPool,
+}
+
+impl SurfaceBufferPool {
+    pub fn new(shm: &Shm, size: crate::FrameSize) -> Result<Self> {
+        Ok(Self {
+            pool: RawPool::new(required_pool_len(size)?, shm)?,
+        })
+    }
+
+    pub fn commit_buffer<D>(
+        &mut self,
+        queue_handle: &QueueHandle<D>,
+        surface: &WlSurface,
+        buffer: &SoftwareBuffer,
+    ) -> Result<()>
+    where
+        D: Dispatch<wl_buffer::WlBuffer, ()> + 'static,
+    {
+        let size = buffer.size();
+        if size.is_empty() {
+            return Err(RendererError::EmptyFrame);
+        }
+
+        let byte_len = required_pool_len(size)?;
+        self.pool.resize(byte_len)?;
+        self.pool.mmap()[..byte_len].copy_from_slice(buffer.pixels());
+
+        let wl_buffer = self.pool.create_buffer(
+            0,
+            size.width as i32,
+            size.height as i32,
+            (size.width * 4) as i32,
+            wl_shm::Format::Argb8888,
+            (),
+            queue_handle,
+        );
+        surface.attach(Some(&wl_buffer), 0, 0);
+        surface.damage_buffer(0, 0, size.width as i32, size.height as i32);
+        surface.commit();
+        wl_buffer.destroy();
+
+        Ok(())
+    }
+}
+
 pub fn commit_buffer<D>(
     shm: &Shm,
     queue_handle: &QueueHandle<D>,
@@ -17,31 +65,13 @@ pub fn commit_buffer<D>(
 where
     D: Dispatch<wl_buffer::WlBuffer, ()> + 'static,
 {
-    let size = buffer.size();
+    SurfaceBufferPool::new(shm, buffer.size())?.commit_buffer(queue_handle, surface, buffer)
+}
+
+fn required_pool_len(size: crate::FrameSize) -> Result<usize> {
     if size.is_empty() {
         return Err(RendererError::EmptyFrame);
     }
 
-    let mut pool = RawPool::new(
-        size.byte_len()
-            .ok_or(RendererError::InvalidFrameSize(size))?,
-        shm,
-    )?;
-    pool.mmap().copy_from_slice(buffer.pixels());
-
-    let wl_buffer = pool.create_buffer(
-        0,
-        size.width as i32,
-        size.height as i32,
-        (size.width * 4) as i32,
-        wl_shm::Format::Argb8888,
-        (),
-        queue_handle,
-    );
-    surface.attach(Some(&wl_buffer), 0, 0);
-    surface.damage_buffer(0, 0, size.width as i32, size.height as i32);
-    surface.commit();
-    wl_buffer.destroy();
-
-    Ok(())
+    size.byte_len().ok_or(RendererError::InvalidFrameSize(size))
 }

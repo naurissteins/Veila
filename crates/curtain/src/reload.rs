@@ -48,6 +48,8 @@ impl CurtainApp {
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {
             surface.background = None;
+            surface.static_overlay = None;
+            surface.static_overlay_revision = 0;
         }
 
         tracing::info!(

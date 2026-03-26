@@ -110,6 +110,13 @@ pub enum RendererError {
     InvalidFrameSize(FrameSize),
     #[error("frame size must not be empty")]
     EmptyFrame,
+    #[error("buffer size mismatch: target {target:?}, overlay {overlay:?}")]
+    BufferSizeMismatch {
+        target: FrameSize,
+        overlay: FrameSize,
+    },
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
     #[error(transparent)]
     ShmPool(#[from] smithay_client_toolkit::shm::CreatePoolError),
     #[error(transparent)]
@@ -167,6 +174,26 @@ impl SoftwareBuffer {
             .for_each(|chunk| chunk.copy_from_slice(&pixel));
     }
 
+    /// Blends another ARGB8888 buffer over this one.
+    pub fn blend_from(&mut self, overlay: &Self) -> Result<()> {
+        if self.size != overlay.size {
+            return Err(RendererError::BufferSizeMismatch {
+                target: self.size,
+                overlay: overlay.size,
+            });
+        }
+
+        for (dst, src) in self
+            .pixels
+            .chunks_exact_mut(4)
+            .zip(overlay.pixels.chunks_exact(4))
+        {
+            blend_pixel(dst, src);
+        }
+
+        Ok(())
+    }
+
     /// Returns the frame size for the buffer.
     pub const fn size(&self) -> FrameSize {
         self.size
@@ -183,9 +210,31 @@ impl SoftwareBuffer {
     }
 }
 
+fn blend_pixel(dst: &mut [u8], src: &[u8]) {
+    let src_alpha = src[3] as u16;
+    if src_alpha == 0 {
+        return;
+    }
+
+    if src_alpha == u16::from(u8::MAX) {
+        dst.copy_from_slice(src);
+        return;
+    }
+
+    let inverse_alpha = u16::from(u8::MAX) - src_alpha;
+    for index in 0..4 {
+        dst[index] = blend_component(dst[index], src[index], inverse_alpha);
+    }
+}
+
+fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
+    blended.min(u16::from(u8::MAX)) as u8
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ClearColor, FrameSize, SoftwareBuffer};
+    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer};
 
     #[test]
     fn detects_empty_frame_sizes() {
@@ -212,5 +261,41 @@ mod tests {
             .expect("buffer should be created");
 
         assert_eq!(buffer.pixels(), &[4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn blends_translucent_buffers() {
+        let mut target =
+            SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(255, 128, 0))
+                .expect("target");
+        let overlay =
+            SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::rgba(255, 255, 255, 26))
+                .expect("overlay");
+
+        target.blend_from(&overlay).expect("blend should succeed");
+
+        assert_eq!(target.pixels(), &[26, 141, 255, 255]);
+    }
+
+    #[test]
+    fn rejects_mismatched_buffer_sizes() {
+        let mut target = SoftwareBuffer::new(FrameSize::new(1, 1)).expect("target");
+        let overlay = SoftwareBuffer::new(FrameSize::new(2, 1)).expect("overlay");
+
+        let error = target.blend_from(&overlay).expect_err("blend should fail");
+
+        assert!(matches!(
+            error,
+            RendererError::BufferSizeMismatch {
+                target: FrameSize {
+                    width: 1,
+                    height: 1
+                },
+                overlay: FrameSize {
+                    width: 2,
+                    height: 1
+                },
+            }
+        ));
     }
 }

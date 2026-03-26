@@ -15,12 +15,8 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     let mut event_loop = smithay_client_toolkit::reexports::calloop::EventLoop::try_new()
         .context("failed to create curtain event loop")?;
     let loop_handle = event_loop.handle();
-    let standby = options.standby;
     let mut app = CurtainApp::new(connection.clone(), &globals, &queue_handle, options)?;
-
-    if !standby {
-        app.acquire_lock(&queue_handle)?;
-    }
+    app.acquire_lock(&queue_handle)?;
 
     let signals = Signals::new(&[Signal::SIGINT, Signal::SIGTERM])
         .context("failed to register signal source")?;

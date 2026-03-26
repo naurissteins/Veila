@@ -12,10 +12,10 @@ use veila_renderer::{
 };
 
 use self::{
-    layout::{SceneMetrics, role_anchors},
+    layout::{RoleAnchors, SceneMetrics, role_anchors},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
-        InputWidget, draw_avatar_widget, draw_centered_block, draw_input_widget,
+        InputWidget, draw_avatar_widget, draw_centered_block, draw_input_content, draw_input_shell,
         input_toggle_hitbox,
     },
 };
@@ -24,6 +24,136 @@ use super::{ShellState, ShellStatus};
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Prototype";
 
+#[derive(Debug, Clone)]
+struct SceneLayout {
+    metrics: SceneMetrics,
+    model: SceneModel,
+    anchors: RoleAnchors,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct TextLayoutCache {
+    clock: CachedTextBlock,
+    date: CachedTextBlock,
+    username: CachedTextBlock,
+    placeholder: CachedTextBlock,
+    revealed_secret: CachedTextBlock,
+    status: CachedTextBlock,
+}
+
+#[derive(Debug, Clone, Default)]
+struct CachedTextBlock {
+    key: Option<CachedTextKey>,
+    block: Option<veila_renderer::text::TextBlock>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CachedTextKey {
+    text: String,
+    style: TextStyle,
+    max_width: u32,
+    min_scale: u32,
+}
+
+struct SceneTextInputs<'a> {
+    clock_text: &'a str,
+    clock_style: TextStyle,
+    date_text: &'a str,
+    date_style: TextStyle,
+    username_text: Option<&'a str>,
+    username_style: TextStyle,
+    placeholder_text: &'a str,
+    placeholder_style: TextStyle,
+    status_text: Option<&'a str>,
+    status_style: TextStyle,
+    metrics: SceneMetrics,
+}
+
+impl TextLayoutCache {
+    fn scene_text_blocks(&mut self, inputs: SceneTextInputs<'_>) -> SceneTextBlocks {
+        SceneTextBlocks {
+            clock: self.clock.resolve(
+                inputs.clock_text,
+                inputs.clock_style,
+                inputs.metrics.clock_width,
+                3,
+            ),
+            date: self.date.resolve(
+                inputs.date_text,
+                inputs.date_style,
+                inputs.metrics.clock_width,
+                1,
+            ),
+            username: self.username.resolve_optional(
+                inputs.username_text,
+                inputs.username_style,
+                inputs.metrics.content_width,
+                1,
+            ),
+            placeholder: self.placeholder.resolve(
+                inputs.placeholder_text,
+                inputs.placeholder_style,
+                inputs.metrics.input_width.saturating_sub(48) as u32,
+                1,
+            ),
+            status: self.status.resolve_optional(
+                inputs.status_text,
+                inputs.status_style,
+                inputs.metrics.content_width,
+                1,
+            ),
+        }
+    }
+
+    fn revealed_secret_block(
+        &mut self,
+        secret: &str,
+        style: TextStyle,
+        max_width: u32,
+    ) -> veila_renderer::text::TextBlock {
+        self.revealed_secret.resolve(secret, style, max_width, 1)
+    }
+}
+
+impl CachedTextBlock {
+    fn resolve(
+        &mut self,
+        text: &str,
+        style: TextStyle,
+        max_width: u32,
+        min_scale: u32,
+    ) -> veila_renderer::text::TextBlock {
+        let key = CachedTextKey {
+            text: text.to_string(),
+            style: style.clone(),
+            max_width,
+            min_scale,
+        };
+
+        if self.key.as_ref() == Some(&key)
+            && let Some(block) = self.block.as_ref()
+        {
+            return block.clone();
+        }
+
+        let block = fit_wrapped_text(text, style, max_width, min_scale);
+        self.key = Some(key);
+        self.block = Some(block.clone());
+        block
+    }
+
+    fn resolve_optional(
+        &mut self,
+        text: Option<&str>,
+        style: TextStyle,
+        max_width: u32,
+        min_scale: u32,
+    ) -> Option<veila_renderer::text::TextBlock> {
+        let text = text?;
+        Some(self.resolve(text, style, max_width, min_scale))
+    }
+}
+
 impl ShellState {
     pub fn render(&self, buffer: &mut SoftwareBuffer) {
         buffer.clear(self.theme.background);
@@ -31,7 +161,61 @@ impl ShellState {
     }
 
     pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
-        let size = buffer.size();
+        self.render_static_overlay(buffer);
+        self.render_dynamic_overlay(buffer);
+    }
+
+    pub fn render_static_overlay(&self, buffer: &mut SoftwareBuffer) {
+        let layout = self.scene_layout(buffer.size());
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Hero,
+            layout.anchors.hero_y,
+            false,
+        );
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Auth,
+            layout.anchors.auth_y,
+            false,
+        );
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Footer,
+            layout.anchors.footer_y,
+            false,
+        );
+    }
+
+    pub fn render_dynamic_overlay(&self, buffer: &mut SoftwareBuffer) {
+        let layout = self.scene_layout(buffer.size());
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Hero,
+            layout.anchors.hero_y,
+            true,
+        );
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Auth,
+            layout.anchors.auth_y,
+            true,
+        );
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Footer,
+            layout.anchors.footer_y,
+            true,
+        );
+    }
+
+    fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
         let metrics = SceneMetrics::from_frame(
             size.width as i32,
             size.height as i32,
@@ -56,65 +240,55 @@ impl ShellState {
             self.theme.header_top_offset,
         );
 
-        self.render_role(buffer, metrics, &model, LayoutRole::Hero, anchors.hero_y);
-        self.render_role(buffer, metrics, &model, LayoutRole::Auth, anchors.auth_y);
-        self.render_role(
-            buffer,
+        SceneLayout {
             metrics,
-            &model,
-            LayoutRole::Footer,
-            anchors.footer_y,
-        );
+            model,
+            anchors,
+        }
     }
 
     fn render_role(
         &self,
         buffer: &mut SoftwareBuffer,
-        metrics: SceneMetrics,
-        model: &SceneModel,
+        layout: &SceneLayout,
         role: LayoutRole,
         start_y: i32,
+        dynamic: bool,
     ) {
         let mut y = start_y;
 
-        for section in model.sections_for_role(role) {
-            self.render_section(buffer, metrics, section, y);
-            y += section.height(metrics, &self.status) + section.gap_after;
+        for section in layout.model.sections_for_role(role) {
+            self.render_section(buffer, layout.metrics, section, y, dynamic);
+            y += section.height(layout.metrics, &self.status) + section.gap_after;
         }
     }
 
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
-        SceneTextBlocks {
-            clock: fit_wrapped_text(
-                self.clock.time_text(),
-                self.clock_text_style(metrics),
-                metrics.clock_width,
-                3,
-            ),
-            date: fit_wrapped_text(
-                self.clock.date_text(),
-                self.date_text_style(),
-                metrics.clock_width,
-                1,
-            ),
-            username: self.username_text.as_ref().map(|username| {
-                fit_wrapped_text(
-                    username,
-                    self.username_text_style(),
-                    metrics.content_width,
-                    1,
-                )
-            }),
-            placeholder: fit_wrapped_text(
-                &self.hint_text,
-                self.placeholder_text_style(),
-                metrics.input_width.saturating_sub(48) as u32,
-                1,
-            ),
-            status: self.status_text().map(|text| {
-                fit_wrapped_text(&text, self.status_text_style(), metrics.content_width, 1)
-            }),
-        }
+        let clock_text = self.clock.time_text();
+        let clock_style = self.clock_text_style(metrics);
+        let date_text = self.clock.date_text();
+        let date_style = self.date_text_style();
+        let username_text = self.username_text.as_deref();
+        let username_style = self.username_text_style();
+        let placeholder_style = self.placeholder_text_style();
+        let status_text = self.status_text();
+        let status_style = self.status_text_style();
+
+        self.text_layout_cache
+            .borrow_mut()
+            .scene_text_blocks(SceneTextInputs {
+                clock_text,
+                clock_style,
+                date_text,
+                date_style,
+                username_text,
+                username_style,
+                placeholder_text: &self.hint_text,
+                placeholder_style,
+                status_text: status_text.as_deref(),
+                status_style,
+                metrics,
+            })
     }
 
     fn render_section(
@@ -123,15 +297,18 @@ impl ShellState {
         metrics: SceneMetrics,
         section: &SceneSection,
         y: i32,
+        dynamic: bool,
     ) {
         match &section.widget {
-            SceneWidget::Clock(block)
-            | SceneWidget::Date(block)
-            | SceneWidget::Username(block)
-            | SceneWidget::Status(block) => {
+            SceneWidget::Clock(block) | SceneWidget::Date(block) | SceneWidget::Status(block)
+                if dynamic =>
+            {
                 draw_centered_block(buffer, metrics.center_x, y, block);
             }
-            SceneWidget::Avatar => {
+            SceneWidget::Username(block) if !dynamic => {
+                draw_centered_block(buffer, metrics.center_x, y, block);
+            }
+            SceneWidget::Avatar if !dynamic => {
                 draw_avatar_widget(
                     buffer,
                     &self.avatar,
@@ -143,11 +320,10 @@ impl ShellState {
             }
             SceneWidget::Input(placeholder) => {
                 let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
-                    Some(fit_wrapped_text(
+                    Some(self.text_layout_cache.borrow_mut().revealed_secret_block(
                         &self.secret,
                         TextStyle::new(self.theme.foreground.with_alpha(236), 2),
                         metrics.input_width.saturating_sub(92) as u32,
-                        1,
                     ))
                 } else {
                     None
@@ -165,8 +341,13 @@ impl ShellState {
                     toggle_pressed: self.reveal_toggle_pressed,
                     toggle_style: self.toggle_style(),
                 };
-                draw_input_widget(buffer, &widget);
+                if dynamic {
+                    draw_input_content(buffer, &widget);
+                } else {
+                    draw_input_shell(buffer, widget.rect, widget.shell_style);
+                }
             }
+            _ => {}
         }
     }
 
@@ -175,37 +356,17 @@ impl ShellState {
         frame_width: i32,
         frame_height: i32,
     ) -> veila_renderer::shape::Rect {
-        let size = frame_width.max(1);
-        let metrics = SceneMetrics::from_frame(
-            size,
-            frame_height.max(1),
-            self.theme.input_width,
-            self.theme.input_height,
-            self.theme.avatar_size,
-        );
-        let model = SceneModel::standard(
-            self.scene_text_blocks(metrics),
-            self.theme.clock_gap,
-            self.theme.avatar_gap,
-            self.theme.username_gap,
-            self.theme.status_gap,
-        );
-        let anchors = role_anchors(
-            frame_height.max(1),
-            model.anchor_height_for_role(LayoutRole::Hero, metrics, &self.status),
-            model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
-            model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
-            model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
-            self.theme.auth_stack_offset,
-            self.theme.header_top_offset,
-        );
-        let mut y = anchors.auth_y;
+        let layout = self.scene_layout(veila_renderer::FrameSize::new(
+            frame_width.max(1) as u32,
+            frame_height.max(1) as u32,
+        ));
+        let mut y = layout.anchors.auth_y;
 
-        for section in model.sections_for_role(LayoutRole::Auth) {
+        for section in layout.model.sections_for_role(LayoutRole::Auth) {
             if matches!(section.widget, SceneWidget::Input(_)) {
-                return input_toggle_hitbox(metrics.input_rect(y));
+                return input_toggle_hitbox(layout.metrics.input_rect(y));
             }
-            y += section.height(metrics, &self.status) + section.gap_after;
+            y += section.height(layout.metrics, &self.status) + section.gap_after;
         }
 
         veila_renderer::shape::Rect::new(0, 0, 0, 0)
@@ -469,9 +630,12 @@ fn eye_icon_alpha(base_alpha: u8, opacity_percent: Option<u8>, interaction_alpha
 
 #[cfg(test)]
 mod tests {
-    use super::{ShellState, layout::SceneMetrics};
+    use super::{SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics};
     use crate::shell::{ShellStatus, ShellTheme};
-    use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer, text::bundled_clock_font_family};
+    use veila_renderer::{
+        ClearColor, FrameSize, SoftwareBuffer,
+        text::{TextStyle, bundled_clock_font_family},
+    };
 
     #[test]
     fn unfocused_input_style_uses_configured_input_border() {
@@ -1065,5 +1229,99 @@ mod tests {
         let style = shell.status_text_style();
 
         assert_eq!(style.color.alpha, 90);
+    }
+
+    #[test]
+    fn text_layout_cache_reuses_matching_clock_layout() {
+        let mut cache = TextLayoutCache::default();
+        let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+        let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 5);
+
+        let first = cache.scene_text_blocks(SceneTextInputs {
+            clock_text: "09:41",
+            clock_style: style.clone(),
+            date_text: "Tuesday",
+            date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+            username_text: Some("ramces"),
+            username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+            placeholder_text: "Type your password to unlock",
+            placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+            status_text: None,
+            status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+            metrics,
+        });
+        let cached_clock = cache.clock.block.clone().expect("cached clock block");
+        let second = cache.scene_text_blocks(SceneTextInputs {
+            clock_text: "09:41",
+            clock_style: style,
+            date_text: "Tuesday",
+            date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+            username_text: Some("ramces"),
+            username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+            placeholder_text: "Type your password to unlock",
+            placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+            status_text: None,
+            status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+            metrics,
+        });
+
+        assert_eq!(first.clock, second.clock);
+        assert_eq!(cached_clock, second.clock);
+    }
+
+    #[test]
+    fn text_layout_cache_refreshes_when_clock_text_changes() {
+        let mut cache = TextLayoutCache::default();
+        let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+
+        let first = cache.scene_text_blocks(SceneTextInputs {
+            clock_text: "09:41",
+            clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+            date_text: "Tuesday",
+            date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+            username_text: None,
+            username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+            placeholder_text: "Type your password to unlock",
+            placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+            status_text: None,
+            status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+            metrics,
+        });
+        let second = cache.scene_text_blocks(SceneTextInputs {
+            clock_text: "09:42",
+            clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+            date_text: "Tuesday",
+            date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+            username_text: None,
+            username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+            placeholder_text: "Type your password to unlock",
+            placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+            status_text: None,
+            status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+            metrics,
+        });
+
+        assert_ne!(first.clock.lines, second.clock.lines);
+        assert_eq!(
+            cache.clock.key.as_ref().map(|key| key.text.as_str()),
+            Some("09:42")
+        );
+    }
+
+    #[test]
+    fn text_layout_cache_reuses_matching_revealed_secret_layout() {
+        let mut cache = TextLayoutCache::default();
+        let style = TextStyle::new(ClearColor::rgba(240, 244, 250, 236), 2);
+
+        let first = cache.revealed_secret_block("secret", style.clone(), 212);
+        let cached = cache
+            .revealed_secret
+            .block
+            .clone()
+            .expect("cached revealed secret block");
+        let second = cache.revealed_secret_block("secret", style, 212);
+
+        assert_eq!(first, second);
+        assert_eq!(cached, second);
     }
 }

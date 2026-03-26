@@ -11,13 +11,7 @@ use veila_common::ipc::{CurtainControlMessage, decode_message};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
-    Lock {
-        notify_socket: PathBuf,
-        daemon_socket: PathBuf,
-    },
-    Unlock {
-        attempt_id: Option<u64>,
-    },
+    Unlock { attempt_id: Option<u64> },
     Reload,
 }
 
@@ -60,15 +54,6 @@ fn run_listener(listener: UnixListener, sender: Sender<ControlEvent>) -> Result<
         match decode_message::<CurtainControlMessage>(line.trim_end())
             .context("invalid curtain control message")?
         {
-            CurtainControlMessage::LockNow {
-                notify_socket,
-                daemon_socket,
-            } => {
-                let _ = sender.send(ControlEvent::Lock {
-                    notify_socket: PathBuf::from(notify_socket),
-                    daemon_socket: PathBuf::from(daemon_socket),
-                });
-            }
             CurtainControlMessage::Unlock { attempt_id } => {
                 let _ = sender.send(ControlEvent::Unlock { attempt_id });
                 return Ok(());

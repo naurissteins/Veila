@@ -5,11 +5,13 @@ mod theme;
 pub use theme::ShellTheme;
 
 use std::{
+    cell::RefCell,
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
 use clock::ClockState;
+use render::TextLayoutCache;
 use veila_renderer::avatar::AvatarAsset;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +44,7 @@ pub struct ShellState {
     reveal_secret: bool,
     reveal_toggle_hovered: bool,
     reveal_toggle_pressed: bool,
+    static_scene_revision: u64,
     focused: bool,
     status: ShellStatus,
     clock: ClockState,
@@ -49,6 +52,7 @@ pub struct ShellState {
     hint_text: String,
     username_text: Option<String>,
     avatar: AvatarAsset,
+    text_layout_cache: RefCell<TextLayoutCache>,
 }
 
 impl Default for ShellState {
@@ -79,6 +83,7 @@ impl ShellState {
             reveal_secret: false,
             reveal_toggle_hovered: false,
             reveal_toggle_pressed: false,
+            static_scene_revision: 1,
             focused: true,
             status: ShellStatus::Idle,
             clock: ClockState::current(),
@@ -88,10 +93,14 @@ impl ShellState {
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
             username_text: username_text(show_username, username_override),
             avatar: load_avatar(avatar_path),
+            text_layout_cache: RefCell::new(TextLayoutCache::default()),
         }
     }
 
     pub fn set_focus(&mut self, focused: bool) {
+        if self.focused != focused {
+            self.bump_static_scene_revision();
+        }
         self.focused = focused;
     }
 
@@ -119,6 +128,11 @@ impl ShellState {
             .unwrap_or_else(|| String::from("Type your password to unlock"));
         self.username_text = username_text(show_username, username_override);
         self.avatar = load_avatar(avatar_path);
+        self.bump_static_scene_revision();
+    }
+
+    pub fn static_scene_revision(&self) -> u64 {
+        self.static_scene_revision
     }
 
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
@@ -261,6 +275,10 @@ impl ShellState {
         }
 
         changed
+    }
+
+    fn bump_static_scene_revision(&mut self) {
+        self.static_scene_revision = self.static_scene_revision.saturating_add(1);
     }
 }
 
@@ -454,5 +472,35 @@ mod tests {
         );
 
         assert_eq!(shell.username_text.as_deref(), Some("guest"));
+    }
+
+    #[test]
+    fn focus_changes_static_scene_revision() {
+        let mut shell = ShellState::default();
+        let original = shell.static_scene_revision();
+
+        shell.set_focus(false);
+
+        assert!(shell.static_scene_revision() > original);
+    }
+
+    #[test]
+    fn applying_theme_changes_static_scene_revision() {
+        let mut shell = ShellState::default();
+        let original = shell.static_scene_revision();
+
+        shell.apply_theme(Default::default(), None, None, true);
+
+        assert!(shell.static_scene_revision() > original);
+    }
+
+    #[test]
+    fn typing_does_not_change_static_scene_revision() {
+        let mut shell = ShellState::default();
+        let original = shell.static_scene_revision();
+
+        shell.handle_key(ShellKey::Character('a'));
+
+        assert_eq!(shell.static_scene_revision(), original);
     }
 }

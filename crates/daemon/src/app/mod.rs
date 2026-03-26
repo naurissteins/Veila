@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     DaemonOptions,
-    adapters::{ipc, logind, process},
+    adapters::{ipc, logind},
     domain::{
         auth::{AuthPolicy, AuthState},
         lock_state::LockState,
@@ -26,8 +26,8 @@ use veila_common::AppConfig;
 use veila_common::ipc::{DaemonControlMessage, DaemonControlResponse};
 
 use self::helpers::{
-    activate_and_install, build_daemon_health, build_daemon_status, current_username,
-    reload_config_response, try_activate_and_install,
+    activate_and_log, build_daemon_health, build_daemon_status, current_username,
+    reload_config_response,
 };
 use self::runtime::{
     ActiveRuntime, AuthResult, accept_auth_connection, accept_control_connection, deactivate_lock,
@@ -72,8 +72,6 @@ pub async fn run(
     let mut auth_results = None;
     let mut auth_sender = None;
     let mut auth_state = AuthState::new(auth_policy);
-    let mut standby_curtain: Option<tokio::process::Child> = None;
-    let mut standby_control_socket: Option<PathBuf> = None;
 
     tracing::info!(
         session = %session_path,
@@ -83,21 +81,12 @@ pub async fn run(
         "veilad ready"
     );
 
-    if !options.lock_now {
-        spawn_standby(
-            options.config_path.as_deref(),
-            &mut standby_curtain,
-            &mut standby_control_socket,
-        )
-        .await;
-    }
-
     if options.lock_now {
         tracing::info!("manual lock requested via --lock-now");
-        try_activate_and_install(
+        activate_and_log(
+            "manual",
             &session_proxy,
             &mut state,
-            take_standby(&mut standby_curtain, &mut standby_control_socket),
             options.config_path.as_deref(),
             ActiveRuntime::new(
                 &mut curtain,
@@ -112,12 +101,6 @@ pub async fn run(
         )
         .await
         .context("failed to activate manual lock")?;
-        spawn_standby(
-            options.config_path.as_deref(),
-            &mut standby_curtain,
-            &mut standby_control_socket,
-        )
-        .await;
     }
 
     loop {
@@ -128,10 +111,10 @@ pub async fn run(
                     continue;
                 }
 
-                if let Err(error) = try_activate_and_install(
+                if let Err(error) = activate_and_log(
+                    "logind",
                     &session_proxy,
                     &mut state,
-                    take_standby(&mut standby_curtain, &mut standby_control_socket),
                     options.config_path.as_deref(),
                     ActiveRuntime::new(
                         &mut curtain,
@@ -145,12 +128,6 @@ pub async fn run(
                     &mut auth_state,
                 ).await {
                     tracing::error!("failed to activate lock: {error:#}");
-                } else {
-                    spawn_standby(
-                        options.config_path.as_deref(),
-                        &mut standby_curtain,
-                        &mut standby_control_socket,
-                    ).await;
                 }
             }
             Some(_) = unlock_stream.next() => {
@@ -175,12 +152,6 @@ pub async fn run(
                     None,
                 ).await {
                     tracing::error!("failed to deactivate lock: {error:#}");
-                } else {
-                    spawn_standby(
-                        options.config_path.as_deref(),
-                        &mut standby_curtain,
-                        &mut standby_control_socket,
-                    ).await;
                 }
             }
             result = wait_for_curtain_exit(&mut curtain), if curtain.is_some() => {
@@ -202,7 +173,8 @@ pub async fn run(
                     state = LockState::Unlocked;
                     tracing::error!("curtain exited while the session should be locked; attempting restart");
 
-                    if let Err(error) = activate_and_install(
+                    if let Err(error) = activate_and_log(
+                        "restart",
                         &session_proxy,
                         &mut state,
                         options.config_path.as_deref(),
@@ -218,29 +190,7 @@ pub async fn run(
                         &mut auth_state,
                     ).await {
                         tracing::error!("failed to restart curtain after unexpected exit: {error:#}");
-                    } else {
-                        spawn_standby(
-                            options.config_path.as_deref(),
-                            &mut standby_curtain,
-                            &mut standby_control_socket,
-                        ).await;
                     }
-                } else {
-                    spawn_standby(
-                        options.config_path.as_deref(),
-                        &mut standby_curtain,
-                        &mut standby_control_socket,
-                    ).await;
-                }
-            }
-            result = wait_for_curtain_exit(&mut standby_curtain), if standby_curtain.is_some() => {
-                match result {
-                    Ok(status) => tracing::info!(?status, "standby curtain exited"),
-                    Err(error) => tracing::warn!("error waiting for standby curtain: {error:#}"),
-                }
-                standby_curtain.take();
-                if let Some(path) = standby_control_socket.take() {
-                    let _ = std::fs::remove_file(path);
                 }
             }
             result = accept_auth_connection(&mut auth_listener), if matches!(state, LockState::Locked) && auth_listener.is_some() => {
@@ -296,11 +246,6 @@ pub async fn run(
                                 daemon_total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
                                 "unlock timing summary"
                             );
-                            spawn_standby(
-                                options.config_path.as_deref(),
-                                &mut standby_curtain,
-                                &mut standby_control_socket,
-                            ).await;
                         }
                     }
                     AuthResult::Rejected {
@@ -321,13 +266,13 @@ pub async fn run(
             result = accept_control_connection(&mut control_listener) => {
                 let mut stream = result?;
                 if let Some(message) = ipc::read_daemon_control_message(&mut stream).await? {
-                    let (response, stop_requested) = match message {
+                        let (response, stop_requested) = match message {
                         DaemonControlMessage::LockNow => {
                             if !state.is_active() {
-                                if let Err(error) = try_activate_and_install(
+                                if let Err(error) = activate_and_log(
+                                    "forwarded",
                                     &session_proxy,
                                     &mut state,
-                                    take_standby(&mut standby_curtain, &mut standby_control_socket),
                                     options.config_path.as_deref(),
                                     ActiveRuntime::new(
                                         &mut curtain,
@@ -341,12 +286,6 @@ pub async fn run(
                                     &mut auth_state,
                                 ).await {
                                     tracing::error!("failed to activate forwarded lock request: {error:#}");
-                                } else {
-                                    spawn_standby(
-                                        options.config_path.as_deref(),
-                                        &mut standby_curtain,
-                                        &mut standby_control_socket,
-                                    ).await;
                                 }
                             } else {
                                 tracing::debug!(state = %state, "ignoring forwarded lock request while already active");
@@ -425,53 +364,7 @@ pub async fn run(
         tracing::warn!("failed to stop curtain during shutdown: {error:#}");
     }
 
-    if let Some(child) = standby_curtain.take() {
-        if let Err(error) = process::force_stop_curtain(child).await {
-            tracing::warn!("failed to stop standby curtain during shutdown: {error:#}");
-        }
-        if let Some(path) = standby_control_socket.take() {
-            let _ = std::fs::remove_file(path);
-        }
-    }
-
     let _ = std::fs::remove_file(&daemon_control_socket_path);
     tracing::info!("veilad exiting");
     Ok(())
-}
-
-fn take_standby(
-    curtain: &mut Option<tokio::process::Child>,
-    socket: &mut Option<PathBuf>,
-) -> Option<(tokio::process::Child, PathBuf)> {
-    match (curtain.take(), socket.take()) {
-        (Some(child), Some(path)) => Some((child, path)),
-        (child, path) => {
-            // Restore if only one side was present (shouldn't happen in practice).
-            *curtain = child;
-            *socket = path;
-            None
-        }
-    }
-}
-
-async fn spawn_standby(
-    config_path: Option<&std::path::Path>,
-    standby_curtain: &mut Option<tokio::process::Child>,
-    standby_control_socket: &mut Option<PathBuf>,
-) {
-    if standby_curtain.is_some() {
-        return;
-    }
-
-    let socket_path = process::control_socket_path();
-    match process::spawn_standby_curtain(&socket_path, config_path).await {
-        Ok(child) => {
-            *standby_curtain = Some(child);
-            *standby_control_socket = Some(socket_path);
-            tracing::info!("standby curtain spawned");
-        }
-        Err(error) => {
-            tracing::warn!("failed to spawn standby curtain: {error:#}");
-        }
-    }
 }

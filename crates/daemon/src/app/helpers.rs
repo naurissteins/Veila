@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::path::Path;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow};
 use nix::unistd::{Uid, User};
@@ -8,6 +8,10 @@ use veila_common::ipc::{
 };
 use veila_common::{AppConfig, LoadedConfig};
 
+use super::{
+    prewarm,
+    runtime::{ActiveRuntime, activate_lock},
+};
 use crate::{
     DaemonOptions,
     adapters::{logind, process},
@@ -15,12 +19,6 @@ use crate::{
         auth::{AuthPolicy, AuthState},
         lock_state::LockState,
     },
-};
-use tokio::process::Child;
-
-use super::{
-    prewarm,
-    runtime::{ActiveRuntime, activate_lock, activate_lock_via_standby},
 };
 
 pub(super) async fn activate_and_install(
@@ -37,35 +35,30 @@ pub(super) async fn activate_and_install(
     Ok(())
 }
 
-/// Tries to activate the lock using a pre-warmed standby curtain
-pub(super) async fn try_activate_and_install(
+pub(super) async fn activate_and_log(
+    trigger: &'static str,
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
-    standby: Option<(Child, PathBuf)>,
     config_path: Option<&std::path::Path>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
 ) -> Result<()> {
-    if let Some((standby_child, standby_socket)) = standby {
-        match activate_lock_via_standby(session_proxy, state, standby_child, &standby_socket).await
-        {
-            Ok(activation) => {
-                runtime.install_activation(activation);
-                *auth_state = AuthState::new(auth_policy);
-                return Ok(());
-            }
-            Err(error) => {
-                tracing::warn!(
-                    "standby curtain activation failed ({error:#}); trying fresh curtain"
-                );
-            }
-        }
-    }
-
-    let activation = activate_lock(session_proxy, state, config_path).await?;
-    runtime.install_activation(activation);
-    *auth_state = AuthState::new(auth_policy);
+    let started_at = Instant::now();
+    activate_and_install(
+        session_proxy,
+        state,
+        config_path,
+        runtime,
+        auth_policy,
+        auth_state,
+    )
+    .await?;
+    tracing::info!(
+        trigger,
+        activation_elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        "lock timing summary"
+    );
     Ok(())
 }
 

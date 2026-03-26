@@ -27,14 +27,7 @@ pub enum DaemonMessage {
 /// Messages sent from the daemon to the secure curtain process.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CurtainControlMessage {
-    /// Tells a standby curtain to acquire the session lock immediately.
-    LockNow {
-        notify_socket: String,
-        daemon_socket: String,
-    },
-    Unlock {
-        attempt_id: Option<u64>,
-    },
+    Unlock { attempt_id: Option<u64> },
     ReloadConfig,
 }
 
@@ -131,19 +124,6 @@ mod tests {
         let encoded = encode_message(&message).expect("control message should encode");
         let decoded = decode_message::<CurtainControlMessage>(&encoded)
             .expect("control message should decode");
-
-        assert_eq!(decoded, message);
-    }
-
-    #[test]
-    fn round_trips_lock_now_message() {
-        let message = CurtainControlMessage::LockNow {
-            notify_socket: "/tmp/veila-notify.sock".to_string(),
-            daemon_socket: "/tmp/veila-auth.sock".to_string(),
-        };
-        let encoded = encode_message(&message).expect("lock-now message should encode");
-        let decoded = decode_message::<CurtainControlMessage>(&encoded)
-            .expect("lock-now message should decode");
 
         assert_eq!(decoded, message);
     }

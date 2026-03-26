@@ -46,8 +46,11 @@ pub(super) fn draw_avatar_widget(
     avatar.draw(buffer, center_x, top_y, size, style);
 }
 
-pub(super) fn draw_input_widget(buffer: &mut SoftwareBuffer, widget: &InputWidget) {
-    draw_pill(buffer, widget.rect, widget.shell_style);
+pub(super) fn draw_input_shell(buffer: &mut SoftwareBuffer, rect: Rect, style: PillStyle) {
+    draw_pill(buffer, rect, style);
+}
+
+pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidget) {
     let toggle_rect = input_toggle_hitbox(widget.rect);
     let content_rect = input_content_rect(widget.rect, toggle_rect);
 
