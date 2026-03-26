@@ -2,7 +2,7 @@ use veila_renderer::text::{TextStyle, bundled_clock_font_family, resolve_font_fa
 
 use super::{
     super::{ShellState, layout::SceneMetrics},
-    color::{clock_scale, header_color, secondary_text_color, username_color},
+    color::{clock_scale, header_color, scaled_alpha, secondary_text_color, username_color},
 };
 
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
@@ -85,11 +85,15 @@ impl ShellState {
     }
 
     pub(crate) fn weather_temperature_text_style(&self) -> TextStyle {
+        let base_color = self
+            .theme
+            .weather_temperature_color
+            .unwrap_or(self.theme.foreground);
         let style = TextStyle::new(
-            self.theme
-                .weather_temperature_color
-                .unwrap_or(self.theme.foreground)
-                .with_alpha(232),
+            base_color.with_alpha(scaled_alpha(
+                base_color.alpha.min(232),
+                self.theme.weather_temperature_opacity,
+            )),
             self.theme
                 .weather_temperature_size
                 .or(self.theme.weather_size)
@@ -123,12 +127,16 @@ impl ShellState {
             .weather_location_size
             .unwrap_or_else(|| temperature_scale.saturating_sub(1).max(1))
             .clamp(1, MAX_WEATHER_LOCATION_SCALE);
+        let base_color = self
+            .theme
+            .weather_location_color
+            .unwrap_or(self.theme.muted);
 
         TextStyle::new(
-            self.theme
-                .weather_location_color
-                .unwrap_or(self.theme.muted)
-                .with_alpha(184),
+            base_color.with_alpha(scaled_alpha(
+                base_color.alpha.min(184),
+                self.theme.weather_location_opacity,
+            )),
             location_scale,
         )
         .with_line_spacing(0)

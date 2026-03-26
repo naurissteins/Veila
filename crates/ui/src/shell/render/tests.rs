@@ -1,5 +1,6 @@
 use super::{SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics};
 use crate::shell::{ShellStatus, ShellTheme};
+use veila_common::WeatherAlignment;
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     text::{TextStyle, bundled_clock_font_family},
@@ -483,6 +484,9 @@ fn weather_styles_use_configured_widget_size() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
         muted: ClearColor::rgba(180, 190, 210, 255),
+        weather_opacity: Some(50),
+        weather_temperature_opacity: Some(80),
+        weather_location_opacity: Some(40),
         weather_temperature_color: Some(ClearColor::opaque(255, 255, 255)),
         weather_location_color: Some(ClearColor::opaque(214, 227, 255)),
         weather_size: Some(4),
@@ -497,6 +501,8 @@ fn weather_styles_use_configured_widget_size() {
 
     assert_eq!(temperature_style.scale, 12);
     assert_eq!(location_style.scale, 2);
+    assert_eq!(temperature_style.color.alpha, 186);
+    assert_eq!(location_style.color.alpha, 74);
     assert_eq!(temperature_style.color.red, 255);
     assert_eq!(location_style.color.red, 214);
     assert_eq!(temperature_style.line_spacing, 0);
@@ -534,6 +540,11 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
         weather_icon_size: Some(34),
         weather_icon_gap: Some(10),
         weather_location_gap: Some(3),
+        weather_icon_opacity: Some(41),
+        weather_horizontal_padding: Some(64),
+        weather_alignment: WeatherAlignment::Right,
+        weather_left_offset: Some(12),
+        weather_bottom_offset: Some(-6),
         metrics,
     });
 
@@ -541,6 +552,11 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
     assert_eq!(weather.icon_size, 34);
     assert_eq!(weather.icon_gap, 10);
     assert_eq!(weather.location_gap, 3);
+    assert_eq!(weather.icon_opacity, Some(41));
+    assert_eq!(weather.alignment, WeatherAlignment::Right);
+    assert_eq!(weather.horizontal_padding, 64);
+    assert_eq!(weather.left_offset, 12);
+    assert_eq!(weather.bottom_offset, -6);
 }
 
 #[test]
@@ -567,6 +583,11 @@ fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
         weather_icon_size: Some(64),
         weather_icon_gap: None,
         weather_location_gap: None,
+        weather_icon_opacity: None,
+        weather_horizontal_padding: None,
+        weather_alignment: WeatherAlignment::Left,
+        weather_left_offset: None,
+        weather_bottom_offset: None,
         metrics,
     });
 
@@ -717,6 +738,11 @@ fn text_layout_cache_reuses_matching_clock_layout() {
         weather_icon_size: None,
         weather_icon_gap: None,
         weather_location_gap: None,
+        weather_icon_opacity: None,
+        weather_horizontal_padding: None,
+        weather_alignment: WeatherAlignment::Left,
+        weather_left_offset: None,
+        weather_bottom_offset: None,
         metrics,
     });
     let cached_clock = cache.clock.block.clone().expect("cached clock block");
@@ -739,6 +765,11 @@ fn text_layout_cache_reuses_matching_clock_layout() {
         weather_icon_size: None,
         weather_icon_gap: None,
         weather_location_gap: None,
+        weather_icon_opacity: None,
+        weather_horizontal_padding: None,
+        weather_alignment: WeatherAlignment::Left,
+        weather_left_offset: None,
+        weather_bottom_offset: None,
         metrics,
     });
 
@@ -770,6 +801,11 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         weather_icon_size: None,
         weather_icon_gap: None,
         weather_location_gap: None,
+        weather_icon_opacity: None,
+        weather_horizontal_padding: None,
+        weather_alignment: WeatherAlignment::Left,
+        weather_left_offset: None,
+        weather_bottom_offset: None,
         metrics,
     });
     let second = cache.scene_text_blocks(SceneTextInputs {
@@ -791,6 +827,11 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         weather_icon_size: None,
         weather_icon_gap: None,
         weather_location_gap: None,
+        weather_icon_opacity: None,
+        weather_horizontal_padding: None,
+        weather_alignment: WeatherAlignment::Left,
+        weather_left_offset: None,
+        weather_bottom_offset: None,
         metrics,
     });
 

@@ -6,6 +6,8 @@ use veila_renderer::ClearColor;
 
 use super::super::{ShellState, ShellStatus};
 
+pub(crate) use color::percent_to_alpha;
+
 impl ShellState {
     fn accent_color(&self) -> ClearColor {
         match &self.status {

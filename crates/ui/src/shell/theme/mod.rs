@@ -2,7 +2,7 @@ mod color;
 #[cfg(test)]
 mod tests;
 
-use veila_common::AppConfig;
+use veila_common::{AppConfig, WeatherAlignment};
 use veila_renderer::ClearColor;
 
 use self::color::{to_color, to_color_with_opacity};
@@ -44,6 +44,10 @@ pub struct ShellTheme {
     pub eye_icon_color: Option<ClearColor>,
     pub eye_icon_opacity: Option<u8>,
     pub weather_size: Option<u32>,
+    pub weather_opacity: Option<u8>,
+    pub weather_icon_opacity: Option<u8>,
+    pub weather_temperature_opacity: Option<u8>,
+    pub weather_location_opacity: Option<u8>,
     pub weather_temperature_color: Option<ClearColor>,
     pub weather_location_color: Option<ClearColor>,
     pub weather_temperature_font_family: Option<String>,
@@ -52,6 +56,11 @@ pub struct ShellTheme {
     pub weather_icon_size: Option<i32>,
     pub weather_icon_gap: Option<i32>,
     pub weather_location_gap: Option<i32>,
+    pub weather_left_offset: Option<i32>,
+    pub weather_bottom_offset: Option<i32>,
+    pub weather_horizontal_padding: Option<i32>,
+    pub weather_bottom_padding: Option<i32>,
+    pub weather_alignment: WeatherAlignment,
     pub status_color: Option<ClearColor>,
     pub status_opacity: Option<u8>,
     pub input_mask_color: Option<ClearColor>,
@@ -115,6 +124,10 @@ impl ShellTheme {
             eye_icon_color: config.visuals.eye_icon_color().map(to_color),
             eye_icon_opacity: config.visuals.eye_icon_opacity(),
             weather_size: config.visuals.weather_size().map(u32::from),
+            weather_opacity: config.visuals.weather_opacity(),
+            weather_icon_opacity: config.visuals.weather_icon_opacity(),
+            weather_temperature_opacity: config.visuals.weather_temperature_opacity(),
+            weather_location_opacity: config.visuals.weather_location_opacity(),
             weather_temperature_color: config.visuals.weather_temperature_color().map(to_color),
             weather_location_color: config.visuals.weather_location_color().map(to_color),
             weather_temperature_font_family: config
@@ -126,6 +139,11 @@ impl ShellTheme {
             weather_icon_size: config.visuals.weather_icon_size().map(i32::from),
             weather_icon_gap: config.visuals.weather_icon_gap().map(i32::from),
             weather_location_gap: config.visuals.weather_location_gap().map(i32::from),
+            weather_left_offset: config.visuals.weather_left_offset().map(i32::from),
+            weather_bottom_offset: config.visuals.weather_bottom_offset().map(i32::from),
+            weather_horizontal_padding: config.visuals.weather_horizontal_padding().map(i32::from),
+            weather_bottom_padding: config.visuals.weather_bottom_padding().map(i32::from),
+            weather_alignment: config.visuals.weather_alignment(),
             status_color: config.visuals.status_color().map(to_color),
             status_opacity: config.visuals.status_opacity(),
             input_mask_color: config.visuals.input_mask_color().map(to_color),

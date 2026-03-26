@@ -1,3 +1,4 @@
+use veila_common::WeatherAlignment;
 use veila_renderer::{
     SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
@@ -7,13 +8,13 @@ use veila_renderer::{
     text::TextBlock,
 };
 
+use crate::shell::render::styles::percent_to_alpha;
+
 use super::model::SceneWeatherBlocks;
 
 const TOGGLE_HITBOX_SIZE: i32 = 28;
 const TOGGLE_RIGHT_INSET: i32 = 14;
 const CONTENT_GAP_TO_TOGGLE: i32 = 10;
-const WEATHER_WIDGET_LEFT_INSET: i32 = 48;
-
 pub(super) struct InputWidget {
     pub rect: Rect,
     pub secret_len: usize,
@@ -95,24 +96,65 @@ pub(super) fn draw_weather_widget(
     weather: &SceneWeatherBlocks,
 ) {
     let icon_size = weather.icon_size;
-    let origin_x = WEATHER_WIDGET_LEFT_INSET;
-    let icon_y = top_y;
-    let icon_rect = Rect::new(origin_x, icon_y, icon_size, icon_size);
-    let text_x = origin_x;
+    let widget_width = icon_size
+        .max(weather.temperature.width as i32)
+        .max(weather.location.width as i32);
+    let origin_x = match weather.alignment {
+        WeatherAlignment::Left => weather.horizontal_padding + weather.left_offset,
+        WeatherAlignment::Right => {
+            buffer.size().width as i32 - weather.horizontal_padding - widget_width
+                + weather.left_offset
+        }
+    };
+    let icon_y = top_y + weather.bottom_offset;
+    let icon_x = align_weather_line_x(origin_x, widget_width, icon_size, weather.alignment);
+    let temperature_x = align_weather_line_x(
+        origin_x,
+        widget_width,
+        weather.temperature.width as i32,
+        weather.alignment,
+    );
+    let location_x = align_weather_line_x(
+        origin_x,
+        widget_width,
+        weather.location.width as i32,
+        weather.alignment,
+    );
+    let icon_rect = Rect::new(icon_x, icon_y, icon_size, icon_size);
     let text_y = icon_y + icon_size + weather.icon_gap;
 
     draw_icon(
         buffer,
         icon_rect,
         AssetIcon::Weather(weather.icon),
-        IconStyle::new(veila_renderer::ClearColor::opaque(255, 255, 255)).with_padding(0),
+        IconStyle::new(
+            veila_renderer::ClearColor::opaque(255, 255, 255).with_alpha(
+                weather
+                    .icon_opacity
+                    .map(percent_to_alpha)
+                    .unwrap_or(u8::MAX),
+            ),
+        )
+        .with_padding(0),
     );
-    weather.temperature.draw(buffer, text_x, text_y);
+    weather.temperature.draw(buffer, temperature_x, text_y);
     weather.location.draw(
         buffer,
-        text_x,
+        location_x,
         text_y + weather.temperature.height as i32 + weather.location_gap,
     );
+}
+
+fn align_weather_line_x(
+    origin_x: i32,
+    widget_width: i32,
+    content_width: i32,
+    alignment: WeatherAlignment,
+) -> i32 {
+    match alignment {
+        WeatherAlignment::Left => origin_x,
+        WeatherAlignment::Right => origin_x + widget_width - content_width,
+    }
 }
 
 pub(super) fn input_toggle_hitbox(rect: Rect) -> Rect {

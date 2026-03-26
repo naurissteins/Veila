@@ -11,7 +11,7 @@ pub use config::{
     AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, GeoCoordinate, InputVisualConfig, InputVisualEntry, LayoutVisualConfig,
     LoadedConfig, PaletteVisualConfig, PlaceholderVisualConfig, RgbColor, StatusVisualConfig,
-    UsernameVisualConfig, WeatherConfig, WeatherVisualConfig,
+    UsernameVisualConfig, WeatherAlignment, WeatherConfig, WeatherVisualConfig,
 };
 pub use error::{Result, VeilaError};
 pub use weather::{WeatherCondition, WeatherSnapshot};

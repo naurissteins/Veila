@@ -50,7 +50,9 @@ fn rasterize_svg_icon(key: IconRasterKey, svg: &[u8]) -> Vec<u8> {
     let translate_y = ((key.height as f32 - icon_height) / 2.0).max(0.0);
     let transform = Transform::from_scale(scale, scale).post_translate(translate_x, translate_y);
     resvg::render(&tree, transform, &mut pixmap.as_mut());
-    normalize_svg_pixels(key, pixmap.take())
+    let mut pixels = pixmap.take();
+    scale_svg_alpha(&mut pixels, key.color.alpha);
+    normalize_svg_pixels(key, pixels)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,6 +162,23 @@ pub(super) fn visible_alpha_bounds(pixels: &[u8], width: u32, height: u32) -> Op
         right,
         bottom,
     })
+}
+
+pub(super) fn scale_svg_alpha(pixels: &mut [u8], alpha: u8) {
+    if alpha == u8::MAX {
+        return;
+    }
+
+    for pixel in pixels.chunks_exact_mut(4) {
+        if pixel[3] == 0 {
+            continue;
+        }
+
+        pixel[0] = ((u16::from(pixel[0]) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[1] = ((u16::from(pixel[1]) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[2] = ((u16::from(pixel[2]) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[3] = ((u16::from(pixel[3]) * u16::from(alpha) + 127) / 255) as u8;
+    }
 }
 
 pub(super) fn blend_icon_raster(

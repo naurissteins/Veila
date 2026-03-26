@@ -119,10 +119,26 @@ pub struct EyeVisualConfig {
     pub opacity: Option<u8>,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WeatherAlignment {
+    #[default]
+    Left,
+    Right,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub icon_opacity: Option<u8>,
+    #[serde(default)]
+    pub temperature_opacity: Option<u8>,
+    #[serde(default)]
+    pub location_opacity: Option<u8>,
     #[serde(default)]
     pub temperature_color: Option<RgbColor>,
     #[serde(default)]
@@ -139,6 +155,18 @@ pub struct WeatherVisualConfig {
     pub icon_gap: Option<u16>,
     #[serde(default)]
     pub location_gap: Option<u16>,
+    #[serde(default)]
+    pub left_offset: Option<i16>,
+    #[serde(default)]
+    pub bottom_offset: Option<i16>,
+    #[serde(default)]
+    pub left_padding: Option<u16>,
+    #[serde(default)]
+    pub horizontal_padding: Option<u16>,
+    #[serde(default)]
+    pub bottom_padding: Option<u16>,
+    #[serde(default)]
+    pub alignment: Option<WeatherAlignment>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -608,6 +636,31 @@ impl VisualConfig {
             .or_else(|| self.weather_size())
     }
 
+    pub fn weather_opacity(&self) -> Option<u8> {
+        self.weather.as_ref().and_then(|weather| weather.opacity)
+    }
+
+    pub fn weather_icon_opacity(&self) -> Option<u8> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.icon_opacity)
+            .or_else(|| self.weather_opacity())
+    }
+
+    pub fn weather_temperature_opacity(&self) -> Option<u8> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_opacity)
+            .or_else(|| self.weather_opacity())
+    }
+
+    pub fn weather_location_opacity(&self) -> Option<u8> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_opacity)
+            .or_else(|| self.weather_opacity())
+    }
+
     pub fn weather_temperature_color(&self) -> Option<RgbColor> {
         self.weather
             .as_ref()
@@ -644,6 +697,43 @@ impl VisualConfig {
         self.weather
             .as_ref()
             .and_then(|weather| weather.location_gap)
+    }
+
+    pub fn weather_left_offset(&self) -> Option<i16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.left_offset)
+    }
+
+    pub fn weather_bottom_offset(&self) -> Option<i16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.bottom_offset)
+    }
+
+    pub fn weather_left_padding(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.left_padding)
+    }
+
+    pub fn weather_horizontal_padding(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.horizontal_padding.or(weather.left_padding))
+    }
+
+    pub fn weather_bottom_padding(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.bottom_padding)
+    }
+
+    pub fn weather_alignment(&self) -> WeatherAlignment {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.alignment)
+            .unwrap_or_default()
     }
 
     pub fn status_color(&self) -> Option<RgbColor> {

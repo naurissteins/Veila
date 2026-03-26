@@ -1,7 +1,8 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, InputVisualConfig, InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
+    WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -59,6 +60,10 @@ fn input_opacity_overrides_embedded_alpha() {
     });
     config.visuals.weather = Some(WeatherVisualConfig {
         size: Some(3),
+        opacity: Some(62),
+        icon_opacity: Some(41),
+        temperature_opacity: Some(77),
+        location_opacity: Some(53),
         temperature_color: Some(ConfigColor::rgb(255, 255, 255)),
         location_color: Some(ConfigColor::rgb(214, 227, 255)),
         temperature_font_family: Some(String::from("Prototype")),
@@ -67,6 +72,12 @@ fn input_opacity_overrides_embedded_alpha() {
         icon_size: Some(36),
         icon_gap: Some(10),
         location_gap: Some(3),
+        alignment: Some(WeatherAlignment::Right),
+        left_offset: Some(12),
+        bottom_offset: Some(-6),
+        left_padding: Some(56),
+        horizontal_padding: Some(64),
+        bottom_padding: Some(72),
     });
     config.visuals.status = Some(StatusVisualConfig {
         color: Some(ConfigColor::rgb(255, 224, 160)),
@@ -128,6 +139,10 @@ fn input_opacity_overrides_embedded_alpha() {
     );
     assert_eq!(theme.eye_icon_opacity, Some(72));
     assert_eq!(theme.weather_size, Some(3));
+    assert_eq!(theme.weather_opacity, Some(62));
+    assert_eq!(theme.weather_icon_opacity, Some(41));
+    assert_eq!(theme.weather_temperature_opacity, Some(77));
+    assert_eq!(theme.weather_location_opacity, Some(53));
     assert_eq!(
         theme.weather_temperature_color,
         Some(ClearColor::opaque(255, 255, 255))
@@ -145,6 +160,11 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.weather_icon_size, Some(36));
     assert_eq!(theme.weather_icon_gap, Some(10));
     assert_eq!(theme.weather_location_gap, Some(3));
+    assert_eq!(theme.weather_alignment, WeatherAlignment::Right);
+    assert_eq!(theme.weather_left_offset, Some(12));
+    assert_eq!(theme.weather_bottom_offset, Some(-6));
+    assert_eq!(theme.weather_horizontal_padding, Some(64));
+    assert_eq!(theme.weather_bottom_padding, Some(72));
     assert_eq!(theme.status_color, Some(ClearColor::opaque(255, 224, 160)));
     assert_eq!(theme.status_opacity, Some(88));
     assert_eq!(

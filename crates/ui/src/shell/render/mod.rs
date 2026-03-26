@@ -12,7 +12,7 @@ use veila_renderer::{SoftwareBuffer, text::TextStyle};
 
 use self::{
     cache::SceneTextInputs,
-    layout::{RoleAnchors, SceneMetrics, role_anchors},
+    layout::{AnchorOffsets, RoleAnchors, SceneMetrics, role_anchors},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
         InputWidget, draw_avatar_widget, draw_centered_block, draw_input_content, draw_input_shell,
@@ -110,8 +110,11 @@ impl ShellState {
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
-            self.theme.auth_stack_offset,
-            self.theme.header_top_offset,
+            AnchorOffsets {
+                auth_stack: self.theme.auth_stack_offset,
+                header_top: self.theme.header_top_offset,
+                weather_bottom_padding: self.theme.weather_bottom_padding,
+            },
         );
 
         SceneLayout {
@@ -172,6 +175,11 @@ impl ShellState {
                 weather_icon_size: self.theme.weather_icon_size,
                 weather_icon_gap: self.theme.weather_icon_gap,
                 weather_location_gap: self.theme.weather_location_gap,
+                weather_icon_opacity: self.theme.weather_icon_opacity,
+                weather_horizontal_padding: self.theme.weather_horizontal_padding,
+                weather_alignment: self.theme.weather_alignment,
+                weather_left_offset: self.theme.weather_left_offset,
+                weather_bottom_offset: self.theme.weather_bottom_offset,
                 metrics,
             })
     }

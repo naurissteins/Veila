@@ -70,6 +70,13 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_icon_size().is_none());
     assert!(config.visuals.weather_icon_gap().is_none());
     assert!(config.visuals.weather_location_gap().is_none());
+    assert_eq!(
+        config.visuals.weather_alignment(),
+        super::WeatherAlignment::Left
+    );
+    assert!(config.visuals.weather_horizontal_padding().is_none());
+    assert!(config.visuals.weather_left_padding().is_none());
+    assert!(config.visuals.weather_bottom_padding().is_none());
     assert!(config.visuals.status_color().is_none());
     assert!(config.visuals.status_opacity().is_none());
     assert!(config.visuals.input_mask_color().is_none());
@@ -322,6 +329,10 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
 
             [visuals.weather]
             size = 3
+            opacity = 62
+            icon_opacity = 41
+            temperature_opacity = 77
+            location_opacity = 53
             temperature_color = "#FFFFFF"
             location_color = "#D6E3FF"
             temperature_font_family = "Prototype"
@@ -330,6 +341,12 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             icon_size = 36
             icon_gap = 10
             location_gap = 3
+            alignment = "right"
+            left_offset = 12
+            bottom_offset = -6
+            left_padding = 56
+            horizontal_padding = 64
+            bottom_padding = 72
 
             [visuals.layout]
             header_top_offset = -12
@@ -402,6 +419,10 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
     );
     assert_eq!(config.visuals.eye_icon_opacity(), Some(72));
     assert_eq!(config.visuals.weather_size(), Some(3));
+    assert_eq!(config.visuals.weather_opacity(), Some(62));
+    assert_eq!(config.visuals.weather_icon_opacity(), Some(41));
+    assert_eq!(config.visuals.weather_temperature_opacity(), Some(77));
+    assert_eq!(config.visuals.weather_location_opacity(), Some(53));
     assert_eq!(
         config.visuals.weather_temperature_color(),
         Some(RgbColor::rgb(255, 255, 255))
@@ -419,6 +440,15 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
     assert_eq!(config.visuals.weather_icon_size(), Some(36));
     assert_eq!(config.visuals.weather_icon_gap(), Some(10));
     assert_eq!(config.visuals.weather_location_gap(), Some(3));
+    assert_eq!(
+        config.visuals.weather_alignment(),
+        super::WeatherAlignment::Right
+    );
+    assert_eq!(config.visuals.weather_left_offset(), Some(12));
+    assert_eq!(config.visuals.weather_bottom_offset(), Some(-6));
+    assert_eq!(config.visuals.weather_horizontal_padding(), Some(64));
+    assert_eq!(config.visuals.weather_left_padding(), Some(56));
+    assert_eq!(config.visuals.weather_bottom_padding(), Some(72));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(

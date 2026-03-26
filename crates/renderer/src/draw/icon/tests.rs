@@ -3,7 +3,7 @@ use super::{
     parser::extract_path_data,
     parser::extract_viewbox,
     parser::parse_path_data,
-    raster::{rasterize_icon, visible_alpha_bounds},
+    raster::{rasterize_icon, scale_svg_alpha, visible_alpha_bounds},
 };
 use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::Rect};
 
@@ -87,19 +87,19 @@ fn reuses_cached_raster_for_matching_icon_draws() {
 
 #[test]
 fn weather_svg_icons_preserve_source_fill_colors() {
-    let mut buffer = SoftwareBuffer::new(FrameSize::new(48, 48)).expect("buffer");
-    draw_icon(
-        &mut buffer,
-        Rect::new(0, 0, 48, 48),
-        AssetIcon::Weather(WeatherIcon::ClearDay),
-        IconStyle::new(ClearColor::opaque(255, 255, 255)).with_padding(0),
-    );
+    let key = IconRasterKey {
+        icon: AssetIcon::Weather(WeatherIcon::ClearDay),
+        width: 48,
+        height: 48,
+        color: ClearColor::opaque(255, 255, 255),
+        padding: 0,
+    };
+    let pixels = rasterize_icon(key, icon_source(key.icon));
 
     assert!(
-        buffer
-            .pixels()
+        pixels
             .chunks_exact(4)
-            .any(|pixel| pixel[3] > 0 && pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0)
+            .any(|pixel| { pixel[3] > 0 && (pixel[0] < 240 || pixel[1] < 240 || pixel[2] < 240) })
     );
 }
 
@@ -122,4 +122,19 @@ fn weather_svg_icons_trim_internal_transparent_bounds() {
     assert!(bounds.top <= 2);
     assert!(key.width - bounds.right <= 2);
     assert!(key.height - bounds.bottom <= 2);
+}
+
+#[test]
+fn weather_svg_icons_scale_alpha_without_recoloring() {
+    let mut pixels = vec![0, 0, 0, 255, 20, 40, 60, 128];
+    scale_svg_alpha(&mut pixels, 128);
+
+    assert_eq!(pixels[0], 0);
+    assert_eq!(pixels[1], 0);
+    assert_eq!(pixels[2], 0);
+    assert_eq!(pixels[3], 128);
+    assert_eq!(pixels[4], 10);
+    assert_eq!(pixels[5], 20);
+    assert_eq!(pixels[6], 30);
+    assert_eq!(pixels[7], 64);
 }

@@ -62,7 +62,14 @@ pub(super) fn secondary_text_color(
     base.with_alpha(alpha)
 }
 
-pub(super) fn percent_to_alpha(percent: u8) -> u8 {
+pub(super) fn scaled_alpha(base_alpha: u8, opacity_percent: Option<u8>) -> u8 {
+    match opacity_percent {
+        Some(percent) => ((u16::from(base_alpha) * u16::from(percent.min(100)) + 50) / 100) as u8,
+        None => base_alpha,
+    }
+}
+
+pub(crate) fn percent_to_alpha(percent: u8) -> u8 {
     ((u16::from(percent.min(100)) * 255 + 50) / 100) as u8
 }
 

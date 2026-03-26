@@ -2,6 +2,7 @@ mod standard;
 #[cfg(test)]
 mod tests;
 
+use veila_common::WeatherAlignment;
 use veila_renderer::icon::WeatherIcon;
 use veila_renderer::text::TextBlock;
 
@@ -22,6 +23,11 @@ pub(super) struct SceneWeatherBlocks {
     pub temperature: TextBlock,
     pub location: TextBlock,
     pub icon: WeatherIcon,
+    pub alignment: WeatherAlignment,
+    pub icon_opacity: Option<u8>,
+    pub horizontal_padding: i32,
+    pub left_offset: i32,
+    pub bottom_offset: i32,
     pub icon_size: i32,
     pub icon_gap: i32,
     pub location_gap: i32,

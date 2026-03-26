@@ -1,3 +1,4 @@
+use veila_common::WeatherAlignment;
 use veila_renderer::{
     icon::WeatherIcon,
     text::{TextBlock, TextStyle, fit_wrapped_text},
@@ -53,6 +54,11 @@ pub(super) struct SceneTextInputs<'a> {
     pub(super) weather_icon_size: Option<i32>,
     pub(super) weather_icon_gap: Option<i32>,
     pub(super) weather_location_gap: Option<i32>,
+    pub(super) weather_icon_opacity: Option<u8>,
+    pub(super) weather_horizontal_padding: Option<i32>,
+    pub(super) weather_alignment: WeatherAlignment,
+    pub(super) weather_left_offset: Option<i32>,
+    pub(super) weather_bottom_offset: Option<i32>,
     pub(super) metrics: SceneMetrics,
 }
 
@@ -114,6 +120,14 @@ impl TextLayoutCache {
                         temperature,
                         location,
                         icon,
+                        alignment: inputs.weather_alignment,
+                        icon_opacity: inputs.weather_icon_opacity,
+                        horizontal_padding: inputs
+                            .weather_horizontal_padding
+                            .unwrap_or(48)
+                            .clamp(0, 512),
+                        left_offset: inputs.weather_left_offset.unwrap_or(0).clamp(-512, 512),
+                        bottom_offset: inputs.weather_bottom_offset.unwrap_or(0).clamp(-512, 512),
                         icon_size: inputs.weather_icon_size.map_or(derived_icon_size, |size| {
                             SceneWeatherBlocks::clamped_icon_size(size)
                         }),

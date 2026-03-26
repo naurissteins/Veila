@@ -21,7 +21,7 @@ pub use lock::LockConfig;
 pub use visuals::{
     AvatarVisualConfig, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, InputVisualConfig,
     InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
-    StatusVisualConfig, UsernameVisualConfig, VisualConfig, WeatherVisualConfig,
+    StatusVisualConfig, UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig};
 
