@@ -1,7 +1,7 @@
 use veila_renderer::shape::Rect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct SceneMetrics {
+pub(crate) struct SceneMetrics {
     pub center_x: i32,
     pub content_width: u32,
     pub clock_width: u32,

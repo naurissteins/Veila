@@ -20,6 +20,7 @@ nix = { workspace = true }
 nonstick = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 tokio = { workspace = true }
+time = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 zbus = { workspace = true }

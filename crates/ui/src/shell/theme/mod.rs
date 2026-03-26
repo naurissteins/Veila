@@ -1,0 +1,114 @@
+mod color;
+#[cfg(test)]
+mod tests;
+
+use veila_common::AppConfig;
+use veila_renderer::ClearColor;
+
+use self::color::{to_color, to_color_with_opacity};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShellTheme {
+    pub background: ClearColor,
+    pub avatar_background: ClearColor,
+    pub input: ClearColor,
+    pub input_border: ClearColor,
+    pub input_width: Option<i32>,
+    pub input_height: Option<i32>,
+    pub input_radius: i32,
+    pub input_border_width: Option<i32>,
+    pub avatar_size: Option<i32>,
+    pub avatar_placeholder_padding: Option<i32>,
+    pub avatar_icon_color: Option<ClearColor>,
+    pub avatar_ring_color: Option<ClearColor>,
+    pub avatar_ring_width: Option<i32>,
+    pub avatar_background_opacity: Option<u8>,
+    pub username_color: Option<ClearColor>,
+    pub username_opacity: Option<u8>,
+    pub username_size: Option<u32>,
+    pub avatar_gap: Option<i32>,
+    pub username_gap: Option<i32>,
+    pub status_gap: Option<i32>,
+    pub clock_gap: Option<i32>,
+    pub auth_stack_offset: Option<i32>,
+    pub header_top_offset: Option<i32>,
+    pub clock_font_family: Option<String>,
+    pub clock_color: Option<ClearColor>,
+    pub clock_opacity: Option<u8>,
+    pub date_color: Option<ClearColor>,
+    pub date_opacity: Option<u8>,
+    pub clock_size: Option<u32>,
+    pub date_size: Option<u32>,
+    pub placeholder_color: Option<ClearColor>,
+    pub placeholder_opacity: Option<u8>,
+    pub eye_icon_color: Option<ClearColor>,
+    pub eye_icon_opacity: Option<u8>,
+    pub status_color: Option<ClearColor>,
+    pub status_opacity: Option<u8>,
+    pub input_mask_color: Option<ClearColor>,
+    pub foreground: ClearColor,
+    pub muted: ClearColor,
+    pub pending: ClearColor,
+    pub rejected: ClearColor,
+}
+
+impl Default for ShellTheme {
+    fn default() -> Self {
+        Self::from_config(&AppConfig::default())
+    }
+}
+
+impl ShellTheme {
+    pub fn from_config(config: &AppConfig) -> Self {
+        Self {
+            background: to_color(config.background.color),
+            avatar_background: config
+                .visuals
+                .avatar_background_color
+                .map(to_color)
+                .unwrap_or_else(|| to_color(config.visuals.panel)),
+            input: to_color_with_opacity(config.visuals.input, config.visuals.input_opacity),
+            input_border: to_color_with_opacity(
+                config.visuals.input_border,
+                config.visuals.input_border_opacity,
+            ),
+            input_width: config.visuals.input_width.map(i32::from),
+            input_height: config.visuals.input_height.map(i32::from),
+            input_radius: i32::from(config.visuals.input_radius),
+            input_border_width: config.visuals.input_border_width.map(i32::from),
+            avatar_size: config.visuals.avatar_size.map(i32::from),
+            avatar_placeholder_padding: config.visuals.avatar_placeholder_padding.map(i32::from),
+            avatar_icon_color: config.visuals.avatar_icon_color.map(to_color),
+            avatar_ring_color: config.visuals.avatar_ring_color.map(to_color),
+            avatar_ring_width: config.visuals.avatar_ring_width.map(i32::from),
+            avatar_background_opacity: config.visuals.avatar_background_opacity,
+            username_color: config.visuals.username_color.map(to_color),
+            username_opacity: config.visuals.username_opacity,
+            username_size: config.visuals.username_size.map(u32::from),
+            avatar_gap: config.visuals.avatar_gap.map(i32::from),
+            username_gap: config.visuals.username_gap.map(i32::from),
+            status_gap: config.visuals.status_gap.map(i32::from),
+            clock_gap: config.visuals.clock_gap.map(i32::from),
+            auth_stack_offset: config.visuals.auth_stack_offset.map(i32::from),
+            header_top_offset: config.visuals.header_top_offset.map(i32::from),
+            clock_font_family: config.visuals.clock_font_family.clone(),
+            clock_color: config.visuals.clock_color.map(to_color),
+            clock_opacity: config.visuals.clock_opacity,
+            date_color: config.visuals.date_color.map(to_color),
+            date_opacity: config.visuals.date_opacity,
+            clock_size: config.visuals.clock_size.map(u32::from),
+            date_size: config.visuals.date_size.map(u32::from),
+            placeholder_color: config.visuals.placeholder_color.map(to_color),
+            placeholder_opacity: config.visuals.placeholder_opacity,
+            eye_icon_color: config.visuals.eye_icon_color.map(to_color),
+            eye_icon_opacity: config.visuals.eye_icon_opacity,
+            status_color: config.visuals.status_color.map(to_color),
+            status_opacity: config.visuals.status_opacity,
+            input_mask_color: config.visuals.input_mask_color.map(to_color),
+            foreground: to_color(config.visuals.foreground),
+            muted: to_color(config.visuals.muted),
+            pending: to_color(config.visuals.pending),
+            rejected: to_color(config.visuals.rejected),
+        }
+    }
+}
