@@ -43,6 +43,13 @@ pub struct ShellTheme {
     pub placeholder_opacity: Option<u8>,
     pub eye_icon_color: Option<ClearColor>,
     pub eye_icon_opacity: Option<u8>,
+    pub keyboard_background_color: ClearColor,
+    pub keyboard_background_size: Option<i32>,
+    pub keyboard_color: Option<ClearColor>,
+    pub keyboard_opacity: Option<u8>,
+    pub keyboard_size: Option<u32>,
+    pub keyboard_top_offset: Option<i32>,
+    pub keyboard_right_offset: Option<i32>,
     pub weather_size: Option<u32>,
     pub weather_opacity: Option<u8>,
     pub weather_icon_opacity: Option<u8>,
@@ -123,6 +130,17 @@ impl ShellTheme {
             placeholder_opacity: config.visuals.placeholder_opacity(),
             eye_icon_color: config.visuals.eye_icon_color().map(to_color),
             eye_icon_opacity: config.visuals.eye_icon_opacity(),
+            keyboard_background_color: config
+                .visuals
+                .keyboard_background_color()
+                .map(to_color)
+                .unwrap_or_else(|| ClearColor::rgba(18, 22, 30, 82)),
+            keyboard_background_size: config.visuals.keyboard_background_size().map(i32::from),
+            keyboard_color: config.visuals.keyboard_color().map(to_color),
+            keyboard_opacity: config.visuals.keyboard_opacity(),
+            keyboard_size: config.visuals.keyboard_size().map(u32::from),
+            keyboard_top_offset: config.visuals.keyboard_top_offset().map(i32::from),
+            keyboard_right_offset: config.visuals.keyboard_right_offset().map(i32::from),
             weather_size: config.visuals.weather_size().map(u32::from),
             weather_opacity: config.visuals.weather_opacity(),
             weather_icon_opacity: config.visuals.weather_icon_opacity(),

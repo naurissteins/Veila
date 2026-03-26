@@ -40,6 +40,41 @@ pub(super) fn draw_centered_block(
     block.draw(buffer, x, y);
 }
 
+pub(super) fn draw_top_right_block(
+    buffer: &mut SoftwareBuffer,
+    right_padding: i32,
+    right_offset: i32,
+    y: i32,
+    background: veila_renderer::ClearColor,
+    background_size: Option<i32>,
+    block: &TextBlock,
+) {
+    const CHIP_HORIZONTAL_PADDING: i32 = 10;
+    const CHIP_VERTICAL_PADDING: i32 = 8;
+
+    let chip_diameter = background_size
+        .unwrap_or_else(|| {
+            (block.width as i32 + CHIP_HORIZONTAL_PADDING * 2)
+                .max(block.height as i32 + CHIP_VERTICAL_PADDING * 2)
+        })
+        .clamp(20, 160);
+    let max_x = (buffer.size().width as i32 - chip_diameter).max(0);
+    let x =
+        (buffer.size().width as i32 - right_padding - chip_diameter + right_offset).clamp(0, max_x);
+    let y = y.max(0);
+
+    draw_pill(
+        buffer,
+        Rect::new(x, y, chip_diameter, chip_diameter),
+        PillStyle::new(background).with_radius(chip_diameter / 2),
+    );
+    block.draw(
+        buffer,
+        x + (chip_diameter - block.width as i32) / 2,
+        y + (chip_diameter - block.height as i32) / 2,
+    );
+}
+
 pub(super) fn draw_avatar_widget(
     buffer: &mut SoftwareBuffer,
     avatar: &AvatarAsset,

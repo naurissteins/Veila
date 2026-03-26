@@ -434,6 +434,35 @@ fn clock_style_uses_configured_size() {
 }
 
 #[test]
+fn keyboard_layout_style_uses_configured_size() {
+    let theme = ShellTheme {
+        keyboard_size: Some(3),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.keyboard_layout_text_style();
+
+    assert_eq!(style.scale, 3);
+    assert_eq!(style.line_spacing, 0);
+}
+
+#[test]
+fn keyboard_layout_style_uses_configured_color_and_opacity() {
+    let theme = ShellTheme {
+        keyboard_color: Some(ClearColor::opaque(232, 238, 249)),
+        keyboard_opacity: Some(68),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.keyboard_layout_text_style();
+
+    assert_eq!(style.color.red, 232);
+    assert_eq!(style.color.green, 238);
+    assert_eq!(style.color.blue, 249);
+    assert_eq!(style.color.alpha, 173);
+}
+
+#[test]
 fn header_styles_do_not_add_extra_line_spacing() {
     let shell = ShellState::default();
     let clock_style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));

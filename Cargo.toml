@@ -35,4 +35,5 @@ toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = { version = "2", default-features = true, features = ["json"] }
+xkbcommon = "0.9"
 zbus = { version = "5", default-features = false, features = ["tokio"] }

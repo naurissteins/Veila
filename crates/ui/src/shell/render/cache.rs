@@ -13,6 +13,7 @@ use super::{
 pub(crate) struct TextLayoutCache {
     pub(super) clock: CachedTextBlock,
     pub(super) date: CachedTextBlock,
+    pub(super) keyboard_layout: CachedTextBlock,
     pub(super) username: CachedTextBlock,
     pub(super) placeholder: CachedTextBlock,
     pub(super) revealed_secret: CachedTextBlock,
@@ -158,6 +159,15 @@ impl TextLayoutCache {
 
     pub(super) fn caps_lock_block(&mut self, style: TextStyle, max_width: u32) -> TextBlock {
         self.caps_lock.resolve("Caps Lock On", style, max_width, 1)
+    }
+
+    pub(super) fn keyboard_layout_block(
+        &mut self,
+        label: &str,
+        style: TextStyle,
+        max_width: u32,
+    ) -> TextBlock {
+        self.keyboard_layout.resolve(label, style, max_width, 1)
     }
 }
 

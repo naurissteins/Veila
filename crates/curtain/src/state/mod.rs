@@ -87,6 +87,8 @@ pub(crate) struct CurtainApp {
     auth_in_flight: bool,
     next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
+    pub(crate) keyboard_layout_labels: Vec<String>,
+    pub(crate) active_keyboard_layout: u32,
     pub(crate) failure_reason: Option<String>,
     pub(crate) render_profiler: RenderProfiler,
 }
@@ -182,6 +184,8 @@ impl CurtainApp {
             auth_in_flight: false,
             next_auth_attempt_id: 1,
             has_keyboard_focus: false,
+            keyboard_layout_labels: Vec::new(),
+            active_keyboard_layout: 0,
             failure_reason: None,
             render_profiler: RenderProfiler::default(),
             lock_acquisition_started: false,

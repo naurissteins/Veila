@@ -119,6 +119,24 @@ pub struct EyeVisualConfig {
     pub opacity: Option<u8>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct KeyboardVisualConfig {
+    #[serde(default)]
+    pub background_color: Option<RgbColor>,
+    #[serde(default)]
+    pub background_size: Option<u16>,
+    #[serde(default)]
+    pub color: Option<RgbColor>,
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub size: Option<u16>,
+    #[serde(default)]
+    pub top_offset: Option<i16>,
+    #[serde(default)]
+    pub right_offset: Option<i16>,
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum WeatherAlignment {
@@ -266,6 +284,18 @@ pub struct VisualConfig {
     #[serde(default)]
     pub eye_icon_opacity: Option<u8>,
     #[serde(default)]
+    pub keyboard_color: Option<RgbColor>,
+    #[serde(default)]
+    pub keyboard_background_size: Option<u16>,
+    #[serde(default)]
+    pub keyboard_opacity: Option<u8>,
+    #[serde(default)]
+    pub keyboard_size: Option<u16>,
+    #[serde(default)]
+    pub keyboard_top_offset: Option<i16>,
+    #[serde(default)]
+    pub keyboard_right_offset: Option<i16>,
+    #[serde(default)]
     pub weather_size: Option<u16>,
     #[serde(default)]
     pub status_color: Option<RgbColor>,
@@ -295,6 +325,8 @@ pub struct VisualConfig {
     pub status: Option<StatusVisualConfig>,
     #[serde(default)]
     pub eye: Option<EyeVisualConfig>,
+    #[serde(default)]
+    pub keyboard: Option<KeyboardVisualConfig>,
     #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
@@ -343,6 +375,12 @@ impl Default for VisualConfig {
             placeholder_opacity: None,
             eye_icon_color: None,
             eye_icon_opacity: None,
+            keyboard_color: None,
+            keyboard_background_size: None,
+            keyboard_opacity: None,
+            keyboard_size: None,
+            keyboard_top_offset: None,
+            keyboard_right_offset: None,
             weather_size: None,
             status_color: None,
             status_opacity: None,
@@ -358,6 +396,7 @@ impl Default for VisualConfig {
             placeholder: None,
             status: None,
             eye: None,
+            keyboard: None,
             weather: None,
             layout: None,
             palette: None,
@@ -620,6 +659,54 @@ impl VisualConfig {
             .as_ref()
             .and_then(|eye| eye.opacity)
             .or(self.eye_icon_opacity)
+    }
+
+    pub fn keyboard_size(&self) -> Option<u16> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.size)
+            .or(self.keyboard_size)
+    }
+
+    pub fn keyboard_color(&self) -> Option<RgbColor> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.color)
+            .or(self.keyboard_color)
+    }
+
+    pub fn keyboard_background_color(&self) -> Option<RgbColor> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.background_color)
+    }
+
+    pub fn keyboard_background_size(&self) -> Option<u16> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.background_size)
+            .or(self.keyboard_background_size)
+    }
+
+    pub fn keyboard_opacity(&self) -> Option<u8> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.opacity)
+            .or(self.keyboard_opacity)
+    }
+
+    pub fn keyboard_top_offset(&self) -> Option<i16> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.top_offset)
+            .or(self.keyboard_top_offset)
+    }
+
+    pub fn keyboard_right_offset(&self) -> Option<i16> {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.right_offset)
+            .or(self.keyboard_right_offset)
     }
 
     pub fn weather_size(&self) -> Option<u16> {

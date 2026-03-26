@@ -11,6 +11,19 @@ const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Prototype";
 
 impl ShellState {
+    pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
+        TextStyle::new(
+            secondary_text_color(
+                self.theme.keyboard_color.unwrap_or(self.theme.foreground),
+                self.theme.keyboard_opacity,
+                228,
+            ),
+            self.theme.keyboard_size.unwrap_or(2).clamp(1, 6),
+        )
+        .with_font_weight(600)
+        .with_line_spacing(0)
+    }
+
     pub(crate) fn clock_text_style(&self, metrics: SceneMetrics) -> TextStyle {
         let style = TextStyle::new(
             header_color(

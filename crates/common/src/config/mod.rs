@@ -20,8 +20,9 @@ pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{
     AvatarVisualConfig, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, InputVisualConfig,
-    InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
-    StatusVisualConfig, UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, VisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig};
 

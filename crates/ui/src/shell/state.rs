@@ -76,6 +76,7 @@ impl ShellState {
         Self {
             secret: String::new(),
             caps_lock_active: false,
+            keyboard_layout_label: None,
             reveal_secret: false,
             reveal_toggle_hovered: false,
             reveal_toggle_pressed: false,
@@ -107,6 +108,15 @@ impl ShellState {
         }
 
         self.caps_lock_active = active;
+        true
+    }
+
+    pub fn set_keyboard_layout_label(&mut self, label: Option<String>) -> bool {
+        if self.keyboard_layout_label == label {
+            return false;
+        }
+
+        self.keyboard_layout_label = label;
         true
     }
 

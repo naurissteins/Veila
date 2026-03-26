@@ -12,11 +12,11 @@ use veila_renderer::{SoftwareBuffer, text::TextStyle};
 
 use self::{
     cache::SceneTextInputs,
-    layout::{AnchorOffsets, RoleAnchors, SceneMetrics, role_anchors},
+    layout::{AnchorOffsets, RoleAnchors, SceneMetrics, role_anchors, top_role_top},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
         InputWidget, draw_avatar_widget, draw_centered_block, draw_input_content, draw_input_shell,
-        draw_weather_widget, input_toggle_hitbox,
+        draw_top_right_block, draw_weather_widget, input_toggle_hitbox,
     },
 };
 use super::{ShellState, ShellStatus};
@@ -87,6 +87,7 @@ impl ShellState {
             layout.anchors.footer_y,
             true,
         );
+        self.render_keyboard_layout_indicator(buffer);
     }
 
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
@@ -255,6 +256,30 @@ impl ShellState {
             }
             _ => {}
         }
+    }
+
+    fn render_keyboard_layout_indicator(&self, buffer: &mut SoftwareBuffer) {
+        let Some(label) = self.keyboard_layout_label.as_deref() else {
+            return;
+        };
+
+        let block = self.text_layout_cache.borrow_mut().keyboard_layout_block(
+            label,
+            self.keyboard_layout_text_style(),
+            120,
+        );
+        let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
+            + self.theme.keyboard_top_offset.unwrap_or(0))
+        .max(8);
+        draw_top_right_block(
+            buffer,
+            32,
+            self.theme.keyboard_right_offset.unwrap_or(0),
+            y,
+            self.theme.keyboard_background_color,
+            self.theme.keyboard_background_size,
+            &block,
+        );
     }
 
     pub(super) fn reveal_toggle_rect_for_frame(

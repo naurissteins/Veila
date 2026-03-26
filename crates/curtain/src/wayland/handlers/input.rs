@@ -5,11 +5,12 @@ use smithay_client_toolkit::{
     },
     seat::{
         Capability, SeatHandler,
-        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
+        keyboard::{KeyEvent, KeyboardHandler, Keymap, Keysym, Modifiers, RawModifiers},
         pointer::{PointerEvent, PointerEventKind, PointerHandler},
     },
 };
 use veila_ui::ShellKey;
+use xkbcommon::xkb;
 
 use crate::state::CurtainApp;
 
@@ -142,6 +143,18 @@ impl KeyboardHandler for CurtainApp {
     ) {
     }
 
+    fn update_keymap(
+        &mut self,
+        _conn: &Connection,
+        qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        keymap: Keymap<'_>,
+    ) {
+        let labels = parse_keymap_layout_labels(keymap);
+        self.keyboard_layout_labels = labels;
+        self.handle_shell_keyboard_layout(active_layout_label(self), qh);
+    }
+
     fn update_modifiers(
         &mut self,
         _conn: &Connection,
@@ -150,9 +163,11 @@ impl KeyboardHandler for CurtainApp {
         _serial: u32,
         modifiers: Modifiers,
         _raw_modifiers: RawModifiers,
-        _layout: u32,
+        layout: u32,
     ) {
+        self.active_keyboard_layout = layout;
         self.handle_shell_caps_lock(modifiers.caps_lock, qh);
+        self.handle_shell_keyboard_layout(active_layout_label(self), qh);
     }
 }
 
@@ -208,3 +223,78 @@ fn handle_key_event(app: &mut CurtainApp, queue_handle: &QueueHandle<CurtainApp>
 }
 
 const BTN_LEFT: u32 = 0x110;
+
+fn active_layout_label(app: &CurtainApp) -> Option<String> {
+    app.keyboard_layout_labels
+        .get(app.active_keyboard_layout as usize)
+        .cloned()
+        .or_else(|| app.keyboard_layout_labels.first().cloned())
+}
+
+fn parse_keymap_layout_labels(keymap: Keymap<'_>) -> Vec<String> {
+    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+    let Some(keymap) = xkb::Keymap::new_from_string(
+        &context,
+        keymap.as_string(),
+        xkb::KEYMAP_FORMAT_TEXT_V1,
+        xkb::KEYMAP_COMPILE_NO_FLAGS,
+    ) else {
+        tracing::warn!("failed to parse keyboard keymap for layout indicator");
+        return Vec::new();
+    };
+
+    keymap
+        .layouts()
+        .map(short_layout_label)
+        .filter(|label| !label.is_empty())
+        .collect()
+}
+
+fn short_layout_label(name: &str) -> String {
+    let normalized = name.trim().to_ascii_lowercase();
+    let token = normalized
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .find(|token| !token.is_empty())
+        .unwrap_or("");
+
+    if token.is_empty() {
+        return String::new();
+    }
+
+    match token {
+        "us" | "gb" | "uk" | "eng" | "english" => return String::from("EN"),
+        "lv" | "latvian" | "latvia" => return String::from("LV"),
+        "ru" | "russian" | "russia" => return String::from("RU"),
+        _ => {}
+    }
+
+    if token.len() <= 3 {
+        return token.to_ascii_uppercase();
+    }
+
+    token
+        .chars()
+        .filter(|character| character.is_ascii_alphabetic())
+        .take(3)
+        .collect::<String>()
+        .to_ascii_uppercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::short_layout_label;
+
+    #[test]
+    fn normalizes_common_layout_codes() {
+        assert_eq!(short_layout_label("us"), "EN");
+        assert_eq!(short_layout_label("lv"), "LV");
+        assert_eq!(short_layout_label("ru"), "RU");
+    }
+
+    #[test]
+    fn normalizes_longer_layout_names() {
+        assert_eq!(short_layout_label("English (US)"), "EN");
+        assert_eq!(short_layout_label("latvian"), "LV");
+        assert_eq!(short_layout_label("Portuguese-Brazil"), "POR");
+    }
+}

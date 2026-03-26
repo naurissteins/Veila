@@ -1,8 +1,8 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
-    EyeVisualConfig, InputVisualConfig, InputVisualEntry, LayoutVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
-    WeatherVisualConfig,
+    EyeVisualConfig, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -57,6 +57,15 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.eye = Some(EyeVisualConfig {
         color: Some(ConfigColor::rgb(244, 248, 255)),
         opacity: Some(72),
+    });
+    config.visuals.keyboard = Some(KeyboardVisualConfig {
+        background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
+        background_size: Some(42),
+        color: Some(ConfigColor::rgb(232, 238, 249)),
+        opacity: Some(68),
+        size: Some(3),
+        top_offset: Some(-12),
+        right_offset: Some(8),
     });
     config.visuals.weather = Some(WeatherVisualConfig {
         size: Some(3),
@@ -138,6 +147,19 @@ fn input_opacity_overrides_embedded_alpha() {
         Some(ClearColor::opaque(244, 248, 255))
     );
     assert_eq!(theme.eye_icon_opacity, Some(72));
+    assert_eq!(
+        theme.keyboard_background_color,
+        ClearColor::rgba(18, 22, 30, 82)
+    );
+    assert_eq!(theme.keyboard_background_size, Some(42));
+    assert_eq!(
+        theme.keyboard_color,
+        Some(ClearColor::opaque(232, 238, 249))
+    );
+    assert_eq!(theme.keyboard_opacity, Some(68));
+    assert_eq!(theme.keyboard_size, Some(3));
+    assert_eq!(theme.keyboard_top_offset, Some(-12));
+    assert_eq!(theme.keyboard_right_offset, Some(8));
     assert_eq!(theme.weather_size, Some(3));
     assert_eq!(theme.weather_opacity, Some(62));
     assert_eq!(theme.weather_icon_opacity, Some(41));

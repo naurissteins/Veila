@@ -61,6 +61,13 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.placeholder_opacity().is_none());
     assert!(config.visuals.eye_icon_color().is_none());
     assert!(config.visuals.eye_icon_opacity().is_none());
+    assert!(config.visuals.keyboard_color().is_none());
+    assert!(config.visuals.keyboard_background_color().is_none());
+    assert!(config.visuals.keyboard_background_size().is_none());
+    assert!(config.visuals.keyboard_opacity().is_none());
+    assert!(config.visuals.keyboard_size().is_none());
+    assert!(config.visuals.keyboard_top_offset().is_none());
+    assert!(config.visuals.keyboard_right_offset().is_none());
     assert!(config.visuals.weather_size().is_none());
     assert!(config.visuals.weather_temperature_color().is_none());
     assert!(config.visuals.weather_location_color().is_none());
@@ -327,6 +334,15 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             color = "#ffffff"
             opacity = 72
 
+            [visuals.keyboard]
+            background_color = "rgba(18, 22, 30, 0.32)"
+            background_size = 42
+            color = "#E8EEF9"
+            opacity = 68
+            size = 3
+            top_offset = -12
+            right_offset = 8
+
             [visuals.weather]
             size = 3
             opacity = 62
@@ -418,6 +434,19 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         Some(RgbColor::rgb(255, 255, 255))
     );
     assert_eq!(config.visuals.eye_icon_opacity(), Some(72));
+    assert_eq!(
+        config.visuals.keyboard_background_color(),
+        Some(RgbColor::rgba(18, 22, 30, 82))
+    );
+    assert_eq!(config.visuals.keyboard_background_size(), Some(42));
+    assert_eq!(
+        config.visuals.keyboard_color(),
+        Some(RgbColor::rgb(232, 238, 249))
+    );
+    assert_eq!(config.visuals.keyboard_opacity(), Some(68));
+    assert_eq!(config.visuals.keyboard_size(), Some(3));
+    assert_eq!(config.visuals.keyboard_top_offset(), Some(-12));
+    assert_eq!(config.visuals.keyboard_right_offset(), Some(8));
     assert_eq!(config.visuals.weather_size(), Some(3));
     assert_eq!(config.visuals.weather_opacity(), Some(62));
     assert_eq!(config.visuals.weather_icon_opacity(), Some(41));

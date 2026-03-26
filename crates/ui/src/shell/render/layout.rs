@@ -111,7 +111,7 @@ fn centered_role_top(frame_height: i32, role_height: i32, center_factor: f32) ->
     ((frame_height as f32) * center_factor) as i32 - role_height / 2
 }
 
-fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) -> i32 {
+pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) -> i32 {
     ((frame_height / 14).clamp(28, 72) + header_top_offset.unwrap_or(0)).max(0)
 }
 

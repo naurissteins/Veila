@@ -53,6 +53,16 @@ impl CurtainApp {
         }
     }
 
+    pub(crate) fn handle_shell_keyboard_layout(
+        &mut self,
+        label: Option<String>,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.ui_shell.set_keyboard_layout_label(label) {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
     pub(crate) fn handle_shell_pointer_press(
         &mut self,
         surface: &wl_surface::WlSurface,

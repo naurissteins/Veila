@@ -158,6 +158,17 @@ fn caps_lock_toggle_does_not_change_static_scene_revision() {
 }
 
 #[test]
+fn keyboard_layout_toggle_does_not_change_static_scene_revision() {
+    let mut shell = ShellState::default();
+    let original = shell.static_scene_revision();
+
+    assert!(shell.set_keyboard_layout_label(Some(String::from("US"))));
+    assert_eq!(shell.static_scene_revision(), original);
+    assert_eq!(shell.keyboard_layout_label.as_deref(), Some("US"));
+    assert!(!shell.set_keyboard_layout_label(Some(String::from("US"))));
+}
+
+#[test]
 fn weather_widget_requires_location_and_snapshot() {
     let shell = ShellState::new_with_username_and_weather(
         Default::default(),
