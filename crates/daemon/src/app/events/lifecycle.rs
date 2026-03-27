@@ -3,7 +3,7 @@ use std::{path::Path, process::ExitStatus};
 use veila_common::{NowPlayingSnapshot, WeatherSnapshot};
 
 use crate::{
-    adapters::logind,
+    adapters::{logind, process},
     domain::{auth::AuthPolicy, lock_state::LockState},
 };
 
@@ -163,5 +163,26 @@ pub(crate) async fn handle_curtain_exit(
         {
             tracing::error!("failed to restart curtain after unexpected exit: {error:#}");
         }
+    }
+}
+
+pub(crate) async fn handle_now_playing_update(
+    state: &LockState,
+    control_socket_path: Option<&Path>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
+) {
+    if !state.is_active() {
+        return;
+    }
+
+    let Some(control_socket_path) = control_socket_path else {
+        tracing::debug!("ignoring now playing update without active curtain control socket");
+        return;
+    };
+
+    if let Err(error) =
+        process::request_curtain_now_playing_update(control_socket_path, now_playing_snapshot).await
+    {
+        tracing::warn!("failed to forward live now playing update to curtain: {error:#}");
     }
 }

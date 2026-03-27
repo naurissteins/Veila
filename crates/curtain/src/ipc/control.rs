@@ -7,12 +7,18 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use veila_common::NowPlayingSnapshot;
 use veila_common::ipc::{CurtainControlMessage, decode_message};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
-    Unlock { attempt_id: Option<u64> },
+    Unlock {
+        attempt_id: Option<u64>,
+    },
     Reload,
+    UpdateNowPlaying {
+        snapshot: Option<NowPlayingSnapshot>,
+    },
 }
 
 pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>) -> Result<()> {
@@ -60,6 +66,9 @@ fn run_listener(listener: UnixListener, sender: Sender<ControlEvent>) -> Result<
             }
             CurtainControlMessage::ReloadConfig => {
                 let _ = sender.send(ControlEvent::Reload);
+            }
+            CurtainControlMessage::UpdateNowPlaying { snapshot } => {
+                let _ = sender.send(ControlEvent::UpdateNowPlaying { snapshot });
             }
         }
     }

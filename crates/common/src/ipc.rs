@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::NowPlayingSnapshot;
 use crate::error::Result;
 
 /// Messages sent from UI-facing clients to the daemon.
@@ -27,8 +28,13 @@ pub enum DaemonMessage {
 /// Messages sent from the daemon to the secure curtain process.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CurtainControlMessage {
-    Unlock { attempt_id: Option<u64> },
+    Unlock {
+        attempt_id: Option<u64>,
+    },
     ReloadConfig,
+    UpdateNowPlaying {
+        snapshot: Option<NowPlayingSnapshot>,
+    },
 }
 
 /// Messages sent to the long-running daemon control socket.
@@ -120,6 +126,23 @@ mod tests {
     fn round_trips_control_messages() {
         let message = CurtainControlMessage::Unlock {
             attempt_id: Some(7),
+        };
+        let encoded = encode_message(&message).expect("control message should encode");
+        let decoded = decode_message::<CurtainControlMessage>(&encoded)
+            .expect("control message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_now_playing_update_control_messages() {
+        let message = CurtainControlMessage::UpdateNowPlaying {
+            snapshot: Some(crate::NowPlayingSnapshot {
+                title: "Track".to_string(),
+                artist: Some("Artist".to_string()),
+                artwork_path: None,
+                fetched_at_unix: 1,
+            }),
         };
         let encoded = encode_message(&message).expect("control message should encode");
         let decoded = decode_message::<CurtainControlMessage>(&encoded)

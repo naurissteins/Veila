@@ -268,3 +268,25 @@ fn now_playing_widget_uses_snapshot_data() {
     assert_eq!(now_playing.title, "Northern Attitude");
     assert_eq!(now_playing.artist.as_deref(), Some("Noah Kahan"));
 }
+
+#[test]
+fn updating_now_playing_snapshot_changes_static_scene_revision() {
+    let mut shell = ShellState::default();
+    let original = shell.static_scene_revision();
+
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: Some(String::from("Artist")),
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+
+    assert!(shell.static_scene_revision() > original);
+    assert_eq!(
+        shell
+            .now_playing
+            .as_ref()
+            .map(|widget| widget.title.as_str()),
+        Some("Track")
+    );
+}

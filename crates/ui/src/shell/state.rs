@@ -158,6 +158,11 @@ impl ShellState {
         true
     }
 
+    pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {
+        self.now_playing = now_playing_widget_data(snapshot);
+        self.bump_static_scene_revision();
+    }
+
     pub fn apply_theme(
         &mut self,
         theme: ShellTheme,

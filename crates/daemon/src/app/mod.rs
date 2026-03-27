@@ -20,7 +20,7 @@ use veila_common::AppConfig;
 
 use self::events::{
     handle_auth_connection, handle_auth_result, handle_control_connection, handle_curtain_exit,
-    handle_lock_signal, handle_unlock_signal, shutdown_runtime,
+    handle_lock_signal, handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
 };
 use self::helpers::{activate_and_log, current_username};
 use self::runtime::{
@@ -54,6 +54,7 @@ pub async fn run(
         signal(SignalKind::interrupt()).context("failed to register SIGINT handler")?;
     let mut sigterm =
         signal(SignalKind::terminate()).context("failed to register SIGTERM handler")?;
+    let mut now_playing_updates = runtime.now_playing.subscribe();
 
     tracing::info!(
         session = %session_path,
@@ -161,6 +162,18 @@ pub async fn run(
                 ).await? {
                     break;
                 }
+            }
+            result = now_playing_updates.changed() => {
+                if result.is_err() {
+                    continue;
+                }
+
+                let snapshot = now_playing_updates.borrow().clone();
+                handle_now_playing_update(
+                    &runtime.state,
+                    runtime.control_socket_path.as_deref(),
+                    snapshot.as_ref(),
+                ).await;
             }
             _ = sigint.recv() => {
                 tracing::info!("received SIGINT");

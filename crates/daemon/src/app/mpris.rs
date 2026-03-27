@@ -30,11 +30,21 @@ impl NowPlayingHandle {
     pub(super) fn current_snapshot(&self) -> Option<NowPlayingSnapshot> {
         self.snapshot_rx.borrow().clone()
     }
+
+    pub(super) fn subscribe(&self) -> watch::Receiver<Option<NowPlayingSnapshot>> {
+        self.snapshot_rx.clone()
+    }
 }
 
 async fn run_now_playing_service(snapshot_tx: watch::Sender<Option<NowPlayingSnapshot>>) {
+    let mut last_snapshot = None;
+
     loop {
-        snapshot_tx.send_replace(fetch_snapshot_async().await);
+        let next_snapshot = fetch_snapshot_async().await;
+        if !same_track_snapshot(last_snapshot.as_ref(), next_snapshot.as_ref()) {
+            last_snapshot = next_snapshot.clone();
+            snapshot_tx.send_replace(next_snapshot);
+        }
         tokio::time::sleep(REFRESH_INTERVAL).await;
     }
 }
@@ -144,4 +154,19 @@ fn normalize_path(raw: &str) -> Option<PathBuf> {
 
     let path = PathBuf::from(trimmed);
     path.is_file().then_some(path)
+}
+
+fn same_track_snapshot(
+    left: Option<&NowPlayingSnapshot>,
+    right: Option<&NowPlayingSnapshot>,
+) -> bool {
+    match (left, right) {
+        (None, None) => true,
+        (Some(left), Some(right)) => {
+            left.title == right.title
+                && left.artist == right.artist
+                && left.artwork_path == right.artwork_path
+        }
+        _ => false,
+    }
 }

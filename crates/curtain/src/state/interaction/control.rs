@@ -18,6 +18,15 @@ impl CurtainApp {
                     tracing::info!("received curtain reload request from daemon");
                     self.reload_config(queue_handle);
                 }
+                ControlEvent::UpdateNowPlaying { snapshot } => {
+                    tracing::debug!(
+                        has_snapshot = snapshot.is_some(),
+                        "received live now playing update from daemon"
+                    );
+                    self.now_playing_snapshot = snapshot.clone();
+                    self.ui_shell.set_now_playing_snapshot(snapshot);
+                    self.render_all_surfaces(queue_handle);
+                }
             }
         }
     }

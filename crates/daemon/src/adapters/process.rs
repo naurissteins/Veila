@@ -72,6 +72,19 @@ pub async fn request_curtain_reload(control_socket: &Path) -> Result<()> {
     )
 }
 
+pub async fn request_curtain_now_playing_update(
+    control_socket: &Path,
+    snapshot: Option<&NowPlayingSnapshot>,
+) -> Result<()> {
+    send_curtain_control_message(
+        control_socket,
+        &CurtainControlMessage::UpdateNowPlaying {
+            snapshot: snapshot.cloned(),
+        },
+        "now playing update",
+    )
+}
+
 fn send_curtain_control_message(
     control_socket: &Path,
     message: &CurtainControlMessage,
