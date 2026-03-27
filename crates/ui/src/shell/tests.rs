@@ -3,10 +3,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+use veila_common::ClockFormat;
 use veila_common::{NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, WeatherUnit};
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
-use super::{ShellAction, ShellKey, ShellState, ShellStatus};
+use super::{ShellAction, ShellKey, ShellState, ShellStatus, ShellTheme};
 
 #[test]
 fn edits_and_submits_password_text() {
@@ -134,6 +135,23 @@ fn applying_theme_changes_static_scene_revision() {
     shell.apply_theme(Default::default(), None, None, true);
 
     assert!(shell.static_scene_revision() > original);
+}
+
+#[test]
+fn applying_theme_updates_clock_format() {
+    let mut shell = ShellState::default();
+    let theme = ShellTheme {
+        clock_format: ClockFormat::TwelveHour,
+        ..ShellTheme::default()
+    };
+
+    shell.apply_theme(theme.clone(), None, None, true);
+
+    assert_eq!(shell.theme.clock_format, ClockFormat::TwelveHour);
+    assert_eq!(
+        shell.clock,
+        super::clock::ClockState::current(theme.clock_format)
+    );
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use std::fs;
 
-use super::{AppConfig, BackgroundMode, InputVisualEntry, RgbColor, WeatherUnit};
+use super::{AppConfig, BackgroundMode, ClockFormat, InputVisualEntry, RgbColor, WeatherUnit};
 
 #[test]
 fn parses_partial_config_with_defaults() {
@@ -60,6 +60,10 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.header_top_offset().is_none());
     assert!(config.visuals.clock_font_family().is_none());
     assert!(config.visuals.clock_font_weight().is_none());
+    assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
+    assert!(config.visuals.clock_meridiem_size().is_none());
+    assert!(config.visuals.clock_meridiem_offset_x().is_none());
+    assert!(config.visuals.clock_meridiem_offset_y().is_none());
     assert!(config.visuals.clock_color().is_none());
     assert!(config.visuals.clock_opacity().is_none());
     assert!(config.visuals.date_color().is_none());
@@ -186,6 +190,10 @@ fn loads_config_from_file() {
             header_top_offset = -12
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
+            clock_format = "12h"
+            clock_meridiem_size = 3
+            clock_meridiem_offset_x = 6
+            clock_meridiem_offset_y = -2
             clock_color = "#F8FBFF"
             clock_opacity = 96
             date_color = "#C8D4EC"
@@ -288,6 +296,13 @@ fn loads_config_from_file() {
         Some("Bebas Neue")
     );
     assert_eq!(loaded.config.visuals.clock_font_weight(), Some(700));
+    assert_eq!(
+        loaded.config.visuals.clock_format(),
+        ClockFormat::TwelveHour
+    );
+    assert_eq!(loaded.config.visuals.clock_meridiem_size(), Some(3));
+    assert_eq!(loaded.config.visuals.clock_meridiem_offset_x(), Some(6));
+    assert_eq!(loaded.config.visuals.clock_meridiem_offset_y(), Some(-2));
     assert_eq!(
         loaded.config.visuals.clock_color(),
         Some(RgbColor::rgb(248, 251, 255))
@@ -396,6 +411,10 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             [visuals.clock]
             font_family = "Prototype"
             font_weight = 700
+            format = "12h"
+            meridiem_size = 3
+            meridiem_offset_x = 6
+            meridiem_offset_y = -2
             color = "#ffffff"
             opacity = 40
             size = 14
@@ -517,6 +536,10 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
     assert_eq!(config.visuals.username_gap(), Some(28));
     assert_eq!(config.visuals.clock_font_family(), Some("Prototype"));
     assert_eq!(config.visuals.clock_font_weight(), Some(700));
+    assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);
+    assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
+    assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
+    assert_eq!(config.visuals.clock_meridiem_offset_y(), Some(-2));
     assert_eq!(
         config.visuals.clock_color(),
         Some(RgbColor::rgb(255, 255, 255))

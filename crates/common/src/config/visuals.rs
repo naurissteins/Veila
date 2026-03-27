@@ -76,6 +76,14 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub font_weight: Option<u16>,
     #[serde(default)]
+    pub format: Option<ClockFormat>,
+    #[serde(default)]
+    pub meridiem_size: Option<u16>,
+    #[serde(default)]
+    pub meridiem_offset_x: Option<i16>,
+    #[serde(default)]
+    pub meridiem_offset_y: Option<i16>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -83,6 +91,15 @@ pub struct ClockVisualConfig {
     pub size: Option<u16>,
     #[serde(default)]
     pub gap: Option<u16>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ClockFormat {
+    #[default]
+    #[serde(rename = "24h")]
+    TwentyFourHour,
+    #[serde(rename = "12h")]
+    TwelveHour,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -320,6 +337,14 @@ pub struct VisualConfig {
     #[serde(default)]
     pub clock_font_weight: Option<u16>,
     #[serde(default)]
+    pub clock_format: Option<ClockFormat>,
+    #[serde(default)]
+    pub clock_meridiem_size: Option<u16>,
+    #[serde(default)]
+    pub clock_meridiem_offset_x: Option<i16>,
+    #[serde(default)]
+    pub clock_meridiem_offset_y: Option<i16>,
+    #[serde(default)]
     pub clock_color: Option<RgbColor>,
     #[serde(default)]
     pub clock_opacity: Option<u8>,
@@ -424,6 +449,10 @@ impl Default for VisualConfig {
             header_top_offset: None,
             clock_font_family: None,
             clock_font_weight: None,
+            clock_format: None,
+            clock_meridiem_size: None,
+            clock_meridiem_offset_x: None,
+            clock_meridiem_offset_y: None,
             clock_color: None,
             clock_opacity: None,
             date_color: None,
@@ -656,6 +685,35 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.font_weight)
             .or(self.clock_font_weight)
+    }
+
+    pub fn clock_format(&self) -> ClockFormat {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.format)
+            .or(self.clock_format)
+            .unwrap_or_default()
+    }
+
+    pub fn clock_meridiem_size(&self) -> Option<u16> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.meridiem_size)
+            .or(self.clock_meridiem_size)
+    }
+
+    pub fn clock_meridiem_offset_x(&self) -> Option<i16> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.meridiem_offset_x)
+            .or(self.clock_meridiem_offset_x)
+    }
+
+    pub fn clock_meridiem_offset_y(&self) -> Option<i16> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.meridiem_offset_y)
+            .or(self.clock_meridiem_offset_y)
     }
 
     pub fn clock_color(&self) -> Option<RgbColor> {

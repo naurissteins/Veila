@@ -19,10 +19,10 @@ pub use background::{BackgroundConfig, BackgroundMode};
 pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{
-    AvatarVisualConfig, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, InputVisualConfig,
-    InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    AvatarVisualConfig, ClockFormat, ClockVisualConfig, DateVisualConfig, EyeVisualConfig,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

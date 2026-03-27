@@ -1,5 +1,5 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
+    AppConfig, AvatarVisualConfig, ClockFormat, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
     NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
     UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
@@ -41,6 +41,10 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.clock = Some(ClockVisualConfig {
         font_family: Some(String::from("Bebas Neue")),
         font_weight: Some(700),
+        format: Some(ClockFormat::TwelveHour),
+        meridiem_size: Some(3),
+        meridiem_offset_x: Some(6),
+        meridiem_offset_y: Some(-2),
         color: Some(ConfigColor::rgb(248, 251, 255)),
         opacity: Some(96),
         size: Some(4),
@@ -159,6 +163,10 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.header_top_offset, Some(-12));
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
     assert_eq!(theme.clock_font_weight, Some(700));
+    assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
+    assert_eq!(theme.clock_meridiem_size, Some(3));
+    assert_eq!(theme.clock_meridiem_offset_x, Some(6));
+    assert_eq!(theme.clock_meridiem_offset_y, Some(-2));
     assert_eq!(theme.clock_color, Some(ClearColor::opaque(248, 251, 255)));
     assert_eq!(theme.clock_opacity, Some(96));
     assert_eq!(theme.date_font_family.as_deref(), Some("Geom"));

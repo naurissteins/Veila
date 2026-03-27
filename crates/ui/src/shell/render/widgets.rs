@@ -11,7 +11,7 @@ use veila_renderer::{
 
 use crate::shell::render::styles::percent_to_alpha;
 
-use super::model::SceneWeatherBlocks;
+use super::model::{SceneClockBlocks, SceneWeatherBlocks};
 
 const TOGGLE_HITBOX_SIZE: i32 = 28;
 const TOGGLE_RIGHT_INSET: i32 = 14;
@@ -57,6 +57,26 @@ pub(super) fn draw_centered_block(
 ) {
     let x = center_x - block.width as i32 / 2;
     block.draw(buffer, x, y);
+}
+
+pub(super) fn draw_centered_clock_widget(
+    buffer: &mut SoftwareBuffer,
+    center_x: i32,
+    y: i32,
+    clock: &SceneClockBlocks,
+) {
+    let x = center_x - clock.width() / 2;
+    clock.time.draw(buffer, x, y);
+
+    if let Some(meridiem) = clock.meridiem.as_ref() {
+        meridiem.draw(
+            buffer,
+            x + clock.time.width as i32
+                + SceneClockBlocks::meridiem_gap()
+                + clock.meridiem_offset_x,
+            y + SceneClockBlocks::meridiem_top_offset() + clock.meridiem_offset_y,
+        );
+    }
 }
 
 pub(super) fn draw_top_right_block(

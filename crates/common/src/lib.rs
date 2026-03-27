@@ -9,7 +9,7 @@ pub mod now_playing;
 pub mod weather;
 
 pub use config::{
-    AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
+    AppConfig, AvatarVisualConfig, ClockFormat, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, GeoCoordinate, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,
     LayoutVisualConfig, LoadedConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, RgbColor, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,

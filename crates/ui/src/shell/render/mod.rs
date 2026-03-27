@@ -15,9 +15,9 @@ use self::{
     layout::{AnchorOffsets, RoleAnchors, SceneMetrics, role_anchors, top_role_top},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
-        InputWidget, NowPlayingWidget, draw_avatar_widget, draw_centered_block, draw_input_content,
-        draw_input_shell, draw_now_playing_widget, draw_top_right_block, draw_weather_widget,
-        input_toggle_hitbox,
+        InputWidget, NowPlayingWidget, draw_avatar_widget, draw_centered_block,
+        draw_centered_clock_widget, draw_input_content, draw_input_shell, draw_now_playing_widget,
+        draw_top_right_block, draw_weather_widget, input_toggle_hitbox,
     },
 };
 use super::{ShellState, ShellStatus};
@@ -151,6 +151,10 @@ impl ShellState {
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
         let clock_text = self.clock.time_text();
         let clock_style = self.clock_text_style(metrics);
+        let clock_meridiem_text = self.clock.meridiem_text();
+        let clock_meridiem_style = self.clock_meridiem_text_style(metrics);
+        let clock_meridiem_offset_x = self.theme.clock_meridiem_offset_x;
+        let clock_meridiem_offset_y = self.theme.clock_meridiem_offset_y;
         let date_text = self.clock.date_text();
         let date_style = self.date_text_style();
         let username_text = self.username_text.as_deref();
@@ -167,6 +171,10 @@ impl ShellState {
             .scene_text_blocks(SceneTextInputs {
                 clock_text,
                 clock_style,
+                clock_meridiem_text,
+                clock_meridiem_style,
+                clock_meridiem_offset_x,
+                clock_meridiem_offset_y,
                 date_text,
                 date_style,
                 username_text,
@@ -201,9 +209,10 @@ impl ShellState {
         dynamic: bool,
     ) {
         match &section.widget {
-            SceneWidget::Clock(block) | SceneWidget::Date(block) | SceneWidget::Status(block)
-                if dynamic =>
-            {
+            SceneWidget::Clock(block) if dynamic => {
+                draw_centered_clock_widget(buffer, metrics.center_x, y, block);
+            }
+            SceneWidget::Date(block) | SceneWidget::Status(block) if dynamic => {
                 draw_centered_block(buffer, metrics.center_x, y, block);
             }
             SceneWidget::Username(block) if !dynamic => {

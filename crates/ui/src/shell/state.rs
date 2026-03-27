@@ -120,7 +120,7 @@ impl ShellState {
             static_scene_revision: 1,
             focused: true,
             status: ShellStatus::Idle,
-            clock: ClockState::current(),
+            clock: ClockState::current(theme.clock_format),
             theme,
             hint_text: user_hint
                 .filter(|hint| !hint.trim().is_empty())
@@ -203,6 +203,7 @@ impl ShellState {
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) {
         self.theme = theme;
+        self.clock = ClockState::current(self.theme.clock_format);
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));

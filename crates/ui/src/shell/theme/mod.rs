@@ -2,7 +2,7 @@ mod color;
 #[cfg(test)]
 mod tests;
 
-use veila_common::{AppConfig, WeatherAlignment};
+use veila_common::{AppConfig, ClockFormat, WeatherAlignment};
 use veila_renderer::ClearColor;
 
 use self::color::{to_color, to_color_with_opacity};
@@ -34,6 +34,10 @@ pub struct ShellTheme {
     pub header_top_offset: Option<i32>,
     pub clock_font_family: Option<String>,
     pub clock_font_weight: Option<u16>,
+    pub clock_format: ClockFormat,
+    pub clock_meridiem_size: Option<u32>,
+    pub clock_meridiem_offset_x: Option<i32>,
+    pub clock_meridiem_offset_y: Option<i32>,
     pub clock_color: Option<ClearColor>,
     pub clock_opacity: Option<u8>,
     pub date_font_family: Option<String>,
@@ -146,6 +150,10 @@ impl ShellTheme {
             header_top_offset: config.visuals.header_top_offset().map(i32::from),
             clock_font_family: config.visuals.clock_font_family().map(str::to_owned),
             clock_font_weight: config.visuals.clock_font_weight(),
+            clock_format: config.visuals.clock_format(),
+            clock_meridiem_size: config.visuals.clock_meridiem_size().map(u32::from),
+            clock_meridiem_offset_x: config.visuals.clock_meridiem_offset_x().map(i32::from),
+            clock_meridiem_offset_y: config.visuals.clock_meridiem_offset_y().map(i32::from),
             clock_color: config.visuals.clock_color().map(to_color),
             clock_opacity: config.visuals.clock_opacity(),
             date_font_family: config.visuals.date_font_family().map(str::to_owned),

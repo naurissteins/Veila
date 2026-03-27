@@ -1,19 +1,22 @@
 use time::{Month, OffsetDateTime, Weekday};
+use veila_common::ClockFormat;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ClockState {
     minute_key: i64,
+    format: ClockFormat,
     time_text: String,
+    meridiem_text: Option<String>,
     date_text: String,
 }
 
 impl ClockState {
-    pub(super) fn current() -> Self {
-        Self::from_datetime(local_now())
+    pub(super) fn current(format: ClockFormat) -> Self {
+        Self::from_datetime(local_now(), format)
     }
 
     pub(super) fn refresh(&mut self) -> bool {
-        let next = Self::current();
+        let next = Self::current(self.format);
         if *self == next {
             return false;
         }
@@ -30,16 +33,46 @@ impl ClockState {
         &self.date_text
     }
 
-    fn from_datetime(datetime: OffsetDateTime) -> Self {
+    pub(super) fn meridiem_text(&self) -> Option<&str> {
+        self.meridiem_text.as_deref()
+    }
+
+    fn from_datetime(datetime: OffsetDateTime, format: ClockFormat) -> Self {
+        let (time_text, meridiem_text) = format_time(datetime, format);
+
         Self {
             minute_key: datetime.unix_timestamp().div_euclid(60),
-            time_text: format!("{:02}:{:02}", datetime.hour(), datetime.minute()),
+            format,
+            time_text,
+            meridiem_text,
             date_text: format!(
                 "{}, {} {}",
                 weekday_name(datetime.weekday()),
                 month_name(datetime.month()),
                 datetime.day()
             ),
+        }
+    }
+}
+
+fn format_time(datetime: OffsetDateTime, format: ClockFormat) -> (String, Option<String>) {
+    match format {
+        ClockFormat::TwentyFourHour => (
+            format!("{:02}:{:02}", datetime.hour(), datetime.minute()),
+            None,
+        ),
+        ClockFormat::TwelveHour => {
+            let hour = datetime.hour();
+            let meridiem = if hour < 12 { "AM" } else { "PM" };
+            let display_hour = match hour % 12 {
+                0 => 12,
+                value => value,
+            };
+
+            (
+                format!("{display_hour:02}:{:02}", datetime.minute()),
+                Some(String::from(meridiem)),
+            )
         }
     }
 }
@@ -83,20 +116,51 @@ fn month_name(month: Month) -> &'static str {
 #[cfg(test)]
 mod tests {
     use time::{Date, Month, PrimitiveDateTime, Time, UtcOffset};
+    use veila_common::ClockFormat;
 
     use super::ClockState;
 
     #[test]
-    fn formats_clock_snapshot() {
+    fn formats_clock_snapshot_in_24_hour_mode() {
         let datetime = PrimitiveDateTime::new(
             Date::from_calendar_date(2026, Month::March, 24).expect("date"),
             Time::from_hms(9, 5, 0).expect("time"),
         )
         .assume_offset(UtcOffset::UTC);
 
-        let clock = ClockState::from_datetime(datetime);
+        let clock = ClockState::from_datetime(datetime, ClockFormat::TwentyFourHour);
 
         assert_eq!(clock.time_text(), "09:05");
+        assert_eq!(clock.meridiem_text(), None);
         assert_eq!(clock.date_text(), "Tuesday, March 24");
+    }
+
+    #[test]
+    fn formats_clock_snapshot_in_12_hour_mode() {
+        let datetime = PrimitiveDateTime::new(
+            Date::from_calendar_date(2026, Month::March, 24).expect("date"),
+            Time::from_hms(15, 5, 0).expect("time"),
+        )
+        .assume_offset(UtcOffset::UTC);
+
+        let clock = ClockState::from_datetime(datetime, ClockFormat::TwelveHour);
+
+        assert_eq!(clock.time_text(), "03:05");
+        assert_eq!(clock.meridiem_text(), Some("PM"));
+        assert_eq!(clock.date_text(), "Tuesday, March 24");
+    }
+
+    #[test]
+    fn formats_midnight_as_12_am() {
+        let datetime = PrimitiveDateTime::new(
+            Date::from_calendar_date(2026, Month::March, 24).expect("date"),
+            Time::from_hms(0, 5, 0).expect("time"),
+        )
+        .assume_offset(UtcOffset::UTC);
+
+        let clock = ClockState::from_datetime(datetime, ClockFormat::TwelveHour);
+
+        assert_eq!(clock.time_text(), "12:05");
+        assert_eq!(clock.meridiem_text(), Some("AM"));
     }
 }

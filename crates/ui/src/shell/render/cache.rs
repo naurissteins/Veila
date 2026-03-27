@@ -6,12 +6,13 @@ use veila_renderer::{
 
 use super::{
     layout::SceneMetrics,
-    model::{SceneTextBlocks, SceneWeatherBlocks},
+    model::{SceneClockBlocks, SceneTextBlocks, SceneWeatherBlocks},
 };
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct TextLayoutCache {
     pub(super) clock: CachedTextBlock,
+    pub(super) clock_meridiem: CachedTextBlock,
     pub(super) date: CachedTextBlock,
     pub(super) keyboard_layout: CachedTextBlock,
     pub(super) username: CachedTextBlock,
@@ -42,6 +43,10 @@ pub(super) struct CachedTextKey {
 pub(super) struct SceneTextInputs<'a> {
     pub(super) clock_text: &'a str,
     pub(super) clock_style: TextStyle,
+    pub(super) clock_meridiem_text: Option<&'a str>,
+    pub(super) clock_meridiem_style: TextStyle,
+    pub(super) clock_meridiem_offset_x: Option<i32>,
+    pub(super) clock_meridiem_offset_y: Option<i32>,
     pub(super) date_text: &'a str,
     pub(super) date_style: TextStyle,
     pub(super) username_text: Option<&'a str>,
@@ -69,12 +74,22 @@ pub(super) struct SceneTextInputs<'a> {
 impl TextLayoutCache {
     pub(super) fn scene_text_blocks(&mut self, inputs: SceneTextInputs<'_>) -> SceneTextBlocks {
         SceneTextBlocks {
-            clock: self.clock.resolve(
-                inputs.clock_text,
-                inputs.clock_style,
-                inputs.metrics.clock_width,
-                3,
-            ),
+            clock: SceneClockBlocks {
+                time: self.clock.resolve(
+                    inputs.clock_text,
+                    inputs.clock_style,
+                    inputs.metrics.clock_width,
+                    3,
+                ),
+                meridiem: self.clock_meridiem.resolve_optional(
+                    inputs.clock_meridiem_text,
+                    inputs.clock_meridiem_style,
+                    inputs.metrics.clock_width,
+                    1,
+                ),
+                meridiem_offset_x: inputs.clock_meridiem_offset_x.unwrap_or(0).clamp(-128, 128),
+                meridiem_offset_y: inputs.clock_meridiem_offset_y.unwrap_or(0).clamp(-128, 128),
+            },
             date: self.date.resolve(
                 inputs.date_text,
                 inputs.date_style,

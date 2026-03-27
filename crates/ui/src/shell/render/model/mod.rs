@@ -10,12 +10,20 @@ use super::{super::ShellStatus, layout::SceneMetrics};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SceneTextBlocks {
-    pub clock: TextBlock,
+    pub clock: SceneClockBlocks,
     pub date: TextBlock,
     pub username: Option<TextBlock>,
     pub placeholder: TextBlock,
     pub status: Option<TextBlock>,
     pub weather: Option<SceneWeatherBlocks>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SceneClockBlocks {
+    pub time: TextBlock,
+    pub meridiem: Option<TextBlock>,
+    pub meridiem_offset_x: i32,
+    pub meridiem_offset_y: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +62,7 @@ pub(super) struct SceneSection {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum SceneWidget {
-    Clock(TextBlock),
+    Clock(SceneClockBlocks),
     Date(TextBlock),
     Avatar,
     Username(TextBlock),
@@ -129,14 +137,39 @@ impl SceneSection {
 impl SceneWidget {
     fn height(&self, metrics: SceneMetrics, _status: &ShellStatus) -> i32 {
         match self {
-            Self::Clock(block)
-            | Self::Date(block)
-            | Self::Username(block)
-            | Self::Status(block) => block.height as i32,
+            Self::Clock(block) => block.height(),
+            Self::Date(block) | Self::Username(block) | Self::Status(block) => block.height as i32,
             Self::Avatar => metrics.avatar_size,
             Self::Input(_) => metrics.input_height,
             Self::Weather(blocks) => blocks.height(),
         }
+    }
+}
+
+impl SceneClockBlocks {
+    const MERIDIEM_GAP: i32 = 8;
+    const MERIDIEM_TOP_OFFSET: i32 = 4;
+
+    pub(super) fn width(&self) -> i32 {
+        self.time.width as i32
+            + self
+                .meridiem
+                .as_ref()
+                .map_or(0, |meridiem| Self::MERIDIEM_GAP + meridiem.width as i32)
+    }
+
+    pub(super) fn height(&self) -> i32 {
+        (self.time.height as i32).max(self.meridiem.as_ref().map_or(0, |meridiem| {
+            Self::MERIDIEM_TOP_OFFSET + meridiem.height as i32
+        }))
+    }
+
+    pub(super) const fn meridiem_gap() -> i32 {
+        Self::MERIDIEM_GAP
+    }
+
+    pub(super) const fn meridiem_top_offset() -> i32 {
+        Self::MERIDIEM_TOP_OFFSET
     }
 }
 

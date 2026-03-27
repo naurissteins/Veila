@@ -6,6 +6,7 @@ use super::{
 };
 
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
+const MAX_CLOCK_MERIDIEM_SCALE: u32 = 8;
 const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
 const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
@@ -37,6 +38,43 @@ impl ShellState {
                 .clock_size
                 .unwrap_or_else(|| clock_scale(metrics.avatar_size))
                 .clamp(1, MAX_HEADER_TEXT_SCALE),
+        )
+        .with_line_spacing(0);
+
+        let family = self
+            .theme
+            .clock_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(bundled_clock_font_family)
+            .or_else(|| self.theme.clock_font_family.clone())
+            .unwrap_or_else(|| String::from(DEFAULT_CLOCK_FONT_FAMILY));
+
+        let style = style.with_font_family(&family);
+        match self.theme.clock_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        }
+    }
+
+    pub(crate) fn clock_meridiem_text_style(&self, metrics: SceneMetrics) -> TextStyle {
+        let clock_scale = self
+            .theme
+            .clock_size
+            .unwrap_or_else(|| clock_scale(metrics.avatar_size))
+            .clamp(1, MAX_HEADER_TEXT_SCALE);
+        let meridiem_scale = self
+            .theme
+            .clock_meridiem_size
+            .unwrap_or_else(|| clock_scale.div_ceil(3))
+            .clamp(1, MAX_CLOCK_MERIDIEM_SCALE);
+        let style = TextStyle::new(
+            header_color(
+                self.theme.clock_color.unwrap_or(self.theme.foreground),
+                self.theme.clock_opacity,
+                246,
+            ),
+            meridiem_scale,
         )
         .with_line_spacing(0);
 

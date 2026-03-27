@@ -3,14 +3,14 @@ use veila_renderer::{
     text::{TextBlock, TextStyle},
 };
 
-use super::{LayoutRole, SceneModel, SceneTextBlocks, SceneWidget};
+use super::{LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget};
 use crate::shell::{ShellStatus, render::layout::SceneMetrics};
 
 #[test]
 fn assigns_hero_and_auth_roles() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -43,7 +43,7 @@ fn assigns_hero_and_auth_roles() {
 fn appends_status_to_auth_role() {
     let with_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -57,7 +57,7 @@ fn appends_status_to_auth_role() {
     );
     let without_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -96,7 +96,7 @@ fn appends_status_to_auth_role() {
 fn footer_role_is_empty_in_default_model() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -116,7 +116,7 @@ fn footer_role_is_empty_in_default_model() {
 fn omits_username_widget_when_disabled() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: None,
             placeholder: block("Type your password to unlock"),
@@ -141,7 +141,7 @@ fn omits_username_widget_when_disabled() {
 fn uses_configured_username_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -165,7 +165,7 @@ fn uses_configured_username_gap() {
 fn uses_configured_avatar_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -189,7 +189,7 @@ fn uses_configured_avatar_gap() {
 fn uses_configured_status_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -214,7 +214,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let without_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -228,7 +228,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
     );
     let with_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -251,7 +251,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
 fn uses_configured_clock_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: block("09:05"),
+            clock: clock_blocks("09:05"),
             date: block("Tuesday, March 24"),
             username: Some(block("ramces")),
             placeholder: block("Type your password to unlock"),
@@ -277,5 +277,14 @@ fn block(text: &str) -> TextBlock {
         style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
         width: 100,
         height: 24,
+    }
+}
+
+fn clock_blocks(text: &str) -> SceneClockBlocks {
+    SceneClockBlocks {
+        time: block(text),
+        meridiem: None,
+        meridiem_offset_x: 0,
+        meridiem_offset_y: 0,
     }
 }

@@ -436,6 +436,34 @@ fn clock_style_uses_configured_size() {
 }
 
 #[test]
+fn clock_meridiem_style_is_smaller_than_main_clock() {
+    let theme = ShellTheme {
+        clock_size: Some(12),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let clock_style = shell.clock_text_style(metrics);
+    let meridiem_style = shell.clock_meridiem_text_style(metrics);
+
+    assert!(meridiem_style.scale < clock_style.scale);
+    assert_eq!(meridiem_style.line_spacing, 0);
+}
+
+#[test]
+fn clock_meridiem_style_uses_configured_size() {
+    let theme = ShellTheme {
+        clock_meridiem_size: Some(5),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let meridiem_style = shell.clock_meridiem_text_style(metrics);
+
+    assert_eq!(meridiem_style.scale, 5);
+}
+
+#[test]
 fn keyboard_layout_style_uses_configured_size() {
     let theme = ShellTheme {
         keyboard_size: Some(3),
@@ -652,6 +680,10 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_text: "09:41",
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
         date_text: "Tuesday",
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
@@ -695,6 +727,10 @@ fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_text: "09:41",
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
         date_text: "Tuesday",
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
@@ -850,6 +886,10 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     let first = cache.scene_text_blocks(SceneTextInputs {
         clock_text: "09:41",
         clock_style: style.clone(),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
         date_text: "Tuesday",
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: Some("ramces"),
@@ -877,6 +917,10 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     let second = cache.scene_text_blocks(SceneTextInputs {
         clock_text: "09:41",
         clock_style: style,
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
         date_text: "Tuesday",
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: Some("ramces"),
@@ -902,7 +946,7 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     });
 
     assert_eq!(first.clock, second.clock);
-    assert_eq!(cached_clock, second.clock);
+    assert_eq!(cached_clock, second.clock.time);
 }
 
 #[test]
@@ -913,6 +957,10 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
     let first = cache.scene_text_blocks(SceneTextInputs {
         clock_text: "09:41",
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
         date_text: "Tuesday",
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
@@ -939,6 +987,10 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
     let second = cache.scene_text_blocks(SceneTextInputs {
         clock_text: "09:42",
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
         date_text: "Tuesday",
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
@@ -963,7 +1015,7 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         metrics,
     });
 
-    assert_ne!(first.clock.lines, second.clock.lines);
+    assert_ne!(first.clock.time.lines, second.clock.time.lines);
     assert_eq!(
         cache.clock.key.as_ref().map(|key| key.text.as_str()),
         Some("09:42")
