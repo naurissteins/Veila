@@ -520,6 +520,7 @@ fn weather_styles_use_configured_widget_size() {
         weather_location_color: Some(ClearColor::opaque(214, 227, 255)),
         weather_size: Some(4),
         weather_temperature_font_family: Some(String::from("Prototype")),
+        weather_temperature_font_weight: Some(600),
         weather_temperature_size: Some(12),
         weather_location_size: Some(2),
         ..ShellTheme::default()
@@ -536,6 +537,7 @@ fn weather_styles_use_configured_widget_size() {
     assert_eq!(location_style.color.red, 214);
     assert_eq!(temperature_style.line_spacing, 0);
     assert_eq!(location_style.line_spacing, 0);
+    assert_eq!(temperature_style.font_weight, Some(600));
     assert!(
         temperature_style
             .font_family

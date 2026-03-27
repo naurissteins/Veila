@@ -76,6 +76,7 @@ fn input_opacity_overrides_embedded_alpha() {
         temperature_color: Some(ConfigColor::rgb(255, 255, 255)),
         location_color: Some(ConfigColor::rgb(214, 227, 255)),
         temperature_font_family: Some(String::from("Prototype")),
+        temperature_font_weight: Some(600),
         temperature_size: Some(4),
         location_size: Some(2),
         icon_size: Some(36),
@@ -177,6 +178,7 @@ fn input_opacity_overrides_embedded_alpha() {
         theme.weather_temperature_font_family.as_deref(),
         Some("Prototype")
     );
+    assert_eq!(theme.weather_temperature_font_weight, Some(600));
     assert_eq!(theme.weather_temperature_size, Some(4));
     assert_eq!(theme.weather_location_size, Some(2));
     assert_eq!(theme.weather_icon_size, Some(36));

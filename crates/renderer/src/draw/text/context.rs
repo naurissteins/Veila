@@ -8,7 +8,7 @@ const BUNDLED_CLOCK_FONT: &[u8] = include_bytes!(concat!(
 ));
 const BUNDLED_WEATHER_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/fonts/alte-haas-grotesk.bold.ttf"
+    "/../../assets/fonts/Geom-SemiBold.ttf"
 ));
 const BUNDLED_FONTS: [&[u8]; 2] = [BUNDLED_CLOCK_FONT, BUNDLED_WEATHER_FONT];
 

@@ -133,11 +133,16 @@ impl ShellState {
             .and_then(resolve_font_family)
             .or_else(|| self.theme.weather_temperature_font_family.clone());
 
-        match family {
+        let style = match family {
             Some(family) => style.with_font_family(&family),
             None => style,
-        }
-        .with_line_spacing(0)
+        };
+        let style = match self.theme.weather_temperature_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        };
+
+        style.with_line_spacing(0)
     }
 
     pub(crate) fn weather_location_text_style(&self) -> TextStyle {

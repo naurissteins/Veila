@@ -79,6 +79,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_temperature_color().is_none());
     assert!(config.visuals.weather_location_color().is_none());
     assert!(config.visuals.weather_temperature_font_family().is_none());
+    assert!(config.visuals.weather_temperature_font_weight().is_none());
     assert!(config.visuals.weather_temperature_size().is_none());
     assert!(config.visuals.weather_location_size().is_none());
     assert!(config.visuals.weather_icon_size().is_none());
@@ -401,6 +402,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             temperature_color = "#FFFFFF"
             location_color = "#D6E3FF"
             temperature_font_family = "Prototype"
+            temperature_font_weight = 600
             temperature_size = 4
             location_size = 2
             icon_size = 36
@@ -513,6 +515,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         config.visuals.weather_temperature_font_family(),
         Some("Prototype")
     );
+    assert_eq!(config.visuals.weather_temperature_font_weight(), Some(600));
     assert_eq!(config.visuals.weather_temperature_size(), Some(4));
     assert_eq!(config.visuals.weather_location_size(), Some(2));
     assert_eq!(config.visuals.weather_icon_size(), Some(36));

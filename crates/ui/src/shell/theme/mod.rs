@@ -58,6 +58,7 @@ pub struct ShellTheme {
     pub weather_temperature_color: Option<ClearColor>,
     pub weather_location_color: Option<ClearColor>,
     pub weather_temperature_font_family: Option<String>,
+    pub weather_temperature_font_weight: Option<u16>,
     pub weather_temperature_size: Option<u32>,
     pub weather_location_size: Option<u32>,
     pub weather_icon_size: Option<i32>,
@@ -152,6 +153,7 @@ impl ShellTheme {
                 .visuals
                 .weather_temperature_font_family()
                 .map(str::to_owned),
+            weather_temperature_font_weight: config.visuals.weather_temperature_font_weight(),
             weather_temperature_size: config.visuals.weather_temperature_size().map(u32::from),
             weather_location_size: config.visuals.weather_location_size().map(u32::from),
             weather_icon_size: config.visuals.weather_icon_size().map(i32::from),

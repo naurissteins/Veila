@@ -164,6 +164,8 @@ pub struct WeatherVisualConfig {
     #[serde(default)]
     pub temperature_font_family: Option<String>,
     #[serde(default)]
+    pub temperature_font_weight: Option<u16>,
+    #[serde(default)]
     pub temperature_size: Option<u16>,
     #[serde(default)]
     pub location_size: Option<u16>,
@@ -758,6 +760,12 @@ impl VisualConfig {
         self.weather
             .as_ref()
             .and_then(|weather| weather.temperature_font_family.as_deref())
+    }
+
+    pub fn weather_temperature_font_weight(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_font_weight)
     }
 
     pub fn weather_location_size(&self) -> Option<u16> {
