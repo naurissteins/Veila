@@ -14,6 +14,17 @@ fn measures_text_blocks() {
 }
 
 #[test]
+fn letter_spacing_increases_measured_text_width() {
+    let base_style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2);
+    let spaced_style = base_style.clone().with_letter_spacing(4);
+
+    let (base_width, _) = measure_text("29°C", base_style);
+    let (spaced_width, _) = measure_text("29°C", spaced_style);
+
+    assert!(spaced_width > base_width);
+}
+
+#[test]
 fn wraps_text_to_requested_width() {
     let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2);
     let block = wrap_text("one two three", style, 70);
@@ -25,10 +36,10 @@ fn wraps_text_to_requested_width() {
 #[test]
 fn reduces_scale_to_fit_narrow_widths() {
     let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 3);
-    let block = fit_wrapped_text("W", style, 10, 1);
+    let block = fit_wrapped_text("W", style, 14, 1);
 
     assert!(block.style.scale < 3);
-    assert!(block.width <= 10);
+    assert!(block.width <= 14);
 }
 
 #[test]

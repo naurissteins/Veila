@@ -4,7 +4,7 @@ use cosmic_text::{FontSystem, SwashCache, fontdb::Database};
 
 const BUNDLED_CLOCK_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/fonts/prototype.regular.ttf"
+    "/../../assets/fonts/Geom-SemiBold.ttf"
 ));
 const BUNDLED_WEATHER_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),

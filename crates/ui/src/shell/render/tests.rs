@@ -499,6 +499,36 @@ fn date_style_uses_configured_size() {
 }
 
 #[test]
+fn date_style_uses_configured_font_weight() {
+    let theme = ShellTheme {
+        date_font_weight: Some(600),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.date_text_style();
+
+    assert_eq!(style.font_weight, Some(600));
+}
+
+#[test]
+fn date_style_uses_configured_font_family() {
+    let theme = ShellTheme {
+        date_font_family: Some(String::from("Geom")),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.date_text_style();
+
+    assert!(
+        style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+}
+
+#[test]
 fn date_style_allows_sizes_above_previous_cap() {
     let theme = ShellTheme {
         date_size: Some(12),
@@ -523,6 +553,7 @@ fn weather_styles_use_configured_widget_size() {
         weather_size: Some(4),
         weather_temperature_font_family: Some(String::from("Prototype")),
         weather_temperature_font_weight: Some(600),
+        weather_temperature_letter_spacing: Some(2),
         weather_temperature_size: Some(12),
         weather_location_size: Some(2),
         ..ShellTheme::default()
@@ -538,6 +569,7 @@ fn weather_styles_use_configured_widget_size() {
     assert_eq!(temperature_style.color.red, 255);
     assert_eq!(location_style.color.red, 214);
     assert_eq!(temperature_style.line_spacing, 0);
+    assert_eq!(temperature_style.letter_spacing, 2);
     assert_eq!(location_style.line_spacing, 0);
     assert_eq!(temperature_style.font_weight, Some(600));
     assert!(

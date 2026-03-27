@@ -64,6 +64,11 @@ impl TextStyle {
         self
     }
 
+    pub fn with_letter_spacing(mut self, letter_spacing: u32) -> Self {
+        self.letter_spacing = letter_spacing;
+        self
+    }
+
     pub fn with_font_family(mut self, family: &str) -> Self {
         let trimmed = family.trim();
         if !trimmed.is_empty() {
@@ -154,9 +159,15 @@ pub(super) fn text_attrs(style: &TextStyle) -> cosmic_text::Attrs<'_> {
         None => cosmic_text::Attrs::new().family(cosmic_text::Family::SansSerif),
     };
 
-    match style.font_weight {
+    let attrs = match style.font_weight {
         Some(weight) => attrs.weight(cosmic_text::Weight(weight)),
         None => attrs,
+    };
+
+    if style.letter_spacing == 0 {
+        attrs
+    } else {
+        attrs.letter_spacing(style.letter_spacing as f32 / font_size(style).max(1.0))
     }
 }
 

@@ -88,6 +88,10 @@ pub struct ClockVisualConfig {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DateVisualConfig {
     #[serde(default)]
+    pub font_family: Option<String>,
+    #[serde(default)]
+    pub font_weight: Option<u16>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -167,6 +171,8 @@ pub struct WeatherVisualConfig {
     pub temperature_font_family: Option<String>,
     #[serde(default)]
     pub temperature_font_weight: Option<u16>,
+    #[serde(default)]
+    pub temperature_letter_spacing: Option<u16>,
     #[serde(default)]
     pub temperature_size: Option<u16>,
     #[serde(default)]
@@ -633,6 +639,16 @@ impl VisualConfig {
             .or(self.date_color)
     }
 
+    pub fn date_font_family(&self) -> Option<&str> {
+        self.date
+            .as_ref()
+            .and_then(|date| date.font_family.as_deref())
+    }
+
+    pub fn date_font_weight(&self) -> Option<u16> {
+        self.date.as_ref().and_then(|date| date.font_weight)
+    }
+
     pub fn date_opacity(&self) -> Option<u8> {
         self.date
             .as_ref()
@@ -778,6 +794,12 @@ impl VisualConfig {
         self.weather
             .as_ref()
             .and_then(|weather| weather.temperature_font_weight)
+    }
+
+    pub fn weather_temperature_letter_spacing(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_letter_spacing)
     }
 
     pub fn weather_location_size(&self) -> Option<u16> {

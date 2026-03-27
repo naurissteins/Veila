@@ -8,7 +8,7 @@ use super::{
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
 const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
 const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
-const DEFAULT_CLOCK_FONT_FAMILY: &str = "Prototype";
+const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
@@ -55,7 +55,7 @@ impl ShellState {
     }
 
     pub(crate) fn date_text_style(&self) -> TextStyle {
-        TextStyle::new(
+        let style = TextStyle::new(
             header_color(
                 self.theme.date_color.unwrap_or(self.theme.foreground),
                 self.theme.date_opacity,
@@ -66,7 +66,23 @@ impl ShellState {
                 .unwrap_or(2)
                 .clamp(1, MAX_HEADER_TEXT_SCALE),
         )
-        .with_line_spacing(0)
+        .with_line_spacing(0);
+
+        let style = match self
+            .theme
+            .date_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.date_font_family.clone())
+        {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        };
+
+        match self.theme.date_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        }
     }
 
     pub(crate) fn username_text_style(&self) -> TextStyle {
@@ -143,6 +159,10 @@ impl ShellState {
         };
         let style = match self.theme.weather_temperature_font_weight {
             Some(weight) => style.with_font_weight(weight),
+            None => style,
+        };
+        let style = match self.theme.weather_temperature_letter_spacing {
+            Some(letter_spacing) => style.with_letter_spacing(letter_spacing),
             None => style,
         };
 

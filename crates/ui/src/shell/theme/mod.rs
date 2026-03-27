@@ -36,6 +36,8 @@ pub struct ShellTheme {
     pub clock_font_weight: Option<u16>,
     pub clock_color: Option<ClearColor>,
     pub clock_opacity: Option<u8>,
+    pub date_font_family: Option<String>,
+    pub date_font_weight: Option<u16>,
     pub date_color: Option<ClearColor>,
     pub date_opacity: Option<u8>,
     pub clock_size: Option<u32>,
@@ -60,6 +62,7 @@ pub struct ShellTheme {
     pub weather_location_color: Option<ClearColor>,
     pub weather_temperature_font_family: Option<String>,
     pub weather_temperature_font_weight: Option<u16>,
+    pub weather_temperature_letter_spacing: Option<u32>,
     pub weather_temperature_size: Option<u32>,
     pub weather_location_size: Option<u32>,
     pub weather_icon_size: Option<i32>,
@@ -125,6 +128,8 @@ impl ShellTheme {
             clock_font_weight: config.visuals.clock_font_weight(),
             clock_color: config.visuals.clock_color().map(to_color),
             clock_opacity: config.visuals.clock_opacity(),
+            date_font_family: config.visuals.date_font_family().map(str::to_owned),
+            date_font_weight: config.visuals.date_font_weight(),
             date_color: config.visuals.date_color().map(to_color),
             date_opacity: config.visuals.date_opacity(),
             clock_size: config.visuals.clock_size().map(u32::from),
@@ -156,6 +161,10 @@ impl ShellTheme {
                 .weather_temperature_font_family()
                 .map(str::to_owned),
             weather_temperature_font_weight: config.visuals.weather_temperature_font_weight(),
+            weather_temperature_letter_spacing: config
+                .visuals
+                .weather_temperature_letter_spacing()
+                .map(u32::from),
             weather_temperature_size: config.visuals.weather_temperature_size().map(u32::from),
             weather_location_size: config.visuals.weather_location_size().map(u32::from),
             weather_icon_size: config.visuals.weather_icon_size().map(i32::from),

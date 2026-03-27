@@ -47,6 +47,8 @@ fn input_opacity_overrides_embedded_alpha() {
         gap: Some(10),
     });
     config.visuals.date = Some(DateVisualConfig {
+        font_family: Some(String::from("Geom")),
+        font_weight: Some(600),
         color: Some(ConfigColor::rgb(200, 212, 236)),
         opacity: Some(74),
         size: Some(3),
@@ -78,6 +80,7 @@ fn input_opacity_overrides_embedded_alpha() {
         location_color: Some(ConfigColor::rgb(214, 227, 255)),
         temperature_font_family: Some(String::from("Prototype")),
         temperature_font_weight: Some(600),
+        temperature_letter_spacing: Some(2),
         temperature_size: Some(4),
         location_size: Some(2),
         icon_size: Some(36),
@@ -136,6 +139,8 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_font_weight, Some(700));
     assert_eq!(theme.clock_color, Some(ClearColor::opaque(248, 251, 255)));
     assert_eq!(theme.clock_opacity, Some(96));
+    assert_eq!(theme.date_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.date_font_weight, Some(600));
     assert_eq!(theme.date_color, Some(ClearColor::opaque(200, 212, 236)));
     assert_eq!(theme.date_opacity, Some(74));
     assert_eq!(theme.clock_size, Some(4));
@@ -181,6 +186,7 @@ fn input_opacity_overrides_embedded_alpha() {
         Some("Prototype")
     );
     assert_eq!(theme.weather_temperature_font_weight, Some(600));
+    assert_eq!(theme.weather_temperature_letter_spacing, Some(2));
     assert_eq!(theme.weather_temperature_size, Some(4));
     assert_eq!(theme.weather_location_size, Some(2));
     assert_eq!(theme.weather_icon_size, Some(36));

@@ -63,6 +63,8 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_color().is_none());
     assert!(config.visuals.clock_opacity().is_none());
     assert!(config.visuals.date_color().is_none());
+    assert!(config.visuals.date_font_family().is_none());
+    assert!(config.visuals.date_font_weight().is_none());
     assert!(config.visuals.date_opacity().is_none());
     assert!(config.visuals.clock_size().is_none());
     assert!(config.visuals.date_size().is_none());
@@ -82,6 +84,12 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_location_color().is_none());
     assert!(config.visuals.weather_temperature_font_family().is_none());
     assert!(config.visuals.weather_temperature_font_weight().is_none());
+    assert!(
+        config
+            .visuals
+            .weather_temperature_letter_spacing()
+            .is_none()
+    );
     assert!(config.visuals.weather_temperature_size().is_none());
     assert!(config.visuals.weather_location_size().is_none());
     assert!(config.visuals.weather_icon_size().is_none());
@@ -374,6 +382,8 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             gap = 20
 
             [visuals.date]
+            font_family = "Geom"
+            font_weight = 600
             color = "#ffffff"
             opacity = 40
             size = 2
@@ -410,6 +420,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             location_color = "#D6E3FF"
             temperature_font_family = "Prototype"
             temperature_font_weight = 600
+            temperature_letter_spacing = 2
             temperature_size = 4
             location_size = 2
             icon_size = 36
@@ -475,6 +486,8 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         config.visuals.date_color(),
         Some(RgbColor::rgb(255, 255, 255))
     );
+    assert_eq!(config.visuals.date_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.date_font_weight(), Some(600));
     assert_eq!(config.visuals.date_opacity(), Some(40));
     assert_eq!(config.visuals.date_size(), Some(2));
     assert_eq!(
@@ -524,6 +537,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         Some("Prototype")
     );
     assert_eq!(config.visuals.weather_temperature_font_weight(), Some(600));
+    assert_eq!(config.visuals.weather_temperature_letter_spacing(), Some(2));
     assert_eq!(config.visuals.weather_temperature_size(), Some(4));
     assert_eq!(config.visuals.weather_location_size(), Some(2));
     assert_eq!(config.visuals.weather_icon_size(), Some(36));
