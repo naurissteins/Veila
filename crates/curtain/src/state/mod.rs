@@ -132,9 +132,10 @@ impl CurtainApp {
                 .as_deref()
                 .map(|path| path.display().to_string())
                 .unwrap_or_else(|| "defaults".to_string()),
+            background_mode = config.background.effective_mode().as_str(),
             background_image = config
                 .background
-                .path
+                .resolved_path()
                 .as_deref()
                 .map(|path| path.display().to_string()),
             "loaded curtain config"
@@ -163,7 +164,7 @@ impl CurtainApp {
             daemon_socket: options.daemon_socket,
             control_socket: options.control_socket,
             config_path: options.config_path,
-            background_path: config.background.path,
+            background_path: config.background.resolved_path(),
             auth_events,
             auth_sender,
             background_sender,

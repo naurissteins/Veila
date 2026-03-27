@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 
-pub use background::BackgroundConfig;
+pub use background::{BackgroundConfig, BackgroundMode};
 pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{

@@ -1,6 +1,6 @@
 use std::fs;
 
-use super::{AppConfig, InputVisualEntry, RgbColor};
+use super::{AppConfig, BackgroundMode, InputVisualEntry, RgbColor};
 
 #[test]
 fn parses_partial_config_with_defaults() {
@@ -17,8 +17,15 @@ fn parses_partial_config_with_defaults() {
     assert!(config.lock.username.is_none());
     assert!(config.lock.user_hint.is_none());
     assert!(config.lock.avatar_path.is_none());
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Bundled);
     assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));
     assert!(config.background.path.is_none());
+    assert!(
+        config
+            .background
+            .resolved_path()
+            .is_some_and(|path| path.ends_with("assets/bg/abstract-blur-blue.jpg"))
+    );
     assert_eq!(config.background.blur_radius, 0);
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());
@@ -98,6 +105,8 @@ fn loads_config_from_file() {
         &path,
         r##"
             [background]
+            mode = "file"
+            path = "/tmp/wallpaper.jpg"
             blur_radius = 6
             dim_strength = 40
             tint = "#080A0E99"
@@ -183,6 +192,14 @@ fn loads_config_from_file() {
         Some((56.9496, 24.1052))
     );
     assert_eq!(loaded.config.weather.refresh_minutes, 20);
+    assert_eq!(
+        loaded.config.background.effective_mode(),
+        BackgroundMode::File
+    );
+    assert_eq!(
+        loaded.config.background.resolved_path().as_deref(),
+        Some(std::path::Path::new("/tmp/wallpaper.jpg"))
+    );
     assert_eq!(loaded.config.background.blur_radius, 6);
     assert_eq!(loaded.config.background.dim_strength, 40);
     assert_eq!(
@@ -270,6 +287,38 @@ fn loads_config_from_file() {
 
     fs::remove_file(path).ok();
     fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn infers_file_mode_from_legacy_background_path() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [background]
+            path = "/tmp/wallpaper.jpg"
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::File);
+    assert_eq!(
+        config.background.resolved_path().as_deref(),
+        Some(std::path::Path::new("/tmp/wallpaper.jpg"))
+    );
+}
+
+#[test]
+fn solid_mode_disables_background_image_resolution() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [background]
+            mode = "solid"
+            path = "/tmp/wallpaper.jpg"
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Solid);
+    assert!(config.background.resolved_path().is_none());
 }
 
 #[test]

@@ -15,7 +15,7 @@ use veila_renderer::{
 use crate::app::output_probe;
 
 pub(super) fn spawn_background_prewarm(config: &AppConfig) {
-    let Some(path) = config.background.path.clone() else {
+    let Some(path) = config.background.resolved_path() else {
         return;
     };
     let fallback = to_clear_color(config.background.color);

@@ -30,7 +30,7 @@ impl CurtainApp {
                 return;
             }
         };
-        let background_path = config.background.path.clone();
+        let background_path = config.background.resolved_path();
 
         self.background_color = theme.background;
         self.background_asset = background_asset;
@@ -60,6 +60,7 @@ impl CurtainApp {
                 .as_deref()
                 .map(|path| path.display().to_string())
                 .unwrap_or_else(|| "defaults".to_string()),
+            background_mode = config.background.effective_mode().as_str(),
             background_image = background_path
                 .as_deref()
                 .map(|path| path.display().to_string()),
