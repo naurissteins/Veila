@@ -22,7 +22,7 @@ fn rasterize_parsed_icon(key: IconRasterKey, parsed: &ParsedIcon) -> Vec<u8> {
     let icon_width = parsed.viewbox.width * scale;
     let icon_height = parsed.viewbox.height * scale;
     let translate_x = ((key.width as f32 - icon_width) / 2.0).max(0.0);
-    let translate_y = ((key.height as f32 - icon_height) / 2.0).max(0.0);
+    let translate_y = svg_translate_y(key, icon_height);
     let transform = Transform::from_scale(scale, scale).post_translate(translate_x, translate_y);
     let mut paint = Paint::default();
     paint.set_color(skia_color(key.color));
@@ -112,6 +112,15 @@ fn normalize_svg_pixels(key: IconRasterKey, pixels: Vec<u8>) -> Vec<u8> {
     let transform = Transform::from_row(scale, 0.0, 0.0, scale, translate_x, translate_y);
     normalized.draw_pixmap(0, 0, source.as_ref(), &paint, transform, None);
     normalized.take()
+}
+
+pub(super) fn svg_translate_y(key: IconRasterKey, icon_height: f32) -> f32 {
+    let inset = key.padding.max(0) as f32;
+
+    match key.icon {
+        super::AssetIcon::Weather(_) => ((key.height as f32 - inset) - icon_height).max(inset),
+        _ => ((key.height as f32 - icon_height) / 2.0).max(0.0),
+    }
 }
 
 fn crop_visible_pixels(pixels: &[u8], width: u32, bounds: AlphaBounds) -> Vec<u8> {

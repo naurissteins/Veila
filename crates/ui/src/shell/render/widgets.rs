@@ -2,7 +2,7 @@ use veila_common::WeatherAlignment;
 use veila_renderer::{
     SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
-    icon::{AssetIcon, IconStyle, draw_icon},
+    icon::{AssetIcon, IconStyle, draw_icon, icon_visible_bounds},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::TextBlock,
@@ -163,21 +163,25 @@ pub(super) fn draw_weather_widget(
         weather.alignment,
     );
     let icon_rect = Rect::new(icon_x, icon_y, icon_size, icon_size);
-    let text_y = icon_y + icon_size + weather.icon_gap;
+    let icon_style = IconStyle::new(
+        veila_renderer::ClearColor::opaque(255, 255, 255).with_alpha(
+            weather
+                .icon_opacity
+                .map(percent_to_alpha)
+                .unwrap_or(u8::MAX),
+        ),
+    )
+    .with_padding(0);
+    let text_y = icon_visible_bounds(icon_rect, AssetIcon::Weather(weather.icon), icon_style)
+        .map(|bounds| bounds.y + bounds.height)
+        .unwrap_or(icon_y + icon_size)
+        + weather.icon_gap;
 
     draw_icon(
         buffer,
         icon_rect,
         AssetIcon::Weather(weather.icon),
-        IconStyle::new(
-            veila_renderer::ClearColor::opaque(255, 255, 255).with_alpha(
-                weather
-                    .icon_opacity
-                    .map(percent_to_alpha)
-                    .unwrap_or(u8::MAX),
-            ),
-        )
-        .with_padding(0),
+        icon_style,
     );
     weather.temperature.draw(buffer, temperature_x, text_y);
     weather.location.draw(

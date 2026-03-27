@@ -1,9 +1,10 @@
 use super::{
     AssetIcon, ICON_RASTER_CACHE, IconRasterKey, IconStyle, WeatherIcon, draw_icon, icon_source,
+    icon_visible_bounds,
     parser::extract_path_data,
     parser::extract_viewbox,
     parser::parse_path_data,
-    raster::{rasterize_icon, scale_svg_alpha, visible_alpha_bounds},
+    raster::{rasterize_icon, scale_svg_alpha, svg_translate_y, visible_alpha_bounds},
 };
 use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::Rect};
 
@@ -122,6 +123,40 @@ fn weather_svg_icons_trim_internal_transparent_bounds() {
     assert!(bounds.top <= 2);
     assert!(key.width - bounds.right <= 2);
     assert!(key.height - bounds.bottom <= 2);
+}
+
+#[test]
+fn reports_visible_weather_icon_bounds_inside_requested_rect() {
+    let rect = Rect::new(10, 20, 100, 100);
+    let bounds = icon_visible_bounds(
+        rect,
+        AssetIcon::Weather(WeatherIcon::Cloudy),
+        IconStyle::new(ClearColor::opaque(255, 255, 255)).with_padding(0),
+    )
+    .expect("visible bounds");
+
+    assert!(bounds.y >= rect.y);
+    assert!(bounds.y + bounds.height <= rect.y + rect.height);
+    assert!(bounds.height < rect.height);
+}
+
+#[test]
+fn wide_weather_icons_use_bottom_aligned_svg_translation() {
+    let weather_key = IconRasterKey {
+        icon: AssetIcon::Weather(WeatherIcon::Cloudy),
+        width: 64,
+        height: 64,
+        color: ClearColor::opaque(255, 255, 255),
+        padding: 0,
+    };
+    let generic_key = IconRasterKey {
+        icon: AssetIcon::Eye,
+        ..weather_key
+    };
+
+    assert!(svg_translate_y(weather_key, 40.0) > svg_translate_y(generic_key, 40.0));
+    assert_eq!(svg_translate_y(weather_key, 40.0), 24.0);
+    assert_eq!(svg_translate_y(generic_key, 40.0), 12.0);
 }
 
 #[test]
