@@ -141,14 +141,17 @@ fn resolves_bundled_weather_postscript_name_to_family_name() {
 }
 
 #[test]
-fn resolves_bundled_barlow_condensed_font_family_from_loaded_database() {
-    assert_eq!(resolve_font_family("Oswald").as_deref(), Some("Oswald"));
+fn resolves_bundled_google_sans_flex_font_family_from_loaded_database() {
+    assert_eq!(
+        resolve_font_family("Google Sans Flex").as_deref(),
+        Some("Google Sans Flex 72pt")
+    );
 }
 
 #[test]
-fn resolves_bundled_barlow_condensed_postscript_name_to_family_name() {
+fn resolves_bundled_google_sans_flex_postscript_name_to_family_name() {
     assert_eq!(
-        resolve_font_family("Oswald-Regular").as_deref(),
-        Some("Oswald")
+        resolve_font_family("GoogleSansFlex_72pt-Regular").as_deref(),
+        Some("Google Sans Flex 72pt")
     );
 }

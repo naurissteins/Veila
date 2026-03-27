@@ -18,6 +18,12 @@ impl Default for InputVisualEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InputVisualConfig {
     #[serde(default)]
+    pub font_family: Option<String>,
+    #[serde(default)]
+    pub font_weight: Option<u16>,
+    #[serde(default)]
+    pub font_size: Option<u16>,
+    #[serde(default)]
     pub background_color: Option<RgbColor>,
     #[serde(default)]
     pub background_opacity: Option<u8>,
@@ -59,6 +65,10 @@ pub struct AvatarVisualConfig {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UsernameVisualConfig {
+    #[serde(default)]
+    pub font_family: Option<String>,
+    #[serde(default)]
+    pub font_weight: Option<u16>,
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
@@ -191,6 +201,10 @@ pub struct WeatherVisualConfig {
     #[serde(default)]
     pub temperature_letter_spacing: Option<u16>,
     #[serde(default)]
+    pub location_font_family: Option<String>,
+    #[serde(default)]
+    pub location_font_weight: Option<u16>,
+    #[serde(default)]
     pub temperature_size: Option<u16>,
     #[serde(default)]
     pub location_size: Option<u16>,
@@ -245,6 +259,8 @@ pub struct NowPlayingVisualConfig {
     #[serde(default)]
     pub width: Option<u16>,
     #[serde(default)]
+    pub content_gap: Option<u16>,
+    #[serde(default)]
     pub text_gap: Option<u16>,
     #[serde(default)]
     pub artwork_size: Option<u16>,
@@ -292,6 +308,12 @@ pub struct VisualConfig {
     pub input: InputVisualEntry,
     #[serde(default)]
     pub input_opacity: Option<u8>,
+    #[serde(default)]
+    pub input_font_family: Option<String>,
+    #[serde(default)]
+    pub input_font_weight: Option<u16>,
+    #[serde(default)]
+    pub input_font_size: Option<u16>,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
     #[serde(default)]
@@ -428,6 +450,9 @@ impl Default for VisualConfig {
             panel_border: default_panel_border_color(),
             input: InputVisualEntry::default(),
             input_opacity: None,
+            input_font_family: None,
+            input_font_weight: None,
+            input_font_size: None,
             input_border: default_input_border_color(),
             input_border_opacity: None,
             input_width: None,
@@ -542,6 +567,30 @@ impl VisualConfig {
         }
     }
 
+    pub fn input_font_family(&self) -> Option<&str> {
+        match &self.input {
+            InputVisualEntry::Color(_) => self.input_font_family.as_deref(),
+            InputVisualEntry::Section(config) => config
+                .font_family
+                .as_deref()
+                .or(self.input_font_family.as_deref()),
+        }
+    }
+
+    pub fn input_font_weight(&self) -> Option<u16> {
+        match &self.input {
+            InputVisualEntry::Color(_) => self.input_font_weight,
+            InputVisualEntry::Section(config) => config.font_weight.or(self.input_font_weight),
+        }
+    }
+
+    pub fn input_font_size(&self) -> Option<u16> {
+        match &self.input {
+            InputVisualEntry::Color(_) => self.input_font_size,
+            InputVisualEntry::Section(config) => config.font_size.or(self.input_font_size),
+        }
+    }
+
     pub fn input_height(&self) -> Option<u16> {
         match &self.input {
             InputVisualEntry::Color(_) => self.input_height,
@@ -624,6 +673,18 @@ impl VisualConfig {
             .as_ref()
             .and_then(|username| username.color)
             .or(self.username_color)
+    }
+
+    pub fn username_font_family(&self) -> Option<&str> {
+        self.username
+            .as_ref()
+            .and_then(|username| username.font_family.as_deref())
+    }
+
+    pub fn username_font_weight(&self) -> Option<u16> {
+        self.username
+            .as_ref()
+            .and_then(|username| username.font_weight)
     }
 
     pub fn username_opacity(&self) -> Option<u8> {
@@ -903,6 +964,18 @@ impl VisualConfig {
             .and_then(|weather| weather.temperature_font_weight)
     }
 
+    pub fn weather_location_font_family(&self) -> Option<&str> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_font_family.as_deref())
+    }
+
+    pub fn weather_location_font_weight(&self) -> Option<u16> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_font_weight)
+    }
+
     pub fn weather_temperature_letter_spacing(&self) -> Option<u16> {
         self.weather
             .as_ref()
@@ -1057,6 +1130,12 @@ impl VisualConfig {
         self.now_playing
             .as_ref()
             .and_then(|now_playing| now_playing.width)
+    }
+
+    pub fn now_playing_content_gap(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.content_gap)
     }
 
     pub fn now_playing_text_gap(&self) -> Option<u16> {

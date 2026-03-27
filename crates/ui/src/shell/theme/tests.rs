@@ -12,6 +12,9 @@ use super::ShellTheme;
 fn input_opacity_overrides_embedded_alpha() {
     let mut config = AppConfig::default();
     config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
+        font_family: Some(String::from("Geom")),
+        font_weight: Some(600),
+        font_size: Some(3),
         background_color: Some(ConfigColor::rgba(255, 255, 255, 200)),
         background_opacity: Some(10),
         border_color: Some(ConfigColor::rgba(255, 255, 255, 180)),
@@ -33,6 +36,8 @@ fn input_opacity_overrides_embedded_alpha() {
         icon_color: Some(ConfigColor::rgb(232, 238, 249)),
     });
     config.visuals.username = Some(UsernameVisualConfig {
+        font_family: Some(String::from("Geom")),
+        font_weight: Some(600),
         color: Some(ConfigColor::rgb(215, 227, 255)),
         opacity: Some(72),
         size: Some(3),
@@ -85,6 +90,8 @@ fn input_opacity_overrides_embedded_alpha() {
         temperature_font_family: Some(String::from("Prototype")),
         temperature_font_weight: Some(600),
         temperature_letter_spacing: Some(2),
+        location_font_family: Some(String::from("Geom")),
+        location_font_weight: Some(500),
         temperature_size: Some(4),
         location_size: Some(2),
         icon_size: Some(36),
@@ -112,6 +119,7 @@ fn input_opacity_overrides_embedded_alpha() {
         title_size: Some(2),
         artist_size: Some(1),
         width: Some(280),
+        content_gap: Some(18),
         text_gap: Some(10),
         artwork_size: Some(64),
         artwork_radius: Some(16),
@@ -134,6 +142,9 @@ fn input_opacity_overrides_embedded_alpha() {
 
     assert_eq!(theme.input.alpha, 26);
     assert_eq!(theme.input_border.alpha, 31);
+    assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.input_font_weight, Some(600));
+    assert_eq!(theme.input_font_size, Some(3));
     assert_eq!(theme.avatar_background, ClearColor::opaque(24, 30, 42));
     assert_eq!(theme.input_width, Some(280));
     assert_eq!(theme.input_height, Some(54));
@@ -154,6 +165,8 @@ fn input_opacity_overrides_embedded_alpha() {
         theme.username_color,
         Some(ClearColor::opaque(215, 227, 255))
     );
+    assert_eq!(theme.username_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.username_font_weight, Some(600));
     assert_eq!(theme.username_opacity, Some(72));
     assert_eq!(theme.username_size, Some(3));
     assert_eq!(theme.avatar_gap, Some(14));
@@ -217,6 +230,8 @@ fn input_opacity_overrides_embedded_alpha() {
         Some("Prototype")
     );
     assert_eq!(theme.weather_temperature_font_weight, Some(600));
+    assert_eq!(theme.weather_location_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.weather_location_font_weight, Some(500));
     assert_eq!(theme.weather_temperature_letter_spacing, Some(2));
     assert_eq!(theme.weather_temperature_size, Some(4));
     assert_eq!(theme.weather_location_size, Some(2));
@@ -251,6 +266,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.now_playing_title_size, Some(2));
     assert_eq!(theme.now_playing_artist_size, Some(1));
     assert_eq!(theme.now_playing_width, Some(280));
+    assert_eq!(theme.now_playing_content_gap, Some(18));
     assert_eq!(theme.now_playing_text_gap, Some(10));
     assert_eq!(theme.now_playing_artwork_size, Some(64));
     assert_eq!(theme.now_playing_artwork_radius, Some(16));

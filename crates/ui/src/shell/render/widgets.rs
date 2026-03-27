@@ -42,6 +42,7 @@ pub(super) struct NowPlayingWidget<'a> {
     pub artwork_size: i32,
     pub artwork_radius: i32,
     pub width: Option<i32>,
+    pub content_gap: i32,
     pub text_gap: i32,
     pub right_padding: i32,
     pub bottom_padding: i32,
@@ -234,6 +235,11 @@ pub(super) fn draw_now_playing_widget(buffer: &mut SoftwareBuffer, widget: NowPl
     let has_artwork = widget.artwork.is_some();
     let artwork_size = widget.artwork_size.max(0);
     let artwork_width = if has_artwork { artwork_size } else { 0 };
+    let content_gap = if has_artwork {
+        widget.content_gap.max(0)
+    } else {
+        0
+    };
     let text_gap = widget.text_gap.max(0);
     let text_width = widget.artist.map_or(widget.title.width as i32, |artist| {
         (widget.title.width as i32).max(artist.width as i32)
@@ -241,11 +247,6 @@ pub(super) fn draw_now_playing_widget(buffer: &mut SoftwareBuffer, widget: NowPl
     let text_height = widget.artist.map_or(widget.title.height as i32, |artist| {
         widget.title.height as i32 + text_gap + artist.height as i32
     });
-    let content_gap = if has_artwork {
-        NOW_PLAYING_CONTENT_GAP
-    } else {
-        0
-    };
     let content_width = artwork_width + content_gap + text_width;
     let widget_width = widget
         .width

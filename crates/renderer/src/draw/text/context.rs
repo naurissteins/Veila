@@ -10,14 +10,14 @@ const BUNDLED_WEATHER_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/fonts/Geom-SemiBold.ttf"
 ));
-const BUNDLED_BARLOW_CONDENSED_FONT: &[u8] = include_bytes!(concat!(
+const BUNDLED_GOOGLE_SANS_FLEX_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/fonts/Oswald-Regular.ttf"
+    "/../../assets/fonts/GoogleSansFlex_72pt-Regular.ttf"
 ));
 const BUNDLED_FONTS: [&[u8]; 3] = [
     BUNDLED_CLOCK_FONT,
     BUNDLED_WEATHER_FONT,
-    BUNDLED_BARLOW_CONDENSED_FONT,
+    BUNDLED_GOOGLE_SANS_FLEX_FONT,
 ];
 
 #[derive(Debug)]

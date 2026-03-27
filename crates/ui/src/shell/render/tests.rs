@@ -294,6 +294,26 @@ fn username_style_uses_configured_opacity_and_size() {
 }
 
 #[test]
+fn username_style_uses_configured_font_family_and_weight() {
+    let theme = ShellTheme {
+        username_font_family: Some(String::from("Geom")),
+        username_font_weight: Some(600),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.username_text_style();
+
+    assert!(
+        style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+    assert_eq!(style.font_weight, Some(600));
+}
+
+#[test]
 fn username_style_uses_configured_color() {
     let theme = ShellTheme {
         username_color: Some(ClearColor::opaque(215, 227, 255)),
@@ -582,6 +602,8 @@ fn weather_styles_use_configured_widget_size() {
         weather_temperature_font_family: Some(String::from("Prototype")),
         weather_temperature_font_weight: Some(600),
         weather_temperature_letter_spacing: Some(2),
+        weather_location_font_family: Some(String::from("Geom")),
+        weather_location_font_weight: Some(500),
         weather_temperature_size: Some(12),
         weather_location_size: Some(2),
         ..ShellTheme::default()
@@ -600,12 +622,20 @@ fn weather_styles_use_configured_widget_size() {
     assert_eq!(temperature_style.letter_spacing, 2);
     assert_eq!(location_style.line_spacing, 0);
     assert_eq!(temperature_style.font_weight, Some(600));
+    assert_eq!(location_style.font_weight, Some(500));
     assert!(
         temperature_style
             .font_family
             .as_ref()
             .map(|family| format!("{family:?}"))
             .is_some_and(|debug| debug.contains("Prototype"))
+    );
+    assert!(
+        location_style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
     );
 }
 
@@ -622,6 +652,7 @@ fn now_playing_styles_use_configured_theme_values() {
         now_playing_artist_opacity: Some(54),
         now_playing_title_size: Some(3),
         now_playing_artist_size: Some(2),
+        now_playing_content_gap: Some(18),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -641,6 +672,7 @@ fn now_playing_styles_use_configured_theme_values() {
     assert_eq!(artist_style.color, ClearColor::rgba(200, 212, 236, 99));
     assert_eq!(artist_style.scale, 2);
     assert_eq!(artist_style.font_weight, Some(500));
+    assert_eq!(shell.theme.now_playing_content_gap, Some(18));
     assert!(
         artist_style
             .font_family
@@ -820,6 +852,38 @@ fn placeholder_style_uses_configured_color() {
     assert_eq!(style.color.green, 148);
     assert_eq!(style.color.blue, 180);
     assert_eq!(style.color.alpha, 153);
+}
+
+#[test]
+fn input_text_styles_use_configured_font_family_and_weight() {
+    let theme = ShellTheme {
+        input_font_family: Some(String::from("Geom")),
+        input_font_weight: Some(600),
+        input_font_size: Some(3),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let placeholder_style = shell.placeholder_text_style();
+    let revealed_secret_style = shell.revealed_secret_text_style();
+
+    assert!(
+        placeholder_style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+    assert_eq!(placeholder_style.font_weight, Some(600));
+    assert_eq!(placeholder_style.scale, 3);
+    assert!(
+        revealed_secret_style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+    assert_eq!(revealed_secret_style.font_weight, Some(600));
+    assert_eq!(revealed_secret_style.scale, 3);
 }
 
 #[test]

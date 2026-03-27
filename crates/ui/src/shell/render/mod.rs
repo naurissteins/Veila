@@ -8,7 +8,7 @@ mod widgets;
 
 pub(super) use cache::TextLayoutCache;
 
-use veila_renderer::{SoftwareBuffer, text::TextStyle};
+use veila_renderer::SoftwareBuffer;
 
 use self::{
     cache::SceneTextInputs,
@@ -244,7 +244,7 @@ impl ShellState {
                 let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
                     Some(self.text_layout_cache.borrow_mut().revealed_secret_block(
                         &self.secret,
-                        TextStyle::new(self.theme.foreground.with_alpha(236), 2),
+                        self.revealed_secret_text_style(),
                         metrics.input_width.saturating_sub(92) as u32,
                     ))
                 } else {
@@ -315,14 +315,18 @@ impl ShellState {
             .now_playing_artwork_size
             .unwrap_or(56)
             .clamp(32, 160);
+        let content_gap = self
+            .theme
+            .now_playing_content_gap
+            .unwrap_or(widgets::NOW_PLAYING_CONTENT_GAP)
+            .clamp(0, 96);
         let now_playing_width = self
             .theme
             .now_playing_width
             .map(|width| width.clamp(96, 640));
         let text_max_width = now_playing_width
             .map(|width| {
-                (width - artwork_size - widgets::NOW_PLAYING_CONTENT_GAP)
-                    .max(NOW_PLAYING_MIN_TEXT_WIDTH) as u32
+                (width - artwork_size - content_gap).max(NOW_PLAYING_MIN_TEXT_WIDTH) as u32
             })
             .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH);
         let base_bottom_padding = self
@@ -351,6 +355,7 @@ impl ShellState {
                 buffer,
                 previous,
                 artwork_size,
+                content_gap,
                 now_playing_width,
                 text_max_width,
                 bottom_padding,
@@ -364,6 +369,7 @@ impl ShellState {
                 buffer,
                 now_playing,
                 artwork_size,
+                content_gap,
                 now_playing_width,
                 text_max_width,
                 bottom_padding,
@@ -378,6 +384,7 @@ impl ShellState {
         buffer: &mut SoftwareBuffer,
         now_playing: &super::NowPlayingWidgetData,
         artwork_size: i32,
+        content_gap: i32,
         now_playing_width: Option<i32>,
         text_max_width: u32,
         bottom_padding: i32,
@@ -420,6 +427,7 @@ impl ShellState {
                     .unwrap_or(12)
                     .clamp(0, 80),
                 width: now_playing_width,
+                content_gap,
                 text_gap: self
                     .theme
                     .now_playing_text_gap

@@ -36,6 +36,9 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(config.weather.refresh_minutes, 15);
     assert_eq!(config.weather.unit, WeatherUnit::Celsius);
     assert!(matches!(config.visuals.input, InputVisualEntry::Color(_)));
+    assert!(config.visuals.input_font_family().is_none());
+    assert!(config.visuals.input_font_weight().is_none());
+    assert!(config.visuals.input_font_size().is_none());
     assert!(config.visuals.input_background_opacity().is_none());
     assert!(config.visuals.input_border_opacity().is_none());
     assert!(config.visuals.input_width().is_none());
@@ -88,6 +91,8 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_location_color().is_none());
     assert!(config.visuals.weather_temperature_font_family().is_none());
     assert!(config.visuals.weather_temperature_font_weight().is_none());
+    assert!(config.visuals.weather_location_font_family().is_none());
+    assert!(config.visuals.weather_location_font_weight().is_none());
     assert!(
         config
             .visuals
@@ -108,6 +113,8 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_bottom_padding().is_none());
     assert!(config.visuals.now_playing_title_color().is_none());
     assert!(config.visuals.now_playing_artist_color().is_none());
+    assert!(config.visuals.username_font_family().is_none());
+    assert!(config.visuals.username_font_weight().is_none());
     assert!(config.visuals.now_playing_fade_duration_ms().is_none());
     assert!(config.visuals.now_playing_title_font_family().is_none());
     assert!(config.visuals.now_playing_artist_font_family().is_none());
@@ -120,6 +127,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.now_playing_title_size().is_none());
     assert!(config.visuals.now_playing_artist_size().is_none());
     assert!(config.visuals.now_playing_width().is_none());
+    assert!(config.visuals.now_playing_content_gap().is_none());
     assert!(config.visuals.now_playing_text_gap().is_none());
     assert!(config.visuals.now_playing_artwork_size().is_none());
     assert!(config.visuals.now_playing_artwork_radius().is_none());
@@ -170,6 +178,9 @@ fn loads_config_from_file() {
             input_opacity = 10
             input_border = "#FFFFFF"
             input_border_opacity = 12
+            input_font_family = "Geom"
+            input_font_weight = 600
+            input_font_size = 3
             input_width = 280
             input_height = 54
             input_radius = 20
@@ -258,6 +269,9 @@ fn loads_config_from_file() {
         loaded.config.visuals.input_background_color(),
         RgbColor::rgb(255, 255, 255)
     );
+    assert_eq!(loaded.config.visuals.input_font_family(), Some("Geom"));
+    assert_eq!(loaded.config.visuals.input_font_weight(), Some(600));
+    assert_eq!(loaded.config.visuals.input_font_size(), Some(3));
     assert_eq!(loaded.config.visuals.input_background_opacity(), Some(10));
     assert_eq!(
         loaded.config.visuals.input_border_color(),
@@ -382,10 +396,13 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             clock_gap = 6
             foreground = "#111111"
 
-            [visuals.input]
-            background_color = "#FFFFFF"
-            background_opacity = 5
-            border_color = "#DDDDDD"
+[visuals.input]
+font_size = 3
+font_family = "Geom"
+font_weight = 600
+background_color = "#FFFFFF"
+background_opacity = 5
+border_color = "#DDDDDD"
             border_opacity = 12
             width = 310
             height = 54
@@ -404,6 +421,8 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             icon_color = "#ffffff"
 
             [visuals.username]
+            font_family = "Geom"
+            font_weight = 600
             color = "#ffffff"
             opacity = 84
             size = 4
@@ -461,6 +480,8 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             temperature_font_family = "Prototype"
             temperature_font_weight = 600
             temperature_letter_spacing = 2
+            location_font_family = "Geom"
+            location_font_weight = 500
             temperature_size = 4
             location_size = 2
             icon_size = 36
@@ -488,6 +509,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             title_size = 2
             artist_size = 1
             width = 280
+            content_gap = 18
             text_gap = 10
             artwork_size = 64
             artwork_radius = 16
@@ -513,6 +535,9 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         config.visuals.input_background_color(),
         RgbColor::rgb(255, 255, 255)
     );
+    assert_eq!(config.visuals.input_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.input_font_weight(), Some(600));
+    assert_eq!(config.visuals.input_font_size(), Some(3));
     assert_eq!(config.visuals.input_background_opacity(), Some(5));
     assert_eq!(
         config.visuals.input_border_color(),
@@ -533,6 +558,8 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         config.visuals.username_color(),
         Some(RgbColor::rgb(255, 255, 255))
     );
+    assert_eq!(config.visuals.username_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.username_font_weight(), Some(600));
     assert_eq!(config.visuals.username_opacity(), Some(84));
     assert_eq!(config.visuals.username_size(), Some(4));
     assert_eq!(config.visuals.username_gap(), Some(28));
@@ -604,6 +631,8 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         Some("Prototype")
     );
     assert_eq!(config.visuals.weather_temperature_font_weight(), Some(600));
+    assert_eq!(config.visuals.weather_location_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.weather_location_font_weight(), Some(500));
     assert_eq!(config.visuals.weather_temperature_letter_spacing(), Some(2));
     assert_eq!(config.visuals.weather_temperature_size(), Some(4));
     assert_eq!(config.visuals.weather_location_size(), Some(2));
@@ -642,6 +671,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
     assert_eq!(config.visuals.now_playing_title_size(), Some(2));
     assert_eq!(config.visuals.now_playing_artist_size(), Some(1));
     assert_eq!(config.visuals.now_playing_width(), Some(280));
+    assert_eq!(config.visuals.now_playing_content_gap(), Some(18));
     assert_eq!(config.visuals.now_playing_text_gap(), Some(10));
     assert_eq!(config.visuals.now_playing_artwork_size(), Some(64));
     assert_eq!(config.visuals.now_playing_artwork_radius(), Some(16));

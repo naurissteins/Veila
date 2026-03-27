@@ -10,6 +10,7 @@ const MAX_CLOCK_MERIDIEM_SCALE: u32 = 8;
 const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
 const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
+const MAX_INPUT_TEXT_SCALE: u32 = 6;
 const MAX_NOW_PLAYING_TITLE_SCALE: u32 = 4;
 const MAX_NOW_PLAYING_ARTIST_SCALE: u32 = 3;
 
@@ -126,24 +127,47 @@ impl ShellState {
     }
 
     pub(crate) fn username_text_style(&self) -> TextStyle {
-        TextStyle::new(
+        let style = TextStyle::new(
             username_color(
                 self.theme.username_color.unwrap_or(self.theme.foreground),
                 self.theme.username_opacity,
             ),
             self.theme.username_size.unwrap_or(2).clamp(1, 6),
-        )
+        );
+        let style = match self
+            .theme
+            .username_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.username_font_family.clone())
+        {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        };
+
+        match self.theme.username_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        }
     }
 
     pub(crate) fn placeholder_text_style(&self) -> TextStyle {
-        TextStyle::new(
+        let style = TextStyle::new(
             secondary_text_color(
                 self.theme.placeholder_color.unwrap_or(self.theme.muted),
                 self.theme.placeholder_opacity,
                 154,
             ),
-            2,
-        )
+            self.input_text_scale(),
+        );
+        self.apply_input_font(style)
+    }
+
+    pub(crate) fn revealed_secret_text_style(&self) -> TextStyle {
+        self.apply_input_font(TextStyle::new(
+            self.theme.foreground.with_alpha(236),
+            self.input_text_scale(),
+        ))
     }
 
     pub(crate) fn status_text_style(&self) -> TextStyle {
@@ -167,6 +191,31 @@ impl ShellState {
             1,
         )
         .with_line_spacing(0)
+    }
+
+    fn apply_input_font(&self, style: TextStyle) -> TextStyle {
+        let style = match self
+            .theme
+            .input_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.input_font_family.clone())
+        {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        };
+
+        match self.theme.input_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        }
+    }
+
+    fn input_text_scale(&self) -> u32 {
+        self.theme
+            .input_font_size
+            .unwrap_or(2)
+            .clamp(1, MAX_INPUT_TEXT_SCALE)
     }
 
     pub(crate) fn weather_temperature_text_style(&self) -> TextStyle {
@@ -225,15 +274,30 @@ impl ShellState {
             .theme
             .weather_location_color
             .unwrap_or(self.theme.muted);
-
-        TextStyle::new(
+        let style = TextStyle::new(
             base_color.with_alpha(scaled_alpha(
                 base_color.alpha.min(184),
                 self.theme.weather_location_opacity,
             )),
             location_scale,
         )
-        .with_line_spacing(0)
+        .with_line_spacing(0);
+
+        let style = match self
+            .theme
+            .weather_location_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.weather_location_font_family.clone())
+        {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        };
+
+        match self.theme.weather_location_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        }
     }
 
     pub(crate) fn now_playing_title_text_style(&self) -> TextStyle {
