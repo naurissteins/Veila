@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use veila_common::{WeatherCondition, WeatherSnapshot};
+use veila_common::{WeatherCondition, WeatherSnapshot, WeatherUnit};
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellKey, ShellState, ShellStatus};
@@ -178,6 +178,7 @@ fn weather_widget_requires_location_and_snapshot() {
         true,
         Some(String::from("Riga")),
         None,
+        WeatherUnit::Celsius,
     );
 
     assert!(shell.weather.is_none());
@@ -197,9 +198,31 @@ fn weather_widget_uses_snapshot_data() {
             condition: WeatherCondition::Rain,
             fetched_at_unix: 0,
         }),
+        WeatherUnit::Celsius,
     );
 
     let weather = shell.weather.as_ref().expect("weather widget");
     assert_eq!(weather.location, "Riga");
     assert_eq!(weather.temperature_text, "7°C");
+}
+
+#[test]
+fn weather_widget_formats_fahrenheit_when_configured() {
+    let shell = ShellState::new_with_username_and_weather(
+        Default::default(),
+        None,
+        None,
+        None,
+        true,
+        Some(String::from("Riga")),
+        Some(WeatherSnapshot {
+            temperature_celsius: 7,
+            condition: WeatherCondition::Rain,
+            fetched_at_unix: 0,
+        }),
+        WeatherUnit::Fahrenheit,
+    );
+
+    let weather = shell.weather.as_ref().expect("weather widget");
+    assert_eq!(weather.temperature_text, "45°F");
 }

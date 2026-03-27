@@ -24,7 +24,7 @@ pub use visuals::{
     PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, VisualConfig,
     WeatherAlignment, WeatherVisualConfig,
 };
-pub use weather::{GeoCoordinate, WeatherConfig};
+pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 
 pub type RgbColor = ConfigColor;
 

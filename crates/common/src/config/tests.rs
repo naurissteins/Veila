@@ -1,6 +1,6 @@
 use std::fs;
 
-use super::{AppConfig, BackgroundMode, InputVisualEntry, RgbColor};
+use super::{AppConfig, BackgroundMode, InputVisualEntry, RgbColor, WeatherUnit};
 
 #[test]
 fn parses_partial_config_with_defaults() {
@@ -34,6 +34,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.weather.location.is_none());
     assert!(config.weather.clone().coordinates().is_none());
     assert_eq!(config.weather.refresh_minutes, 15);
+    assert_eq!(config.weather.unit, WeatherUnit::Celsius);
     assert!(matches!(config.visuals.input, InputVisualEntry::Color(_)));
     assert!(config.visuals.input_background_opacity().is_none());
     assert!(config.visuals.input_border_opacity().is_none());
@@ -128,6 +129,7 @@ fn loads_config_from_file() {
             latitude = 56.9496
             longitude = 24.1052
             refresh_minutes = 20
+            unit = "fahrenheit"
 
             [visuals]
             avatar_background_color = "rgba(24, 30, 42, 0.82)"
@@ -195,6 +197,7 @@ fn loads_config_from_file() {
         Some((56.9496, 24.1052))
     );
     assert_eq!(loaded.config.weather.refresh_minutes, 20);
+    assert_eq!(loaded.config.weather.unit, WeatherUnit::Fahrenheit);
     assert_eq!(
         loaded.config.background.effective_mode(),
         BackgroundMode::File

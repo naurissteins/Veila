@@ -46,6 +46,7 @@ impl CurtainApp {
             config.lock.show_username,
             config.weather.normalized_location(),
             self.weather_snapshot.clone(),
+            config.weather.unit,
         );
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {

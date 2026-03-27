@@ -3,6 +3,14 @@ use serde::{Deserialize, Deserializer, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct GeoCoordinate(i32);
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum WeatherUnit {
+    #[default]
+    Celsius,
+    Fahrenheit,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherConfig {
     #[serde(default)]
@@ -15,6 +23,8 @@ pub struct WeatherConfig {
     pub longitude: Option<GeoCoordinate>,
     #[serde(default = "default_refresh_minutes")]
     pub refresh_minutes: u16,
+    #[serde(default)]
+    pub unit: WeatherUnit,
 }
 
 impl Default for WeatherConfig {
@@ -25,6 +35,7 @@ impl Default for WeatherConfig {
             latitude: None,
             longitude: None,
             refresh_minutes: default_refresh_minutes(),
+            unit: WeatherUnit::default(),
         }
     }
 }

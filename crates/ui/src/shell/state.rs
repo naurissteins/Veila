@@ -1,6 +1,6 @@
 use std::{cell::RefCell, path::PathBuf};
 
-use veila_common::WeatherSnapshot;
+use veila_common::{WeatherSnapshot, WeatherUnit};
 
 use super::{
     ClockState, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
@@ -23,6 +23,7 @@ impl ShellState {
             show_username,
             None,
             None,
+            WeatherUnit::default(),
         )
     }
 
@@ -41,9 +42,11 @@ impl ShellState {
             show_username,
             None,
             None,
+            WeatherUnit::default(),
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_username_and_weather(
         theme: ShellTheme,
         user_hint: Option<String>,
@@ -52,6 +55,7 @@ impl ShellState {
         show_username: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
     ) -> Self {
         Self::new_with_weather(
             theme,
@@ -61,9 +65,11 @@ impl ShellState {
             show_username,
             weather_location,
             weather_snapshot,
+            weather_unit,
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn new_with_weather(
         theme: ShellTheme,
         user_hint: Option<String>,
@@ -72,6 +78,7 @@ impl ShellState {
         show_username: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
     ) -> Self {
         Self {
             secret: String::new(),
@@ -89,7 +96,7 @@ impl ShellState {
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
             username_text: username_text(show_username, username_override),
-            weather: widget_data(weather_location, weather_snapshot),
+            weather: widget_data(weather_location, weather_snapshot, weather_unit),
             avatar: load_avatar(avatar_path),
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
         }
@@ -146,6 +153,7 @@ impl ShellState {
             show_username,
             None,
             None,
+            WeatherUnit::default(),
         );
     }
 
@@ -159,13 +167,14 @@ impl ShellState {
         show_username: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
     ) {
         self.theme = theme;
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
         self.username_text = username_text(show_username, username_override);
-        self.weather = widget_data(weather_location, weather_snapshot);
+        self.weather = widget_data(weather_location, weather_snapshot, weather_unit);
         self.avatar = load_avatar(avatar_path);
         self.bump_static_scene_revision();
     }

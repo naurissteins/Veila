@@ -123,6 +123,7 @@ impl CurtainApp {
             config.lock.show_username,
             config.weather.normalized_location(),
             options.weather_snapshot.clone(),
+            config.weather.unit,
         );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
 
