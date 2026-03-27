@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use veila_common::{WeatherCondition, WeatherSnapshot, WeatherUnit};
+use veila_common::{NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, WeatherUnit};
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellKey, ShellState, ShellStatus};
@@ -225,4 +225,28 @@ fn weather_widget_formats_fahrenheit_when_configured() {
 
     let weather = shell.weather.as_ref().expect("weather widget");
     assert_eq!(weather.temperature_text, "45°F");
+}
+
+#[test]
+fn now_playing_widget_uses_snapshot_data() {
+    let shell = ShellState::new_with_username_and_widgets(
+        Default::default(),
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::Celsius,
+        Some(NowPlayingSnapshot {
+            title: String::from("Northern Attitude"),
+            artist: Some(String::from("Noah Kahan")),
+            artwork_path: None,
+            fetched_at_unix: 0,
+        }),
+    );
+
+    let now_playing = shell.now_playing.as_ref().expect("now playing widget");
+    assert_eq!(now_playing.title, "Northern Attitude");
+    assert_eq!(now_playing.artist.as_deref(), Some("Noah Kahan"));
 }

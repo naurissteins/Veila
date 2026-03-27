@@ -10,7 +10,15 @@ const BUNDLED_WEATHER_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/fonts/Geom-SemiBold.ttf"
 ));
-const BUNDLED_FONTS: [&[u8]; 2] = [BUNDLED_CLOCK_FONT, BUNDLED_WEATHER_FONT];
+const BUNDLED_BARLOW_CONDENSED_FONT: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/fonts/Oswald-Regular.ttf"
+));
+const BUNDLED_FONTS: [&[u8]; 3] = [
+    BUNDLED_CLOCK_FONT,
+    BUNDLED_WEATHER_FONT,
+    BUNDLED_BARLOW_CONDENSED_FONT,
+];
 
 #[derive(Debug)]
 pub(super) struct FontContext {

@@ -582,6 +582,69 @@ fn weather_styles_use_configured_widget_size() {
 }
 
 #[test]
+fn now_playing_styles_use_configured_theme_values() {
+    let theme = ShellTheme {
+        now_playing_title_color: Some(ClearColor::opaque(248, 251, 255)),
+        now_playing_artist_color: Some(ClearColor::opaque(200, 212, 236)),
+        now_playing_title_font_family: Some("Geom".to_owned()),
+        now_playing_artist_font_family: Some("Prototype".to_owned()),
+        now_playing_title_font_weight: Some(700),
+        now_playing_artist_font_weight: Some(500),
+        now_playing_title_opacity: Some(88),
+        now_playing_artist_opacity: Some(54),
+        now_playing_title_size: Some(3),
+        now_playing_artist_size: Some(2),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let title_style = shell.now_playing_title_text_style();
+    let artist_style = shell.now_playing_artist_text_style();
+
+    assert_eq!(title_style.color, ClearColor::rgba(248, 251, 255, 208));
+    assert_eq!(title_style.scale, 3);
+    assert_eq!(title_style.font_weight, Some(700));
+    assert!(
+        title_style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+    assert_eq!(artist_style.color, ClearColor::rgba(200, 212, 236, 99));
+    assert_eq!(artist_style.scale, 2);
+    assert_eq!(artist_style.font_weight, Some(500));
+    assert!(
+        artist_style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Prototype"))
+    );
+}
+
+#[test]
+fn now_playing_blocks_stay_single_line_and_truncate() {
+    let mut cache = TextLayoutCache::default();
+    let title = cache.now_playing_title_block(
+        "An extremely long track title that should not wrap to a second line",
+        TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        120,
+    );
+    let artist = cache.now_playing_artist_block(
+        "A very long artist name that should also truncate",
+        TextStyle::new(ClearColor::opaque(200, 212, 236), 1),
+        100,
+    );
+
+    assert_eq!(title.lines.len(), 1);
+    assert_eq!(artist.lines.len(), 1);
+    assert!(title.width <= 120);
+    assert!(artist.width <= 100);
+    assert!(title.lines[0].ends_with("..."));
+    assert!(artist.lines[0].ends_with("..."));
+}
+
+#[test]
 fn text_layout_cache_uses_configured_weather_icon_size() {
     let mut cache = TextLayoutCache::default();
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);

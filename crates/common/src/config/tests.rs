@@ -102,6 +102,26 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_horizontal_padding().is_none());
     assert!(config.visuals.weather_left_padding().is_none());
     assert!(config.visuals.weather_bottom_padding().is_none());
+    assert!(config.visuals.now_playing_title_color().is_none());
+    assert!(config.visuals.now_playing_artist_color().is_none());
+    assert!(config.visuals.now_playing_title_font_family().is_none());
+    assert!(config.visuals.now_playing_artist_font_family().is_none());
+    assert!(config.visuals.now_playing_title_font_weight().is_none());
+    assert!(config.visuals.now_playing_artist_font_weight().is_none());
+    assert!(config.visuals.now_playing_opacity().is_none());
+    assert!(config.visuals.now_playing_title_opacity().is_none());
+    assert!(config.visuals.now_playing_artist_opacity().is_none());
+    assert!(config.visuals.now_playing_artwork_opacity().is_none());
+    assert!(config.visuals.now_playing_title_size().is_none());
+    assert!(config.visuals.now_playing_artist_size().is_none());
+    assert!(config.visuals.now_playing_width().is_none());
+    assert!(config.visuals.now_playing_text_gap().is_none());
+    assert!(config.visuals.now_playing_artwork_size().is_none());
+    assert!(config.visuals.now_playing_artwork_radius().is_none());
+    assert!(config.visuals.now_playing_right_padding().is_none());
+    assert!(config.visuals.now_playing_bottom_padding().is_none());
+    assert!(config.visuals.now_playing_right_offset().is_none());
+    assert!(config.visuals.now_playing_bottom_offset().is_none());
     assert!(config.visuals.status_color().is_none());
     assert!(config.visuals.status_opacity().is_none());
     assert!(config.visuals.input_mask_color().is_none());
@@ -433,6 +453,28 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             horizontal_padding = 64
             bottom_padding = 72
 
+            [visuals.now_playing]
+            opacity = 72
+            title_opacity = 88
+            artist_opacity = 54
+            artwork_opacity = 61
+            title_color = "#F8FBFF"
+            artist_color = "#C8D4EC"
+            title_font_family = "Geom"
+            artist_font_family = "Prototype"
+            title_font_weight = 700
+            artist_font_weight = 500
+            title_size = 2
+            artist_size = 1
+            width = 280
+            text_gap = 10
+            artwork_size = 64
+            artwork_radius = 16
+            right_padding = 52
+            bottom_padding = 56
+            right_offset = -6
+            bottom_offset = 10
+
             [visuals.layout]
             header_top_offset = -12
             auth_stack_offset = 0
@@ -552,6 +594,35 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
     assert_eq!(config.visuals.weather_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.weather_left_padding(), Some(56));
     assert_eq!(config.visuals.weather_bottom_padding(), Some(72));
+    assert_eq!(
+        config.visuals.now_playing_title_color(),
+        Some(RgbColor::rgb(248, 251, 255))
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_color(),
+        Some(RgbColor::rgb(200, 212, 236))
+    );
+    assert_eq!(config.visuals.now_playing_title_font_family(), Some("Geom"));
+    assert_eq!(
+        config.visuals.now_playing_artist_font_family(),
+        Some("Prototype")
+    );
+    assert_eq!(config.visuals.now_playing_title_font_weight(), Some(700));
+    assert_eq!(config.visuals.now_playing_artist_font_weight(), Some(500));
+    assert_eq!(config.visuals.now_playing_opacity(), Some(72));
+    assert_eq!(config.visuals.now_playing_title_opacity(), Some(88));
+    assert_eq!(config.visuals.now_playing_artist_opacity(), Some(54));
+    assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(61));
+    assert_eq!(config.visuals.now_playing_title_size(), Some(2));
+    assert_eq!(config.visuals.now_playing_artist_size(), Some(1));
+    assert_eq!(config.visuals.now_playing_width(), Some(280));
+    assert_eq!(config.visuals.now_playing_text_gap(), Some(10));
+    assert_eq!(config.visuals.now_playing_artwork_size(), Some(64));
+    assert_eq!(config.visuals.now_playing_artwork_radius(), Some(16));
+    assert_eq!(config.visuals.now_playing_right_padding(), Some(52));
+    assert_eq!(config.visuals.now_playing_bottom_padding(), Some(56));
+    assert_eq!(config.visuals.now_playing_right_offset(), Some(-6));
+    assert_eq!(config.visuals.now_playing_bottom_offset(), Some(10));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(

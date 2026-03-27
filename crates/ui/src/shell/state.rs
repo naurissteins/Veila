@@ -1,10 +1,11 @@
 use std::{cell::RefCell, path::PathBuf};
 
-use veila_common::{WeatherSnapshot, WeatherUnit};
+use veila_common::{NowPlayingSnapshot, WeatherSnapshot, WeatherUnit};
 
 use super::{
     ClockState, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
     avatar::{load_avatar, username_text},
+    now_playing::widget_data as now_playing_widget_data,
     weather::widget_data,
 };
 
@@ -24,6 +25,7 @@ impl ShellState {
             None,
             None,
             WeatherUnit::default(),
+            None,
         )
     }
 
@@ -43,6 +45,7 @@ impl ShellState {
             None,
             None,
             WeatherUnit::default(),
+            None,
         )
     }
 
@@ -57,6 +60,31 @@ impl ShellState {
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
     ) -> Self {
+        Self::new_with_username_and_widgets(
+            theme,
+            user_hint,
+            username_override,
+            avatar_path,
+            show_username,
+            weather_location,
+            weather_snapshot,
+            weather_unit,
+            None,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_username_and_widgets(
+        theme: ShellTheme,
+        user_hint: Option<String>,
+        username_override: Option<String>,
+        avatar_path: Option<PathBuf>,
+        show_username: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
+        now_playing_snapshot: Option<NowPlayingSnapshot>,
+    ) -> Self {
         Self::new_with_weather(
             theme,
             user_hint,
@@ -66,6 +94,7 @@ impl ShellState {
             weather_location,
             weather_snapshot,
             weather_unit,
+            now_playing_snapshot,
         )
     }
 
@@ -79,6 +108,7 @@ impl ShellState {
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
+        now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) -> Self {
         Self {
             secret: String::new(),
@@ -97,6 +127,7 @@ impl ShellState {
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
             username_text: username_text(show_username, username_override),
             weather: widget_data(weather_location, weather_snapshot, weather_unit),
+            now_playing: now_playing_widget_data(now_playing_snapshot),
             avatar: load_avatar(avatar_path),
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
         }
@@ -154,6 +185,7 @@ impl ShellState {
             None,
             None,
             WeatherUnit::default(),
+            None,
         );
     }
 
@@ -168,6 +200,7 @@ impl ShellState {
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
+        now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) {
         self.theme = theme;
         self.hint_text = user_hint
@@ -175,6 +208,7 @@ impl ShellState {
             .unwrap_or_else(|| String::from("Type your password to unlock"));
         self.username_text = username_text(show_username, username_override);
         self.weather = widget_data(weather_location, weather_snapshot, weather_unit);
+        self.now_playing = now_playing_widget_data(now_playing_snapshot);
         self.avatar = load_avatar(avatar_path);
         self.bump_static_scene_revision();
     }

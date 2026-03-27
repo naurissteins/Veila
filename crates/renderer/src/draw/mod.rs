@@ -1,4 +1,5 @@
 pub mod avatar;
+pub mod cover;
 pub mod icon;
 pub mod masked;
 pub mod panel;

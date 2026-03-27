@@ -139,6 +139,50 @@ pub fn wrap_text(text: &str, style: TextStyle, max_width: u32) -> TextBlock {
     layout_text_block(text, style, Some(max_width), cosmic_text::Wrap::WordOrGlyph)
 }
 
+pub fn fit_single_line_text(text: &str, style: TextStyle, max_width: u32) -> TextBlock {
+    let block = layout_text_block(
+        text,
+        style.clone(),
+        Some(max_width),
+        cosmic_text::Wrap::None,
+    );
+    if block.width <= max_width && block.lines.len() <= 1 {
+        return block;
+    }
+
+    let dots = fitting_ellipsis(style.clone(), max_width);
+    if dots.is_empty() {
+        return layout_text_block("", style, Some(max_width), cosmic_text::Wrap::None);
+    }
+
+    let chars: Vec<char> = text.chars().collect();
+    let mut low = 0usize;
+    let mut high = chars.len();
+    let mut best = dots.clone();
+
+    while low <= high {
+        let mid = (low + high) / 2;
+        let candidate = format!("{}{}", chars[..mid].iter().collect::<String>(), dots);
+        let block = layout_text_block(
+            &candidate,
+            style.clone(),
+            Some(max_width),
+            cosmic_text::Wrap::None,
+        );
+
+        if block.width <= max_width && block.lines.len() <= 1 {
+            best = candidate;
+            low = mid.saturating_add(1);
+        } else if mid == 0 {
+            break;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    layout_text_block(&best, style, Some(max_width), cosmic_text::Wrap::None)
+}
+
 pub fn fit_wrapped_text(text: &str, style: TextStyle, max_width: u32, min_scale: u32) -> TextBlock {
     let preferred_scale = style.scale.max(1);
     let min_scale = min_scale.max(1).min(preferred_scale);
@@ -151,6 +195,22 @@ pub fn fit_wrapped_text(text: &str, style: TextStyle, max_width: u32, min_scale:
     }
 
     wrap_text(text, style.with_scale(min_scale), max_width)
+}
+
+fn fitting_ellipsis(style: TextStyle, max_width: u32) -> String {
+    for dots in ["...", "..", "."] {
+        let block = layout_text_block(
+            dots,
+            style.clone(),
+            Some(max_width),
+            cosmic_text::Wrap::None,
+        );
+        if block.width <= max_width && block.lines.len() <= 1 {
+            return dots.to_owned();
+        }
+    }
+
+    String::new()
 }
 
 pub(super) fn text_attrs(style: &TextStyle) -> cosmic_text::Attrs<'_> {

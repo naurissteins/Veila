@@ -1,6 +1,7 @@
 mod avatar;
 mod clock;
 mod input;
+mod now_playing;
 mod pointer;
 mod render;
 mod state;
@@ -14,6 +15,7 @@ pub use theme::ShellTheme;
 use std::{cell::RefCell, time::Instant};
 
 use clock::ClockState;
+use now_playing::NowPlayingWidgetData;
 use render::TextLayoutCache;
 use veila_renderer::avatar::AvatarAsset;
 use weather::WeatherWidgetData;
@@ -58,6 +60,7 @@ pub struct ShellState {
     hint_text: String,
     username_text: Option<String>,
     weather: Option<WeatherWidgetData>,
+    now_playing: Option<NowPlayingWidgetData>,
     avatar: AvatarAsset,
     text_layout_cache: RefCell<TextLayoutCache>,
 }

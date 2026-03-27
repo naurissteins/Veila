@@ -1,7 +1,7 @@
 use veila_common::WeatherAlignment;
 use veila_renderer::{
     icon::WeatherIcon,
-    text::{TextBlock, TextStyle, fit_wrapped_text},
+    text::{TextBlock, TextStyle, fit_single_line_text, fit_wrapped_text},
 };
 
 use super::{
@@ -19,6 +19,8 @@ pub(crate) struct TextLayoutCache {
     pub(super) revealed_secret: CachedTextBlock,
     pub(super) caps_lock: CachedTextBlock,
     pub(super) status: CachedTextBlock,
+    pub(super) now_playing_title: CachedTextBlock,
+    pub(super) now_playing_artist: CachedTextBlock,
     pub(super) weather_temperature: CachedTextBlock,
     pub(super) weather_location: CachedTextBlock,
 }
@@ -169,6 +171,26 @@ impl TextLayoutCache {
     ) -> TextBlock {
         self.keyboard_layout.resolve(label, style, max_width, 1)
     }
+
+    pub(super) fn now_playing_title_block(
+        &mut self,
+        title: &str,
+        style: TextStyle,
+        max_width: u32,
+    ) -> TextBlock {
+        self.now_playing_title
+            .resolve_single_line(title, style, max_width)
+    }
+
+    pub(super) fn now_playing_artist_block(
+        &mut self,
+        artist: &str,
+        style: TextStyle,
+        max_width: u32,
+    ) -> TextBlock {
+        self.now_playing_artist
+            .resolve_single_line(artist, style, max_width)
+    }
 }
 
 impl CachedTextBlock {
@@ -207,5 +229,25 @@ impl CachedTextBlock {
     ) -> Option<TextBlock> {
         let text = text?;
         Some(self.resolve(text, style, max_width, min_scale))
+    }
+
+    fn resolve_single_line(&mut self, text: &str, style: TextStyle, max_width: u32) -> TextBlock {
+        let key = CachedTextKey {
+            text: text.to_string(),
+            style: style.clone(),
+            max_width,
+            min_scale: 0,
+        };
+
+        if self.key.as_ref() == Some(&key)
+            && let Some(block) = self.block.as_ref()
+        {
+            return block.clone();
+        }
+
+        let block = fit_single_line_text(text, style, max_width);
+        self.key = Some(key);
+        self.block = Some(block.clone());
+        block
     }
 }

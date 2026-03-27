@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio::net::UnixStream;
 use veila_common::{
-    LoadedConfig, WeatherSnapshot,
+    LoadedConfig, NowPlayingSnapshot, WeatherSnapshot,
     ipc::{DaemonControlMessage, DaemonControlResponse},
 };
 
@@ -26,6 +26,7 @@ pub(crate) async fn handle_control_connection(
     session_path: &str,
     loaded_config: &mut LoadedConfig,
     weather_snapshot: Option<&WeatherSnapshot>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
     weather: &WeatherHandle,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
@@ -54,6 +55,7 @@ pub(crate) async fn handle_control_connection(
                     state,
                     options.config_path.as_deref(),
                     weather_snapshot,
+                    now_playing_snapshot,
                     ActiveRuntime::new(
                         curtain,
                         auth_listener,

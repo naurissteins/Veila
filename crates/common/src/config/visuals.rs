@@ -198,6 +198,50 @@ pub struct WeatherVisualConfig {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct NowPlayingVisualConfig {
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub title_opacity: Option<u8>,
+    #[serde(default)]
+    pub artist_opacity: Option<u8>,
+    #[serde(default)]
+    pub artwork_opacity: Option<u8>,
+    #[serde(default)]
+    pub title_color: Option<RgbColor>,
+    #[serde(default)]
+    pub artist_color: Option<RgbColor>,
+    #[serde(default)]
+    pub title_font_family: Option<String>,
+    #[serde(default)]
+    pub artist_font_family: Option<String>,
+    #[serde(default)]
+    pub title_font_weight: Option<u16>,
+    #[serde(default)]
+    pub artist_font_weight: Option<u16>,
+    #[serde(default)]
+    pub title_size: Option<u16>,
+    #[serde(default)]
+    pub artist_size: Option<u16>,
+    #[serde(default)]
+    pub width: Option<u16>,
+    #[serde(default)]
+    pub text_gap: Option<u16>,
+    #[serde(default)]
+    pub artwork_size: Option<u16>,
+    #[serde(default)]
+    pub artwork_radius: Option<u16>,
+    #[serde(default)]
+    pub right_padding: Option<u16>,
+    #[serde(default)]
+    pub bottom_padding: Option<u16>,
+    #[serde(default)]
+    pub right_offset: Option<i16>,
+    #[serde(default)]
+    pub bottom_offset: Option<i16>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LayoutVisualConfig {
     #[serde(default)]
     pub auth_stack_offset: Option<i16>,
@@ -342,6 +386,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
+    pub now_playing: Option<NowPlayingVisualConfig>,
+    #[serde(default)]
     pub layout: Option<LayoutVisualConfig>,
     #[serde(default)]
     pub palette: Option<PaletteVisualConfig>,
@@ -411,6 +457,7 @@ impl Default for VisualConfig {
             eye: None,
             keyboard: None,
             weather: None,
+            now_playing: None,
             layout: None,
             palette: None,
         }
@@ -863,6 +910,129 @@ impl VisualConfig {
             .as_ref()
             .and_then(|weather| weather.alignment)
             .unwrap_or_default()
+    }
+
+    pub fn now_playing_title_color(&self) -> Option<RgbColor> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title_color)
+    }
+
+    pub fn now_playing_opacity(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.opacity)
+    }
+
+    pub fn now_playing_title_opacity(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title_opacity)
+            .or_else(|| self.now_playing_opacity())
+    }
+
+    pub fn now_playing_artist_opacity(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist_opacity)
+            .or_else(|| self.now_playing_opacity())
+    }
+
+    pub fn now_playing_artwork_opacity(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artwork_opacity)
+            .or_else(|| self.now_playing_opacity())
+    }
+
+    pub fn now_playing_artist_color(&self) -> Option<RgbColor> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist_color)
+    }
+
+    pub fn now_playing_title_font_family(&self) -> Option<&str> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title_font_family.as_deref())
+    }
+
+    pub fn now_playing_artist_font_family(&self) -> Option<&str> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist_font_family.as_deref())
+    }
+
+    pub fn now_playing_title_font_weight(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title_font_weight)
+    }
+
+    pub fn now_playing_artist_font_weight(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist_font_weight)
+    }
+
+    pub fn now_playing_title_size(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title_size)
+    }
+
+    pub fn now_playing_artist_size(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist_size)
+    }
+
+    pub fn now_playing_width(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.width)
+    }
+
+    pub fn now_playing_text_gap(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.text_gap)
+    }
+
+    pub fn now_playing_artwork_size(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artwork_size)
+    }
+
+    pub fn now_playing_artwork_radius(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artwork_radius)
+    }
+
+    pub fn now_playing_right_padding(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.right_padding)
+    }
+
+    pub fn now_playing_bottom_padding(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.bottom_padding)
+    }
+
+    pub fn now_playing_right_offset(&self) -> Option<i16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.right_offset)
+    }
+
+    pub fn now_playing_bottom_offset(&self) -> Option<i16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.bottom_offset)
     }
 
     pub fn status_color(&self) -> Option<RgbColor> {

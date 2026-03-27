@@ -1,8 +1,8 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    WeatherAlignment, WeatherVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -92,6 +92,28 @@ fn input_opacity_overrides_embedded_alpha() {
         left_padding: Some(56),
         horizontal_padding: Some(64),
         bottom_padding: Some(72),
+    });
+    config.visuals.now_playing = Some(NowPlayingVisualConfig {
+        opacity: Some(72),
+        title_opacity: Some(88),
+        artist_opacity: Some(54),
+        artwork_opacity: Some(61),
+        title_color: Some(ConfigColor::rgb(248, 251, 255)),
+        artist_color: Some(ConfigColor::rgb(200, 212, 236)),
+        title_font_family: Some("Geom".to_owned()),
+        artist_font_family: Some("Prototype".to_owned()),
+        title_font_weight: Some(700),
+        artist_font_weight: Some(500),
+        title_size: Some(2),
+        artist_size: Some(1),
+        width: Some(280),
+        text_gap: Some(10),
+        artwork_size: Some(64),
+        artwork_radius: Some(16),
+        right_padding: Some(52),
+        bottom_padding: Some(56),
+        right_offset: Some(-6),
+        bottom_offset: Some(10),
     });
     config.visuals.status = Some(StatusVisualConfig {
         color: Some(ConfigColor::rgb(255, 224, 160)),
@@ -197,6 +219,35 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.weather_bottom_offset, Some(-6));
     assert_eq!(theme.weather_horizontal_padding, Some(64));
     assert_eq!(theme.weather_bottom_padding, Some(72));
+    assert_eq!(
+        theme.now_playing_title_color,
+        Some(ClearColor::opaque(248, 251, 255))
+    );
+    assert_eq!(
+        theme.now_playing_artist_color,
+        Some(ClearColor::opaque(200, 212, 236))
+    );
+    assert_eq!(theme.now_playing_title_font_family.as_deref(), Some("Geom"));
+    assert_eq!(
+        theme.now_playing_artist_font_family.as_deref(),
+        Some("Prototype")
+    );
+    assert_eq!(theme.now_playing_title_font_weight, Some(700));
+    assert_eq!(theme.now_playing_artist_font_weight, Some(500));
+    assert_eq!(theme.now_playing_opacity, Some(72));
+    assert_eq!(theme.now_playing_title_opacity, Some(88));
+    assert_eq!(theme.now_playing_artist_opacity, Some(54));
+    assert_eq!(theme.now_playing_artwork_opacity, Some(61));
+    assert_eq!(theme.now_playing_title_size, Some(2));
+    assert_eq!(theme.now_playing_artist_size, Some(1));
+    assert_eq!(theme.now_playing_width, Some(280));
+    assert_eq!(theme.now_playing_text_gap, Some(10));
+    assert_eq!(theme.now_playing_artwork_size, Some(64));
+    assert_eq!(theme.now_playing_artwork_radius, Some(16));
+    assert_eq!(theme.now_playing_right_padding, Some(52));
+    assert_eq!(theme.now_playing_bottom_padding, Some(56));
+    assert_eq!(theme.now_playing_right_offset, Some(-6));
+    assert_eq!(theme.now_playing_bottom_offset, Some(10));
     assert_eq!(theme.status_color, Some(ClearColor::opaque(255, 224, 160)));
     assert_eq!(theme.status_opacity, Some(88));
     assert_eq!(

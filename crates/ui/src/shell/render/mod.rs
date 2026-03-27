@@ -15,11 +15,17 @@ use self::{
     layout::{AnchorOffsets, RoleAnchors, SceneMetrics, role_anchors, top_role_top},
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
-        InputWidget, draw_avatar_widget, draw_centered_block, draw_input_content, draw_input_shell,
-        draw_top_right_block, draw_weather_widget, input_toggle_hitbox,
+        InputWidget, NowPlayingWidget, draw_avatar_widget, draw_centered_block, draw_input_content,
+        draw_input_shell, draw_now_playing_widget, draw_top_right_block, draw_weather_widget,
+        input_toggle_hitbox,
     },
 };
 use super::{ShellState, ShellStatus};
+
+const NOW_PLAYING_RIGHT_PADDING: i32 = 48;
+const NOW_PLAYING_BOTTOM_PADDING: i32 = 48;
+const NOW_PLAYING_MAX_TEXT_WIDTH: u32 = 240;
+const NOW_PLAYING_MIN_TEXT_WIDTH: i32 = 64;
 
 #[derive(Debug, Clone)]
 struct SceneLayout {
@@ -62,6 +68,7 @@ impl ShellState {
             layout.anchors.footer_y,
             false,
         );
+        self.render_now_playing_widget(buffer, &layout);
     }
 
     pub fn render_dynamic_overlay(&self, buffer: &mut SoftwareBuffer) {
@@ -279,6 +286,96 @@ impl ShellState {
             self.theme.keyboard_background_color,
             self.theme.keyboard_background_size,
             &block,
+        );
+    }
+
+    fn render_now_playing_widget(&self, buffer: &mut SoftwareBuffer, layout: &SceneLayout) {
+        let Some(now_playing) = self.now_playing.as_ref() else {
+            return;
+        };
+
+        let mut text_layout_cache = self.text_layout_cache.borrow_mut();
+        let artwork_size = self
+            .theme
+            .now_playing_artwork_size
+            .unwrap_or(56)
+            .clamp(32, 160);
+        let now_playing_width = self
+            .theme
+            .now_playing_width
+            .map(|width| width.clamp(96, 640));
+        let text_max_width = now_playing_width
+            .map(|width| {
+                (width - artwork_size - widgets::NOW_PLAYING_CONTENT_GAP)
+                    .max(NOW_PLAYING_MIN_TEXT_WIDTH) as u32
+            })
+            .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH);
+        let title = text_layout_cache.now_playing_title_block(
+            &now_playing.title,
+            self.now_playing_title_text_style(),
+            text_max_width,
+        );
+        let artist = now_playing.artist.as_deref().map(|artist| {
+            text_layout_cache.now_playing_artist_block(
+                artist,
+                self.now_playing_artist_text_style(),
+                text_max_width,
+            )
+        });
+        let base_bottom_padding = self
+            .theme
+            .now_playing_bottom_padding
+            .unwrap_or(NOW_PLAYING_BOTTOM_PADDING)
+            .clamp(0, 512);
+        let bottom_padding = if self.theme.weather_alignment
+            == veila_common::WeatherAlignment::Right
+            && layout
+                .model
+                .sections_for_role(LayoutRole::Footer)
+                .next()
+                .is_some()
+        {
+            (buffer.size().height as i32 - layout.anchors.footer_y + 24).max(base_bottom_padding)
+        } else {
+            base_bottom_padding
+        };
+
+        draw_now_playing_widget(
+            buffer,
+            NowPlayingWidget {
+                artwork: now_playing.artwork.as_ref(),
+                title: &title,
+                artist: artist.as_ref(),
+                artwork_opacity: self.theme.now_playing_artwork_opacity,
+                artwork_size,
+                artwork_radius: self
+                    .theme
+                    .now_playing_artwork_radius
+                    .unwrap_or(12)
+                    .clamp(0, 80),
+                width: now_playing_width,
+                text_gap: self
+                    .theme
+                    .now_playing_text_gap
+                    .unwrap_or(widgets::NOW_PLAYING_TEXT_GAP)
+                    .clamp(0, 64),
+                right_padding: self
+                    .theme
+                    .now_playing_right_padding
+                    .unwrap_or(NOW_PLAYING_RIGHT_PADDING)
+                    .clamp(0, 512),
+                bottom_padding,
+                right_offset: self
+                    .theme
+                    .now_playing_right_offset
+                    .unwrap_or(0)
+                    .clamp(-512, 512),
+                bottom_offset: self
+                    .theme
+                    .now_playing_bottom_offset
+                    .unwrap_or(0)
+                    .clamp(-512, 512),
+            },
         );
     }
 

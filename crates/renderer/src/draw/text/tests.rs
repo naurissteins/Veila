@@ -1,6 +1,7 @@
 use super::{
     TextStyle, bundled_clock_font_family, bundled_clock_font_postscript_name, draw_text,
-    draw_text_with_shadow, fit_wrapped_text, measure_text, resolve_font_family, wrap_text,
+    draw_text_with_shadow, fit_single_line_text, fit_wrapped_text, measure_text,
+    resolve_font_family, wrap_text,
 };
 use crate::{ClearColor, FrameSize, ShadowStyle, SoftwareBuffer};
 
@@ -40,6 +41,16 @@ fn reduces_scale_to_fit_narrow_widths() {
 
     assert!(block.style.scale < 3);
     assert!(block.width <= 14);
+}
+
+#[test]
+fn truncates_single_line_text_with_ellipsis() {
+    let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2);
+    let block = fit_single_line_text("A very long now playing title", style, 120);
+
+    assert_eq!(block.lines.len(), 1);
+    assert!(block.width <= 120);
+    assert!(block.lines[0].ends_with("..."));
 }
 
 #[test]
@@ -126,5 +137,18 @@ fn resolves_bundled_weather_postscript_name_to_family_name() {
     assert_eq!(
         resolve_font_family("Geom-SemiBold").as_deref(),
         Some("Geom")
+    );
+}
+
+#[test]
+fn resolves_bundled_barlow_condensed_font_family_from_loaded_database() {
+    assert_eq!(resolve_font_family("Oswald").as_deref(), Some("Oswald"));
+}
+
+#[test]
+fn resolves_bundled_barlow_condensed_postscript_name_to_family_name() {
+    assert_eq!(
+        resolve_font_family("Oswald-Regular").as_deref(),
+        Some("Oswald")
     );
 }

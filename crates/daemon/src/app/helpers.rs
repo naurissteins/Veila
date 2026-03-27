@@ -6,7 +6,7 @@ use nix::unistd::{Uid, User};
 use veila_common::ipc::{
     DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
-use veila_common::{AppConfig, LoadedConfig, WeatherSnapshot};
+use veila_common::{AppConfig, LoadedConfig, NowPlayingSnapshot, WeatherSnapshot};
 
 use super::{
     prewarm,
@@ -22,16 +22,25 @@ use crate::{
     },
 };
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn activate_and_install(
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
 ) -> Result<()> {
-    let activation = activate_lock(session_proxy, state, config_path, weather_snapshot).await?;
+    let activation = activate_lock(
+        session_proxy,
+        state,
+        config_path,
+        weather_snapshot,
+        now_playing_snapshot,
+    )
+    .await?;
     runtime.install_activation(activation);
     *auth_state = AuthState::new(auth_policy);
     Ok(())
@@ -44,6 +53,7 @@ pub(super) async fn activate_and_log(
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
@@ -54,6 +64,7 @@ pub(super) async fn activate_and_log(
         state,
         config_path,
         weather_snapshot,
+        now_playing_snapshot,
         runtime,
         auth_policy,
         auth_state,

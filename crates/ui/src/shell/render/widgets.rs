@@ -2,6 +2,7 @@ use veila_common::WeatherAlignment;
 use veila_renderer::{
     SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
+    cover::CoverArtAsset,
     icon::{AssetIcon, IconStyle, draw_icon, icon_visible_bounds},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
@@ -15,6 +16,9 @@ use super::model::SceneWeatherBlocks;
 const TOGGLE_HITBOX_SIZE: i32 = 28;
 const TOGGLE_RIGHT_INSET: i32 = 14;
 const CONTENT_GAP_TO_TOGGLE: i32 = 10;
+pub(super) const NOW_PLAYING_CONTENT_GAP: i32 = 14;
+pub(super) const NOW_PLAYING_TEXT_GAP: i32 = 8;
+
 pub(super) struct InputWidget {
     pub rect: Rect,
     pub secret_len: usize,
@@ -28,6 +32,21 @@ pub(super) struct InputWidget {
     pub toggle_pressed: bool,
     pub toggle_style: IconStyle,
     pub caps_lock_indicator: Option<TextBlock>,
+}
+
+pub(super) struct NowPlayingWidget<'a> {
+    pub artwork: Option<&'a CoverArtAsset>,
+    pub title: &'a TextBlock,
+    pub artist: Option<&'a TextBlock>,
+    pub artwork_opacity: Option<u8>,
+    pub artwork_size: i32,
+    pub artwork_radius: i32,
+    pub width: Option<i32>,
+    pub text_gap: i32,
+    pub right_padding: i32,
+    pub bottom_padding: i32,
+    pub right_offset: i32,
+    pub bottom_offset: i32,
 }
 
 pub(super) fn draw_centered_block(
@@ -189,6 +208,61 @@ pub(super) fn draw_weather_widget(
         location_x,
         text_y + weather.temperature.height as i32 + weather.location_gap,
     );
+}
+
+pub(super) fn draw_now_playing_widget(buffer: &mut SoftwareBuffer, widget: NowPlayingWidget<'_>) {
+    let has_artwork = widget.artwork.is_some();
+    let artwork_size = widget.artwork_size.max(0);
+    let artwork_width = if has_artwork { artwork_size } else { 0 };
+    let text_gap = widget.text_gap.max(0);
+    let text_width = widget.artist.map_or(widget.title.width as i32, |artist| {
+        (widget.title.width as i32).max(artist.width as i32)
+    });
+    let text_height = widget.artist.map_or(widget.title.height as i32, |artist| {
+        widget.title.height as i32 + text_gap + artist.height as i32
+    });
+    let content_gap = if has_artwork {
+        NOW_PLAYING_CONTENT_GAP
+    } else {
+        0
+    };
+    let content_width = artwork_width + content_gap + text_width;
+    let widget_width = widget
+        .width
+        .map(|width| width.max(content_width))
+        .unwrap_or(content_width);
+    let widget_height = artwork_size.max(text_height);
+    let origin_x = (buffer.size().width as i32 - widget.right_padding - widget_width
+        + widget.right_offset)
+        .max(0);
+    let origin_y = (buffer.size().height as i32 - widget.bottom_padding - widget_height
+        + widget.bottom_offset)
+        .max(0);
+    let content_x = origin_x + (widget_width - content_width);
+    let artwork_y = origin_y + (widget_height - artwork_size) / 2;
+    let text_x = content_x + artwork_width + content_gap;
+    let text_y = origin_y + (widget_height - text_height) / 2;
+
+    if let Some(artwork) = widget.artwork {
+        artwork.draw(
+            buffer,
+            content_x,
+            artwork_y,
+            artwork_size as u32,
+            artwork_size as u32,
+            widget.artwork_radius,
+            widget.artwork_opacity,
+        );
+    }
+
+    if let Some(artist) = widget.artist {
+        artist.draw(buffer, text_x, text_y);
+        widget
+            .title
+            .draw(buffer, text_x, text_y + artist.height as i32 + text_gap);
+    } else {
+        widget.title.draw(buffer, text_x, text_y);
+    }
 }
 
 fn align_weather_line_x(

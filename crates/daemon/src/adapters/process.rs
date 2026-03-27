@@ -15,7 +15,7 @@ use tokio::{
     time::timeout,
 };
 use veila_common::{
-    WeatherSnapshot,
+    NowPlayingSnapshot, WeatherSnapshot,
     ipc::{CurtainControlMessage, encode_message},
 };
 
@@ -25,6 +25,7 @@ pub async fn spawn_curtain(
     control_socket: &Path,
     config_path: Option<&Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
 ) -> Result<Child> {
     let binary = curtain_binary_path()?;
     let mut command = Command::new(&binary);
@@ -38,6 +39,13 @@ pub async fn spawn_curtain(
         command.arg(format!(
             "--weather-snapshot={}",
             encode_message(weather_snapshot).context("failed to encode weather snapshot")?
+        ));
+    }
+    if let Some(now_playing_snapshot) = now_playing_snapshot {
+        command.arg(format!(
+            "--now-playing-snapshot={}",
+            encode_message(now_playing_snapshot)
+                .context("failed to encode now playing snapshot")?
         ));
     }
 

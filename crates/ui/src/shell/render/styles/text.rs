@@ -9,6 +9,8 @@ const MAX_HEADER_TEXT_SCALE: u32 = 24;
 const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
 const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
+const MAX_NOW_PLAYING_TITLE_SCALE: u32 = 4;
+const MAX_NOW_PLAYING_ARTIST_SCALE: u32 = 3;
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
@@ -193,6 +195,72 @@ impl ShellState {
             )),
             location_scale,
         )
+        .with_line_spacing(0)
+    }
+
+    pub(crate) fn now_playing_title_text_style(&self) -> TextStyle {
+        let base_color = self
+            .theme
+            .now_playing_title_color
+            .unwrap_or(self.theme.foreground);
+        let style = TextStyle::new(
+            base_color.with_alpha(scaled_alpha(
+                base_color.alpha.min(236),
+                self.theme.now_playing_title_opacity,
+            )),
+            self.theme
+                .now_playing_title_size
+                .unwrap_or(2)
+                .clamp(1, MAX_NOW_PLAYING_TITLE_SCALE),
+        );
+        let style = match self.theme.now_playing_title_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style.with_font_weight(600),
+        };
+        let family = self
+            .theme
+            .now_playing_title_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.now_playing_title_font_family.clone());
+
+        match family {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        }
+        .with_line_spacing(0)
+    }
+
+    pub(crate) fn now_playing_artist_text_style(&self) -> TextStyle {
+        let base_color = self
+            .theme
+            .now_playing_artist_color
+            .unwrap_or(self.theme.muted);
+        let style = TextStyle::new(
+            base_color.with_alpha(scaled_alpha(
+                base_color.alpha.min(184),
+                self.theme.now_playing_artist_opacity,
+            )),
+            self.theme
+                .now_playing_artist_size
+                .unwrap_or(1)
+                .clamp(1, MAX_NOW_PLAYING_ARTIST_SCALE),
+        );
+        let style = match self.theme.now_playing_artist_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        };
+        let family = self
+            .theme
+            .now_playing_artist_font_family
+            .as_deref()
+            .and_then(resolve_font_family)
+            .or_else(|| self.theme.now_playing_artist_font_family.clone());
+
+        match family {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        }
         .with_line_spacing(0)
     }
 }
