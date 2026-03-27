@@ -84,14 +84,15 @@ async fn run_weather_service(
 }
 
 async fn fetch_snapshot_async(config: WeatherConfig) -> Option<WeatherSnapshot> {
+    let location = config.normalized_location();
     match tokio::task::spawn_blocking(move || fetch_snapshot(&config)).await {
         Ok(Ok(snapshot)) => Some(snapshot),
         Ok(Err(error)) => {
-            tracing::warn!("weather refresh failed: {error:#}");
+            tracing::warn!(location = ?location, "weather refresh failed: {error:#}");
             None
         }
         Err(error) => {
-            tracing::warn!("weather refresh task failed: {error:#}");
+            tracing::warn!(location = ?location, "weather refresh task failed: {error:#}");
             None
         }
     }
@@ -170,6 +171,12 @@ fn cache_path_for_coordinates(latitude: f64, longitude: f64) -> Result<PathBuf> 
 
 fn resolve_coordinates(config: &WeatherConfig) -> Result<(f64, f64)> {
     if let Some((latitude, longitude)) = config.clone().coordinates() {
+        tracing::debug!(
+            location = ?config.normalized_location(),
+            latitude,
+            longitude,
+            "using explicit weather coordinates from config"
+        );
         return Ok((latitude, longitude));
     }
 
@@ -178,6 +185,12 @@ fn resolve_coordinates(config: &WeatherConfig) -> Result<(f64, f64)> {
         .context("weather location is not configured")?;
 
     if let Some((latitude, longitude)) = load_cached_coordinates(&location)? {
+        tracing::debug!(
+            %location,
+            latitude,
+            longitude,
+            "using cached geocoded weather coordinates"
+        );
         return Ok((latitude, longitude));
     }
 
@@ -201,6 +214,7 @@ fn cached_coordinates(config: &WeatherConfig) -> Result<Option<(f64, f64)>> {
 }
 
 fn geocode_location(location: &str) -> Result<(f64, f64)> {
+    tracing::debug!(%location, "geocoding weather location");
     let response = ureq::get("https://geocoding-api.open-meteo.com/v1/search")
         .query("name", location)
         .query("count", "1")
@@ -211,8 +225,15 @@ fn geocode_location(location: &str) -> Result<(f64, f64)> {
     let payload: GeocodingResponse = response
         .into_json()
         .context("failed to decode Open-Meteo geocoding response")?;
-    first_geocoding_result(payload)
-        .with_context(|| format!("no geocoding results for weather location '{location}'"))
+    if let Some((latitude, longitude)) = first_geocoding_result(payload) {
+        return Ok((latitude, longitude));
+    }
+
+    tracing::warn!(
+        %location,
+        "weather location geocoding returned no results; check the configured place name"
+    );
+    anyhow::bail!("no geocoding results for weather location '{location}'")
 }
 
 fn first_geocoding_result(payload: GeocodingResponse) -> Option<(f64, f64)> {
