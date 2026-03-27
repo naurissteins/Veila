@@ -40,6 +40,7 @@ fn input_opacity_overrides_embedded_alpha() {
     });
     config.visuals.clock = Some(ClockVisualConfig {
         font_family: Some(String::from("Bebas Neue")),
+        font_weight: Some(700),
         color: Some(ConfigColor::rgb(248, 251, 255)),
         opacity: Some(96),
         size: Some(4),
@@ -132,6 +133,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.auth_stack_offset, Some(16));
     assert_eq!(theme.header_top_offset, Some(-12));
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
+    assert_eq!(theme.clock_font_weight, Some(700));
     assert_eq!(theme.clock_color, Some(ClearColor::opaque(248, 251, 255)));
     assert_eq!(theme.clock_opacity, Some(96));
     assert_eq!(theme.date_color, Some(ClearColor::opaque(200, 212, 236)));

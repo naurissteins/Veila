@@ -47,7 +47,11 @@ impl ShellState {
             .or_else(|| self.theme.clock_font_family.clone())
             .unwrap_or_else(|| String::from(DEFAULT_CLOCK_FONT_FAMILY));
 
-        style.with_font_family(&family)
+        let style = style.with_font_family(&family);
+        match self.theme.clock_font_weight {
+            Some(weight) => style.with_font_weight(weight),
+            None => style,
+        }
     }
 
     pub(crate) fn date_text_style(&self) -> TextStyle {

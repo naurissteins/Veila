@@ -74,6 +74,8 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
+    pub font_weight: Option<u16>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -266,6 +268,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub clock_font_family: Option<String>,
     #[serde(default)]
+    pub clock_font_weight: Option<u16>,
+    #[serde(default)]
     pub clock_color: Option<RgbColor>,
     #[serde(default)]
     pub clock_opacity: Option<u8>,
@@ -367,6 +371,7 @@ impl Default for VisualConfig {
             auth_stack_offset: None,
             header_top_offset: None,
             clock_font_family: None,
+            clock_font_weight: None,
             clock_color: None,
             clock_opacity: None,
             date_color: None,
@@ -591,6 +596,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.font_family.as_deref())
             .or(self.clock_font_family.as_deref())
+    }
+
+    pub fn clock_font_weight(&self) -> Option<u16> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.font_weight)
+            .or(self.clock_font_weight)
     }
 
     pub fn clock_color(&self) -> Option<RgbColor> {

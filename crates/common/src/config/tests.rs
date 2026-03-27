@@ -58,6 +58,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.auth_stack_offset().is_none());
     assert!(config.visuals.header_top_offset().is_none());
     assert!(config.visuals.clock_font_family().is_none());
+    assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_color().is_none());
     assert!(config.visuals.clock_opacity().is_none());
     assert!(config.visuals.date_color().is_none());
@@ -154,6 +155,7 @@ fn loads_config_from_file() {
             auth_stack_offset = 16
             header_top_offset = -12
             clock_font_family = "Bebas Neue"
+            clock_font_weight = 700
             clock_color = "#F8FBFF"
             clock_opacity = 96
             date_color = "#C8D4EC"
@@ -254,6 +256,7 @@ fn loads_config_from_file() {
         loaded.config.visuals.clock_font_family(),
         Some("Bebas Neue")
     );
+    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(700));
     assert_eq!(
         loaded.config.visuals.clock_color(),
         Some(RgbColor::rgb(248, 251, 255))
@@ -361,6 +364,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
 
             [visuals.clock]
             font_family = "Prototype"
+            font_weight = 700
             color = "#ffffff"
             opacity = 40
             size = 14
@@ -456,6 +460,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
     assert_eq!(config.visuals.username_size(), Some(4));
     assert_eq!(config.visuals.username_gap(), Some(28));
     assert_eq!(config.visuals.clock_font_family(), Some("Prototype"));
+    assert_eq!(config.visuals.clock_font_weight(), Some(700));
     assert_eq!(
         config.visuals.clock_color(),
         Some(RgbColor::rgb(255, 255, 255))

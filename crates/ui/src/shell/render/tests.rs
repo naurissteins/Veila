@@ -358,6 +358,7 @@ fn clock_style_uses_configured_font_family() {
         bundled_clock_font_family().expect("bundled clock font family should resolve");
     let theme = ShellTheme {
         clock_font_family: Some(bundled_family.clone()),
+        clock_font_weight: Some(700),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -370,6 +371,7 @@ fn clock_style_uses_configured_font_family() {
             .map(|family| format!("{family:?}"))
             .is_some_and(|debug| debug.contains(&bundled_family))
     );
+    assert_eq!(style.font_weight, Some(700));
 }
 
 #[test]
