@@ -270,7 +270,7 @@ fn now_playing_widget_uses_snapshot_data() {
 }
 
 #[test]
-fn updating_now_playing_snapshot_changes_static_scene_revision() {
+fn updating_now_playing_snapshot_starts_transition_without_static_scene_revision_change() {
     let mut shell = ShellState::default();
     let original = shell.static_scene_revision();
 
@@ -281,7 +281,8 @@ fn updating_now_playing_snapshot_changes_static_scene_revision() {
         fetched_at_unix: 1,
     }));
 
-    assert!(shell.static_scene_revision() > original);
+    assert_eq!(shell.static_scene_revision(), original);
+    assert!(shell.now_playing_transition.is_some());
     assert_eq!(
         shell
             .now_playing
@@ -289,4 +290,42 @@ fn updating_now_playing_snapshot_changes_static_scene_revision() {
             .map(|widget| widget.title.as_str()),
         Some("Track")
     );
+}
+
+#[test]
+fn now_playing_transition_clears_after_fade_duration() {
+    let mut shell = ShellState::default();
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: Some(String::from("Artist")),
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+
+    assert!(shell.now_playing_transition.is_some());
+    thread::sleep(Duration::from_millis(500));
+
+    assert!(shell.advance_animated_state());
+    assert!(shell.now_playing_transition.is_none());
+}
+
+#[test]
+fn now_playing_transition_uses_configured_fade_duration() {
+    let theme = ShellTheme {
+        now_playing_fade_duration_ms: Some(10),
+        ..ShellTheme::default()
+    };
+    let mut shell = ShellState::new(theme, None, None, true);
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: Some(String::from("Artist")),
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+
+    assert!(shell.now_playing_transition.is_some());
+    thread::sleep(Duration::from_millis(20));
+
+    assert!(shell.advance_animated_state());
+    assert!(shell.now_playing_transition.is_none());
 }

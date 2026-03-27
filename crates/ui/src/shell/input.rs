@@ -2,6 +2,8 @@ use std::time::{Duration, Instant};
 
 use super::{ShellAction, ShellKey, ShellState, ShellStatus, avatar::current_retry_seconds};
 
+const DEFAULT_NOW_PLAYING_FADE_DURATION_MS: u64 = 450;
+
 impl ShellState {
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
         match key {
@@ -54,18 +56,25 @@ impl ShellState {
     }
 
     pub fn advance_animated_state(&mut self) -> bool {
-        let clock_changed = self.clock.refresh();
+        let mut changed = self.clock.refresh();
+        let fade_duration = self.now_playing_fade_duration();
+        if let Some(transition) = self.now_playing_transition.as_ref() {
+            changed = true;
+            if transition.started_at.elapsed() >= fade_duration {
+                self.now_playing_transition = None;
+            }
+        }
         let ShellStatus::Rejected {
             retry_until,
             displayed_retry_seconds,
         } = &mut self.status
         else {
-            return clock_changed;
+            return changed;
         };
 
         let next_display = retry_until.and_then(current_retry_seconds);
         if *displayed_retry_seconds == next_display {
-            return clock_changed;
+            return changed;
         }
 
         *displayed_retry_seconds = next_display;
@@ -74,5 +83,25 @@ impl ShellState {
         }
 
         true
+    }
+
+    pub(super) fn now_playing_fade_progress(&self) -> Option<u8> {
+        let transition = self.now_playing_transition.as_ref()?;
+        let fade_duration = self.now_playing_fade_duration();
+        let elapsed = transition.started_at.elapsed();
+        let clamped = elapsed.min(fade_duration);
+        Some(
+            ((clamped.as_millis() * 100) / fade_duration.as_millis()).min(u128::from(u8::MAX))
+                as u8,
+        )
+    }
+
+    fn now_playing_fade_duration(&self) -> Duration {
+        Duration::from_millis(
+            self.theme
+                .now_playing_fade_duration_ms
+                .unwrap_or(DEFAULT_NOW_PLAYING_FADE_DURATION_MS)
+                .clamp(1, 10_000),
+        )
     }
 }

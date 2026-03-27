@@ -217,6 +217,8 @@ pub struct WeatherVisualConfig {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NowPlayingVisualConfig {
     #[serde(default)]
+    pub fade_duration_ms: Option<u16>,
+    #[serde(default)]
     pub opacity: Option<u8>,
     #[serde(default)]
     pub title_opacity: Option<u8>,
@@ -974,6 +976,12 @@ impl VisualConfig {
         self.now_playing
             .as_ref()
             .and_then(|now_playing| now_playing.title_color)
+    }
+
+    pub fn now_playing_fade_duration_ms(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.fade_duration_ms)
     }
 
     pub fn now_playing_opacity(&self) -> Option<u8> {

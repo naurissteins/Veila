@@ -98,6 +98,7 @@ fn input_opacity_overrides_embedded_alpha() {
         bottom_padding: Some(72),
     });
     config.visuals.now_playing = Some(NowPlayingVisualConfig {
+        fade_duration_ms: Some(320),
         opacity: Some(72),
         title_opacity: Some(88),
         artist_opacity: Some(54),
@@ -235,6 +236,7 @@ fn input_opacity_overrides_embedded_alpha() {
         theme.now_playing_artist_color,
         Some(ClearColor::opaque(200, 212, 236))
     );
+    assert_eq!(theme.now_playing_fade_duration_ms, Some(320));
     assert_eq!(theme.now_playing_title_font_family.as_deref(), Some("Geom"));
     assert_eq!(
         theme.now_playing_artist_font_family.as_deref(),

@@ -79,6 +79,7 @@ pub struct ShellTheme {
     pub weather_alignment: WeatherAlignment,
     pub now_playing_title_color: Option<ClearColor>,
     pub now_playing_artist_color: Option<ClearColor>,
+    pub now_playing_fade_duration_ms: Option<u64>,
     pub now_playing_title_font_family: Option<String>,
     pub now_playing_artist_font_family: Option<String>,
     pub now_playing_title_font_weight: Option<u16>,
@@ -205,6 +206,10 @@ impl ShellTheme {
             weather_alignment: config.visuals.weather_alignment(),
             now_playing_title_color: config.visuals.now_playing_title_color().map(to_color),
             now_playing_artist_color: config.visuals.now_playing_artist_color().map(to_color),
+            now_playing_fade_duration_ms: config
+                .visuals
+                .now_playing_fade_duration_ms()
+                .map(u64::from),
             now_playing_title_font_family: config
                 .visuals
                 .now_playing_title_font_family()

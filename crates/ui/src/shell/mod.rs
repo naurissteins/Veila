@@ -45,6 +45,12 @@ enum ShellStatus {
 }
 
 #[derive(Debug, Clone)]
+struct NowPlayingTransition {
+    previous: Option<NowPlayingWidgetData>,
+    started_at: Instant,
+}
+
+#[derive(Debug, Clone)]
 pub struct ShellState {
     secret: String,
     caps_lock_active: bool,
@@ -61,6 +67,7 @@ pub struct ShellState {
     username_text: Option<String>,
     weather: Option<WeatherWidgetData>,
     now_playing: Option<NowPlayingWidgetData>,
+    now_playing_transition: Option<NowPlayingTransition>,
     avatar: AvatarAsset,
     text_layout_cache: RefCell<TextLayoutCache>,
 }

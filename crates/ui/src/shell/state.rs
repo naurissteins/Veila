@@ -3,9 +3,9 @@ use std::{cell::RefCell, path::PathBuf};
 use veila_common::{NowPlayingSnapshot, WeatherSnapshot, WeatherUnit};
 
 use super::{
-    ClockState, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
+    ClockState, NowPlayingTransition, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
     avatar::{load_avatar, username_text},
-    now_playing::widget_data as now_playing_widget_data,
+    now_playing::{same_widget_data, widget_data as now_playing_widget_data},
     weather::widget_data,
 };
 
@@ -128,6 +128,7 @@ impl ShellState {
             username_text: username_text(show_username, username_override),
             weather: widget_data(weather_location, weather_snapshot, weather_unit),
             now_playing: now_playing_widget_data(now_playing_snapshot),
+            now_playing_transition: None,
             avatar: load_avatar(avatar_path),
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
         }
@@ -159,8 +160,16 @@ impl ShellState {
     }
 
     pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {
-        self.now_playing = now_playing_widget_data(snapshot);
-        self.bump_static_scene_revision();
+        let next = now_playing_widget_data(snapshot);
+        if same_widget_data(self.now_playing.as_ref(), next.as_ref()) {
+            return;
+        }
+
+        self.now_playing_transition = Some(NowPlayingTransition {
+            previous: self.now_playing.clone(),
+            started_at: std::time::Instant::now(),
+        });
+        self.now_playing = next;
     }
 
     pub fn apply_theme(
@@ -215,6 +224,7 @@ impl ShellState {
         self.username_text = username_text(show_username, username_override);
         self.weather = widget_data(weather_location, weather_snapshot, weather_unit);
         self.now_playing = now_playing_widget_data(now_playing_snapshot);
+        self.now_playing_transition = None;
         self.avatar = load_avatar(avatar_path);
         self.bump_static_scene_revision();
     }

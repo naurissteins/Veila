@@ -108,6 +108,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_bottom_padding().is_none());
     assert!(config.visuals.now_playing_title_color().is_none());
     assert!(config.visuals.now_playing_artist_color().is_none());
+    assert!(config.visuals.now_playing_fade_duration_ms().is_none());
     assert!(config.visuals.now_playing_title_font_family().is_none());
     assert!(config.visuals.now_playing_artist_font_family().is_none());
     assert!(config.visuals.now_playing_title_font_weight().is_none());
@@ -473,6 +474,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             bottom_padding = 72
 
             [visuals.now_playing]
+            fade_duration_ms = 320
             opacity = 72
             title_opacity = 88
             artist_opacity = 54
@@ -625,6 +627,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
         config.visuals.now_playing_artist_color(),
         Some(RgbColor::rgb(200, 212, 236))
     );
+    assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
     assert_eq!(config.visuals.now_playing_title_font_family(), Some("Geom"));
     assert_eq!(
         config.visuals.now_playing_artist_font_family(),
