@@ -98,10 +98,7 @@ async fn fetch_snapshot_async(config: WeatherConfig) -> Option<WeatherSnapshot> 
 }
 
 fn fetch_snapshot(config: &WeatherConfig) -> Result<WeatherSnapshot> {
-    let (latitude, longitude) = config
-        .clone()
-        .coordinates()
-        .context("weather is missing coordinates")?;
+    let (latitude, longitude) = resolve_coordinates(config)?;
     let url = format!(
         "https://api.open-meteo.com/v1/forecast?latitude={latitude:.6}&longitude={longitude:.6}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius"
     );
@@ -128,9 +125,7 @@ fn fetch_snapshot(config: &WeatherConfig) -> Result<WeatherSnapshot> {
 }
 
 fn weather_enabled(config: &WeatherConfig) -> bool {
-    config.enabled
-        && config.normalized_location().is_some()
-        && config.clone().coordinates().is_some()
+    config.enabled && config.normalized_location().is_some()
 }
 
 fn refresh_interval(config: &WeatherConfig) -> Duration {
@@ -142,7 +137,10 @@ fn load_cached_snapshot(config: &WeatherConfig) -> Result<Option<WeatherSnapshot
         return Ok(None);
     }
 
-    let cache_path = cache_path(config)?;
+    let Some((latitude, longitude)) = cached_coordinates(config)? else {
+        return Ok(None);
+    };
+    let cache_path = cache_path_for_coordinates(latitude, longitude)?;
     let Ok(raw) = fs::read_to_string(&cache_path) else {
         return Ok(None);
     };
@@ -152,7 +150,8 @@ fn load_cached_snapshot(config: &WeatherConfig) -> Result<Option<WeatherSnapshot
 }
 
 fn store_cached_snapshot(config: &WeatherConfig, snapshot: &WeatherSnapshot) -> Result<()> {
-    let cache_path = cache_path(config)?;
+    let (latitude, longitude) = resolve_coordinates(config)?;
+    let cache_path = cache_path_for_coordinates(latitude, longitude)?;
     let Some(cache_dir) = cache_path.parent() else {
         anyhow::bail!("weather cache path has no parent");
     };
@@ -161,15 +160,98 @@ fn store_cached_snapshot(config: &WeatherConfig, snapshot: &WeatherSnapshot) -> 
     fs::write(&cache_path, raw).context("failed to write weather cache file")
 }
 
-fn cache_path(config: &WeatherConfig) -> Result<PathBuf> {
-    let Some((latitude, longitude)) = config.clone().coordinates() else {
-        anyhow::bail!("weather coordinates are not configured");
-    };
+fn cache_path_for_coordinates(latitude: f64, longitude: f64) -> Result<PathBuf> {
     let mut hasher = DefaultHasher::new();
     latitude.to_bits().hash(&mut hasher);
     longitude.to_bits().hash(&mut hasher);
     let key = hasher.finish();
     Ok(cache_root()?.join(format!("{key:016x}.json")))
+}
+
+fn resolve_coordinates(config: &WeatherConfig) -> Result<(f64, f64)> {
+    if let Some((latitude, longitude)) = config.clone().coordinates() {
+        return Ok((latitude, longitude));
+    }
+
+    let location = config
+        .normalized_location()
+        .context("weather location is not configured")?;
+
+    if let Some((latitude, longitude)) = load_cached_coordinates(&location)? {
+        return Ok((latitude, longitude));
+    }
+
+    let (latitude, longitude) = geocode_location(&location)?;
+    store_cached_coordinates(&location, latitude, longitude)
+        .context("failed to store cached geocoded weather coordinates")?;
+    tracing::debug!(%location, latitude, longitude, "resolved weather location via geocoding");
+    Ok((latitude, longitude))
+}
+
+fn cached_coordinates(config: &WeatherConfig) -> Result<Option<(f64, f64)>> {
+    if let Some((latitude, longitude)) = config.clone().coordinates() {
+        return Ok(Some((latitude, longitude)));
+    }
+
+    let Some(location) = config.normalized_location() else {
+        return Ok(None);
+    };
+
+    load_cached_coordinates(&location)
+}
+
+fn geocode_location(location: &str) -> Result<(f64, f64)> {
+    let response = ureq::get("https://geocoding-api.open-meteo.com/v1/search")
+        .query("name", location)
+        .query("count", "1")
+        .query("language", "en")
+        .set("User-Agent", "Veila/0.1 weather widget")
+        .call()
+        .with_context(|| format!("failed to geocode weather location '{location}'"))?;
+    let payload: GeocodingResponse = response
+        .into_json()
+        .context("failed to decode Open-Meteo geocoding response")?;
+    first_geocoding_result(payload)
+        .with_context(|| format!("no geocoding results for weather location '{location}'"))
+}
+
+fn first_geocoding_result(payload: GeocodingResponse) -> Option<(f64, f64)> {
+    payload
+        .results
+        .into_iter()
+        .next()
+        .map(|entry| (entry.latitude, entry.longitude))
+}
+
+fn load_cached_coordinates(location: &str) -> Result<Option<(f64, f64)>> {
+    let cache_path = location_cache_path(location)?;
+    let Ok(raw) = fs::read_to_string(&cache_path) else {
+        return Ok(None);
+    };
+    let entry: GeocodedLocationCache = serde_json::from_str(&raw)
+        .context("failed to parse cached geocoded weather coordinates")?;
+    Ok(Some((entry.latitude, entry.longitude)))
+}
+
+fn store_cached_coordinates(location: &str, latitude: f64, longitude: f64) -> Result<()> {
+    let cache_path = location_cache_path(location)?;
+    let Some(cache_dir) = cache_path.parent() else {
+        anyhow::bail!("weather geocoding cache path has no parent");
+    };
+    fs::create_dir_all(cache_dir).context("failed to create weather geocoding cache directory")?;
+    let entry = GeocodedLocationCache {
+        latitude,
+        longitude,
+    };
+    let raw = serde_json::to_vec(&entry).context("failed to encode cached geocoded coordinates")?;
+    fs::write(&cache_path, raw).context("failed to write weather geocoding cache file")
+}
+
+fn location_cache_path(location: &str) -> Result<PathBuf> {
+    let mut hasher = DefaultHasher::new();
+    location.trim().to_lowercase().hash(&mut hasher);
+    let key = hasher.finish();
+    Ok(cache_root()?.join(format!("location-{key:016x}.json")))
 }
 
 fn cache_root() -> Result<PathBuf> {
@@ -216,4 +298,73 @@ struct OpenMeteoCurrent {
     temperature_2m: f32,
     weather_code: u8,
     is_day: u8,
+}
+
+#[derive(Debug, Deserialize)]
+struct GeocodingResponse {
+    #[serde(default)]
+    results: Vec<GeocodingResult>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GeocodingResult {
+    latitude: f64,
+    longitude: f64,
+}
+
+#[derive(Debug, serde::Serialize, Deserialize)]
+struct GeocodedLocationCache {
+    latitude: f64,
+    longitude: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use veila_common::WeatherUnit;
+
+    use super::{
+        GeocodingResponse, GeocodingResult, WeatherConfig, first_geocoding_result, weather_enabled,
+    };
+
+    #[test]
+    fn enables_weather_with_location_only() {
+        let config = WeatherConfig {
+            enabled: true,
+            location: Some(String::from("Riga")),
+            latitude: None,
+            longitude: None,
+            refresh_minutes: 15,
+            unit: WeatherUnit::Celsius,
+        };
+
+        assert!(weather_enabled(&config));
+    }
+
+    #[test]
+    fn uses_first_geocoding_result_coordinates() {
+        let payload = GeocodingResponse {
+            results: vec![
+                GeocodingResult {
+                    latitude: 56.9496,
+                    longitude: 24.1052,
+                },
+                GeocodingResult {
+                    latitude: 57.0,
+                    longitude: 24.2,
+                },
+            ],
+        };
+
+        assert_eq!(first_geocoding_result(payload), Some((56.9496, 24.1052)));
+    }
+
+    #[test]
+    fn returns_none_when_geocoding_has_no_results() {
+        assert_eq!(
+            first_geocoding_result(GeocodingResponse {
+                results: Vec::new(),
+            }),
+            None
+        );
+    }
 }
