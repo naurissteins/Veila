@@ -1,6 +1,6 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockVisualConfig,
-    ConfigColor, DateVisualConfig, EyeVisualConfig, InputVisualConfig, InputVisualEntry,
+    ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry,
     KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
     WeatherVisualConfig,
@@ -20,6 +20,7 @@ fn input_opacity_overrides_embedded_alpha() {
         offset_y: Some(-12),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
+        font_style: Some(FontStyle::Italic),
         font_size: Some(3),
         background_color: Some(ConfigColor::rgba(255, 255, 255, 200)),
         background_opacity: Some(10),
@@ -46,6 +47,7 @@ fn input_opacity_overrides_embedded_alpha() {
         enabled: Some(true),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
+        font_style: Some(FontStyle::Italic),
         color: Some(ConfigColor::rgb(215, 227, 255)),
         opacity: Some(72),
         size: Some(3),
@@ -55,6 +57,7 @@ fn input_opacity_overrides_embedded_alpha() {
         enabled: Some(true),
         font_family: Some(String::from("Bebas Neue")),
         font_weight: Some(700),
+        font_style: Some(FontStyle::Italic),
         format: Some(ClockFormat::TwelveHour),
         meridiem_size: Some(3),
         meridiem_offset_x: Some(6),
@@ -68,6 +71,7 @@ fn input_opacity_overrides_embedded_alpha() {
         enabled: Some(true),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
+        font_style: Some(FontStyle::Italic),
         color: Some(ConfigColor::rgb(200, 212, 236)),
         opacity: Some(74),
         size: Some(3),
@@ -114,9 +118,11 @@ fn input_opacity_overrides_embedded_alpha() {
         location_color: Some(ConfigColor::rgb(214, 227, 255)),
         temperature_font_family: Some(String::from("Prototype")),
         temperature_font_weight: Some(600),
+        temperature_font_style: Some(FontStyle::Italic),
         temperature_letter_spacing: Some(2),
         location_font_family: Some(String::from("Geom")),
         location_font_weight: Some(500),
+        location_font_style: Some(FontStyle::Italic),
         temperature_size: Some(4),
         location_size: Some(2),
         icon_size: Some(36),
@@ -142,6 +148,8 @@ fn input_opacity_overrides_embedded_alpha() {
         artist_font_family: Some("Prototype".to_owned()),
         title_font_weight: Some(700),
         artist_font_weight: Some(500),
+        title_font_style: Some(FontStyle::Italic),
+        artist_font_style: Some(FontStyle::Italic),
         title_size: Some(2),
         artist_size: Some(1),
         width: Some(280),
@@ -179,6 +187,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.input_offset_y, Some(-12));
     assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.input_font_weight, Some(600));
+    assert_eq!(theme.input_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.input_font_size, Some(3));
     assert_eq!(theme.avatar_background, ClearColor::opaque(24, 30, 42));
     assert_eq!(theme.input_width, Some(280));
@@ -202,6 +211,7 @@ fn input_opacity_overrides_embedded_alpha() {
     );
     assert_eq!(theme.username_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.username_font_weight, Some(600));
+    assert_eq!(theme.username_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.username_opacity, Some(72));
     assert_eq!(theme.username_size, Some(3));
     assert_eq!(theme.avatar_gap, Some(14));
@@ -212,6 +222,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.header_top_offset, Some(-12));
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
     assert_eq!(theme.clock_font_weight, Some(700));
+    assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
     assert_eq!(theme.clock_meridiem_size, Some(3));
     assert_eq!(theme.clock_meridiem_offset_x, Some(6));
@@ -220,6 +231,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_opacity, Some(96));
     assert_eq!(theme.date_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.date_font_weight, Some(600));
+    assert_eq!(theme.date_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.date_color, Some(ClearColor::opaque(200, 212, 236)));
     assert_eq!(theme.date_opacity, Some(74));
     assert_eq!(theme.clock_size, Some(4));
@@ -276,8 +288,13 @@ fn input_opacity_overrides_embedded_alpha() {
         Some("Prototype")
     );
     assert_eq!(theme.weather_temperature_font_weight, Some(600));
+    assert_eq!(
+        theme.weather_temperature_font_style,
+        Some(FontStyle::Italic)
+    );
     assert_eq!(theme.weather_location_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.weather_location_font_weight, Some(500));
+    assert_eq!(theme.weather_location_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.weather_temperature_letter_spacing, Some(2));
     assert_eq!(theme.weather_temperature_size, Some(4));
     assert_eq!(theme.weather_location_size, Some(2));
@@ -305,6 +322,8 @@ fn input_opacity_overrides_embedded_alpha() {
     );
     assert_eq!(theme.now_playing_title_font_weight, Some(700));
     assert_eq!(theme.now_playing_artist_font_weight, Some(500));
+    assert_eq!(theme.now_playing_title_font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.now_playing_artist_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.now_playing_opacity, Some(72));
     assert_eq!(theme.now_playing_title_opacity, Some(88));
     assert_eq!(theme.now_playing_artist_opacity, Some(54));

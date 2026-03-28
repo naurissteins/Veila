@@ -2,7 +2,7 @@ mod color;
 #[cfg(test)]
 mod tests;
 
-use veila_common::{AppConfig, ClockFormat, InputAlignment, WeatherAlignment};
+use veila_common::{AppConfig, ClockFormat, FontStyle, InputAlignment, WeatherAlignment};
 use veila_renderer::ClearColor;
 
 use self::color::{to_color, to_color_with_opacity};
@@ -16,6 +16,7 @@ pub struct ShellTheme {
     pub input_border: ClearColor,
     pub input_font_family: Option<String>,
     pub input_font_weight: Option<u16>,
+    pub input_font_style: Option<FontStyle>,
     pub input_font_size: Option<u32>,
     pub input_alignment: InputAlignment,
     pub input_horizontal_padding: Option<i32>,
@@ -35,6 +36,7 @@ pub struct ShellTheme {
     pub username_enabled: bool,
     pub username_font_family: Option<String>,
     pub username_font_weight: Option<u16>,
+    pub username_font_style: Option<FontStyle>,
     pub username_color: Option<ClearColor>,
     pub username_opacity: Option<u8>,
     pub username_size: Option<u32>,
@@ -47,6 +49,7 @@ pub struct ShellTheme {
     pub clock_enabled: bool,
     pub clock_font_family: Option<String>,
     pub clock_font_weight: Option<u16>,
+    pub clock_font_style: Option<FontStyle>,
     pub clock_format: ClockFormat,
     pub clock_meridiem_size: Option<u32>,
     pub clock_meridiem_offset_x: Option<i32>,
@@ -56,6 +59,7 @@ pub struct ShellTheme {
     pub date_enabled: bool,
     pub date_font_family: Option<String>,
     pub date_font_weight: Option<u16>,
+    pub date_font_style: Option<FontStyle>,
     pub date_color: Option<ClearColor>,
     pub date_opacity: Option<u8>,
     pub clock_size: Option<u32>,
@@ -94,9 +98,11 @@ pub struct ShellTheme {
     pub weather_location_color: Option<ClearColor>,
     pub weather_temperature_font_family: Option<String>,
     pub weather_temperature_font_weight: Option<u16>,
+    pub weather_temperature_font_style: Option<FontStyle>,
     pub weather_temperature_letter_spacing: Option<u32>,
     pub weather_location_font_family: Option<String>,
     pub weather_location_font_weight: Option<u16>,
+    pub weather_location_font_style: Option<FontStyle>,
     pub weather_temperature_size: Option<u32>,
     pub weather_location_size: Option<u32>,
     pub weather_icon_size: Option<i32>,
@@ -115,6 +121,8 @@ pub struct ShellTheme {
     pub now_playing_artist_font_family: Option<String>,
     pub now_playing_title_font_weight: Option<u16>,
     pub now_playing_artist_font_weight: Option<u16>,
+    pub now_playing_title_font_style: Option<FontStyle>,
+    pub now_playing_artist_font_style: Option<FontStyle>,
     pub now_playing_opacity: Option<u8>,
     pub now_playing_title_opacity: Option<u8>,
     pub now_playing_artist_opacity: Option<u8>,
@@ -166,6 +174,7 @@ impl ShellTheme {
             ),
             input_font_family: config.visuals.input_font_family().map(str::to_owned),
             input_font_weight: config.visuals.input_font_weight(),
+            input_font_style: config.visuals.input_font_style(),
             input_font_size: config.visuals.input_font_size().map(u32::from),
             input_alignment: config.visuals.input_alignment(),
             input_horizontal_padding: config.visuals.input_horizontal_padding().map(i32::from),
@@ -185,6 +194,7 @@ impl ShellTheme {
             username_enabled: config.visuals.username_enabled(),
             username_font_family: config.visuals.username_font_family().map(str::to_owned),
             username_font_weight: config.visuals.username_font_weight(),
+            username_font_style: config.visuals.username_font_style(),
             username_color: config.visuals.username_color().map(to_color),
             username_opacity: config.visuals.username_opacity(),
             username_size: config.visuals.username_size().map(u32::from),
@@ -197,6 +207,7 @@ impl ShellTheme {
             clock_enabled: config.visuals.clock_enabled(),
             clock_font_family: config.visuals.clock_font_family().map(str::to_owned),
             clock_font_weight: config.visuals.clock_font_weight(),
+            clock_font_style: config.visuals.clock_font_style(),
             clock_format: config.visuals.clock_format(),
             clock_meridiem_size: config.visuals.clock_meridiem_size().map(u32::from),
             clock_meridiem_offset_x: config.visuals.clock_meridiem_offset_x().map(i32::from),
@@ -206,6 +217,7 @@ impl ShellTheme {
             date_enabled: config.visuals.date_enabled(),
             date_font_family: config.visuals.date_font_family().map(str::to_owned),
             date_font_weight: config.visuals.date_font_weight(),
+            date_font_style: config.visuals.date_font_style(),
             date_color: config.visuals.date_color().map(to_color),
             date_opacity: config.visuals.date_opacity(),
             clock_size: config.visuals.clock_size().map(u32::from),
@@ -255,6 +267,7 @@ impl ShellTheme {
                 .weather_temperature_font_family()
                 .map(str::to_owned),
             weather_temperature_font_weight: config.visuals.weather_temperature_font_weight(),
+            weather_temperature_font_style: config.visuals.weather_temperature_font_style(),
             weather_temperature_letter_spacing: config
                 .visuals
                 .weather_temperature_letter_spacing()
@@ -264,6 +277,7 @@ impl ShellTheme {
                 .weather_location_font_family()
                 .map(str::to_owned),
             weather_location_font_weight: config.visuals.weather_location_font_weight(),
+            weather_location_font_style: config.visuals.weather_location_font_style(),
             weather_temperature_size: config.visuals.weather_temperature_size().map(u32::from),
             weather_location_size: config.visuals.weather_location_size().map(u32::from),
             weather_icon_size: config.visuals.weather_icon_size().map(i32::from),
@@ -291,6 +305,8 @@ impl ShellTheme {
                 .map(str::to_owned),
             now_playing_title_font_weight: config.visuals.now_playing_title_font_weight(),
             now_playing_artist_font_weight: config.visuals.now_playing_artist_font_weight(),
+            now_playing_title_font_style: config.visuals.now_playing_title_font_style(),
+            now_playing_artist_font_style: config.visuals.now_playing_artist_font_style(),
             now_playing_opacity: config.visuals.now_playing_opacity(),
             now_playing_title_opacity: config.visuals.now_playing_title_opacity(),
             now_playing_artist_opacity: config.visuals.now_playing_artist_opacity(),

@@ -32,6 +32,8 @@ pub struct InputVisualConfig {
     #[serde(default)]
     pub font_weight: Option<u16>,
     #[serde(default)]
+    pub font_style: Option<FontStyle>,
+    #[serde(default)]
     pub font_size: Option<u16>,
     #[serde(default)]
     pub background_color: Option<RgbColor>,
@@ -63,6 +65,7 @@ impl Default for InputVisualConfig {
             offset_y: Some(0),
             font_family: Some(default_google_sans_flex_font_family()),
             font_weight: Some(400),
+            font_style: Some(FontStyle::Normal),
             font_size: Some(2),
             background_color: Some(RgbColor::rgb(255, 255, 255)),
             background_opacity: Some(5),
@@ -98,6 +101,15 @@ pub enum InputAlignment {
     BottomRight,
     #[serde(rename = "bottom-left")]
     BottomLeft,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum FontStyle {
+    #[default]
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "italic")]
+    Italic,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -147,6 +159,8 @@ pub struct UsernameVisualConfig {
     #[serde(default)]
     pub font_weight: Option<u16>,
     #[serde(default)]
+    pub font_style: Option<FontStyle>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -162,6 +176,7 @@ impl Default for UsernameVisualConfig {
             enabled: Some(true),
             font_family: Some(default_google_sans_flex_font_family()),
             font_weight: Some(400),
+            font_style: Some(FontStyle::Normal),
             color: Some(RgbColor::rgb(255, 255, 255)),
             opacity: Some(84),
             size: Some(4),
@@ -178,6 +193,8 @@ pub struct ClockVisualConfig {
     pub font_family: Option<String>,
     #[serde(default)]
     pub font_weight: Option<u16>,
+    #[serde(default)]
+    pub font_style: Option<FontStyle>,
     #[serde(default)]
     pub format: Option<ClockFormat>,
     #[serde(default)]
@@ -202,6 +219,7 @@ impl Default for ClockVisualConfig {
             enabled: Some(true),
             font_family: Some(default_geom_font_family()),
             font_weight: Some(600),
+            font_style: Some(FontStyle::Normal),
             format: Some(ClockFormat::TwentyFourHour),
             meridiem_size: Some(3),
             meridiem_offset_x: Some(6),
@@ -232,6 +250,8 @@ pub struct DateVisualConfig {
     #[serde(default)]
     pub font_weight: Option<u16>,
     #[serde(default)]
+    pub font_style: Option<FontStyle>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -245,6 +265,7 @@ impl Default for DateVisualConfig {
             enabled: Some(true),
             font_family: Some(default_geom_font_family()),
             font_weight: Some(600),
+            font_style: Some(FontStyle::Normal),
             color: Some(RgbColor::rgb(255, 255, 255)),
             opacity: Some(50),
             size: Some(2),
@@ -433,11 +454,15 @@ pub struct WeatherVisualConfig {
     #[serde(default)]
     pub temperature_font_weight: Option<u16>,
     #[serde(default)]
+    pub temperature_font_style: Option<FontStyle>,
+    #[serde(default)]
     pub temperature_letter_spacing: Option<u16>,
     #[serde(default)]
     pub location_font_family: Option<String>,
     #[serde(default)]
     pub location_font_weight: Option<u16>,
+    #[serde(default)]
+    pub location_font_style: Option<FontStyle>,
     #[serde(default)]
     pub temperature_size: Option<u16>,
     #[serde(default)]
@@ -475,9 +500,11 @@ impl Default for WeatherVisualConfig {
             location_color: Some(RgbColor::rgb(214, 227, 255)),
             temperature_font_family: Some(default_geom_font_family()),
             temperature_font_weight: Some(600),
+            temperature_font_style: Some(FontStyle::Normal),
             temperature_letter_spacing: Some(0),
             location_font_family: Some(default_google_sans_flex_font_family()),
             location_font_weight: Some(400),
+            location_font_style: Some(FontStyle::Normal),
             temperature_size: Some(6),
             location_size: Some(3),
             icon_size: Some(40),
@@ -520,6 +547,10 @@ pub struct NowPlayingVisualConfig {
     #[serde(default)]
     pub artist_font_weight: Option<u16>,
     #[serde(default)]
+    pub title_font_style: Option<FontStyle>,
+    #[serde(default)]
+    pub artist_font_style: Option<FontStyle>,
+    #[serde(default)]
     pub title_size: Option<u16>,
     #[serde(default)]
     pub artist_size: Option<u16>,
@@ -558,6 +589,8 @@ impl Default for NowPlayingVisualConfig {
             artist_font_family: Some(default_google_sans_flex_font_family()),
             title_font_weight: Some(400),
             artist_font_weight: Some(400),
+            title_font_style: Some(FontStyle::Normal),
+            artist_font_style: Some(FontStyle::Normal),
             title_size: Some(2),
             artist_size: Some(2),
             width: Some(380),
@@ -619,6 +652,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub input_font_weight: Option<u16>,
     #[serde(default)]
+    pub input_font_style: Option<FontStyle>,
+    #[serde(default)]
     pub input_font_size: Option<u16>,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
@@ -666,6 +701,8 @@ pub struct VisualConfig {
     pub clock_font_family: Option<String>,
     #[serde(default)]
     pub clock_font_weight: Option<u16>,
+    #[serde(default)]
+    pub clock_font_style: Option<FontStyle>,
     #[serde(default)]
     pub clock_format: Option<ClockFormat>,
     #[serde(default)]
@@ -778,6 +815,7 @@ impl Default for VisualConfig {
             input_opacity: Some(5),
             input_font_family: Some(default_google_sans_flex_font_family()),
             input_font_weight: Some(400),
+            input_font_style: Some(FontStyle::Normal),
             input_font_size: Some(2),
             input_border: RgbColor::rgb(255, 255, 255),
             input_border_opacity: Some(0),
@@ -802,6 +840,7 @@ impl Default for VisualConfig {
             header_top_offset: Some(-12),
             clock_font_family: Some(default_geom_font_family()),
             clock_font_weight: Some(600),
+            clock_font_style: Some(FontStyle::Normal),
             clock_format: Some(ClockFormat::TwentyFourHour),
             clock_meridiem_size: Some(3),
             clock_meridiem_offset_x: Some(6),
@@ -962,6 +1001,13 @@ impl VisualConfig {
         }
     }
 
+    pub fn input_font_style(&self) -> Option<FontStyle> {
+        match &self.input {
+            InputVisualEntry::Color(_) => self.input_font_style,
+            InputVisualEntry::Section(config) => config.font_style.or(self.input_font_style),
+        }
+    }
+
     pub fn input_font_size(&self) -> Option<u16> {
         match &self.input {
             InputVisualEntry::Color(_) => self.input_font_size,
@@ -1072,6 +1118,12 @@ impl VisualConfig {
             .and_then(|username| username.font_weight)
     }
 
+    pub fn username_font_style(&self) -> Option<FontStyle> {
+        self.username
+            .as_ref()
+            .and_then(|username| username.font_style)
+    }
+
     pub fn username_opacity(&self) -> Option<u8> {
         self.username
             .as_ref()
@@ -1140,6 +1192,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.font_weight)
             .or(self.clock_font_weight)
+    }
+
+    pub fn clock_font_style(&self) -> Option<FontStyle> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.font_style)
+            .or(self.clock_font_style)
     }
 
     pub fn clock_format(&self) -> ClockFormat {
@@ -1214,6 +1273,10 @@ impl VisualConfig {
 
     pub fn date_font_weight(&self) -> Option<u16> {
         self.date.as_ref().and_then(|date| date.font_weight)
+    }
+
+    pub fn date_font_style(&self) -> Option<FontStyle> {
+        self.date.as_ref().and_then(|date| date.font_style)
     }
 
     pub fn date_opacity(&self) -> Option<u8> {
@@ -1461,6 +1524,12 @@ impl VisualConfig {
             .and_then(|weather| weather.temperature_font_weight)
     }
 
+    pub fn weather_temperature_font_style(&self) -> Option<FontStyle> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.temperature_font_style)
+    }
+
     pub fn weather_location_font_family(&self) -> Option<&str> {
         self.weather
             .as_ref()
@@ -1471,6 +1540,12 @@ impl VisualConfig {
         self.weather
             .as_ref()
             .and_then(|weather| weather.location_font_weight)
+    }
+
+    pub fn weather_location_font_style(&self) -> Option<FontStyle> {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.location_font_style)
     }
 
     pub fn weather_temperature_letter_spacing(&self) -> Option<u16> {
@@ -1612,10 +1687,22 @@ impl VisualConfig {
             .and_then(|now_playing| now_playing.title_font_weight)
     }
 
+    pub fn now_playing_title_font_style(&self) -> Option<FontStyle> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title_font_style)
+    }
+
     pub fn now_playing_artist_font_weight(&self) -> Option<u16> {
         self.now_playing
             .as_ref()
             .and_then(|now_playing| now_playing.artist_font_weight)
+    }
+
+    pub fn now_playing_artist_font_style(&self) -> Option<FontStyle> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist_font_style)
     }
 
     pub fn now_playing_title_size(&self) -> Option<u16> {

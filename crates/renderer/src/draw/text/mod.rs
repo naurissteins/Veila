@@ -5,7 +5,7 @@ mod raster;
 #[cfg(test)]
 mod tests;
 
-use cosmic_text::FamilyOwned;
+use cosmic_text::{FamilyOwned, Style as CosmicFontStyle};
 
 use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
 
@@ -15,6 +15,12 @@ pub use context::{
 use layout::{font_size, layout_text_block, line_height, scale_component};
 use raster::draw_text_lines;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FontStyle {
+    Normal,
+    Italic,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextStyle {
     pub color: ClearColor,
@@ -23,6 +29,7 @@ pub struct TextStyle {
     pub line_spacing: u32,
     pub font_family: Option<FamilyOwned>,
     pub font_weight: Option<u16>,
+    pub font_style: Option<FontStyle>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +49,7 @@ impl TextStyle {
             line_spacing: scale * 3,
             font_family: None,
             font_weight: None,
+            font_style: None,
         }
     }
 
@@ -56,6 +64,7 @@ impl TextStyle {
             line_spacing: scale_component(self.line_spacing, current_scale, next_scale),
             font_family: self.font_family.clone(),
             font_weight: self.font_weight,
+            font_style: self.font_style,
         }
     }
 
@@ -79,6 +88,11 @@ impl TextStyle {
 
     pub fn with_font_weight(mut self, weight: u16) -> Self {
         self.font_weight = Some(weight);
+        self
+    }
+
+    pub fn with_font_style(mut self, font_style: FontStyle) -> Self {
+        self.font_style = Some(font_style);
         self
     }
 }
@@ -221,6 +235,12 @@ pub(super) fn text_attrs(style: &TextStyle) -> cosmic_text::Attrs<'_> {
 
     let attrs = match style.font_weight {
         Some(weight) => attrs.weight(cosmic_text::Weight(weight)),
+        None => attrs,
+    };
+
+    let attrs = match style.font_style {
+        Some(FontStyle::Normal) => attrs.style(CosmicFontStyle::Normal),
+        Some(FontStyle::Italic) => attrs.style(CosmicFontStyle::Italic),
         None => attrs,
     };
 

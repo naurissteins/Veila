@@ -24,10 +24,10 @@ pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{
     AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, ClockFormat, ClockVisualConfig,
-    DateVisualConfig, EyeVisualConfig, InputAlignment, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, VisualConfig,
-    WeatherAlignment, WeatherVisualConfig,
+    DateVisualConfig, EyeVisualConfig, FontStyle, InputAlignment, InputVisualConfig,
+    InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

@@ -1,4 +1,7 @@
-use veila_renderer::text::{TextStyle, bundled_clock_font_family, resolve_font_family};
+use veila_common::FontStyle as ConfigFontStyle;
+use veila_renderer::text::{
+    FontStyle as RendererFontStyle, TextStyle, bundled_clock_font_family, resolve_font_family,
+};
 
 use super::{
     super::{ShellState, layout::SceneMetrics},
@@ -51,11 +54,12 @@ impl ShellState {
             .or_else(|| self.theme.clock_font_family.clone())
             .unwrap_or_else(|| String::from(DEFAULT_CLOCK_FONT_FAMILY));
 
-        let style = style.with_font_family(&family);
-        match self.theme.clock_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            Some(family),
+            self.theme.clock_font_weight,
+            self.theme.clock_font_style,
+        )
     }
 
     pub(crate) fn clock_meridiem_text_style(&self, metrics: SceneMetrics) -> TextStyle {
@@ -88,11 +92,12 @@ impl ShellState {
             .or_else(|| self.theme.clock_font_family.clone())
             .unwrap_or_else(|| String::from(DEFAULT_CLOCK_FONT_FAMILY));
 
-        let style = style.with_font_family(&family);
-        match self.theme.clock_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            Some(family),
+            self.theme.clock_font_weight,
+            self.theme.clock_font_style,
+        )
     }
 
     pub(crate) fn date_text_style(&self) -> TextStyle {
@@ -109,21 +114,12 @@ impl ShellState {
         )
         .with_line_spacing(0);
 
-        let style = match self
-            .theme
-            .date_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.date_font_family.clone())
-        {
-            Some(family) => style.with_font_family(&family),
-            None => style,
-        };
-
-        match self.theme.date_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.date_font_family.as_deref()),
+            self.theme.date_font_weight,
+            self.theme.date_font_style,
+        )
     }
 
     pub(crate) fn username_text_style(&self) -> TextStyle {
@@ -134,21 +130,12 @@ impl ShellState {
             ),
             self.theme.username_size.unwrap_or(2).clamp(1, 6),
         );
-        let style = match self
-            .theme
-            .username_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.username_font_family.clone())
-        {
-            Some(family) => style.with_font_family(&family),
-            None => style,
-        };
-
-        match self.theme.username_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.username_font_family.as_deref()),
+            self.theme.username_font_weight,
+            self.theme.username_font_style,
+        )
     }
 
     pub(crate) fn placeholder_text_style(&self) -> TextStyle {
@@ -194,21 +181,12 @@ impl ShellState {
     }
 
     fn apply_input_font(&self, style: TextStyle) -> TextStyle {
-        let style = match self
-            .theme
-            .input_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.input_font_family.clone())
-        {
-            Some(family) => style.with_font_family(&family),
-            None => style,
-        };
-
-        match self.theme.input_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.input_font_family.as_deref()),
+            self.theme.input_font_weight,
+            self.theme.input_font_style,
+        )
     }
 
     fn input_text_scale(&self) -> u32 {
@@ -235,21 +213,12 @@ impl ShellState {
                 .clamp(1, MAX_WEATHER_TEMPERATURE_SCALE),
         );
 
-        let family = self
-            .theme
-            .weather_temperature_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.weather_temperature_font_family.clone());
-
-        let style = match family {
-            Some(family) => style.with_font_family(&family),
-            None => style,
-        };
-        let style = match self.theme.weather_temperature_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        };
+        let style = self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.weather_temperature_font_family.as_deref()),
+            self.theme.weather_temperature_font_weight,
+            self.theme.weather_temperature_font_style,
+        );
         let style = match self.theme.weather_temperature_letter_spacing {
             Some(letter_spacing) => style.with_letter_spacing(letter_spacing),
             None => style,
@@ -283,21 +252,12 @@ impl ShellState {
         )
         .with_line_spacing(0);
 
-        let style = match self
-            .theme
-            .weather_location_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.weather_location_font_family.clone())
-        {
-            Some(family) => style.with_font_family(&family),
-            None => style,
-        };
-
-        match self.theme.weather_location_font_weight {
-            Some(weight) => style.with_font_weight(weight),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.weather_location_font_family.as_deref()),
+            self.theme.weather_location_font_weight,
+            self.theme.weather_location_font_style,
+        )
     }
 
     pub(crate) fn now_playing_title_text_style(&self) -> TextStyle {
@@ -319,17 +279,12 @@ impl ShellState {
             Some(weight) => style.with_font_weight(weight),
             None => style.with_font_weight(600),
         };
-        let family = self
-            .theme
-            .now_playing_title_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.now_playing_title_font_family.clone());
-
-        match family {
-            Some(family) => style.with_font_family(&family),
-            None => style,
-        }
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.now_playing_title_font_family.as_deref()),
+            None,
+            self.theme.now_playing_title_font_style,
+        )
         .with_line_spacing(0)
     }
 
@@ -348,21 +303,41 @@ impl ShellState {
                 .unwrap_or(1)
                 .clamp(1, MAX_NOW_PLAYING_ARTIST_SCALE),
         );
-        let style = match self.theme.now_playing_artist_font_weight {
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.now_playing_artist_font_family.as_deref()),
+            self.theme.now_playing_artist_font_weight,
+            self.theme.now_playing_artist_font_style,
+        )
+        .with_line_spacing(0)
+    }
+
+    fn resolved_font_family(&self, family: Option<&str>) -> Option<String> {
+        family
+            .and_then(resolve_font_family)
+            .or_else(|| family.map(str::to_owned))
+    }
+
+    fn apply_font_overrides(
+        &self,
+        style: TextStyle,
+        family: Option<String>,
+        weight: Option<u16>,
+        font_style: Option<ConfigFontStyle>,
+    ) -> TextStyle {
+        let style = match family {
+            Some(family) => style.with_font_family(&family),
+            None => style,
+        };
+        let style = match weight {
             Some(weight) => style.with_font_weight(weight),
             None => style,
         };
-        let family = self
-            .theme
-            .now_playing_artist_font_family
-            .as_deref()
-            .and_then(resolve_font_family)
-            .or_else(|| self.theme.now_playing_artist_font_family.clone());
 
-        match family {
-            Some(family) => style.with_font_family(&family),
+        match font_style {
+            Some(ConfigFontStyle::Normal) => style.with_font_style(RendererFontStyle::Normal),
+            Some(ConfigFontStyle::Italic) => style.with_font_style(RendererFontStyle::Italic),
             None => style,
         }
-        .with_line_spacing(0)
     }
 }

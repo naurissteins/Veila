@@ -14,10 +14,15 @@ const BUNDLED_GOOGLE_SANS_FLEX_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/fonts/GoogleSansFlex_72pt-Regular.ttf"
 ));
-const BUNDLED_FONTS: [&[u8]; 3] = [
+const BUNDLED_RALEWAY_SEMIBOLD_ITALIC_FONT: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/fonts/Raleway-SemiBoldItalic.ttf"
+));
+const BUNDLED_FONTS: [&[u8]; 4] = [
     BUNDLED_CLOCK_FONT,
     BUNDLED_WEATHER_FONT,
     BUNDLED_GOOGLE_SANS_FLEX_FONT,
+    BUNDLED_RALEWAY_SEMIBOLD_ITALIC_FONT,
 ];
 
 #[derive(Debug)]

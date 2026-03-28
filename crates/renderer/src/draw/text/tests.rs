@@ -1,5 +1,5 @@
 use super::{
-    TextStyle, bundled_clock_font_family, bundled_clock_font_postscript_name, draw_text,
+    FontStyle, TextStyle, bundled_clock_font_family, bundled_clock_font_postscript_name, draw_text,
     draw_text_with_shadow, fit_single_line_text, fit_wrapped_text, measure_text,
     resolve_font_family, wrap_text,
 };
@@ -23,6 +23,15 @@ fn letter_spacing_increases_measured_text_width() {
     let (spaced_width, _) = measure_text("29°C", spaced_style);
 
     assert!(spaced_width > base_width);
+}
+
+#[test]
+fn preserves_font_style_when_scaling() {
+    let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2)
+        .with_font_style(FontStyle::Italic)
+        .with_scale(4);
+
+    assert_eq!(style.font_style, Some(FontStyle::Italic));
 }
 
 #[test]
@@ -153,5 +162,18 @@ fn resolves_bundled_google_sans_flex_postscript_name_to_family_name() {
     assert_eq!(
         resolve_font_family("GoogleSansFlex_72pt-Regular").as_deref(),
         Some("Google Sans Flex 72pt")
+    );
+}
+
+#[test]
+fn resolves_bundled_raleway_font_family_from_loaded_database() {
+    assert_eq!(resolve_font_family("Raleway").as_deref(), Some("Raleway"));
+}
+
+#[test]
+fn resolves_bundled_raleway_postscript_name_to_family_name() {
+    assert_eq!(
+        resolve_font_family("Raleway-SemiBoldItalic").as_deref(),
+        Some("Raleway")
     );
 }

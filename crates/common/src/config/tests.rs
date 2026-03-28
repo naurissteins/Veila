@@ -1,7 +1,7 @@
 use std::fs;
 
 use super::{
-    AppConfig, BackgroundMode, ClockFormat, InputAlignment, InputVisualEntry, RgbColor,
+    AppConfig, BackgroundMode, ClockFormat, FontStyle, InputAlignment, InputVisualEntry, RgbColor,
     WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
@@ -47,6 +47,7 @@ fn parses_partial_config_with_defaults() {
     assert!(matches!(config.visuals.input, InputVisualEntry::Color(_)));
     assert!(config.visuals.input_font_family().is_none());
     assert!(config.visuals.input_font_weight().is_none());
+    assert!(config.visuals.input_font_style().is_none());
     assert!(config.visuals.input_font_size().is_none());
     assert_eq!(
         config.visuals.input_alignment(),
@@ -80,6 +81,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.header_top_offset().is_none());
     assert!(config.visuals.clock_font_family().is_none());
     assert!(config.visuals.clock_font_weight().is_none());
+    assert!(config.visuals.clock_font_style().is_none());
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
     assert!(config.visuals.clock_meridiem_size().is_none());
     assert!(config.visuals.clock_meridiem_offset_x().is_none());
@@ -89,6 +91,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.date_color().is_none());
     assert!(config.visuals.date_font_family().is_none());
     assert!(config.visuals.date_font_weight().is_none());
+    assert!(config.visuals.date_font_style().is_none());
     assert!(config.visuals.date_opacity().is_none());
     assert!(config.visuals.clock_size().is_none());
     assert!(config.visuals.date_size().is_none());
@@ -116,8 +119,10 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.weather_location_color().is_none());
     assert!(config.visuals.weather_temperature_font_family().is_none());
     assert!(config.visuals.weather_temperature_font_weight().is_none());
+    assert!(config.visuals.weather_temperature_font_style().is_none());
     assert!(config.visuals.weather_location_font_family().is_none());
     assert!(config.visuals.weather_location_font_weight().is_none());
+    assert!(config.visuals.weather_location_font_style().is_none());
     assert!(
         config
             .visuals
@@ -145,6 +150,8 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.now_playing_artist_font_family().is_none());
     assert!(config.visuals.now_playing_title_font_weight().is_none());
     assert!(config.visuals.now_playing_artist_font_weight().is_none());
+    assert!(config.visuals.now_playing_title_font_style().is_none());
+    assert!(config.visuals.now_playing_artist_font_style().is_none());
     assert!(config.visuals.now_playing_opacity().is_none());
     assert!(config.visuals.now_playing_title_opacity().is_none());
     assert!(config.visuals.now_playing_artist_opacity().is_none());
@@ -198,6 +205,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(matches!(config.visuals.input, InputVisualEntry::Section(_)));
     assert_eq!(config.visuals.input_font_family(), Some("Google Sans Flex"));
     assert_eq!(config.visuals.input_font_weight(), Some(400));
+    assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Normal));
     assert_eq!(config.visuals.input_font_size(), Some(2));
     assert_eq!(
         config.visuals.input_alignment(),
@@ -246,6 +254,10 @@ fn first_run_defaults_match_bundled_theme() {
         Some("Google Sans Flex")
     );
     assert_eq!(config.visuals.username_font_weight(), Some(400));
+    assert_eq!(
+        config.visuals.username_font_style(),
+        Some(FontStyle::Normal)
+    );
     assert_eq!(config.visuals.username_opacity(), Some(84));
     assert_eq!(config.visuals.username_size(), Some(4));
     assert_eq!(config.visuals.avatar_gap(), Some(24));
@@ -256,6 +268,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
     assert_eq!(config.visuals.clock_font_weight(), Some(600));
+    assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
@@ -272,6 +285,7 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
+    assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Normal));
     assert_eq!(config.visuals.date_opacity(), Some(50));
     assert_eq!(config.visuals.date_size(), Some(2));
     assert_eq!(
@@ -331,12 +345,20 @@ fn first_run_defaults_match_bundled_theme() {
         Some("Geom")
     );
     assert_eq!(config.visuals.weather_temperature_font_weight(), Some(600));
+    assert_eq!(
+        config.visuals.weather_temperature_font_style(),
+        Some(FontStyle::Normal)
+    );
     assert_eq!(config.visuals.weather_temperature_letter_spacing(), Some(0));
     assert_eq!(
         config.visuals.weather_location_font_family(),
         Some("Google Sans Flex")
     );
     assert_eq!(config.visuals.weather_location_font_weight(), Some(400));
+    assert_eq!(
+        config.visuals.weather_location_font_style(),
+        Some(FontStyle::Normal)
+    );
     assert_eq!(config.visuals.weather_temperature_size(), Some(6));
     assert_eq!(config.visuals.weather_location_size(), Some(3));
     assert_eq!(config.visuals.weather_icon_size(), Some(40));
@@ -374,6 +396,14 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(config.visuals.now_playing_title_font_weight(), Some(400));
     assert_eq!(config.visuals.now_playing_artist_font_weight(), Some(400));
+    assert_eq!(
+        config.visuals.now_playing_title_font_style(),
+        Some(FontStyle::Normal)
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_font_style(),
+        Some(FontStyle::Normal)
+    );
     assert_eq!(config.visuals.now_playing_title_size(), Some(2));
     assert_eq!(config.visuals.now_playing_artist_size(), Some(2));
     assert_eq!(config.visuals.now_playing_width(), Some(380));
@@ -504,6 +534,7 @@ fn loads_config_from_file() {
             input_border_opacity = 12
             input_font_family = "Geom"
             input_font_weight = 600
+            input_font_style = "italic"
             input_font_size = 3
             input_width = 280
             input_height = 54
@@ -526,6 +557,7 @@ fn loads_config_from_file() {
             header_top_offset = -12
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
+            clock_font_style = "italic"
             clock_format = "12h"
             clock_meridiem_size = 3
             clock_meridiem_offset_x = 6
@@ -599,6 +631,10 @@ fn loads_config_from_file() {
     );
     assert_eq!(loaded.config.visuals.input_font_family(), Some("Geom"));
     assert_eq!(loaded.config.visuals.input_font_weight(), Some(600));
+    assert_eq!(
+        loaded.config.visuals.input_font_style(),
+        Some(FontStyle::Italic)
+    );
     assert_eq!(loaded.config.visuals.input_font_size(), Some(3));
     assert_eq!(loaded.config.visuals.input_background_opacity(), Some(10));
     assert_eq!(
@@ -639,6 +675,10 @@ fn loads_config_from_file() {
         Some("Bebas Neue")
     );
     assert_eq!(loaded.config.visuals.clock_font_weight(), Some(700));
+    assert_eq!(
+        loaded.config.visuals.clock_font_style(),
+        Some(FontStyle::Italic)
+    );
     assert_eq!(
         loaded.config.visuals.clock_format(),
         ClockFormat::TwelveHour
@@ -700,11 +740,12 @@ fn loads_bundled_theme_before_user_overrides() {
 
     let loaded = AppConfig::load(Some(&path)).expect("config should load");
 
+    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Raleway"));
+    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(600));
     assert_eq!(
-        loaded.config.visuals.clock_font_family(),
-        Some("Google Sans Flex")
+        loaded.config.visuals.clock_font_style(),
+        Some(FontStyle::Italic)
     );
-    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(400));
     assert_eq!(loaded.config.visuals.clock_size(), Some(16));
     assert_eq!(
         loaded.config.visuals.weather_alignment(),
@@ -863,6 +904,7 @@ offset_y = -18
 font_size = 3
 font_family = "Geom"
 font_weight = 600
+font_style = "italic"
 background_color = "#FFFFFF"
 background_opacity = 5
 border_color = "#DDDDDD"
@@ -886,6 +928,7 @@ border_color = "#DDDDDD"
             [visuals.username]
             font_family = "Geom"
             font_weight = 600
+            font_style = "italic"
             color = "#ffffff"
             opacity = 84
             size = 4
@@ -894,6 +937,7 @@ border_color = "#DDDDDD"
             [visuals.clock]
             font_family = "Prototype"
             font_weight = 700
+            font_style = "italic"
             format = "12h"
             meridiem_size = 3
             meridiem_offset_x = 6
@@ -906,6 +950,7 @@ border_color = "#DDDDDD"
             [visuals.date]
             font_family = "Geom"
             font_weight = 600
+            font_style = "italic"
             color = "#ffffff"
             opacity = 40
             size = 2
@@ -952,9 +997,11 @@ border_color = "#DDDDDD"
             location_color = "#D6E3FF"
             temperature_font_family = "Prototype"
             temperature_font_weight = 600
+            temperature_font_style = "italic"
             temperature_letter_spacing = 2
             location_font_family = "Geom"
             location_font_weight = 500
+            location_font_style = "italic"
             temperature_size = 4
             location_size = 2
             icon_size = 36
@@ -979,6 +1026,8 @@ border_color = "#DDDDDD"
             artist_font_family = "Prototype"
             title_font_weight = 700
             artist_font_weight = 500
+            title_font_style = "italic"
+            artist_font_style = "italic"
             title_size = 2
             artist_size = 1
             width = 280
@@ -1010,6 +1059,7 @@ border_color = "#DDDDDD"
     );
     assert_eq!(config.visuals.input_font_family(), Some("Geom"));
     assert_eq!(config.visuals.input_font_weight(), Some(600));
+    assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.input_font_size(), Some(3));
     assert_eq!(config.visuals.input_alignment(), InputAlignment::BottomLeft);
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
@@ -1038,11 +1088,16 @@ border_color = "#DDDDDD"
     );
     assert_eq!(config.visuals.username_font_family(), Some("Geom"));
     assert_eq!(config.visuals.username_font_weight(), Some(600));
+    assert_eq!(
+        config.visuals.username_font_style(),
+        Some(FontStyle::Italic)
+    );
     assert_eq!(config.visuals.username_opacity(), Some(84));
     assert_eq!(config.visuals.username_size(), Some(4));
     assert_eq!(config.visuals.username_gap(), Some(28));
     assert_eq!(config.visuals.clock_font_family(), Some("Prototype"));
     assert_eq!(config.visuals.clock_font_weight(), Some(700));
+    assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
@@ -1060,6 +1115,7 @@ border_color = "#DDDDDD"
     );
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
+    assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.date_opacity(), Some(40));
     assert_eq!(config.visuals.date_size(), Some(2));
     assert_eq!(
@@ -1123,8 +1179,16 @@ border_color = "#DDDDDD"
         Some("Prototype")
     );
     assert_eq!(config.visuals.weather_temperature_font_weight(), Some(600));
+    assert_eq!(
+        config.visuals.weather_temperature_font_style(),
+        Some(FontStyle::Italic)
+    );
     assert_eq!(config.visuals.weather_location_font_family(), Some("Geom"));
     assert_eq!(config.visuals.weather_location_font_weight(), Some(500));
+    assert_eq!(
+        config.visuals.weather_location_font_style(),
+        Some(FontStyle::Italic)
+    );
     assert_eq!(config.visuals.weather_temperature_letter_spacing(), Some(2));
     assert_eq!(config.visuals.weather_temperature_size(), Some(4));
     assert_eq!(config.visuals.weather_location_size(), Some(2));
@@ -1156,6 +1220,14 @@ border_color = "#DDDDDD"
     );
     assert_eq!(config.visuals.now_playing_title_font_weight(), Some(700));
     assert_eq!(config.visuals.now_playing_artist_font_weight(), Some(500));
+    assert_eq!(
+        config.visuals.now_playing_title_font_style(),
+        Some(FontStyle::Italic)
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_font_style(),
+        Some(FontStyle::Italic)
+    );
     assert_eq!(config.visuals.now_playing_opacity(), Some(72));
     assert_eq!(config.visuals.now_playing_title_opacity(), Some(88));
     assert_eq!(config.visuals.now_playing_artist_opacity(), Some(54));
