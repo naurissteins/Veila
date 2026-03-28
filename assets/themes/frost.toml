@@ -21,6 +21,11 @@ color = "#C8D8F2"
 opacity = 72
 
 [visuals.input]
+alignment = "top-center"
+horizontal_padding = 0
+vertical_padding = 0
+offset_x = 0
+offset_y = 0
 background_opacity = 8
 border_width = 1
 border_opacity = 14

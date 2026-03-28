@@ -3,6 +3,8 @@ use veila_renderer::{
     text::{TextBlock, TextStyle},
 };
 
+use veila_common::InputAlignment;
+
 use super::{LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget};
 use crate::shell::{ShellStatus, render::layout::SceneMetrics};
 
@@ -17,6 +19,7 @@ fn assigns_hero_and_auth_roles() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -51,6 +54,7 @@ fn appends_status_to_auth_role() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -66,6 +70,7 @@ fn appends_status_to_auth_role() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -84,11 +89,11 @@ fn appends_status_to_auth_role() {
     assert_eq!(
         with_status.total_height_for_role(
             LayoutRole::Auth,
-            SceneMetrics::from_frame(1280, 720, None, None, None),
+            SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter),
             &ShellStatus::Idle,
         ) - without_status.total_height_for_role(
             LayoutRole::Auth,
-            SceneMetrics::from_frame(1280, 720, None, None, None),
+            SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter),
             &ShellStatus::Idle,
         ),
         38
@@ -106,6 +111,7 @@ fn footer_role_is_empty_in_default_model() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -127,6 +133,7 @@ fn omits_username_widget_when_disabled() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -153,6 +160,7 @@ fn uses_configured_username_gap() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -178,6 +186,7 @@ fn uses_configured_avatar_gap() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         Some(18),
@@ -203,6 +212,7 @@ fn uses_configured_status_gap() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -218,8 +228,37 @@ fn uses_configured_status_gap() {
 }
 
 #[test]
+fn places_status_above_input_for_bottom_aligned_layouts() {
+    let model = SceneModel::standard(
+        SceneTextBlocks {
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
+            username: Some(block("ramces")),
+            placeholder: Some(block("Type your password to unlock")),
+            status: Some(block("Checking password")),
+            weather: None,
+        },
+        InputAlignment::BottomCenter,
+        true,
+        None,
+        None,
+        None,
+        Some(20),
+    );
+
+    let auth_sections = model
+        .sections_for_role(LayoutRole::Auth)
+        .collect::<Vec<_>>();
+
+    assert!(matches!(auth_sections[2].widget, SceneWidget::Status(_)));
+    assert_eq!(auth_sections[2].gap_after, 20);
+    assert!(matches!(auth_sections[3].widget, SceneWidget::Input(_)));
+}
+
+#[test]
 fn keeps_auth_anchor_height_stable_when_status_is_added() {
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
     let without_status = SceneModel::standard(
         SceneTextBlocks {
             clock: Some(clock_blocks("09:05")),
@@ -229,6 +268,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -244,6 +284,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         None,
         None,
@@ -268,6 +309,7 @@ fn uses_configured_clock_gap() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         true,
         Some(12),
         None,
@@ -293,6 +335,7 @@ fn omits_avatar_widget_when_disabled() {
             status: None,
             weather: None,
         },
+        InputAlignment::CenterCenter,
         false,
         None,
         None,

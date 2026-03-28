@@ -13,6 +13,11 @@ use super::ShellTheme;
 fn input_opacity_overrides_embedded_alpha() {
     let mut config = AppConfig::default();
     config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
+        alignment: Some(veila_common::InputAlignment::CenterCenter),
+        horizontal_padding: Some(56),
+        vertical_padding: Some(44),
+        offset_x: Some(18),
+        offset_y: Some(-12),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         font_size: Some(3),
@@ -164,6 +169,14 @@ fn input_opacity_overrides_embedded_alpha() {
 
     assert_eq!(theme.input.alpha, 26);
     assert_eq!(theme.input_border.alpha, 31);
+    assert_eq!(
+        theme.input_alignment,
+        veila_common::InputAlignment::CenterCenter
+    );
+    assert_eq!(theme.input_horizontal_padding, Some(56));
+    assert_eq!(theme.input_vertical_padding, Some(44));
+    assert_eq!(theme.input_offset_x, Some(18));
+    assert_eq!(theme.input_offset_y, Some(-12));
     assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.input_font_weight, Some(600));
     assert_eq!(theme.input_font_size, Some(3));

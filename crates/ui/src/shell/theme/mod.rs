@@ -2,7 +2,7 @@ mod color;
 #[cfg(test)]
 mod tests;
 
-use veila_common::{AppConfig, ClockFormat, WeatherAlignment};
+use veila_common::{AppConfig, ClockFormat, InputAlignment, WeatherAlignment};
 use veila_renderer::ClearColor;
 
 use self::color::{to_color, to_color_with_opacity};
@@ -17,6 +17,11 @@ pub struct ShellTheme {
     pub input_font_family: Option<String>,
     pub input_font_weight: Option<u16>,
     pub input_font_size: Option<u32>,
+    pub input_alignment: InputAlignment,
+    pub input_horizontal_padding: Option<i32>,
+    pub input_vertical_padding: Option<i32>,
+    pub input_offset_x: Option<i32>,
+    pub input_offset_y: Option<i32>,
     pub input_width: Option<i32>,
     pub input_height: Option<i32>,
     pub input_radius: i32,
@@ -162,6 +167,11 @@ impl ShellTheme {
             input_font_family: config.visuals.input_font_family().map(str::to_owned),
             input_font_weight: config.visuals.input_font_weight(),
             input_font_size: config.visuals.input_font_size().map(u32::from),
+            input_alignment: config.visuals.input_alignment(),
+            input_horizontal_padding: config.visuals.input_horizontal_padding().map(i32::from),
+            input_vertical_padding: config.visuals.input_vertical_padding().map(i32::from),
+            input_offset_x: config.visuals.input_offset_x().map(i32::from),
+            input_offset_y: config.visuals.input_offset_y().map(i32::from),
             input_width: config.visuals.input_width().map(i32::from),
             input_height: config.visuals.input_height().map(i32::from),
             input_radius: i32::from(config.visuals.input_radius()),

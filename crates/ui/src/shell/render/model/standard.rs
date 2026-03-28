@@ -1,8 +1,11 @@
+use veila_common::InputAlignment;
+
 use super::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget};
 
 impl SceneModel {
     pub(crate) fn standard(
         blocks: SceneTextBlocks,
+        input_alignment: InputAlignment,
         avatar_enabled: bool,
         clock_gap: Option<i32>,
         avatar_gap: Option<i32>,
@@ -56,16 +59,39 @@ impl SceneModel {
             ));
         }
 
-        sections.push(SceneSection::new(
-            LayoutRole::Auth,
-            SceneWidget::Input(placeholder),
-            if status.is_some() { status_gap } else { 0 },
-        ));
+        let status_before_input = matches!(
+            input_alignment,
+            InputAlignment::BottomCenter | InputAlignment::BottomRight | InputAlignment::BottomLeft
+        );
 
         if let Some(status) = status {
+            if status_before_input {
+                sections.push(SceneSection::new(
+                    LayoutRole::Auth,
+                    SceneWidget::Status(status),
+                    status_gap,
+                ));
+                sections.push(SceneSection::new(
+                    LayoutRole::Auth,
+                    SceneWidget::Input(placeholder),
+                    0,
+                ));
+            } else {
+                sections.push(SceneSection::new(
+                    LayoutRole::Auth,
+                    SceneWidget::Input(placeholder),
+                    status_gap,
+                ));
+                sections.push(SceneSection::new(
+                    LayoutRole::Auth,
+                    SceneWidget::Status(status),
+                    0,
+                ));
+            }
+        } else {
             sections.push(SceneSection::new(
                 LayoutRole::Auth,
-                SceneWidget::Status(status),
+                SceneWidget::Input(placeholder),
                 0,
             ));
         }

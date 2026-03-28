@@ -106,8 +106,11 @@ impl SceneModel {
             .filter(|(_, section)| !matches!(section.widget, SceneWidget::Status(_)))
             .map(|(index, section)| {
                 let gap_after = if matches!(
-                    sections.get(index + 1).map(|next| &next.widget),
-                    Some(SceneWidget::Status(_))
+                    (
+                        &section.widget,
+                        sections.get(index + 1).map(|next| &next.widget)
+                    ),
+                    (SceneWidget::Input(_), Some(SceneWidget::Status(_)))
                 ) {
                     0
                 } else {

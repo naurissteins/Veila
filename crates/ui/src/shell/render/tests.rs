@@ -1,6 +1,6 @@
 use super::{SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics};
 use crate::shell::{ShellStatus, ShellTheme};
-use veila_common::WeatherAlignment;
+use veila_common::{InputAlignment, WeatherAlignment};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     text::{TextStyle, bundled_clock_font_family},
@@ -272,6 +272,7 @@ fn scene_metrics_use_configured_avatar_size() {
         shell.theme.input_width,
         shell.theme.input_height,
         shell.theme.avatar_size,
+        InputAlignment::CenterCenter,
     );
     assert_eq!(metrics.avatar_size, 88);
 }
@@ -350,7 +351,14 @@ fn clock_style_uses_configured_opacity() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
 
     assert_eq!(style.color.alpha, 245);
     assert_eq!(style.scale, 14);
@@ -364,7 +372,14 @@ fn clock_style_uses_configured_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
 
     assert_eq!(style.color.red, 248);
     assert_eq!(style.color.green, 251);
@@ -382,7 +397,14 @@ fn clock_style_uses_configured_font_family() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
 
     assert!(
         style
@@ -397,7 +419,14 @@ fn clock_style_uses_configured_font_family() {
 #[test]
 fn clock_style_defaults_to_bundled_font_family() {
     let shell = ShellState::default();
-    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
 
     assert!(
         style
@@ -450,7 +479,14 @@ fn clock_style_uses_configured_size() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
 
     assert_eq!(style.scale, 4);
 }
@@ -462,7 +498,8 @@ fn clock_meridiem_style_is_smaller_than_main_clock() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
     let clock_style = shell.clock_text_style(metrics);
     let meridiem_style = shell.clock_meridiem_text_style(metrics);
 
@@ -477,7 +514,8 @@ fn clock_meridiem_style_uses_configured_size() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
     let meridiem_style = shell.clock_meridiem_text_style(metrics);
 
     assert_eq!(meridiem_style.scale, 5);
@@ -515,7 +553,14 @@ fn keyboard_layout_style_uses_configured_color_and_opacity() {
 #[test]
 fn header_styles_do_not_add_extra_line_spacing() {
     let shell = ShellState::default();
-    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
     let date_style = shell.date_text_style();
 
     assert_eq!(clock_style.line_spacing, 0);
@@ -529,7 +574,14 @@ fn clock_style_allows_sizes_above_previous_cap() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
 
     assert_eq!(style.scale, 12);
 }
@@ -707,7 +759,8 @@ fn now_playing_blocks_stay_single_line_and_truncate() {
 #[test]
 fn text_layout_cache_uses_configured_weather_icon_size() {
     let mut cache = TextLayoutCache::default();
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_text: Some("09:41"),
@@ -754,7 +807,8 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
 #[test]
 fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
     let mut cache = TextLayoutCache::default();
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_text: Some("09:41"),
@@ -801,7 +855,14 @@ fn header_styles_preserve_explicit_foreground_alpha_when_unset() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
+    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(
+        1280,
+        720,
+        None,
+        None,
+        None,
+        InputAlignment::CenterCenter,
+    ));
     let date_style = shell.date_text_style();
 
     assert_eq!(clock_style.color.alpha, 90);
@@ -822,6 +883,7 @@ fn scene_metrics_use_configured_input_dimensions() {
         shell.theme.input_width,
         shell.theme.input_height,
         shell.theme.avatar_size,
+        InputAlignment::CenterCenter,
     );
 
     assert_eq!(metrics.input_width, 280);
@@ -952,7 +1014,8 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
 #[test]
 fn text_layout_cache_reuses_matching_clock_layout() {
     let mut cache = TextLayoutCache::default();
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
     let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 5);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
@@ -1024,7 +1087,8 @@ fn text_layout_cache_reuses_matching_clock_layout() {
 #[test]
 fn text_layout_cache_refreshes_when_clock_text_changes() {
     let mut cache = TextLayoutCache::default();
-    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
         clock_text: Some("09:41"),

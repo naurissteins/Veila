@@ -18,6 +18,16 @@ impl Default for InputVisualEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InputVisualConfig {
     #[serde(default)]
+    pub alignment: Option<InputAlignment>,
+    #[serde(default)]
+    pub horizontal_padding: Option<u16>,
+    #[serde(default)]
+    pub vertical_padding: Option<u16>,
+    #[serde(default)]
+    pub offset_x: Option<i16>,
+    #[serde(default)]
+    pub offset_y: Option<i16>,
+    #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
     pub font_weight: Option<u16>,
@@ -46,6 +56,11 @@ pub struct InputVisualConfig {
 impl Default for InputVisualConfig {
     fn default() -> Self {
         Self {
+            alignment: Some(InputAlignment::CenterCenter),
+            horizontal_padding: None,
+            vertical_padding: None,
+            offset_x: Some(0),
+            offset_y: Some(0),
             font_family: Some(default_google_sans_flex_font_family()),
             font_weight: Some(400),
             font_size: Some(2),
@@ -60,6 +75,29 @@ impl Default for InputVisualConfig {
             mask_color: Some(RgbColor::rgb(255, 255, 255)),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum InputAlignment {
+    #[default]
+    #[serde(rename = "center-center")]
+    CenterCenter,
+    #[serde(rename = "center-right")]
+    CenterRight,
+    #[serde(rename = "center-left")]
+    CenterLeft,
+    #[serde(rename = "top-center")]
+    TopCenter,
+    #[serde(rename = "top-right")]
+    TopRight,
+    #[serde(rename = "top-left")]
+    TopLeft,
+    #[serde(rename = "bottom-center")]
+    BottomCenter,
+    #[serde(rename = "bottom-right")]
+    BottomRight,
+    #[serde(rename = "bottom-left")]
+    BottomLeft,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -879,6 +917,41 @@ impl VisualConfig {
                 .font_family
                 .as_deref()
                 .or(self.input_font_family.as_deref()),
+        }
+    }
+
+    pub fn input_alignment(&self) -> InputAlignment {
+        match &self.input {
+            InputVisualEntry::Color(_) => InputAlignment::default(),
+            InputVisualEntry::Section(config) => config.alignment.unwrap_or_default(),
+        }
+    }
+
+    pub fn input_horizontal_padding(&self) -> Option<u16> {
+        match &self.input {
+            InputVisualEntry::Color(_) => None,
+            InputVisualEntry::Section(config) => config.horizontal_padding,
+        }
+    }
+
+    pub fn input_vertical_padding(&self) -> Option<u16> {
+        match &self.input {
+            InputVisualEntry::Color(_) => None,
+            InputVisualEntry::Section(config) => config.vertical_padding,
+        }
+    }
+
+    pub fn input_offset_x(&self) -> Option<i16> {
+        match &self.input {
+            InputVisualEntry::Color(_) => None,
+            InputVisualEntry::Section(config) => config.offset_x,
+        }
+    }
+
+    pub fn input_offset_y(&self) -> Option<i16> {
+        match &self.input {
+            InputVisualEntry::Color(_) => None,
+            InputVisualEntry::Section(config) => config.offset_y,
         }
     }
 

@@ -12,7 +12,9 @@ use veila_renderer::SoftwareBuffer;
 
 use self::{
     cache::SceneTextInputs,
-    layout::{AnchorOffsets, RoleAnchors, SceneMetrics, role_anchors, top_role_top},
+    layout::{
+        AnchorOffsets, InputPlacement, RoleAnchors, SceneMetrics, role_anchors, top_role_top,
+    },
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
         InputWidget, NowPlayingWidget, draw_avatar_widget, draw_centered_block,
@@ -99,15 +101,21 @@ impl ShellState {
     }
 
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
-        let metrics = SceneMetrics::from_frame(
+        let metrics = SceneMetrics::from_frame_with_input_placement(
             size.width as i32,
             size.height as i32,
             self.theme.input_width,
             self.theme.input_height,
             self.theme.avatar_size,
+            InputPlacement {
+                alignment: self.theme.input_alignment,
+                horizontal_padding: self.theme.input_horizontal_padding,
+                offset_x: self.theme.input_offset_x,
+            },
         );
         let model = SceneModel::standard(
             self.scene_text_blocks(metrics),
+            self.theme.input_alignment,
             self.theme.avatar_enabled,
             self.theme.clock_gap,
             self.theme.avatar_gap,
@@ -120,8 +128,11 @@ impl ShellState {
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+            self.theme.input_alignment,
             AnchorOffsets {
                 auth_stack: self.theme.auth_stack_offset,
+                input_vertical_padding: self.theme.input_vertical_padding,
+                input_offset_y: self.theme.input_offset_y,
                 header_top: self.theme.header_top_offset,
                 weather_bottom_padding: self.theme.weather_bottom_padding,
             },
@@ -238,16 +249,21 @@ impl ShellState {
                 draw_centered_clock_widget(buffer, metrics.center_x, y, block);
             }
             SceneWidget::Date(block) | SceneWidget::Status(block) if dynamic => {
-                draw_centered_block(buffer, metrics.center_x, y, block);
+                let center_x = if matches!(section.widget, SceneWidget::Status(_)) {
+                    metrics.auth_center_x
+                } else {
+                    metrics.center_x
+                };
+                draw_centered_block(buffer, center_x, y, block);
             }
             SceneWidget::Username(block) if !dynamic => {
-                draw_centered_block(buffer, metrics.center_x, y, block);
+                draw_centered_block(buffer, metrics.auth_center_x, y, block);
             }
             SceneWidget::Avatar if !dynamic && self.theme.avatar_enabled => {
                 draw_avatar_widget(
                     buffer,
                     &self.avatar,
-                    metrics.center_x,
+                    metrics.auth_center_x,
                     y,
                     metrics.avatar_size as u32,
                     self.avatar_style(),

@@ -1,8 +1,8 @@
 use std::fs;
 
 use super::{
-    AppConfig, BackgroundMode, ClockFormat, InputVisualEntry, RgbColor, WeatherAlignment,
-    WeatherUnit,
+    AppConfig, BackgroundMode, ClockFormat, InputAlignment, InputVisualEntry, RgbColor,
+    WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
 
@@ -48,6 +48,14 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.input_font_family().is_none());
     assert!(config.visuals.input_font_weight().is_none());
     assert!(config.visuals.input_font_size().is_none());
+    assert_eq!(
+        config.visuals.input_alignment(),
+        InputAlignment::CenterCenter
+    );
+    assert!(config.visuals.input_horizontal_padding().is_none());
+    assert!(config.visuals.input_vertical_padding().is_none());
+    assert!(config.visuals.input_offset_x().is_none());
+    assert!(config.visuals.input_offset_y().is_none());
     assert!(config.visuals.input_background_opacity().is_none());
     assert!(config.visuals.input_border_opacity().is_none());
     assert!(config.visuals.input_width().is_none());
@@ -191,6 +199,14 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.input_font_family(), Some("Google Sans Flex"));
     assert_eq!(config.visuals.input_font_weight(), Some(400));
     assert_eq!(config.visuals.input_font_size(), Some(2));
+    assert_eq!(
+        config.visuals.input_alignment(),
+        InputAlignment::CenterCenter
+    );
+    assert!(config.visuals.input_horizontal_padding().is_none());
+    assert!(config.visuals.input_vertical_padding().is_none());
+    assert_eq!(config.visuals.input_offset_x(), Some(0));
+    assert_eq!(config.visuals.input_offset_y(), Some(0));
     assert_eq!(
         config.visuals.input_background_color(),
         RgbColor::rgb(255, 255, 255)
@@ -839,6 +855,11 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
             foreground = "#111111"
 
 [visuals.input]
+alignment = "bottom-left"
+horizontal_padding = 64
+vertical_padding = 56
+offset_x = 14
+offset_y = -18
 font_size = 3
 font_family = "Geom"
 font_weight = 600
@@ -990,6 +1011,11 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.input_font_family(), Some("Geom"));
     assert_eq!(config.visuals.input_font_weight(), Some(600));
     assert_eq!(config.visuals.input_font_size(), Some(3));
+    assert_eq!(config.visuals.input_alignment(), InputAlignment::BottomLeft);
+    assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
+    assert_eq!(config.visuals.input_vertical_padding(), Some(56));
+    assert_eq!(config.visuals.input_offset_x(), Some(14));
+    assert_eq!(config.visuals.input_offset_y(), Some(-18));
     assert_eq!(config.visuals.input_background_opacity(), Some(5));
     assert_eq!(
         config.visuals.input_border_color(),

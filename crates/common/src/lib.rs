@@ -13,8 +13,8 @@ pub use battery::BatterySnapshot;
 pub use config::{
     AppConfig, AvatarVisualConfig, BatteryConfig, BatteryVisualConfig, CapsLockVisualConfig,
     ClockFormat, ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, GeoCoordinate,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig, LoadedConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, RgbColor,
+    InputAlignment, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
+    LoadedConfig, NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, RgbColor,
     StatusVisualConfig, UsernameVisualConfig, WeatherAlignment, WeatherConfig, WeatherUnit,
     WeatherVisualConfig,
 };
