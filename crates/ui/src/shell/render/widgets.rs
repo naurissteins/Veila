@@ -1,4 +1,4 @@
-use veila_common::WeatherAlignment;
+use veila_common::{ClockStyle, WeatherAlignment};
 use veila_renderer::{
     ClearColor, SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
@@ -70,14 +70,39 @@ pub(super) fn draw_centered_clock_widget(
     clock: &SceneClockBlocks,
 ) {
     let x = center_x - clock.width() / 2;
-    clock.time.draw(buffer, x, y);
+    let base_width = match clock.style {
+        ClockStyle::Standard => clock.primary.width as i32,
+        ClockStyle::Stacked => (clock.primary.width as i32).max(
+            clock
+                .secondary
+                .as_ref()
+                .map_or(0, |secondary| secondary.width as i32),
+        ),
+    };
+
+    match clock.style {
+        ClockStyle::Standard => {
+            clock.primary.draw(buffer, x, y);
+        }
+        ClockStyle::Stacked => {
+            let primary_x = x + (base_width - clock.primary.width as i32) / 2;
+            clock.primary.draw(buffer, primary_x, y);
+
+            if let Some(secondary) = clock.secondary.as_ref() {
+                let secondary_x = x + (base_width - secondary.width as i32) / 2;
+                secondary.draw(
+                    buffer,
+                    secondary_x,
+                    y + clock.primary.height as i32 + SceneClockBlocks::stacked_gap(),
+                );
+            }
+        }
+    }
 
     if let Some(meridiem) = clock.meridiem.as_ref() {
         meridiem.draw(
             buffer,
-            x + clock.time.width as i32
-                + SceneClockBlocks::meridiem_gap()
-                + clock.meridiem_offset_x,
+            x + base_width + SceneClockBlocks::meridiem_gap() + clock.meridiem_offset_x,
             y + SceneClockBlocks::meridiem_top_offset() + clock.meridiem_offset_y,
         );
     }

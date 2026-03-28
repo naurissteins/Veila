@@ -1,11 +1,13 @@
 use time::{Month, OffsetDateTime, Weekday};
-use veila_common::ClockFormat;
+use veila_common::{ClockFormat, ClockStyle};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ClockState {
     minute_key: i64,
     format: ClockFormat,
     time_text: String,
+    hour_text: String,
+    minute_text: String,
     meridiem_text: Option<String>,
     date_text: String,
 }
@@ -25,8 +27,18 @@ impl ClockState {
         true
     }
 
-    pub(super) fn time_text(&self) -> &str {
-        &self.time_text
+    pub(super) fn primary_text(&self, style: ClockStyle) -> &str {
+        match style {
+            ClockStyle::Standard => &self.time_text,
+            ClockStyle::Stacked => &self.hour_text,
+        }
+    }
+
+    pub(super) fn secondary_text(&self, style: ClockStyle) -> Option<&str> {
+        match style {
+            ClockStyle::Standard => None,
+            ClockStyle::Stacked => Some(&self.minute_text),
+        }
     }
 
     pub(super) fn date_text(&self) -> &str {
@@ -38,12 +50,14 @@ impl ClockState {
     }
 
     fn from_datetime(datetime: OffsetDateTime, format: ClockFormat) -> Self {
-        let (time_text, meridiem_text) = format_time(datetime, format);
+        let (time_text, hour_text, minute_text, meridiem_text) = format_time(datetime, format);
 
         Self {
             minute_key: datetime.unix_timestamp().div_euclid(60),
             format,
             time_text,
+            hour_text,
+            minute_text,
             meridiem_text,
             date_text: format!(
                 "{}, {} {}",
@@ -55,10 +69,15 @@ impl ClockState {
     }
 }
 
-fn format_time(datetime: OffsetDateTime, format: ClockFormat) -> (String, Option<String>) {
+fn format_time(
+    datetime: OffsetDateTime,
+    format: ClockFormat,
+) -> (String, String, String, Option<String>) {
     match format {
         ClockFormat::TwentyFourHour => (
             format!("{:02}:{:02}", datetime.hour(), datetime.minute()),
+            format!("{:02}", datetime.hour()),
+            format!("{:02}", datetime.minute()),
             None,
         ),
         ClockFormat::TwelveHour => {
@@ -71,6 +90,8 @@ fn format_time(datetime: OffsetDateTime, format: ClockFormat) -> (String, Option
 
             (
                 format!("{display_hour:02}:{:02}", datetime.minute()),
+                format!("{display_hour:02}"),
+                format!("{:02}", datetime.minute()),
                 Some(String::from(meridiem)),
             )
         }
@@ -116,7 +137,7 @@ fn month_name(month: Month) -> &'static str {
 #[cfg(test)]
 mod tests {
     use time::{Date, Month, PrimitiveDateTime, Time, UtcOffset};
-    use veila_common::ClockFormat;
+    use veila_common::{ClockFormat, ClockStyle};
 
     use super::ClockState;
 
@@ -130,7 +151,9 @@ mod tests {
 
         let clock = ClockState::from_datetime(datetime, ClockFormat::TwentyFourHour);
 
-        assert_eq!(clock.time_text(), "09:05");
+        assert_eq!(clock.primary_text(ClockStyle::Standard), "09:05");
+        assert_eq!(clock.primary_text(ClockStyle::Stacked), "09");
+        assert_eq!(clock.secondary_text(ClockStyle::Stacked), Some("05"));
         assert_eq!(clock.meridiem_text(), None);
         assert_eq!(clock.date_text(), "Tuesday, March 24");
     }
@@ -145,7 +168,9 @@ mod tests {
 
         let clock = ClockState::from_datetime(datetime, ClockFormat::TwelveHour);
 
-        assert_eq!(clock.time_text(), "03:05");
+        assert_eq!(clock.primary_text(ClockStyle::Standard), "03:05");
+        assert_eq!(clock.primary_text(ClockStyle::Stacked), "03");
+        assert_eq!(clock.secondary_text(ClockStyle::Stacked), Some("05"));
         assert_eq!(clock.meridiem_text(), Some("PM"));
         assert_eq!(clock.date_text(), "Tuesday, March 24");
     }
@@ -160,7 +185,7 @@ mod tests {
 
         let clock = ClockState::from_datetime(datetime, ClockFormat::TwelveHour);
 
-        assert_eq!(clock.time_text(), "12:05");
+        assert_eq!(clock.primary_text(ClockStyle::Standard), "12:05");
         assert_eq!(clock.meridiem_text(), Some("AM"));
     }
 }

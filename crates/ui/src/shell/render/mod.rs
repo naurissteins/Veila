@@ -162,7 +162,8 @@ impl ShellState {
     }
 
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
-        let clock_text = self.clock.time_text();
+        let clock_text = self.clock.primary_text(self.theme.clock_style);
+        let clock_secondary_text = self.clock.secondary_text(self.theme.clock_style);
         let clock_style = self.clock_text_style(metrics);
         let clock_meridiem_text = self.clock.meridiem_text();
         let clock_meridiem_style = self.clock_meridiem_text_style(metrics);
@@ -182,7 +183,13 @@ impl ShellState {
         self.text_layout_cache
             .borrow_mut()
             .scene_text_blocks(SceneTextInputs {
+                clock_style_mode: self.theme.clock_style,
                 clock_text: self.theme.clock_enabled.then_some(clock_text),
+                clock_secondary_text: self
+                    .theme
+                    .clock_enabled
+                    .then_some(())
+                    .and(clock_secondary_text),
                 clock_style,
                 clock_meridiem_text: self
                     .theme

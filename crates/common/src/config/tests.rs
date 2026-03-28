@@ -1,8 +1,8 @@
 use std::fs;
 
 use super::{
-    AppConfig, BackgroundMode, ClockFormat, FontStyle, InputAlignment, InputVisualEntry, RgbColor,
-    WeatherAlignment, WeatherUnit,
+    AppConfig, BackgroundMode, ClockFormat, ClockStyle, FontStyle, InputAlignment,
+    InputVisualEntry, RgbColor, WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
 
@@ -269,6 +269,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
     assert_eq!(config.visuals.clock_font_weight(), Some(600));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));
+    assert_eq!(config.visuals.clock_style(), ClockStyle::Standard);
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
@@ -558,6 +559,7 @@ fn loads_config_from_file() {
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
             clock_font_style = "italic"
+            clock_style = "stacked"
             clock_format = "12h"
             clock_meridiem_size = 3
             clock_meridiem_offset_x = 6
@@ -679,6 +681,7 @@ fn loads_config_from_file() {
         loaded.config.visuals.clock_font_style(),
         Some(FontStyle::Italic)
     );
+    assert_eq!(loaded.config.visuals.clock_style(), ClockStyle::Stacked);
     assert_eq!(
         loaded.config.visuals.clock_format(),
         ClockFormat::TwelveHour
@@ -938,6 +941,7 @@ border_color = "#DDDDDD"
             font_family = "Prototype"
             font_weight = 700
             font_style = "italic"
+            style = "stacked"
             format = "12h"
             meridiem_size = 3
             meridiem_offset_x = 6
@@ -1098,6 +1102,7 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.clock_font_family(), Some("Prototype"));
     assert_eq!(config.visuals.clock_font_weight(), Some(700));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Italic));
+    assert_eq!(config.visuals.clock_style(), ClockStyle::Stacked);
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));

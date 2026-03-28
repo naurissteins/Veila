@@ -2,7 +2,7 @@ mod standard;
 #[cfg(test)]
 mod tests;
 
-use veila_common::WeatherAlignment;
+use veila_common::{ClockStyle, WeatherAlignment};
 use veila_renderer::icon::WeatherIcon;
 use veila_renderer::text::TextBlock;
 
@@ -20,7 +20,9 @@ pub(super) struct SceneTextBlocks {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SceneClockBlocks {
-    pub time: TextBlock,
+    pub style: ClockStyle,
+    pub primary: TextBlock,
+    pub secondary: Option<TextBlock>,
     pub meridiem: Option<TextBlock>,
     pub meridiem_offset_x: i32,
     pub meridiem_offset_y: i32,
@@ -152,9 +154,19 @@ impl SceneWidget {
 impl SceneClockBlocks {
     const MERIDIEM_GAP: i32 = 8;
     const MERIDIEM_TOP_OFFSET: i32 = 4;
+    const STACKED_GAP: i32 = 0;
 
     pub(super) fn width(&self) -> i32 {
-        self.time.width as i32
+        let base_width = match self.style {
+            ClockStyle::Standard => self.primary.width as i32,
+            ClockStyle::Stacked => (self.primary.width as i32).max(
+                self.secondary
+                    .as_ref()
+                    .map_or(0, |secondary| secondary.width as i32),
+            ),
+        };
+
+        base_width
             + self
                 .meridiem
                 .as_ref()
@@ -162,7 +174,18 @@ impl SceneClockBlocks {
     }
 
     pub(super) fn height(&self) -> i32 {
-        (self.time.height as i32).max(self.meridiem.as_ref().map_or(0, |meridiem| {
+        let base_height = match self.style {
+            ClockStyle::Standard => self.primary.height as i32,
+            ClockStyle::Stacked => {
+                self.primary.height as i32
+                    + self
+                        .secondary
+                        .as_ref()
+                        .map_or(0, |secondary| Self::STACKED_GAP + secondary.height as i32)
+            }
+        };
+
+        base_height.max(self.meridiem.as_ref().map_or(0, |meridiem| {
             Self::MERIDIEM_TOP_OFFSET + meridiem.height as i32
         }))
     }
@@ -173,6 +196,10 @@ impl SceneClockBlocks {
 
     pub(super) const fn meridiem_top_offset() -> i32 {
         Self::MERIDIEM_TOP_OFFSET
+    }
+
+    pub(super) const fn stacked_gap() -> i32 {
+        Self::STACKED_GAP
     }
 }
 

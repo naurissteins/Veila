@@ -9,6 +9,7 @@ tint_opacity = 0
 
 [visuals.clock]
 format = "12h"
+style = "stacked"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
@@ -17,7 +18,7 @@ font_weight = 600
 font_style = "italic"
 color = "#ffffff"
 opacity = 40
-size = 14
+size = 54
 gap = 20
 
 [visuals.date]

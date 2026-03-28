@@ -1,5 +1,5 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockVisualConfig,
+    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig,
     ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry,
     KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
@@ -58,6 +58,7 @@ fn input_opacity_overrides_embedded_alpha() {
         font_family: Some(String::from("Bebas Neue")),
         font_weight: Some(700),
         font_style: Some(FontStyle::Italic),
+        style: Some(ClockStyle::Stacked),
         format: Some(ClockFormat::TwelveHour),
         meridiem_size: Some(3),
         meridiem_offset_x: Some(6),
@@ -223,6 +224,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
     assert_eq!(theme.clock_font_weight, Some(700));
     assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.clock_style, ClockStyle::Stacked);
     assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
     assert_eq!(theme.clock_meridiem_size, Some(3));
     assert_eq!(theme.clock_meridiem_offset_x, Some(6));

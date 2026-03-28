@@ -2,7 +2,9 @@ mod color;
 #[cfg(test)]
 mod tests;
 
-use veila_common::{AppConfig, ClockFormat, FontStyle, InputAlignment, WeatherAlignment};
+use veila_common::{
+    AppConfig, ClockFormat, ClockStyle, FontStyle, InputAlignment, WeatherAlignment,
+};
 use veila_renderer::ClearColor;
 
 use self::color::{to_color, to_color_with_opacity};
@@ -50,6 +52,7 @@ pub struct ShellTheme {
     pub clock_font_family: Option<String>,
     pub clock_font_weight: Option<u16>,
     pub clock_font_style: Option<FontStyle>,
+    pub clock_style: ClockStyle,
     pub clock_format: ClockFormat,
     pub clock_meridiem_size: Option<u32>,
     pub clock_meridiem_offset_x: Option<i32>,
@@ -208,6 +211,7 @@ impl ShellTheme {
             clock_font_family: config.visuals.clock_font_family().map(str::to_owned),
             clock_font_weight: config.visuals.clock_font_weight(),
             clock_font_style: config.visuals.clock_font_style(),
+            clock_style: config.visuals.clock_style(),
             clock_format: config.visuals.clock_format(),
             clock_meridiem_size: config.visuals.clock_meridiem_size().map(u32::from),
             clock_meridiem_offset_x: config.visuals.clock_meridiem_offset_x().map(i32::from),

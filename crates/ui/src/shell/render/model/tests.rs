@@ -3,7 +3,7 @@ use veila_renderer::{
     text::{TextBlock, TextStyle},
 };
 
-use veila_common::InputAlignment;
+use veila_common::{ClockStyle, InputAlignment};
 
 use super::{LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget};
 use crate::shell::{ShellStatus, render::layout::SceneMetrics};
@@ -361,7 +361,9 @@ fn block(text: &str) -> TextBlock {
 
 fn clock_blocks(text: &str) -> SceneClockBlocks {
     SceneClockBlocks {
-        time: block(text),
+        style: ClockStyle::Standard,
+        primary: block(text),
+        secondary: None,
         meridiem: None,
         meridiem_offset_x: 0,
         meridiem_offset_y: 0,

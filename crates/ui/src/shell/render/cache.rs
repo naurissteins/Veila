@@ -1,4 +1,4 @@
-use veila_common::WeatherAlignment;
+use veila_common::{ClockStyle, WeatherAlignment};
 use veila_renderer::{
     icon::WeatherIcon,
     text::{TextBlock, TextStyle, fit_single_line_text, fit_wrapped_text},
@@ -12,6 +12,7 @@ use super::{
 #[derive(Debug, Clone, Default)]
 pub(crate) struct TextLayoutCache {
     pub(super) clock: CachedTextBlock,
+    pub(super) clock_secondary: CachedTextBlock,
     pub(super) clock_meridiem: CachedTextBlock,
     pub(super) date: CachedTextBlock,
     pub(super) keyboard_layout: CachedTextBlock,
@@ -41,7 +42,9 @@ pub(super) struct CachedTextKey {
 }
 
 pub(super) struct SceneTextInputs<'a> {
+    pub(super) clock_style_mode: ClockStyle,
     pub(super) clock_text: Option<&'a str>,
+    pub(super) clock_secondary_text: Option<&'a str>,
     pub(super) clock_style: TextStyle,
     pub(super) clock_meridiem_text: Option<&'a str>,
     pub(super) clock_meridiem_style: TextStyle,
@@ -74,21 +77,32 @@ pub(super) struct SceneTextInputs<'a> {
 impl TextLayoutCache {
     pub(super) fn scene_text_blocks(&mut self, inputs: SceneTextInputs<'_>) -> SceneTextBlocks {
         SceneTextBlocks {
-            clock: inputs.clock_text.map(|clock_text| SceneClockBlocks {
-                time: self.clock.resolve(
-                    clock_text,
-                    inputs.clock_style,
-                    inputs.metrics.clock_width,
-                    3,
-                ),
-                meridiem: self.clock_meridiem.resolve_optional(
-                    inputs.clock_meridiem_text,
-                    inputs.clock_meridiem_style,
-                    inputs.metrics.clock_width,
-                    1,
-                ),
-                meridiem_offset_x: inputs.clock_meridiem_offset_x.unwrap_or(0).clamp(-128, 128),
-                meridiem_offset_y: inputs.clock_meridiem_offset_y.unwrap_or(0).clamp(-128, 128),
+            clock: inputs.clock_text.map(|clock_text| {
+                let clock_style = inputs.clock_style.clone();
+
+                SceneClockBlocks {
+                    style: inputs.clock_style_mode,
+                    primary: self.clock.resolve(
+                        clock_text,
+                        clock_style.clone(),
+                        inputs.metrics.clock_width,
+                        3,
+                    ),
+                    secondary: self.clock_secondary.resolve_optional(
+                        inputs.clock_secondary_text,
+                        clock_style,
+                        inputs.metrics.clock_width,
+                        3,
+                    ),
+                    meridiem: self.clock_meridiem.resolve_optional(
+                        inputs.clock_meridiem_text,
+                        inputs.clock_meridiem_style,
+                        inputs.metrics.clock_width,
+                        1,
+                    ),
+                    meridiem_offset_x: inputs.clock_meridiem_offset_x.unwrap_or(0).clamp(-128, 128),
+                    meridiem_offset_y: inputs.clock_meridiem_offset_y.unwrap_or(0).clamp(-128, 128),
+                }
             }),
             date: inputs.date_text.map(|date_text| {
                 self.date

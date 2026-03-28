@@ -1,6 +1,6 @@
 use super::{SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics};
 use crate::shell::{ShellStatus, ShellTheme};
-use veila_common::{InputAlignment, WeatherAlignment};
+use veila_common::{ClockStyle, InputAlignment, WeatherAlignment};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     text::{TextStyle, bundled_clock_font_family},
@@ -763,7 +763,9 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
         SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
         clock_text: Some("09:41"),
+        clock_secondary_text: None,
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
@@ -811,7 +813,9 @@ fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
         SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
         clock_text: Some("09:41"),
+        clock_secondary_text: None,
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
@@ -1019,7 +1023,9 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 5);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
         clock_text: Some("09:41"),
+        clock_secondary_text: None,
         clock_style: style.clone(),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
@@ -1050,7 +1056,9 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     });
     let cached_clock = cache.clock.block.clone().expect("cached clock block");
     let second = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
         clock_text: Some("09:41"),
+        clock_secondary_text: None,
         clock_style: style,
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
@@ -1081,7 +1089,7 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     });
 
     assert_eq!(first.clock, second.clock);
-    assert_eq!(cached_clock, second.clock.expect("clock").time);
+    assert_eq!(cached_clock, second.clock.expect("clock").primary);
 }
 
 #[test]
@@ -1091,7 +1099,9 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
         clock_text: Some("09:41"),
+        clock_secondary_text: None,
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
@@ -1121,7 +1131,9 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         metrics,
     });
     let second = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
         clock_text: Some("09:42"),
+        clock_secondary_text: None,
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
@@ -1152,12 +1164,60 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
     });
 
     assert_ne!(
-        first.clock.expect("first clock").time.lines,
-        second.clock.expect("second clock").time.lines
+        first.clock.expect("first clock").primary.lines,
+        second.clock.expect("second clock").primary.lines
     );
     assert_eq!(
         cache.clock.key.as_ref().map(|key| key.text.as_str()),
         Some("09:42")
+    );
+}
+
+#[test]
+fn text_layout_cache_builds_stacked_clock_blocks() {
+    let mut cache = TextLayoutCache::default();
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+
+    let blocks = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Stacked,
+        clock_text: Some("06"),
+        clock_secondary_text: Some("08"),
+        clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 14),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 3),
+        clock_meridiem_offset_x: None,
+        clock_meridiem_offset_y: None,
+        date_text: None,
+        date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        username_text: None,
+        username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+        placeholder_text: None,
+        placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+        status_text: None,
+        status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: None,
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        weather_location_text: None,
+        weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
+        weather_icon: None,
+        weather_icon_size: None,
+        weather_icon_gap: None,
+        weather_location_gap: None,
+        weather_icon_opacity: None,
+        weather_horizontal_padding: None,
+        weather_alignment: WeatherAlignment::Left,
+        weather_left_offset: None,
+        weather_bottom_offset: None,
+        metrics,
+    });
+
+    let clock = blocks.clock.expect("clock blocks");
+    assert_eq!(clock.style, ClockStyle::Stacked);
+    assert_eq!(clock.primary.lines, vec![String::from("06")]);
+    assert_eq!(
+        clock.secondary.expect("stacked minute block").lines,
+        vec![String::from("08")]
     );
 }
 

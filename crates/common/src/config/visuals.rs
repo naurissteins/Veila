@@ -196,6 +196,8 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub font_style: Option<FontStyle>,
     #[serde(default)]
+    pub style: Option<ClockStyle>,
+    #[serde(default)]
     pub format: Option<ClockFormat>,
     #[serde(default)]
     pub meridiem_size: Option<u16>,
@@ -220,6 +222,7 @@ impl Default for ClockVisualConfig {
             font_family: Some(default_geom_font_family()),
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
+            style: Some(ClockStyle::Standard),
             format: Some(ClockFormat::TwentyFourHour),
             meridiem_size: Some(3),
             meridiem_offset_x: Some(6),
@@ -230,6 +233,15 @@ impl Default for ClockVisualConfig {
             gap: Some(20),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ClockStyle {
+    #[default]
+    #[serde(rename = "standard")]
+    Standard,
+    #[serde(rename = "stacked")]
+    Stacked,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -704,6 +716,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub clock_font_style: Option<FontStyle>,
     #[serde(default)]
+    pub clock_style: Option<ClockStyle>,
+    #[serde(default)]
     pub clock_format: Option<ClockFormat>,
     #[serde(default)]
     pub clock_meridiem_size: Option<u16>,
@@ -841,6 +855,7 @@ impl Default for VisualConfig {
             clock_font_family: Some(default_geom_font_family()),
             clock_font_weight: Some(600),
             clock_font_style: Some(FontStyle::Normal),
+            clock_style: Some(ClockStyle::Standard),
             clock_format: Some(ClockFormat::TwentyFourHour),
             clock_meridiem_size: Some(3),
             clock_meridiem_offset_x: Some(6),
@@ -1199,6 +1214,14 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.font_style)
             .or(self.clock_font_style)
+    }
+
+    pub fn clock_style(&self) -> ClockStyle {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.style)
+            .or(self.clock_style)
+            .unwrap_or_default()
     }
 
     pub fn clock_format(&self) -> ClockFormat {
