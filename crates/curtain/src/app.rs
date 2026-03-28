@@ -4,9 +4,13 @@ use anyhow::{Context, Result, bail};
 use calloop::signals::{Signal, Signals};
 use smithay_client_toolkit::reexports::client::{Connection, globals::registry_queue_init};
 
-use crate::{CurtainOptions, state::CurtainApp};
+use crate::{CurtainOptions, preview, state::CurtainApp};
 
 pub fn run(options: CurtainOptions) -> Result<()> {
+    if options.preview_png.is_some() {
+        return preview::render_preview(options);
+    }
+
     let connection =
         Connection::connect_to_env().context("failed to connect to Wayland display")?;
     let (globals, event_queue) =

@@ -9,6 +9,8 @@ pub mod shm;
 // Re-export draw submodules at the crate root for ergonomic access.
 pub use draw::{avatar, cover, icon, masked, panel, progress, shape, symbol, text};
 
+use std::path::Path;
+
 use thiserror::Error;
 
 /// Pixel dimensions for a render target.
@@ -208,6 +210,35 @@ impl SoftwareBuffer {
     pub fn pixels_mut(&mut self) -> &mut [u8] {
         &mut self.pixels
     }
+
+    /// Saves the current ARGB8888 buffer as a PNG image.
+    pub fn save_png(&self, path: &Path) -> Result<()> {
+        let mut rgba = Vec::with_capacity(self.pixels.len());
+
+        for pixel in self.pixels.chunks_exact(4) {
+            let blue = pixel[0];
+            let green = pixel[1];
+            let red = pixel[2];
+            let alpha = pixel[3];
+
+            if alpha == 0 {
+                rgba.extend_from_slice(&[0, 0, 0, 0]);
+                continue;
+            }
+
+            rgba.extend_from_slice(&[
+                unpremultiply_channel(red, alpha),
+                unpremultiply_channel(green, alpha),
+                unpremultiply_channel(blue, alpha),
+                alpha,
+            ]);
+        }
+
+        let image = image::RgbaImage::from_raw(self.size.width, self.size.height, rgba)
+            .ok_or(RendererError::InvalidFrameSize(self.size))?;
+        image.save(path)?;
+        Ok(())
+    }
 }
 
 fn blend_pixel(dst: &mut [u8], src: &[u8]) {
@@ -230,6 +261,14 @@ fn blend_pixel(dst: &mut [u8], src: &[u8]) {
 fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
     let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
     blended.min(u16::from(u8::MAX)) as u8
+}
+
+fn unpremultiply_channel(channel: u8, alpha: u8) -> u8 {
+    if alpha == 0 {
+        return 0;
+    }
+
+    ((u32::from(channel) * 255 + u32::from(alpha) / 2) / u32::from(alpha)).min(255) as u8
 }
 
 #[cfg(test)]

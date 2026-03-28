@@ -5,6 +5,7 @@
 mod app;
 mod background;
 mod ipc;
+mod preview;
 mod reload;
 mod state;
 mod wayland;
@@ -26,6 +27,11 @@ pub struct CurtainOptions {
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
+    pub preview_png: Option<PathBuf>,
+    pub preview_size: Option<veila_renderer::FrameSize>,
+    pub preview_artwork: Option<PathBuf>,
+    pub preview_title: Option<String>,
+    pub preview_artist: Option<String>,
     pub weather_snapshot: Option<WeatherSnapshot>,
     pub battery_snapshot: Option<BatterySnapshot>,
     pub now_playing_snapshot: Option<NowPlayingSnapshot>,
@@ -54,6 +60,32 @@ impl CurtainOptions {
 
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(path) = arg.strip_prefix("--preview-png=") {
+                options.preview_png = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(size) = arg.strip_prefix("--preview-size=") {
+                options.preview_size =
+                    Some(parse_preview_size(size).context("failed to parse preview size")?);
+                continue;
+            }
+
+            if let Some(path) = arg.strip_prefix("--preview-artwork=") {
+                options.preview_artwork = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(title) = arg.strip_prefix("--preview-title=") {
+                options.preview_title = Some(title.to_string());
+                continue;
+            }
+
+            if let Some(artist) = arg.strip_prefix("--preview-artist=") {
+                options.preview_artist = Some(artist.to_string());
                 continue;
             }
 
@@ -88,6 +120,20 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     app::run(options)
 }
 
+fn parse_preview_size(input: &str) -> Result<veila_renderer::FrameSize> {
+    let (width, height) = input
+        .split_once('x')
+        .ok_or_else(|| anyhow::anyhow!("preview size must use WIDTHxHEIGHT"))?;
+    let width = width.parse::<u32>().context("invalid preview width")?;
+    let height = height.parse::<u32>().context("invalid preview height")?;
+
+    if width == 0 || height == 0 {
+        bail!("preview size must be non-zero");
+    }
+
+    Ok(veila_renderer::FrameSize::new(width, height))
+}
+
 #[cfg(test)]
 mod tests {
     use veila_common::{BatterySnapshot, NowPlayingSnapshot, ipc::encode_message};
@@ -102,6 +148,11 @@ mod tests {
             "--daemon-socket=/tmp/veila-auth.sock".to_string(),
             "--control-socket=/tmp/veila-control.sock".to_string(),
             "--config=/tmp/veila.toml".to_string(),
+            "--preview-png=/tmp/veila-preview.png".to_string(),
+            "--preview-size=1920x1080".to_string(),
+            "--preview-artwork=/tmp/cover.png".to_string(),
+            "--preview-title=After Dark".to_string(),
+            "--preview-artist=Mr.Kitty".to_string(),
         ])
         .expect("arguments should parse");
 
@@ -121,6 +172,20 @@ mod tests {
             options.config_path.as_deref(),
             Some(std::path::Path::new("/tmp/veila.toml"))
         );
+        assert_eq!(
+            options.preview_png.as_deref(),
+            Some(std::path::Path::new("/tmp/veila-preview.png"))
+        );
+        assert_eq!(
+            options.preview_size,
+            Some(veila_renderer::FrameSize::new(1920, 1080))
+        );
+        assert_eq!(
+            options.preview_artwork.as_deref(),
+            Some(std::path::Path::new("/tmp/cover.png"))
+        );
+        assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
+        assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
     }
 
     #[test]
