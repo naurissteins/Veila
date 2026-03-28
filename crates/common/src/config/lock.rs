@@ -28,7 +28,7 @@ impl Default for LockConfig {
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
             show_username: default_lock_show_username(),
             username: None,
-            user_hint: None,
+            user_hint: Some(String::from("Password")),
             avatar_path: None,
         }
     }
@@ -39,11 +39,11 @@ const fn default_lock_acquire_timeout_seconds() -> u64 {
 }
 
 const fn default_auth_backoff_base_ms() -> u64 {
-    1_000
+    750
 }
 
 const fn default_auth_backoff_max_seconds() -> u64 {
-    16
+    12
 }
 
 const fn default_lock_show_username() -> bool {

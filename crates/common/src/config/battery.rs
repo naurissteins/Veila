@@ -17,7 +17,7 @@ pub struct BatteryConfig {
 impl Default for BatteryConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
             refresh_seconds: default_refresh_seconds(),
             mock_percent: None,
             mock_charging: None,

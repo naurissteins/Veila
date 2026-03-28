@@ -42,12 +42,12 @@ pub struct BackgroundConfig {
 impl Default for BackgroundConfig {
     fn default() -> Self {
         Self {
-            mode: None,
+            mode: Some(BackgroundMode::Bundled),
             path: None,
             color: default_background_color(),
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
-            tint: None,
+            tint: Some(default_background_tint()),
             tint_opacity: default_background_tint_opacity(),
         }
     }
@@ -79,15 +79,19 @@ pub fn bundled_background_path() -> PathBuf {
 }
 
 const fn default_background_color() -> RgbColor {
-    RgbColor::rgb(8, 12, 20)
+    RgbColor::rgb(32, 40, 51)
 }
 
 const fn default_background_blur_radius() -> u8 {
-    0
+    20
 }
 
 const fn default_background_dim_strength() -> u8 {
-    34
+    54
+}
+
+const fn default_background_tint() -> RgbColor {
+    RgbColor::rgba(8, 10, 14, 102)
 }
 
 const fn default_background_tint_opacity() -> u8 {

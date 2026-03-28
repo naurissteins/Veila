@@ -327,6 +327,11 @@ fn nested_palette_overrides_flat_palette_keys() {
 fn avatar_background_falls_back_to_legacy_panel_color() {
     let mut config = AppConfig::default();
     config.visuals.panel = ConfigColor::rgb(31, 39, 52);
+    config.visuals.avatar = Some(veila_common::AvatarVisualConfig {
+        background_color: None,
+        ..Default::default()
+    });
+    config.visuals.avatar_background_color = None;
 
     let theme = ShellTheme::from_config(&config);
 

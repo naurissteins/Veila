@@ -6,9 +6,7 @@ It is built for wlroots-style compositors like Hyprland, Sway, MangoWC and other
 
 Veila is not a fullscreen desktop window pretending to be a lockscreen. It is a compositor-aware lock application that uses the Wayland session-lock protocol and a dedicated daemon to manage lock, auth, and unlock state.
 
-
 <img width="2006" height="1166" alt="veila-preview-default" src="https://github.com/user-attachments/assets/60c67e91-0d1b-4f29-b370-d390a33f39a4" />
-
 
 ## Why Veila Is Secure
 
@@ -31,8 +29,6 @@ Veila is designed to avoid visible lock activation gaps and unnecessary work on 
 - text layout and icon rasterization are cached
 - optional widgets such as weather, now playing, and battery render from cached daemon-side snapshots
 - the lock path avoids network fetches, heavy toolkit startup, and unnecessary process churn
-
-Release builds are the target for user experience. The project is optimized around real lock responsiveness, not around making debug builds look artificially fast.
 
 ## No CSS or Web UI Engine
 

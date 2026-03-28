@@ -15,7 +15,7 @@ impl Default for InputVisualEntry {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InputVisualConfig {
     #[serde(default)]
     pub font_family: Option<String>,
@@ -43,7 +43,26 @@ pub struct InputVisualConfig {
     pub mask_color: Option<RgbColor>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for InputVisualConfig {
+    fn default() -> Self {
+        Self {
+            font_family: Some(default_google_sans_flex_font_family()),
+            font_weight: Some(400),
+            font_size: Some(2),
+            background_color: Some(RgbColor::rgb(255, 255, 255)),
+            background_opacity: Some(5),
+            border_color: Some(RgbColor::rgb(255, 255, 255)),
+            border_opacity: Some(0),
+            width: Some(310),
+            height: Some(54),
+            radius: Some(10),
+            border_width: Some(0),
+            mask_color: Some(RgbColor::rgb(255, 255, 255)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AvatarVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
@@ -63,7 +82,22 @@ pub struct AvatarVisualConfig {
     pub icon_color: Option<RgbColor>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for AvatarVisualConfig {
+    fn default() -> Self {
+        Self {
+            size: Some(192),
+            gap: Some(24),
+            background_color: Some(RgbColor::rgb(255, 255, 255)),
+            background_opacity: Some(6),
+            placeholder_padding: Some(28),
+            ring_color: Some(RgbColor::rgb(148, 178, 255)),
+            ring_width: Some(0),
+            icon_color: Some(RgbColor::rgb(255, 255, 255)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UsernameVisualConfig {
     #[serde(default)]
     pub font_family: Option<String>,
@@ -79,7 +113,20 @@ pub struct UsernameVisualConfig {
     pub gap: Option<u16>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for UsernameVisualConfig {
+    fn default() -> Self {
+        Self {
+            font_family: Some(default_google_sans_flex_font_family()),
+            font_weight: Some(400),
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(84),
+            size: Some(4),
+            gap: Some(28),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ClockVisualConfig {
     #[serde(default)]
     pub font_family: Option<String>,
@@ -103,6 +150,23 @@ pub struct ClockVisualConfig {
     pub gap: Option<u16>,
 }
 
+impl Default for ClockVisualConfig {
+    fn default() -> Self {
+        Self {
+            font_family: Some(default_geom_font_family()),
+            font_weight: Some(600),
+            format: Some(ClockFormat::TwentyFourHour),
+            meridiem_size: Some(3),
+            meridiem_offset_x: Some(6),
+            meridiem_offset_y: Some(7),
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(40),
+            size: Some(14),
+            gap: Some(20),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClockFormat {
     #[default]
@@ -112,7 +176,7 @@ pub enum ClockFormat {
     TwelveHour,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DateVisualConfig {
     #[serde(default)]
     pub font_family: Option<String>,
@@ -126,7 +190,19 @@ pub struct DateVisualConfig {
     pub size: Option<u16>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for DateVisualConfig {
+    fn default() -> Self {
+        Self {
+            font_family: Some(default_geom_font_family()),
+            font_weight: Some(600),
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(50),
+            size: Some(2),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlaceholderVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
@@ -134,7 +210,16 @@ pub struct PlaceholderVisualConfig {
     pub opacity: Option<u8>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for PlaceholderVisualConfig {
+    fn default() -> Self {
+        Self {
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(60),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StatusVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
@@ -144,7 +229,17 @@ pub struct StatusVisualConfig {
     pub gap: Option<u16>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for StatusVisualConfig {
+    fn default() -> Self {
+        Self {
+            color: Some(RgbColor::rgb(255, 224, 160)),
+            opacity: Some(88),
+            gap: Some(18),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EyeVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
@@ -152,7 +247,16 @@ pub struct EyeVisualConfig {
     pub opacity: Option<u8>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for EyeVisualConfig {
+    fn default() -> Self {
+        Self {
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(72),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeyboardVisualConfig {
     #[serde(default)]
     pub background_color: Option<RgbColor>,
@@ -170,7 +274,21 @@ pub struct KeyboardVisualConfig {
     pub right_offset: Option<i16>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for KeyboardVisualConfig {
+    fn default() -> Self {
+        Self {
+            background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            background_size: Some(46),
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(68),
+            size: Some(2),
+            top_offset: Some(-24),
+            right_offset: Some(8),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatteryVisualConfig {
     #[serde(default)]
     pub background_color: Option<RgbColor>,
@@ -190,6 +308,21 @@ pub struct BatteryVisualConfig {
     pub gap: Option<u16>,
 }
 
+impl Default for BatteryVisualConfig {
+    fn default() -> Self {
+        Self {
+            background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            background_size: Some(46),
+            color: Some(RgbColor::rgb(255, 255, 255)),
+            opacity: Some(68),
+            size: Some(20),
+            top_offset: Some(-24),
+            right_offset: Some(8),
+            gap: Some(8),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum WeatherAlignment {
@@ -198,7 +331,7 @@ pub enum WeatherAlignment {
     Right,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
@@ -248,7 +381,37 @@ pub struct WeatherVisualConfig {
     pub alignment: Option<WeatherAlignment>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for WeatherVisualConfig {
+    fn default() -> Self {
+        Self {
+            size: Some(2),
+            opacity: Some(50),
+            icon_opacity: None,
+            temperature_opacity: None,
+            location_opacity: None,
+            temperature_color: Some(RgbColor::rgb(255, 255, 255)),
+            location_color: Some(RgbColor::rgb(214, 227, 255)),
+            temperature_font_family: Some(default_geom_font_family()),
+            temperature_font_weight: Some(600),
+            temperature_letter_spacing: Some(0),
+            location_font_family: Some(default_google_sans_flex_font_family()),
+            location_font_weight: Some(400),
+            temperature_size: Some(6),
+            location_size: Some(3),
+            icon_size: Some(40),
+            icon_gap: Some(1),
+            location_gap: Some(1),
+            left_offset: Some(12),
+            bottom_offset: Some(-6),
+            left_padding: Some(48),
+            horizontal_padding: None,
+            bottom_padding: Some(48),
+            alignment: Some(WeatherAlignment::Left),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NowPlayingVisualConfig {
     #[serde(default)]
     pub fade_duration_ms: Option<u16>,
@@ -296,12 +459,50 @@ pub struct NowPlayingVisualConfig {
     pub bottom_offset: Option<i16>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+impl Default for NowPlayingVisualConfig {
+    fn default() -> Self {
+        Self {
+            fade_duration_ms: Some(320),
+            opacity: Some(72),
+            title_opacity: Some(74),
+            artist_opacity: Some(54),
+            artwork_opacity: Some(90),
+            title_color: Some(RgbColor::rgb(255, 255, 255)),
+            artist_color: Some(RgbColor::rgb(255, 255, 255)),
+            title_font_family: Some(default_google_sans_flex_font_family()),
+            artist_font_family: Some(default_google_sans_flex_font_family()),
+            title_font_weight: Some(400),
+            artist_font_weight: Some(400),
+            title_size: Some(2),
+            artist_size: Some(2),
+            width: Some(380),
+            content_gap: Some(18),
+            text_gap: Some(10),
+            artwork_size: Some(44),
+            artwork_radius: Some(8),
+            right_padding: Some(52),
+            bottom_padding: Some(56),
+            right_offset: Some(0),
+            bottom_offset: Some(0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LayoutVisualConfig {
     #[serde(default)]
     pub auth_stack_offset: Option<i16>,
     #[serde(default)]
     pub header_top_offset: Option<i16>,
+}
+
+impl Default for LayoutVisualConfig {
+    fn default() -> Self {
+        Self {
+            auth_stack_offset: Some(0),
+            header_top_offset: Some(-12),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -486,82 +687,82 @@ impl Default for VisualConfig {
             panel: default_panel_color(),
             avatar_background_color: None,
             panel_border: default_panel_border_color(),
-            input: InputVisualEntry::default(),
-            input_opacity: None,
-            input_font_family: None,
-            input_font_weight: None,
-            input_font_size: None,
-            input_border: default_input_border_color(),
-            input_border_opacity: None,
-            input_width: None,
-            input_height: None,
-            input_radius: default_input_radius(),
-            input_border_width: None,
-            avatar_size: None,
-            avatar_placeholder_padding: None,
-            avatar_icon_color: None,
-            avatar_ring_color: None,
-            avatar_ring_width: None,
-            avatar_background_opacity: None,
-            username_color: None,
-            username_opacity: None,
-            username_size: None,
-            avatar_gap: None,
-            username_gap: None,
-            status_gap: None,
-            clock_gap: None,
-            auth_stack_offset: None,
-            header_top_offset: None,
-            clock_font_family: None,
-            clock_font_weight: None,
-            clock_format: None,
-            clock_meridiem_size: None,
-            clock_meridiem_offset_x: None,
-            clock_meridiem_offset_y: None,
-            clock_color: None,
-            clock_opacity: None,
-            date_color: None,
-            date_opacity: None,
-            clock_size: None,
-            date_size: None,
-            placeholder_color: None,
-            placeholder_opacity: None,
-            eye_icon_color: None,
-            eye_icon_opacity: None,
-            keyboard_color: None,
-            battery_color: None,
-            battery_background_color: None,
-            keyboard_background_size: None,
-            battery_background_size: None,
-            keyboard_opacity: None,
-            battery_opacity: None,
-            keyboard_size: None,
-            battery_size: None,
-            keyboard_top_offset: None,
-            battery_top_offset: None,
-            keyboard_right_offset: None,
-            battery_right_offset: None,
-            battery_gap: None,
-            weather_size: None,
-            status_color: None,
-            status_opacity: None,
-            input_mask_color: None,
+            input: InputVisualEntry::Section(InputVisualConfig::default()),
+            input_opacity: Some(5),
+            input_font_family: Some(default_google_sans_flex_font_family()),
+            input_font_weight: Some(400),
+            input_font_size: Some(2),
+            input_border: RgbColor::rgb(255, 255, 255),
+            input_border_opacity: Some(0),
+            input_width: Some(310),
+            input_height: Some(54),
+            input_radius: 10,
+            input_border_width: Some(0),
+            avatar_size: Some(192),
+            avatar_placeholder_padding: Some(28),
+            avatar_icon_color: Some(RgbColor::rgb(255, 255, 255)),
+            avatar_ring_color: Some(RgbColor::rgb(148, 178, 255)),
+            avatar_ring_width: Some(0),
+            avatar_background_opacity: Some(6),
+            username_color: Some(RgbColor::rgb(255, 255, 255)),
+            username_opacity: Some(84),
+            username_size: Some(4),
+            avatar_gap: Some(24),
+            username_gap: Some(28),
+            status_gap: Some(18),
+            clock_gap: Some(20),
+            auth_stack_offset: Some(0),
+            header_top_offset: Some(-12),
+            clock_font_family: Some(default_geom_font_family()),
+            clock_font_weight: Some(600),
+            clock_format: Some(ClockFormat::TwentyFourHour),
+            clock_meridiem_size: Some(3),
+            clock_meridiem_offset_x: Some(6),
+            clock_meridiem_offset_y: Some(7),
+            clock_color: Some(RgbColor::rgb(255, 255, 255)),
+            clock_opacity: Some(40),
+            date_color: Some(RgbColor::rgb(255, 255, 255)),
+            date_opacity: Some(50),
+            clock_size: Some(14),
+            date_size: Some(2),
+            placeholder_color: Some(RgbColor::rgb(255, 255, 255)),
+            placeholder_opacity: Some(60),
+            eye_icon_color: Some(RgbColor::rgb(255, 255, 255)),
+            eye_icon_opacity: Some(72),
+            keyboard_color: Some(RgbColor::rgb(255, 255, 255)),
+            battery_color: Some(RgbColor::rgb(255, 255, 255)),
+            battery_background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            keyboard_background_size: Some(46),
+            battery_background_size: Some(46),
+            keyboard_opacity: Some(68),
+            battery_opacity: Some(68),
+            keyboard_size: Some(2),
+            battery_size: Some(20),
+            keyboard_top_offset: Some(-24),
+            battery_top_offset: Some(-24),
+            keyboard_right_offset: Some(8),
+            battery_right_offset: Some(8),
+            battery_gap: Some(8),
+            weather_size: Some(2),
+            status_color: Some(RgbColor::rgb(255, 224, 160)),
+            status_opacity: Some(88),
+            input_mask_color: Some(RgbColor::rgb(255, 255, 255)),
             foreground: default_foreground_color(),
             muted: default_muted_color(),
             pending: default_pending_color(),
             rejected: default_rejected_color(),
-            avatar: None,
-            username: None,
-            clock: None,
-            date: None,
-            placeholder: None,
-            status: None,
-            eye: None,
-            keyboard: None,
-            battery: None,
-            weather: None,
-            now_playing: None,
-            layout: None,
+            avatar: Some(AvatarVisualConfig::default()),
+            username: Some(UsernameVisualConfig::default()),
+            clock: Some(ClockVisualConfig::default()),
+            date: Some(DateVisualConfig::default()),
+            placeholder: Some(PlaceholderVisualConfig::default()),
+            status: Some(StatusVisualConfig::default()),
+            eye: Some(EyeVisualConfig::default()),
+            keyboard: Some(KeyboardVisualConfig::default()),
+            battery: Some(BatteryVisualConfig::default()),
+            weather: Some(WeatherVisualConfig::default()),
+            now_playing: Some(NowPlayingVisualConfig::default()),
+            layout: Some(LayoutVisualConfig::default()),
             palette: None,
         }
     }
@@ -1344,6 +1545,14 @@ const fn default_input_border_color() -> RgbColor {
 
 const fn default_input_radius() -> u16 {
     32
+}
+
+fn default_geom_font_family() -> String {
+    String::from("Geom")
+}
+
+fn default_google_sans_flex_font_family() -> String {
+    String::from("Google Sans Flex")
 }
 
 const fn default_foreground_color() -> RgbColor {

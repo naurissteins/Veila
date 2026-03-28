@@ -30,8 +30,8 @@ pub struct WeatherConfig {
 impl Default for WeatherConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
-            location: None,
+            enabled: true,
+            location: Some(String::from("Riga")),
             latitude: None,
             longitude: None,
             refresh_minutes: default_refresh_minutes(),
