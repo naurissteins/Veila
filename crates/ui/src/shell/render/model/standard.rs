@@ -3,6 +3,7 @@ use super::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget};
 impl SceneModel {
     pub(crate) fn standard(
         blocks: SceneTextBlocks,
+        avatar_enabled: bool,
         clock_gap: Option<i32>,
         avatar_gap: Option<i32>,
         username_gap: Option<i32>,
@@ -21,11 +22,31 @@ impl SceneModel {
         let username_gap = username_gap.unwrap_or(34).clamp(0, 96);
         let status_gap = status_gap.unwrap_or(14).clamp(0, 96);
 
-        let mut sections = vec![
-            SceneSection::new(LayoutRole::Hero, SceneWidget::Clock(clock), clock_gap),
-            SceneSection::new(LayoutRole::Hero, SceneWidget::Date(date), 0),
-            SceneSection::new(LayoutRole::Auth, SceneWidget::Avatar, avatar_gap),
-        ];
+        let mut sections = Vec::new();
+
+        if let Some(clock) = clock {
+            sections.push(SceneSection::new(
+                LayoutRole::Hero,
+                SceneWidget::Clock(clock),
+                if date.is_some() { clock_gap } else { 0 },
+            ));
+        }
+
+        if let Some(date) = date {
+            sections.push(SceneSection::new(
+                LayoutRole::Hero,
+                SceneWidget::Date(date),
+                0,
+            ));
+        }
+
+        if avatar_enabled {
+            sections.push(SceneSection::new(
+                LayoutRole::Auth,
+                SceneWidget::Avatar,
+                avatar_gap,
+            ));
+        }
 
         if let Some(username) = username {
             sections.push(SceneSection::new(

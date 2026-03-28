@@ -386,6 +386,63 @@ fn lists_bundled_theme_names() {
 }
 
 #[test]
+fn parses_widget_enable_flags() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.avatar]
+            enabled = false
+
+            [visuals.username]
+            enabled = false
+
+            [visuals.clock]
+            enabled = false
+
+            [visuals.date]
+            enabled = false
+
+            [visuals.placeholder]
+            enabled = false
+
+            [visuals.status]
+            enabled = false
+
+            [visuals.eye]
+            enabled = false
+
+            [visuals.caps_lock]
+            enabled = false
+
+            [visuals.keyboard]
+            enabled = false
+
+            [visuals.battery]
+            enabled = false
+
+            [visuals.weather]
+            enabled = false
+
+            [visuals.now_playing]
+            enabled = false
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(!config.visuals.avatar_enabled());
+    assert!(!config.visuals.username_enabled());
+    assert!(!config.visuals.clock_enabled());
+    assert!(!config.visuals.date_enabled());
+    assert!(!config.visuals.placeholder_enabled());
+    assert!(!config.visuals.status_enabled());
+    assert!(!config.visuals.eye_enabled());
+    assert!(!config.visuals.caps_lock_enabled());
+    assert!(!config.visuals.keyboard_enabled());
+    assert!(!config.visuals.battery_enabled());
+    assert!(!config.visuals.weather_enabled());
+    assert!(!config.visuals.now_playing_enabled());
+}
+
+#[test]
 fn loads_config_from_file() {
     let dir = std::env::temp_dir().join(format!("veila-config-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");

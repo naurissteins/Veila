@@ -108,6 +108,7 @@ impl ShellState {
         );
         let model = SceneModel::standard(
             self.scene_text_blocks(metrics),
+            self.theme.avatar_enabled,
             self.theme.clock_gap,
             self.theme.avatar_gap,
             self.theme.username_gap,
@@ -170,25 +171,48 @@ impl ShellState {
         self.text_layout_cache
             .borrow_mut()
             .scene_text_blocks(SceneTextInputs {
-                clock_text,
+                clock_text: self.theme.clock_enabled.then_some(clock_text),
                 clock_style,
-                clock_meridiem_text,
+                clock_meridiem_text: self
+                    .theme
+                    .clock_enabled
+                    .then_some(())
+                    .and(clock_meridiem_text),
                 clock_meridiem_style,
                 clock_meridiem_offset_x,
                 clock_meridiem_offset_y,
-                date_text,
+                date_text: self.theme.date_enabled.then_some(date_text),
                 date_style,
-                username_text,
+                username_text: self.theme.username_enabled.then_some(()).and(username_text),
                 username_style,
-                placeholder_text: &self.hint_text,
+                placeholder_text: self
+                    .theme
+                    .placeholder_enabled
+                    .then_some(self.hint_text.as_str()),
                 placeholder_style,
-                status_text: status_text.as_deref(),
+                status_text: self
+                    .theme
+                    .status_enabled
+                    .then_some(())
+                    .and(status_text.as_deref()),
                 status_style,
-                weather_temperature_text: weather.map(|weather| weather.temperature_text.as_str()),
+                weather_temperature_text: if self.theme.weather_enabled {
+                    weather.map(|weather| weather.temperature_text.as_str())
+                } else {
+                    None
+                },
                 weather_temperature_style,
-                weather_location_text: weather.map(|weather| weather.location.as_str()),
+                weather_location_text: if self.theme.weather_enabled {
+                    weather.map(|weather| weather.location.as_str())
+                } else {
+                    None
+                },
                 weather_location_style,
-                weather_icon: weather.map(|weather| weather.icon),
+                weather_icon: if self.theme.weather_enabled {
+                    weather.map(|weather| weather.icon)
+                } else {
+                    None
+                },
                 weather_icon_size: self.theme.weather_icon_size,
                 weather_icon_gap: self.theme.weather_icon_gap,
                 weather_location_gap: self.theme.weather_location_gap,
@@ -219,7 +243,7 @@ impl ShellState {
             SceneWidget::Username(block) if !dynamic => {
                 draw_centered_block(buffer, metrics.center_x, y, block);
             }
-            SceneWidget::Avatar if !dynamic => {
+            SceneWidget::Avatar if !dynamic && self.theme.avatar_enabled => {
                 draw_avatar_widget(
                     buffer,
                     &self.avatar,
@@ -234,7 +258,7 @@ impl ShellState {
             }
             SceneWidget::Input(placeholder) => {
                 let caps_lock_indicator =
-                    if dynamic && self.caps_lock_active {
+                    if dynamic && self.caps_lock_active && self.theme.caps_lock_enabled {
                         Some(self.text_layout_cache.borrow_mut().caps_lock_block(
                             self.caps_lock_text_style(),
                             metrics.input_width as u32,
@@ -257,11 +281,12 @@ impl ShellState {
                     focused: self.focused,
                     shell_style: self.input_style(),
                     mask_style: self.mask_style(),
-                    placeholder: Some(placeholder.clone()),
+                    placeholder: placeholder.clone(),
                     revealed_secret,
                     reveal_secret: self.reveal_secret,
                     toggle_hovered: self.reveal_toggle_hovered,
                     toggle_pressed: self.reveal_toggle_pressed,
+                    show_toggle: self.theme.eye_enabled,
                     toggle_style: self.toggle_style(),
                     caps_lock_indicator,
                 };
@@ -276,13 +301,17 @@ impl ShellState {
     }
 
     fn render_top_right_indicators(&self, buffer: &mut SoftwareBuffer) {
-        let keyboard_block = self.keyboard_layout_label.as_deref().map(|label| {
-            self.text_layout_cache.borrow_mut().keyboard_layout_block(
-                label,
-                self.keyboard_layout_text_style(),
-                120,
-            )
-        });
+        let keyboard_block = if self.theme.keyboard_enabled {
+            self.keyboard_layout_label.as_deref().map(|label| {
+                self.text_layout_cache.borrow_mut().keyboard_layout_block(
+                    label,
+                    self.keyboard_layout_text_style(),
+                    120,
+                )
+            })
+        } else {
+            None
+        };
         let keyboard_chip_diameter = keyboard_block.as_ref().map(|block| {
             top_right_chip_diameter(
                 self.theme.keyboard_background_size,
@@ -307,7 +336,9 @@ impl ShellState {
             );
         }
 
-        if let Some(battery) = self.battery.as_ref() {
+        if self.theme.battery_enabled
+            && let Some(battery) = self.battery.as_ref()
+        {
             let battery_icon_size = self.theme.battery_size.unwrap_or(18).clamp(12, 96);
             let right_padding = 32
                 + keyboard_chip_diameter.unwrap_or(0)
@@ -346,12 +377,13 @@ impl ShellState {
 
     fn render_now_playing_widget(&self, buffer: &mut SoftwareBuffer, layout: &SceneLayout) {
         let fade_progress = self.now_playing_fade_progress();
-        if self.now_playing.is_none()
-            && self
-                .now_playing_transition
-                .as_ref()
-                .and_then(|transition| transition.previous.as_ref())
-                .is_none()
+        if !self.theme.now_playing_enabled
+            || (self.now_playing.is_none()
+                && self
+                    .now_playing_transition
+                    .as_ref()
+                    .and_then(|transition| transition.previous.as_ref())
+                    .is_none())
         {
             return;
         }
@@ -512,7 +544,11 @@ impl ShellState {
 
         for section in layout.model.sections_for_role(LayoutRole::Auth) {
             if matches!(section.widget, SceneWidget::Input(_)) {
-                return input_toggle_hitbox(layout.metrics.input_rect(y));
+                return if self.theme.eye_enabled {
+                    input_toggle_hitbox(layout.metrics.input_rect(y))
+                } else {
+                    veila_renderer::shape::Rect::new(0, 0, 0, 0)
+                };
             }
             y += section.height(layout.metrics, &self.status) + section.gap_after;
         }

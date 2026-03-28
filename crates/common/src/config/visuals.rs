@@ -65,6 +65,8 @@ impl Default for InputVisualConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AvatarVisualConfig {
     #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
     pub gap: Option<u16>,
@@ -85,6 +87,7 @@ pub struct AvatarVisualConfig {
 impl Default for AvatarVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             size: Some(192),
             gap: Some(24),
             background_color: Some(RgbColor::rgb(255, 255, 255)),
@@ -99,6 +102,8 @@ impl Default for AvatarVisualConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UsernameVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
@@ -116,6 +121,7 @@ pub struct UsernameVisualConfig {
 impl Default for UsernameVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             font_family: Some(default_google_sans_flex_font_family()),
             font_weight: Some(400),
             color: Some(RgbColor::rgb(255, 255, 255)),
@@ -128,6 +134,8 @@ impl Default for UsernameVisualConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ClockVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
@@ -153,6 +161,7 @@ pub struct ClockVisualConfig {
 impl Default for ClockVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             font_family: Some(default_geom_font_family()),
             font_weight: Some(600),
             format: Some(ClockFormat::TwentyFourHour),
@@ -179,6 +188,8 @@ pub enum ClockFormat {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DateVisualConfig {
     #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
     pub font_weight: Option<u16>,
@@ -193,6 +204,7 @@ pub struct DateVisualConfig {
 impl Default for DateVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             font_family: Some(default_geom_font_family()),
             font_weight: Some(600),
             color: Some(RgbColor::rgb(255, 255, 255)),
@@ -205,6 +217,8 @@ impl Default for DateVisualConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlaceholderVisualConfig {
     #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -213,6 +227,7 @@ pub struct PlaceholderVisualConfig {
 impl Default for PlaceholderVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             color: Some(RgbColor::rgb(255, 255, 255)),
             opacity: Some(60),
         }
@@ -221,6 +236,8 @@ impl Default for PlaceholderVisualConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StatusVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
@@ -232,6 +249,7 @@ pub struct StatusVisualConfig {
 impl Default for StatusVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             color: Some(RgbColor::rgb(255, 224, 160)),
             opacity: Some(88),
             gap: Some(18),
@@ -242,6 +260,8 @@ impl Default for StatusVisualConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EyeVisualConfig {
     #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
@@ -250,6 +270,7 @@ pub struct EyeVisualConfig {
 impl Default for EyeVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             color: Some(RgbColor::rgb(255, 255, 255)),
             opacity: Some(72),
         }
@@ -257,7 +278,23 @@ impl Default for EyeVisualConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CapsLockVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+}
+
+impl Default for CapsLockVisualConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Some(true),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeyboardVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub background_color: Option<RgbColor>,
     #[serde(default)]
@@ -277,6 +314,7 @@ pub struct KeyboardVisualConfig {
 impl Default for KeyboardVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
             background_size: Some(46),
             color: Some(RgbColor::rgb(255, 255, 255)),
@@ -290,6 +328,8 @@ impl Default for KeyboardVisualConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatteryVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub background_color: Option<RgbColor>,
     #[serde(default)]
@@ -311,6 +351,7 @@ pub struct BatteryVisualConfig {
 impl Default for BatteryVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
             background_size: Some(46),
             color: Some(RgbColor::rgb(255, 255, 255)),
@@ -333,6 +374,8 @@ pub enum WeatherAlignment {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
@@ -384,6 +427,7 @@ pub struct WeatherVisualConfig {
 impl Default for WeatherVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             size: Some(2),
             opacity: Some(50),
             icon_opacity: None,
@@ -413,6 +457,8 @@ impl Default for WeatherVisualConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NowPlayingVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
     #[serde(default)]
     pub fade_duration_ms: Option<u16>,
     #[serde(default)]
@@ -462,6 +508,7 @@ pub struct NowPlayingVisualConfig {
 impl Default for NowPlayingVisualConfig {
     fn default() -> Self {
         Self {
+            enabled: Some(true),
             fade_duration_ms: Some(320),
             opacity: Some(72),
             title_opacity: Some(74),
@@ -668,6 +715,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub eye: Option<EyeVisualConfig>,
     #[serde(default)]
+    pub caps_lock: Option<CapsLockVisualConfig>,
+    #[serde(default)]
     pub keyboard: Option<KeyboardVisualConfig>,
     #[serde(default)]
     pub battery: Option<BatteryVisualConfig>,
@@ -758,6 +807,7 @@ impl Default for VisualConfig {
             placeholder: Some(PlaceholderVisualConfig::default()),
             status: Some(StatusVisualConfig::default()),
             eye: Some(EyeVisualConfig::default()),
+            caps_lock: Some(CapsLockVisualConfig::default()),
             keyboard: Some(KeyboardVisualConfig::default()),
             battery: Some(BatteryVisualConfig::default()),
             weather: Some(WeatherVisualConfig::default()),
@@ -769,6 +819,13 @@ impl Default for VisualConfig {
 }
 
 impl VisualConfig {
+    pub fn avatar_enabled(&self) -> bool {
+        self.avatar
+            .as_ref()
+            .and_then(|avatar| avatar.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn avatar_background_color(&self) -> Option<RgbColor> {
         self.avatar
             .as_ref()
@@ -923,6 +980,13 @@ impl VisualConfig {
             .or(self.username_color)
     }
 
+    pub fn username_enabled(&self) -> bool {
+        self.username
+            .as_ref()
+            .and_then(|username| username.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn username_font_family(&self) -> Option<&str> {
         self.username
             .as_ref()
@@ -991,6 +1055,13 @@ impl VisualConfig {
             .or(self.clock_font_family.as_deref())
     }
 
+    pub fn clock_enabled(&self) -> bool {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn clock_font_weight(&self) -> Option<u16> {
         self.clock
             .as_ref()
@@ -1055,6 +1126,13 @@ impl VisualConfig {
             .or(self.date_color)
     }
 
+    pub fn date_enabled(&self) -> bool {
+        self.date
+            .as_ref()
+            .and_then(|date| date.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn date_font_family(&self) -> Option<&str> {
         self.date
             .as_ref()
@@ -1086,6 +1164,13 @@ impl VisualConfig {
             .or(self.placeholder_color)
     }
 
+    pub fn placeholder_enabled(&self) -> bool {
+        self.placeholder
+            .as_ref()
+            .and_then(|placeholder| placeholder.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn placeholder_opacity(&self) -> Option<u8> {
         self.placeholder
             .as_ref()
@@ -1100,6 +1185,13 @@ impl VisualConfig {
             .or(self.eye_icon_color)
     }
 
+    pub fn eye_enabled(&self) -> bool {
+        self.eye
+            .as_ref()
+            .and_then(|eye| eye.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn eye_icon_opacity(&self) -> Option<u8> {
         self.eye
             .as_ref()
@@ -1112,6 +1204,20 @@ impl VisualConfig {
             .as_ref()
             .and_then(|keyboard| keyboard.size)
             .or(self.keyboard_size)
+    }
+
+    pub fn caps_lock_enabled(&self) -> bool {
+        self.caps_lock
+            .as_ref()
+            .and_then(|caps_lock| caps_lock.enabled)
+            .unwrap_or(true)
+    }
+
+    pub fn keyboard_enabled(&self) -> bool {
+        self.keyboard
+            .as_ref()
+            .and_then(|keyboard| keyboard.enabled)
+            .unwrap_or(true)
     }
 
     pub fn keyboard_color(&self) -> Option<RgbColor> {
@@ -1160,6 +1266,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|battery| battery.background_color)
             .or(self.battery_background_color)
+    }
+
+    pub fn battery_enabled(&self) -> bool {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.enabled)
+            .unwrap_or(true)
     }
 
     pub fn battery_color(&self) -> Option<RgbColor> {
@@ -1216,6 +1329,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|weather| weather.size)
             .or(self.weather_size)
+    }
+
+    pub fn weather_enabled(&self) -> bool {
+        self.weather
+            .as_ref()
+            .and_then(|weather| weather.enabled)
+            .unwrap_or(true)
     }
 
     pub fn weather_temperature_size(&self) -> Option<u16> {
@@ -1355,6 +1475,13 @@ impl VisualConfig {
             .and_then(|now_playing| now_playing.title_color)
     }
 
+    pub fn now_playing_enabled(&self) -> bool {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn now_playing_fade_duration_ms(&self) -> Option<u16> {
         self.now_playing
             .as_ref()
@@ -1489,6 +1616,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|status| status.color)
             .or(self.status_color)
+    }
+
+    pub fn status_enabled(&self) -> bool {
+        self.status
+            .as_ref()
+            .and_then(|status| status.enabled)
+            .unwrap_or(true)
     }
 
     pub fn status_opacity(&self) -> Option<u8> {

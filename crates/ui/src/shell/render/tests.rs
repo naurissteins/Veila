@@ -710,17 +710,17 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
-        clock_text: "09:41",
+        clock_text: Some("09:41"),
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         clock_meridiem_offset_x: None,
         clock_meridiem_offset_y: None,
-        date_text: "Tuesday",
+        date_text: Some("Tuesday"),
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
         username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
-        placeholder_text: "Type your password to unlock",
+        placeholder_text: Some("Type your password to unlock"),
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
@@ -757,17 +757,17 @@ fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
-        clock_text: "09:41",
+        clock_text: Some("09:41"),
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         clock_meridiem_offset_x: None,
         clock_meridiem_offset_y: None,
-        date_text: "Tuesday",
+        date_text: Some("Tuesday"),
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
         username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
-        placeholder_text: "Type your password to unlock",
+        placeholder_text: Some("Type your password to unlock"),
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
@@ -956,17 +956,17 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 5);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
-        clock_text: "09:41",
+        clock_text: Some("09:41"),
         clock_style: style.clone(),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         clock_meridiem_offset_x: None,
         clock_meridiem_offset_y: None,
-        date_text: "Tuesday",
+        date_text: Some("Tuesday"),
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: Some("ramces"),
         username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
-        placeholder_text: "Type your password to unlock",
+        placeholder_text: Some("Type your password to unlock"),
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
@@ -987,17 +987,17 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     });
     let cached_clock = cache.clock.block.clone().expect("cached clock block");
     let second = cache.scene_text_blocks(SceneTextInputs {
-        clock_text: "09:41",
+        clock_text: Some("09:41"),
         clock_style: style,
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         clock_meridiem_offset_x: None,
         clock_meridiem_offset_y: None,
-        date_text: "Tuesday",
+        date_text: Some("Tuesday"),
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: Some("ramces"),
         username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
-        placeholder_text: "Type your password to unlock",
+        placeholder_text: Some("Type your password to unlock"),
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
@@ -1018,7 +1018,7 @@ fn text_layout_cache_reuses_matching_clock_layout() {
     });
 
     assert_eq!(first.clock, second.clock);
-    assert_eq!(cached_clock, second.clock.time);
+    assert_eq!(cached_clock, second.clock.expect("clock").time);
 }
 
 #[test]
@@ -1027,17 +1027,17 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
-        clock_text: "09:41",
+        clock_text: Some("09:41"),
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         clock_meridiem_offset_x: None,
         clock_meridiem_offset_y: None,
-        date_text: "Tuesday",
+        date_text: Some("Tuesday"),
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
         username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
-        placeholder_text: "Type your password to unlock",
+        placeholder_text: Some("Type your password to unlock"),
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
@@ -1057,17 +1057,17 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         metrics,
     });
     let second = cache.scene_text_blocks(SceneTextInputs {
-        clock_text: "09:42",
+        clock_text: Some("09:42"),
         clock_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 5),
         clock_meridiem_text: None,
         clock_meridiem_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         clock_meridiem_offset_x: None,
         clock_meridiem_offset_y: None,
-        date_text: "Tuesday",
+        date_text: Some("Tuesday"),
         date_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
         username_text: None,
         username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
-        placeholder_text: "Type your password to unlock",
+        placeholder_text: Some("Type your password to unlock"),
         placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
         status_text: None,
         status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
@@ -1087,7 +1087,10 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         metrics,
     });
 
-    assert_ne!(first.clock.time.lines, second.clock.time.lines);
+    assert_ne!(
+        first.clock.expect("first clock").time.lines,
+        second.clock.expect("second clock").time.lines
+    );
     assert_eq!(
         cache.clock.key.as_ref().map(|key| key.text.as_str()),
         Some("09:42")

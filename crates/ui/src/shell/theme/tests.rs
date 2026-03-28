@@ -27,6 +27,7 @@ fn input_opacity_overrides_embedded_alpha() {
         mask_color: Some(ConfigColor::rgb(169, 196, 255)),
     });
     config.visuals.avatar = Some(AvatarVisualConfig {
+        enabled: Some(true),
         size: Some(92),
         gap: Some(14),
         background_color: Some(ConfigColor::rgb(24, 30, 42)),
@@ -37,6 +38,7 @@ fn input_opacity_overrides_embedded_alpha() {
         icon_color: Some(ConfigColor::rgb(232, 238, 249)),
     });
     config.visuals.username = Some(UsernameVisualConfig {
+        enabled: Some(true),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         color: Some(ConfigColor::rgb(215, 227, 255)),
@@ -45,6 +47,7 @@ fn input_opacity_overrides_embedded_alpha() {
         gap: Some(28),
     });
     config.visuals.clock = Some(ClockVisualConfig {
+        enabled: Some(true),
         font_family: Some(String::from("Bebas Neue")),
         font_weight: Some(700),
         format: Some(ClockFormat::TwelveHour),
@@ -57,6 +60,7 @@ fn input_opacity_overrides_embedded_alpha() {
         gap: Some(10),
     });
     config.visuals.date = Some(DateVisualConfig {
+        enabled: Some(true),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         color: Some(ConfigColor::rgb(200, 212, 236)),
@@ -64,14 +68,17 @@ fn input_opacity_overrides_embedded_alpha() {
         size: Some(3),
     });
     config.visuals.placeholder = Some(PlaceholderVisualConfig {
+        enabled: Some(true),
         color: Some(ConfigColor::rgb(134, 148, 180)),
         opacity: Some(60),
     });
     config.visuals.eye = Some(EyeVisualConfig {
+        enabled: Some(true),
         color: Some(ConfigColor::rgb(244, 248, 255)),
         opacity: Some(72),
     });
     config.visuals.keyboard = Some(KeyboardVisualConfig {
+        enabled: Some(true),
         background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
         background_size: Some(42),
         color: Some(ConfigColor::rgb(232, 238, 249)),
@@ -81,6 +88,7 @@ fn input_opacity_overrides_embedded_alpha() {
         right_offset: Some(8),
     });
     config.visuals.battery = Some(BatteryVisualConfig {
+        enabled: Some(true),
         background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
         background_size: Some(42),
         color: Some(ConfigColor::rgb(255, 255, 255)),
@@ -91,6 +99,7 @@ fn input_opacity_overrides_embedded_alpha() {
         gap: Some(8),
     });
     config.visuals.weather = Some(WeatherVisualConfig {
+        enabled: Some(true),
         size: Some(3),
         opacity: Some(62),
         icon_opacity: Some(41),
@@ -116,6 +125,7 @@ fn input_opacity_overrides_embedded_alpha() {
         bottom_padding: Some(72),
     });
     config.visuals.now_playing = Some(NowPlayingVisualConfig {
+        enabled: Some(true),
         fade_duration_ms: Some(320),
         opacity: Some(72),
         title_opacity: Some(88),
@@ -140,6 +150,7 @@ fn input_opacity_overrides_embedded_alpha() {
         bottom_offset: Some(10),
     });
     config.visuals.status = Some(StatusVisualConfig {
+        enabled: Some(true),
         color: Some(ConfigColor::rgb(255, 224, 160)),
         opacity: Some(88),
         gap: Some(18),
@@ -328,6 +339,7 @@ fn avatar_background_falls_back_to_legacy_panel_color() {
     let mut config = AppConfig::default();
     config.visuals.panel = ConfigColor::rgb(31, 39, 52);
     config.visuals.avatar = Some(veila_common::AvatarVisualConfig {
+        enabled: Some(true),
         background_color: None,
         ..Default::default()
     });

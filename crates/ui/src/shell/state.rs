@@ -232,6 +232,11 @@ impl ShellState {
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
+        if !self.theme.eye_enabled {
+            self.reveal_secret = false;
+            self.reveal_toggle_hovered = false;
+            self.reveal_toggle_pressed = false;
+        }
         self.username_text = username_text(show_username, username_override);
         self.weather = widget_data(weather_location, weather_snapshot, weather_unit);
         self.battery = battery_widget_data(battery_snapshot);

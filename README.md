@@ -2,7 +2,7 @@
 
 Veila is a secure, low-latency, Wayland-first screen locker written in Rust.
 
-It is built for wlroots-style compositors like Hyprland, Sway, MangoWC and others, and is designed around a simple rule: the secure lock path must stay small, predictable, and fast. Veila focuses on acquiring real session-lock surfaces immediately, keeping unlock authority in the daemon, and avoiding heavyweight UI stacks that add latency or complexity where it matters most.
+It is built for wlroots-style compositors like Labwc, Niri, Hyprland, Sway, MangoWC and others, and is designed around a simple rule: the secure lock path must stay small, predictable, and fast. Veila focuses on acquiring real session-lock surfaces immediately, keeping unlock authority in the daemon, and avoiding heavyweight UI stacks that add latency or complexity where it matters most.
 
 Veila is not a fullscreen desktop window pretending to be a lockscreen. It is a compositor-aware lock application that uses the Wayland session-lock protocol and a dedicated daemon to manage lock, auth, and unlock state.
 

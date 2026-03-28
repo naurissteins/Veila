@@ -32,6 +32,7 @@ pub(super) struct InputWidget {
     pub reveal_secret: bool,
     pub toggle_hovered: bool,
     pub toggle_pressed: bool,
+    pub show_toggle: bool,
     pub toggle_style: IconStyle,
     pub caps_lock_indicator: Option<TextBlock>,
 }
@@ -174,7 +175,7 @@ pub(super) fn draw_input_shell(buffer: &mut SoftwareBuffer, rect: Rect, style: P
 }
 
 pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidget) {
-    let toggle_rect = input_toggle_hitbox(widget.rect);
+    let toggle_rect = widget.show_toggle.then(|| input_toggle_hitbox(widget.rect));
     let content_rect = input_content_rect(widget.rect, toggle_rect);
 
     if widget.secret_len == 0
@@ -199,14 +200,16 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
         );
     }
 
-    draw_toggle_icon(
-        buffer,
-        toggle_rect,
-        widget.reveal_secret,
-        widget.toggle_hovered,
-        widget.toggle_pressed,
-        widget.toggle_style,
-    );
+    if let Some(toggle_rect) = toggle_rect {
+        draw_toggle_icon(
+            buffer,
+            toggle_rect,
+            widget.reveal_secret,
+            widget.toggle_hovered,
+            widget.toggle_pressed,
+            widget.toggle_style,
+        );
+    }
 
     if let Some(caps_lock_indicator) = widget.caps_lock_indicator.as_ref() {
         let x = widget.rect.x + widget.rect.width - caps_lock_indicator.width as i32;
@@ -353,8 +356,10 @@ pub(super) fn input_toggle_hitbox(rect: Rect) -> Rect {
     )
 }
 
-fn input_content_rect(rect: Rect, toggle_rect: Rect) -> Rect {
-    let right_edge = toggle_rect.x - CONTENT_GAP_TO_TOGGLE;
+fn input_content_rect(rect: Rect, toggle_rect: Option<Rect>) -> Rect {
+    let right_edge = toggle_rect
+        .map(|toggle_rect| toggle_rect.x - CONTENT_GAP_TO_TOGGLE)
+        .unwrap_or(rect.x + rect.width);
     Rect::new(rect.x, rect.y, (right_edge - rect.x).max(0), rect.height)
 }
 

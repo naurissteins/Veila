@@ -41,17 +41,17 @@ pub(super) struct CachedTextKey {
 }
 
 pub(super) struct SceneTextInputs<'a> {
-    pub(super) clock_text: &'a str,
+    pub(super) clock_text: Option<&'a str>,
     pub(super) clock_style: TextStyle,
     pub(super) clock_meridiem_text: Option<&'a str>,
     pub(super) clock_meridiem_style: TextStyle,
     pub(super) clock_meridiem_offset_x: Option<i32>,
     pub(super) clock_meridiem_offset_y: Option<i32>,
-    pub(super) date_text: &'a str,
+    pub(super) date_text: Option<&'a str>,
     pub(super) date_style: TextStyle,
     pub(super) username_text: Option<&'a str>,
     pub(super) username_style: TextStyle,
-    pub(super) placeholder_text: &'a str,
+    pub(super) placeholder_text: Option<&'a str>,
     pub(super) placeholder_style: TextStyle,
     pub(super) status_text: Option<&'a str>,
     pub(super) status_style: TextStyle,
@@ -74,9 +74,9 @@ pub(super) struct SceneTextInputs<'a> {
 impl TextLayoutCache {
     pub(super) fn scene_text_blocks(&mut self, inputs: SceneTextInputs<'_>) -> SceneTextBlocks {
         SceneTextBlocks {
-            clock: SceneClockBlocks {
+            clock: inputs.clock_text.map(|clock_text| SceneClockBlocks {
                 time: self.clock.resolve(
-                    inputs.clock_text,
+                    clock_text,
                     inputs.clock_style,
                     inputs.metrics.clock_width,
                     3,
@@ -89,20 +89,18 @@ impl TextLayoutCache {
                 ),
                 meridiem_offset_x: inputs.clock_meridiem_offset_x.unwrap_or(0).clamp(-128, 128),
                 meridiem_offset_y: inputs.clock_meridiem_offset_y.unwrap_or(0).clamp(-128, 128),
-            },
-            date: self.date.resolve(
-                inputs.date_text,
-                inputs.date_style,
-                inputs.metrics.clock_width,
-                1,
-            ),
+            }),
+            date: inputs.date_text.map(|date_text| {
+                self.date
+                    .resolve(date_text, inputs.date_style, inputs.metrics.clock_width, 1)
+            }),
             username: self.username.resolve_optional(
                 inputs.username_text,
                 inputs.username_style,
                 inputs.metrics.content_width,
                 1,
             ),
-            placeholder: self.placeholder.resolve(
+            placeholder: self.placeholder.resolve_optional(
                 inputs.placeholder_text,
                 inputs.placeholder_style,
                 inputs.metrics.input_width.saturating_sub(48) as u32,

@@ -10,13 +10,14 @@ use crate::shell::{ShellStatus, render::layout::SceneMetrics};
 fn assigns_hero_and_auth_roles() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -43,13 +44,14 @@ fn assigns_hero_and_auth_roles() {
 fn appends_status_to_auth_role() {
     let with_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: Some(block("Authentication failed")),
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -57,13 +59,14 @@ fn appends_status_to_auth_role() {
     );
     let without_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -96,13 +99,14 @@ fn appends_status_to_auth_role() {
 fn footer_role_is_empty_in_default_model() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -116,13 +120,14 @@ fn footer_role_is_empty_in_default_model() {
 fn omits_username_widget_when_disabled() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: None,
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -141,13 +146,14 @@ fn omits_username_widget_when_disabled() {
 fn uses_configured_username_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         None,
         Some(24),
@@ -165,13 +171,14 @@ fn uses_configured_username_gap() {
 fn uses_configured_avatar_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         Some(18),
         None,
@@ -189,13 +196,14 @@ fn uses_configured_avatar_gap() {
 fn uses_configured_status_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: Some(block("Authentication failed")),
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -214,13 +222,14 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let without_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -228,13 +237,14 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
     );
     let with_status = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: Some(block("Authentication failed")),
             weather: None,
         },
+        true,
         None,
         None,
         None,
@@ -251,13 +261,14 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
 fn uses_configured_clock_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
-            clock: clock_blocks("09:05"),
-            date: block("Tuesday, March 24"),
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
             username: Some(block("ramces")),
-            placeholder: block("Type your password to unlock"),
+            placeholder: Some(block("Type your password to unlock")),
             status: None,
             weather: None,
         },
+        true,
         Some(12),
         None,
         None,
@@ -269,6 +280,31 @@ fn uses_configured_clock_gap() {
         .collect::<Vec<_>>();
 
     assert_eq!(hero_sections[0].gap_after, 12);
+}
+
+#[test]
+fn omits_avatar_widget_when_disabled() {
+    let model = SceneModel::standard(
+        SceneTextBlocks {
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
+            username: Some(block("ramces")),
+            placeholder: Some(block("Type your password to unlock")),
+            status: None,
+            weather: None,
+        },
+        false,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert!(
+        model
+            .sections_for_role(LayoutRole::Auth)
+            .all(|section| !matches!(section.widget, SceneWidget::Avatar))
+    );
 }
 
 fn block(text: &str) -> TextBlock {

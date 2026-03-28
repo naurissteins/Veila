@@ -7,12 +7,14 @@ tint = "rgba(12, 18, 30, 0.30)"
 tint_opacity = 0
 
 [visuals.clock]
+enabled = false
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "#EAF2FF"
 opacity = 58
 
 [visuals.date]
+enabled = false
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "#C8D8F2"
@@ -26,27 +28,33 @@ border_opacity = 14
 [visuals.avatar]
 background_opacity = 10
 ring_width = 1
+enabled = false
 
 [visuals.username]
+enabled = false
 font_family = "Geom"
 font_weight = 600
 color = "#EAF2FF"
 
 [visuals.keyboard]
+enabled = false
 background_color = "rgba(234, 242, 255, 0.08)"
 color = "#F8FBFF"
 
 [visuals.battery]
+enabled = false
 background_color = "rgba(234, 242, 255, 0.08)"
 color = "#F8FBFF"
 
 [visuals.weather]
+enabled = false
 alignment = "right"
 horizontal_padding = 56
 temperature_color = "#F8FBFF"
 location_color = "#C8D8F2"
 
 [visuals.now_playing]
+enabled = false
 title_color = "#F8FBFF"
 artist_color = "#C8D8F2"
 opacity = 78

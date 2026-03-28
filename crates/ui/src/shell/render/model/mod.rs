@@ -10,10 +10,10 @@ use super::{super::ShellStatus, layout::SceneMetrics};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SceneTextBlocks {
-    pub clock: SceneClockBlocks,
-    pub date: TextBlock,
+    pub clock: Option<SceneClockBlocks>,
+    pub date: Option<TextBlock>,
     pub username: Option<TextBlock>,
-    pub placeholder: TextBlock,
+    pub placeholder: Option<TextBlock>,
     pub status: Option<TextBlock>,
     pub weather: Option<SceneWeatherBlocks>,
 }
@@ -66,7 +66,7 @@ pub(super) enum SceneWidget {
     Date(TextBlock),
     Avatar,
     Username(TextBlock),
-    Input(TextBlock),
+    Input(Option<TextBlock>),
     Status(TextBlock),
     Weather(SceneWeatherBlocks),
 }
