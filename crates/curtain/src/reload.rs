@@ -47,6 +47,7 @@ impl CurtainApp {
             config.weather.normalized_location(),
             self.weather_snapshot.clone(),
             config.weather.unit,
+            self.battery_snapshot.clone(),
             self.now_playing_snapshot.clone(),
         );
         self.background_render_started = false;

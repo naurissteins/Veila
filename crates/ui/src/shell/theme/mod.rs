@@ -62,6 +62,14 @@ pub struct ShellTheme {
     pub keyboard_size: Option<u32>,
     pub keyboard_top_offset: Option<i32>,
     pub keyboard_right_offset: Option<i32>,
+    pub battery_color: Option<ClearColor>,
+    pub battery_background_color: ClearColor,
+    pub battery_background_size: Option<i32>,
+    pub battery_opacity: Option<u8>,
+    pub battery_size: Option<i32>,
+    pub battery_top_offset: Option<i32>,
+    pub battery_right_offset: Option<i32>,
+    pub battery_gap: Option<i32>,
     pub weather_size: Option<u32>,
     pub weather_opacity: Option<u8>,
     pub weather_icon_opacity: Option<u8>,
@@ -191,6 +199,18 @@ impl ShellTheme {
             keyboard_size: config.visuals.keyboard_size().map(u32::from),
             keyboard_top_offset: config.visuals.keyboard_top_offset().map(i32::from),
             keyboard_right_offset: config.visuals.keyboard_right_offset().map(i32::from),
+            battery_color: config.visuals.battery_color().map(to_color),
+            battery_background_color: config
+                .visuals
+                .battery_background_color()
+                .map(to_color)
+                .unwrap_or_else(|| ClearColor::rgba(18, 22, 30, 82)),
+            battery_background_size: config.visuals.battery_background_size().map(i32::from),
+            battery_opacity: config.visuals.battery_opacity(),
+            battery_size: config.visuals.battery_size().map(i32::from),
+            battery_top_offset: config.visuals.battery_top_offset().map(i32::from),
+            battery_right_offset: config.visuals.battery_right_offset().map(i32::from),
+            battery_gap: config.visuals.battery_gap().map(i32::from),
             weather_size: config.visuals.weather_size().map(u32::from),
             weather_opacity: config.visuals.weather_opacity(),
             weather_icon_opacity: config.visuals.weather_icon_opacity(),

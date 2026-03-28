@@ -1,3 +1,4 @@
+mod battery;
 mod events;
 mod helpers;
 mod mpris;
@@ -73,6 +74,7 @@ pub async fn run(
             &mut runtime.state,
             options.config_path.as_deref(),
             runtime.weather.current_snapshot().as_ref(),
+            runtime.battery.current_snapshot().as_ref(),
             now_playing_snapshot.as_ref(),
             ActiveRuntime::new(
                 &mut runtime.curtain,
@@ -93,6 +95,7 @@ pub async fn run(
         tokio::select! {
             Some(_) = lock_stream.next() => {
                 let weather_snapshot = runtime.weather.current_snapshot();
+                let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let (auth_policy, slots) = runtime.slots_with_policy();
                 handle_lock_signal(
@@ -100,6 +103,7 @@ pub async fn run(
                     &session_proxy,
                     options.config_path.as_deref(),
                     weather_snapshot.as_ref(),
+                    battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
                     slots,
                     auth_policy,
@@ -115,6 +119,7 @@ pub async fn run(
             }
             result = wait_for_curtain_exit(&mut runtime.curtain), if runtime.curtain.is_some() => {
                 let weather_snapshot = runtime.weather.current_snapshot();
+                let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let (auth_policy, slots) = runtime.slots_with_policy();
                 handle_curtain_exit(
@@ -122,6 +127,7 @@ pub async fn run(
                     &session_proxy,
                     options.config_path.as_deref(),
                     weather_snapshot.as_ref(),
+                    battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
                     slots,
                     auth_policy,
@@ -145,7 +151,9 @@ pub async fn run(
             }
             result = accept_control_connection(&mut control_listener) => {
                 let weather = runtime.weather.clone();
+                let battery = runtime.battery.clone();
                 let weather_snapshot = weather.current_snapshot();
+                let battery_snapshot = battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let (loaded_config, auth_policy, slots) = runtime.control_inputs();
                 if handle_control_connection(
@@ -155,8 +163,10 @@ pub async fn run(
                     &session_path,
                     loaded_config,
                     weather_snapshot.as_ref(),
+                    battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
                     &weather,
+                    &battery,
                     slots,
                     auth_policy,
                 ).await? {

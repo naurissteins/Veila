@@ -4,7 +4,10 @@ use std::{
 };
 
 use veila_common::ClockFormat;
-use veila_common::{NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, WeatherUnit};
+use veila_common::{
+    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, WeatherUnit,
+};
+use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellKey, ShellState, ShellStatus, ShellTheme};
@@ -197,6 +200,7 @@ fn weather_widget_requires_location_and_snapshot() {
         Some(String::from("Riga")),
         None,
         WeatherUnit::Celsius,
+        None,
     );
 
     assert!(shell.weather.is_none());
@@ -217,6 +221,7 @@ fn weather_widget_uses_snapshot_data() {
             fetched_at_unix: 0,
         }),
         WeatherUnit::Celsius,
+        None,
     );
 
     let weather = shell.weather.as_ref().expect("weather widget");
@@ -239,6 +244,7 @@ fn weather_widget_formats_fahrenheit_when_configured() {
             fetched_at_unix: 0,
         }),
         WeatherUnit::Fahrenheit,
+        None,
     );
 
     let weather = shell.weather.as_ref().expect("weather widget");
@@ -256,6 +262,7 @@ fn now_playing_widget_uses_snapshot_data() {
         None,
         None,
         WeatherUnit::Celsius,
+        None,
         Some(NowPlayingSnapshot {
             title: String::from("Northern Attitude"),
             artist: Some(String::from("Noah Kahan")),
@@ -267,6 +274,48 @@ fn now_playing_widget_uses_snapshot_data() {
     let now_playing = shell.now_playing.as_ref().expect("now playing widget");
     assert_eq!(now_playing.title, "Northern Attitude");
     assert_eq!(now_playing.artist.as_deref(), Some("Noah Kahan"));
+}
+
+#[test]
+fn battery_widget_uses_snapshot_data() {
+    let shell = ShellState::new_with_username_and_weather(
+        Default::default(),
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::Celsius,
+        Some(BatterySnapshot {
+            percent: 84,
+            charging: false,
+        }),
+    );
+
+    let battery = shell.battery.as_ref().expect("battery widget");
+    assert_eq!(battery.icon, BatteryIcon::Full);
+}
+
+#[test]
+fn battery_widget_uses_charging_icon_when_charging() {
+    let shell = ShellState::new_with_username_and_weather(
+        Default::default(),
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::Celsius,
+        Some(BatterySnapshot {
+            percent: 12,
+            charging: true,
+        }),
+    );
+
+    let battery = shell.battery.as_ref().expect("battery widget");
+    assert_eq!(battery.icon, BatteryIcon::Charging);
 }
 
 #[test]

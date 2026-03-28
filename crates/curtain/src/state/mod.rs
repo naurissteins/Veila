@@ -21,7 +21,7 @@ use smithay_client_toolkit::{
     session_lock::{SessionLock, SessionLockState, SessionLockSurface},
     shm::Shm,
 };
-use veila_common::{AppConfig, NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
 use veila_renderer::{
     ClearColor,
     background::{BackgroundAsset, BackgroundTreatment},
@@ -74,6 +74,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
+    pub(crate) battery_snapshot: Option<BatterySnapshot>,
     pub(crate) now_playing_snapshot: Option<NowPlayingSnapshot>,
     pub(crate) ui_shell: ShellState,
     pub(crate) lock_wait_timeout: Duration,
@@ -124,6 +125,7 @@ impl CurtainApp {
             config.weather.normalized_location(),
             options.weather_snapshot.clone(),
             config.weather.unit,
+            options.battery_snapshot.clone(),
             options.now_playing_snapshot.clone(),
         );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
@@ -176,6 +178,7 @@ impl CurtainApp {
             background_treatment,
             background_color,
             weather_snapshot: options.weather_snapshot,
+            battery_snapshot: options.battery_snapshot,
             now_playing_snapshot: options.now_playing_snapshot,
             ui_shell,
             lock_wait_timeout,

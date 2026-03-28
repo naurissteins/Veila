@@ -13,12 +13,15 @@ use crate::domain::{
     lock_state::LockState,
 };
 
-use super::{mpris::NowPlayingHandle, runtime::AuthResult, weather::WeatherHandle};
+use super::{
+    battery::BatteryHandle, mpris::NowPlayingHandle, runtime::AuthResult, weather::WeatherHandle,
+};
 
 pub(super) struct AppRuntime {
     pub(super) loaded_config: LoadedConfig,
     pub(super) auth_policy: AuthPolicy,
     pub(super) weather: WeatherHandle,
+    pub(super) battery: BatteryHandle,
     pub(super) now_playing: NowPlayingHandle,
     pub(super) state: LockState,
     pub(super) curtain: Option<Child>,
@@ -37,12 +40,14 @@ impl AppRuntime {
             Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
         );
         let weather = WeatherHandle::spawn(&loaded_config.config.weather);
+        let battery = BatteryHandle::spawn(&loaded_config.config.battery);
         let now_playing = NowPlayingHandle::spawn();
 
         Self {
             loaded_config,
             auth_policy,
             weather,
+            battery,
             now_playing,
             state: LockState::Unlocked,
             curtain: None,

@@ -51,6 +51,9 @@ fn rasterize_svg_icon(key: IconRasterKey, svg: &[u8]) -> Vec<u8> {
     let transform = Transform::from_scale(scale, scale).post_translate(translate_x, translate_y);
     resvg::render(&tree, transform, &mut pixmap.as_mut());
     let mut pixels = pixmap.take();
+    if matches!(key.icon, super::AssetIcon::Battery(_)) {
+        recolor_svg_pixels(&mut pixels, key.color);
+    }
     scale_svg_alpha(&mut pixels, key.color.alpha);
     normalize_svg_pixels(key, pixels)
 }
@@ -187,6 +190,19 @@ pub(super) fn scale_svg_alpha(pixels: &mut [u8], alpha: u8) {
         pixel[1] = ((u16::from(pixel[1]) * u16::from(alpha) + 127) / 255) as u8;
         pixel[2] = ((u16::from(pixel[2]) * u16::from(alpha) + 127) / 255) as u8;
         pixel[3] = ((u16::from(pixel[3]) * u16::from(alpha) + 127) / 255) as u8;
+    }
+}
+
+fn recolor_svg_pixels(pixels: &mut [u8], color: crate::ClearColor) {
+    for pixel in pixels.chunks_exact_mut(4) {
+        let alpha = pixel[3];
+        if alpha == 0 {
+            continue;
+        }
+
+        pixel[0] = ((u16::from(color.blue) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[1] = ((u16::from(color.green) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[2] = ((u16::from(color.red) * u16::from(alpha) + 127) / 255) as u8;
     }
 }
 

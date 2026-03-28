@@ -6,9 +6,10 @@ use nix::unistd::{Uid, User};
 use veila_common::ipc::{
     DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
-use veila_common::{AppConfig, LoadedConfig, NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot, WeatherSnapshot};
 
 use super::{
+    battery::BatteryHandle,
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
     weather::WeatherHandle,
@@ -28,6 +29,7 @@ pub(super) async fn activate_and_install(
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
@@ -38,6 +40,7 @@ pub(super) async fn activate_and_install(
         state,
         config_path,
         weather_snapshot,
+        battery_snapshot,
         now_playing_snapshot,
     )
     .await?;
@@ -53,6 +56,7 @@ pub(super) async fn activate_and_log(
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
@@ -64,6 +68,7 @@ pub(super) async fn activate_and_log(
         state,
         config_path,
         weather_snapshot,
+        battery_snapshot,
         now_playing_snapshot,
         runtime,
         auth_policy,
@@ -110,6 +115,7 @@ pub(super) fn build_daemon_health() -> DaemonHealth {
     crate::local_build_info()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn reload_config_response(
     options: &DaemonOptions,
     state: &LockState,
@@ -118,6 +124,7 @@ pub(super) async fn reload_config_response(
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
     weather: &WeatherHandle,
+    battery: &BatteryHandle,
 ) -> DaemonControlResponse {
     match AppConfig::load(options.config_path.as_deref()) {
         Ok(new_loaded_config) => {
@@ -131,6 +138,7 @@ pub(super) async fn reload_config_response(
             }
             prewarm::spawn_background_prewarm(&loaded_config.config);
             weather.update_config(&loaded_config.config.weather);
+            battery.update_config(&loaded_config.config.battery);
 
             let live_reload = if !state.is_active() {
                 Ok(LiveReloadStatus::NotActive)

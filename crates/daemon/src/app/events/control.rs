@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio::net::UnixStream;
 use veila_common::{
-    LoadedConfig, NowPlayingSnapshot, WeatherSnapshot,
+    BatterySnapshot, LoadedConfig, NowPlayingSnapshot, WeatherSnapshot,
     ipc::{DaemonControlMessage, DaemonControlResponse},
 };
 
@@ -12,6 +12,7 @@ use crate::{
 };
 
 use super::super::{
+    battery::BatteryHandle,
     helpers::{activate_and_log, build_daemon_health, build_daemon_status, reload_config_response},
     runtime::ActiveRuntime,
     state::RuntimeSlots,
@@ -26,8 +27,10 @@ pub(crate) async fn handle_control_connection(
     session_path: &str,
     loaded_config: &mut LoadedConfig,
     weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     weather: &WeatherHandle,
+    battery: &BatteryHandle,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
 ) -> Result<bool> {
@@ -55,6 +58,7 @@ pub(crate) async fn handle_control_connection(
                     state,
                     options.config_path.as_deref(),
                     weather_snapshot,
+                    battery_snapshot,
                     now_playing_snapshot,
                     ActiveRuntime::new(
                         curtain,
@@ -106,6 +110,7 @@ pub(crate) async fn handle_control_connection(
                 auth_policy,
                 auth_state,
                 weather,
+                battery,
             )
             .await,
             false,

@@ -1,3 +1,4 @@
+mod battery;
 mod parser;
 mod raster;
 mod weather;
@@ -9,6 +10,8 @@ use std::{cell::RefCell, thread_local};
 
 use crate::{ClearColor, SoftwareBuffer, shape::Rect};
 
+pub use battery::BatteryIcon;
+use battery::battery_svg;
 use parser::{ParsedIcon, eye_icon, eye_off_icon, user_icon};
 use raster::{blend_icon_raster, rasterize_icon, visible_alpha_bounds};
 pub use weather::WeatherIcon;
@@ -24,6 +27,7 @@ pub enum AssetIcon {
     Eye,
     EyeOff,
     User,
+    Battery(BatteryIcon),
     Weather(WeatherIcon),
 }
 
@@ -132,6 +136,7 @@ fn icon_source(icon: AssetIcon) -> IconRasterSource {
         AssetIcon::Eye => IconRasterSource::Parsed(eye_icon()),
         AssetIcon::EyeOff => IconRasterSource::Parsed(eye_off_icon()),
         AssetIcon::User => IconRasterSource::Parsed(user_icon()),
+        AssetIcon::Battery(icon) => IconRasterSource::Svg(battery_svg(icon)),
         AssetIcon::Weather(icon) => IconRasterSource::Svg(weather_svg(icon)),
     }
 }

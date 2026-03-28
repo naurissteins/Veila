@@ -1,9 +1,9 @@
 use veila_common::WeatherAlignment;
 use veila_renderer::{
-    SoftwareBuffer,
+    ClearColor, SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
     cover::CoverArtAsset,
-    icon::{AssetIcon, IconStyle, draw_icon, icon_visible_bounds},
+    icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon, icon_visible_bounds},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::TextBlock,
@@ -18,6 +18,8 @@ const TOGGLE_RIGHT_INSET: i32 = 14;
 const CONTENT_GAP_TO_TOGGLE: i32 = 10;
 pub(super) const NOW_PLAYING_CONTENT_GAP: i32 = 14;
 pub(super) const NOW_PLAYING_TEXT_GAP: i32 = 8;
+const CHIP_HORIZONTAL_PADDING: i32 = 10;
+const CHIP_VERTICAL_PADDING: i32 = 8;
 
 pub(super) struct InputWidget {
     pub rect: Rect,
@@ -85,19 +87,12 @@ pub(super) fn draw_top_right_block(
     right_padding: i32,
     right_offset: i32,
     y: i32,
-    background: veila_renderer::ClearColor,
+    background: ClearColor,
     background_size: Option<i32>,
     block: &TextBlock,
 ) {
-    const CHIP_HORIZONTAL_PADDING: i32 = 10;
-    const CHIP_VERTICAL_PADDING: i32 = 8;
-
-    let chip_diameter = background_size
-        .unwrap_or_else(|| {
-            (block.width as i32 + CHIP_HORIZONTAL_PADDING * 2)
-                .max(block.height as i32 + CHIP_VERTICAL_PADDING * 2)
-        })
-        .clamp(20, 160);
+    let chip_diameter =
+        top_right_chip_diameter(background_size, block.width as i32, block.height as i32);
     let max_x = (buffer.size().width as i32 - chip_diameter).max(0);
     let x =
         (buffer.size().width as i32 - right_padding - chip_diameter + right_offset).clamp(0, max_x);
@@ -112,6 +107,54 @@ pub(super) fn draw_top_right_block(
         buffer,
         x + (chip_diameter - block.width as i32) / 2,
         y + (chip_diameter - block.height as i32) / 2,
+    );
+}
+
+pub(super) fn top_right_chip_diameter(
+    background_size: Option<i32>,
+    content_width: i32,
+    content_height: i32,
+) -> i32 {
+    background_size
+        .unwrap_or_else(|| {
+            (content_width + CHIP_HORIZONTAL_PADDING * 2)
+                .max(content_height + CHIP_VERTICAL_PADDING * 2)
+        })
+        .clamp(20, 160)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn draw_top_right_icon_chip(
+    buffer: &mut SoftwareBuffer,
+    right_padding: i32,
+    right_offset: i32,
+    y: i32,
+    background: ClearColor,
+    background_size: Option<i32>,
+    icon: BatteryIcon,
+    icon_style: IconStyle,
+    icon_size: i32,
+) {
+    let chip_diameter = top_right_chip_diameter(background_size, icon_size, icon_size);
+    let max_x = (buffer.size().width as i32 - chip_diameter).max(0);
+    let x =
+        (buffer.size().width as i32 - right_padding - chip_diameter + right_offset).clamp(0, max_x);
+    let y = y.max(8);
+
+    draw_pill(
+        buffer,
+        Rect::new(x, y, chip_diameter, chip_diameter),
+        PillStyle::new(background).with_radius(chip_diameter / 2),
+    );
+
+    let icon_extent = icon_size.clamp(12, chip_diameter.saturating_sub(8));
+    let icon_x = x + (chip_diameter - icon_extent) / 2;
+    let icon_y = y + (chip_diameter - icon_extent) / 2;
+    draw_icon(
+        buffer,
+        Rect::new(icon_x, icon_y, icon_extent, icon_extent),
+        AssetIcon::Battery(icon),
+        icon_style.with_padding(0),
     );
 }
 

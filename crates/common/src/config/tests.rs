@@ -35,6 +35,10 @@ fn parses_partial_config_with_defaults() {
     assert!(config.weather.clone().coordinates().is_none());
     assert_eq!(config.weather.refresh_minutes, 15);
     assert_eq!(config.weather.unit, WeatherUnit::Celsius);
+    assert!(!config.battery.enabled);
+    assert_eq!(config.battery.refresh_seconds, 30);
+    assert!(config.battery.mock_percent.is_none());
+    assert!(config.battery.mock_charging.is_none());
     assert!(matches!(config.visuals.input, InputVisualEntry::Color(_)));
     assert!(config.visuals.input_font_family().is_none());
     assert!(config.visuals.input_font_weight().is_none());
@@ -86,6 +90,14 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.keyboard_size().is_none());
     assert!(config.visuals.keyboard_top_offset().is_none());
     assert!(config.visuals.keyboard_right_offset().is_none());
+    assert!(config.visuals.battery_background_color().is_none());
+    assert!(config.visuals.battery_color().is_none());
+    assert!(config.visuals.battery_background_size().is_none());
+    assert!(config.visuals.battery_opacity().is_none());
+    assert!(config.visuals.battery_size().is_none());
+    assert!(config.visuals.battery_top_offset().is_none());
+    assert!(config.visuals.battery_right_offset().is_none());
+    assert!(config.visuals.battery_gap().is_none());
     assert!(config.visuals.weather_size().is_none());
     assert!(config.visuals.weather_temperature_color().is_none());
     assert!(config.visuals.weather_location_color().is_none());
@@ -172,6 +184,12 @@ fn loads_config_from_file() {
             refresh_minutes = 20
             unit = "fahrenheit"
 
+            [battery]
+            enabled = true
+            refresh_seconds = 45
+            mock_percent = 84
+            mock_charging = true
+
             [visuals]
             avatar_background_color = "rgba(24, 30, 42, 0.82)"
             input = "#FFFFFF"
@@ -246,6 +264,10 @@ fn loads_config_from_file() {
     );
     assert_eq!(loaded.config.weather.refresh_minutes, 20);
     assert_eq!(loaded.config.weather.unit, WeatherUnit::Fahrenheit);
+    assert!(loaded.config.battery.enabled);
+    assert_eq!(loaded.config.battery.refresh_seconds, 45);
+    assert_eq!(loaded.config.battery.mock_percent, Some(84));
+    assert_eq!(loaded.config.battery.mock_charging, Some(true));
     assert_eq!(
         loaded.config.background.effective_mode(),
         BackgroundMode::File
@@ -469,6 +491,16 @@ border_color = "#DDDDDD"
             top_offset = -12
             right_offset = 8
 
+            [visuals.battery]
+            background_color = "rgba(18, 22, 30, 0.32)"
+            background_size = 42
+            color = "#FFFFFF"
+            opacity = 72
+            size = 18
+            top_offset = -12
+            right_offset = 0
+            gap = 8
+
             [visuals.weather]
             size = 3
             opacity = 62
@@ -613,6 +645,20 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.keyboard_size(), Some(3));
     assert_eq!(config.visuals.keyboard_top_offset(), Some(-12));
     assert_eq!(config.visuals.keyboard_right_offset(), Some(8));
+    assert_eq!(
+        config.visuals.battery_background_color(),
+        Some(RgbColor::rgba(18, 22, 30, 82))
+    );
+    assert_eq!(
+        config.visuals.battery_color(),
+        Some(RgbColor::rgb(255, 255, 255))
+    );
+    assert_eq!(config.visuals.battery_background_size(), Some(42));
+    assert_eq!(config.visuals.battery_opacity(), Some(72));
+    assert_eq!(config.visuals.battery_size(), Some(18));
+    assert_eq!(config.visuals.battery_top_offset(), Some(-12));
+    assert_eq!(config.visuals.battery_right_offset(), Some(0));
+    assert_eq!(config.visuals.battery_gap(), Some(8));
     assert_eq!(config.visuals.weather_size(), Some(3));
     assert_eq!(config.visuals.weather_opacity(), Some(62));
     assert_eq!(config.visuals.weather_icon_opacity(), Some(41));

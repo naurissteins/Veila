@@ -1,6 +1,6 @@
 use std::{path::Path, process::ExitStatus};
 
-use veila_common::{NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
 
 use crate::{
     adapters::{logind, process},
@@ -13,11 +13,13 @@ use super::super::{
     state::RuntimeSlots,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_lock_signal(
     trigger: &'static str,
     session_proxy: &logind::SessionProxy<'_>,
     config_path: Option<&Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
@@ -44,6 +46,7 @@ pub(crate) async fn handle_lock_signal(
         state,
         config_path,
         weather_snapshot,
+        battery_snapshot,
         now_playing_snapshot,
         ActiveRuntime::new(
             curtain,
@@ -104,11 +107,13 @@ pub(crate) async fn handle_unlock_signal(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_curtain_exit(
     status: ExitStatus,
     session_proxy: &logind::SessionProxy<'_>,
     config_path: Option<&Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
@@ -147,6 +152,7 @@ pub(crate) async fn handle_curtain_exit(
             state,
             config_path,
             weather_snapshot,
+            battery_snapshot,
             now_playing_snapshot,
             ActiveRuntime::new(
                 curtain,

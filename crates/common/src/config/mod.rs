@@ -1,4 +1,5 @@
 mod background;
+mod battery;
 mod color;
 mod lock;
 #[cfg(test)]
@@ -16,11 +17,12 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 
 pub use background::{BackgroundConfig, BackgroundMode};
+pub use battery::BatteryConfig;
 pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{
-    AvatarVisualConfig, ClockFormat, ClockVisualConfig, DateVisualConfig, EyeVisualConfig,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
+    AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockVisualConfig, DateVisualConfig,
+    EyeVisualConfig, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
     NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
     UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
@@ -40,6 +42,8 @@ pub struct AppConfig {
     pub background: BackgroundConfig,
     #[serde(default)]
     pub lock: LockConfig,
+    #[serde(default)]
+    pub battery: BatteryConfig,
     #[serde(default)]
     pub weather: WeatherConfig,
     #[serde(default)]

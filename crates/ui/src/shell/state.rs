@@ -1,10 +1,11 @@
 use std::{cell::RefCell, path::PathBuf};
 
-use veila_common::{NowPlayingSnapshot, WeatherSnapshot, WeatherUnit};
+use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, WeatherUnit};
 
 use super::{
     ClockState, NowPlayingTransition, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
     avatar::{load_avatar, username_text},
+    battery::widget_data as battery_widget_data,
     now_playing::{same_widget_data, widget_data as now_playing_widget_data},
     weather::widget_data,
 };
@@ -26,6 +27,7 @@ impl ShellState {
             None,
             WeatherUnit::default(),
             None,
+            None,
         )
     }
 
@@ -46,6 +48,7 @@ impl ShellState {
             None,
             WeatherUnit::default(),
             None,
+            None,
         )
     }
 
@@ -59,6 +62,7 @@ impl ShellState {
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
     ) -> Self {
         Self::new_with_username_and_widgets(
             theme,
@@ -69,6 +73,7 @@ impl ShellState {
             weather_location,
             weather_snapshot,
             weather_unit,
+            battery_snapshot,
             None,
         )
     }
@@ -83,6 +88,7 @@ impl ShellState {
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) -> Self {
         Self::new_with_weather(
@@ -94,6 +100,7 @@ impl ShellState {
             weather_location,
             weather_snapshot,
             weather_unit,
+            battery_snapshot,
             now_playing_snapshot,
         )
     }
@@ -108,12 +115,14 @@ impl ShellState {
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) -> Self {
         Self {
             secret: String::new(),
             caps_lock_active: false,
             keyboard_layout_label: None,
+            battery: battery_widget_data(battery_snapshot),
             reveal_secret: false,
             reveal_toggle_hovered: false,
             reveal_toggle_pressed: false,
@@ -200,6 +209,7 @@ impl ShellState {
             None,
             WeatherUnit::default(),
             None,
+            None,
         );
     }
 
@@ -214,6 +224,7 @@ impl ShellState {
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) {
         self.theme = theme;
@@ -223,6 +234,7 @@ impl ShellState {
             .unwrap_or_else(|| String::from("Type your password to unlock"));
         self.username_text = username_text(show_username, username_override);
         self.weather = widget_data(weather_location, weather_snapshot, weather_unit);
+        self.battery = battery_widget_data(battery_snapshot);
         self.now_playing = now_playing_widget_data(now_playing_snapshot);
         self.now_playing_transition = None;
         self.avatar = load_avatar(avatar_path);

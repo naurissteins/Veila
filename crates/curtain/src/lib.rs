@@ -12,7 +12,7 @@ mod wayland;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
-use veila_common::{NowPlayingSnapshot, WeatherSnapshot, ipc::decode_message};
+use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, ipc::decode_message};
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
@@ -27,6 +27,7 @@ pub struct CurtainOptions {
     pub control_socket: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
     pub weather_snapshot: Option<WeatherSnapshot>,
+    pub battery_snapshot: Option<BatterySnapshot>,
     pub now_playing_snapshot: Option<NowPlayingSnapshot>,
 }
 
@@ -62,6 +63,12 @@ impl CurtainOptions {
                 continue;
             }
 
+            if let Some(snapshot) = arg.strip_prefix("--battery-snapshot=") {
+                options.battery_snapshot =
+                    Some(decode_message(snapshot).context("failed to decode battery snapshot")?);
+                continue;
+            }
+
             if let Some(snapshot) = arg.strip_prefix("--now-playing-snapshot=") {
                 options.now_playing_snapshot = Some(
                     decode_message(snapshot).context("failed to decode now playing snapshot")?,
@@ -83,7 +90,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use veila_common::{NowPlayingSnapshot, ipc::encode_message};
+    use veila_common::{BatterySnapshot, NowPlayingSnapshot, ipc::encode_message};
 
     use super::CurtainOptions;
 
@@ -138,6 +145,28 @@ mod tests {
                 artist: Some(String::from("Artist")),
                 artwork_path: None,
                 fetched_at_unix: 7,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_battery_snapshot_argument() {
+        let encoded = encode_message(&BatterySnapshot {
+            percent: 84,
+            charging: true,
+        })
+        .expect("snapshot");
+        let options = CurtainOptions::parse_args([
+            String::from("veila-curtain"),
+            format!("--battery-snapshot={encoded}"),
+        ])
+        .expect("arguments should parse");
+
+        assert_eq!(
+            options.battery_snapshot,
+            Some(BatterySnapshot {
+                percent: 84,
+                charging: true,
             })
         );
     }

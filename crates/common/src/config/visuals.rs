@@ -170,6 +170,26 @@ pub struct KeyboardVisualConfig {
     pub right_offset: Option<i16>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatteryVisualConfig {
+    #[serde(default)]
+    pub background_color: Option<RgbColor>,
+    #[serde(default)]
+    pub background_size: Option<u16>,
+    #[serde(default)]
+    pub color: Option<RgbColor>,
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub size: Option<u16>,
+    #[serde(default)]
+    pub top_offset: Option<i16>,
+    #[serde(default)]
+    pub right_offset: Option<i16>,
+    #[serde(default)]
+    pub gap: Option<u16>,
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum WeatherAlignment {
@@ -391,15 +411,31 @@ pub struct VisualConfig {
     #[serde(default)]
     pub keyboard_color: Option<RgbColor>,
     #[serde(default)]
+    pub battery_color: Option<RgbColor>,
+    #[serde(default)]
+    pub battery_background_color: Option<RgbColor>,
+    #[serde(default)]
     pub keyboard_background_size: Option<u16>,
+    #[serde(default)]
+    pub battery_background_size: Option<u16>,
     #[serde(default)]
     pub keyboard_opacity: Option<u8>,
     #[serde(default)]
+    pub battery_opacity: Option<u8>,
+    #[serde(default)]
     pub keyboard_size: Option<u16>,
+    #[serde(default)]
+    pub battery_size: Option<u16>,
     #[serde(default)]
     pub keyboard_top_offset: Option<i16>,
     #[serde(default)]
+    pub battery_top_offset: Option<i16>,
+    #[serde(default)]
     pub keyboard_right_offset: Option<i16>,
+    #[serde(default)]
+    pub battery_right_offset: Option<i16>,
+    #[serde(default)]
+    pub battery_gap: Option<u16>,
     #[serde(default)]
     pub weather_size: Option<u16>,
     #[serde(default)]
@@ -432,6 +468,8 @@ pub struct VisualConfig {
     pub eye: Option<EyeVisualConfig>,
     #[serde(default)]
     pub keyboard: Option<KeyboardVisualConfig>,
+    #[serde(default)]
+    pub battery: Option<BatteryVisualConfig>,
     #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
@@ -491,11 +529,19 @@ impl Default for VisualConfig {
             eye_icon_color: None,
             eye_icon_opacity: None,
             keyboard_color: None,
+            battery_color: None,
+            battery_background_color: None,
             keyboard_background_size: None,
+            battery_background_size: None,
             keyboard_opacity: None,
+            battery_opacity: None,
             keyboard_size: None,
+            battery_size: None,
             keyboard_top_offset: None,
+            battery_top_offset: None,
             keyboard_right_offset: None,
+            battery_right_offset: None,
+            battery_gap: None,
             weather_size: None,
             status_color: None,
             status_opacity: None,
@@ -512,6 +558,7 @@ impl Default for VisualConfig {
             status: None,
             eye: None,
             keyboard: None,
+            battery: None,
             weather: None,
             now_playing: None,
             layout: None,
@@ -905,6 +952,62 @@ impl VisualConfig {
             .as_ref()
             .and_then(|keyboard| keyboard.right_offset)
             .or(self.keyboard_right_offset)
+    }
+
+    pub fn battery_background_color(&self) -> Option<RgbColor> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.background_color)
+            .or(self.battery_background_color)
+    }
+
+    pub fn battery_color(&self) -> Option<RgbColor> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.color)
+            .or(self.battery_color)
+    }
+
+    pub fn battery_background_size(&self) -> Option<u16> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.background_size)
+            .or(self.battery_background_size)
+    }
+
+    pub fn battery_opacity(&self) -> Option<u8> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.opacity)
+            .or(self.battery_opacity)
+    }
+
+    pub fn battery_size(&self) -> Option<u16> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.size)
+            .or(self.battery_size)
+    }
+
+    pub fn battery_top_offset(&self) -> Option<i16> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.top_offset)
+            .or(self.battery_top_offset)
+    }
+
+    pub fn battery_right_offset(&self) -> Option<i16> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.right_offset)
+            .or(self.battery_right_offset)
+    }
+
+    pub fn battery_gap(&self) -> Option<u16> {
+        self.battery
+            .as_ref()
+            .and_then(|battery| battery.gap)
+            .or(self.battery_gap)
     }
 
     pub fn weather_size(&self) -> Option<u16> {

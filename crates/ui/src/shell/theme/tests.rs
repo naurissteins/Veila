@@ -1,8 +1,9 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, ClockFormat, ClockVisualConfig, ConfigColor, DateVisualConfig,
-    EyeVisualConfig, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
-    UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
+    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockVisualConfig,
+    ConfigColor, DateVisualConfig, EyeVisualConfig, InputVisualConfig, InputVisualEntry,
+    KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
+    WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -78,6 +79,16 @@ fn input_opacity_overrides_embedded_alpha() {
         size: Some(3),
         top_offset: Some(-12),
         right_offset: Some(8),
+    });
+    config.visuals.battery = Some(BatteryVisualConfig {
+        background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
+        background_size: Some(42),
+        color: Some(ConfigColor::rgb(255, 255, 255)),
+        opacity: Some(72),
+        size: Some(18),
+        top_offset: Some(-12),
+        right_offset: Some(0),
+        gap: Some(8),
     });
     config.visuals.weather = Some(WeatherVisualConfig {
         size: Some(3),
@@ -212,6 +223,17 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.keyboard_size, Some(3));
     assert_eq!(theme.keyboard_top_offset, Some(-12));
     assert_eq!(theme.keyboard_right_offset, Some(8));
+    assert_eq!(
+        theme.battery_background_color,
+        ClearColor::rgba(18, 22, 30, 82)
+    );
+    assert_eq!(theme.battery_color, Some(ClearColor::opaque(255, 255, 255)));
+    assert_eq!(theme.battery_background_size, Some(42));
+    assert_eq!(theme.battery_opacity, Some(72));
+    assert_eq!(theme.battery_size, Some(18));
+    assert_eq!(theme.battery_top_offset, Some(-12));
+    assert_eq!(theme.battery_right_offset, Some(0));
+    assert_eq!(theme.battery_gap, Some(8));
     assert_eq!(theme.weather_size, Some(3));
     assert_eq!(theme.weather_opacity, Some(62));
     assert_eq!(theme.weather_icon_opacity, Some(41));

@@ -15,7 +15,7 @@ use crate::{
         lock_state::LockState,
     },
 };
-use veila_common::{NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
 
 use super::state::{ActiveRuntime, LockActivation, reset_runtime, update_locked_hint};
 
@@ -24,6 +24,7 @@ pub(crate) async fn activate_lock(
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
 ) -> Result<LockActivation> {
     *state = LockState::Locking;
@@ -39,6 +40,7 @@ pub(crate) async fn activate_lock(
         &control_socket_path,
         config_path,
         weather_snapshot,
+        battery_snapshot,
         now_playing_snapshot,
     )
     .await?;

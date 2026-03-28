@@ -1,4 +1,5 @@
 mod avatar;
+mod battery;
 mod clock;
 mod input;
 mod now_playing;
@@ -14,6 +15,7 @@ pub use theme::ShellTheme;
 
 use std::{cell::RefCell, time::Instant};
 
+use battery::BatteryWidgetData;
 use clock::ClockState;
 use now_playing::NowPlayingWidgetData;
 use render::TextLayoutCache;
@@ -55,6 +57,7 @@ pub struct ShellState {
     secret: String,
     caps_lock_active: bool,
     keyboard_layout_label: Option<String>,
+    battery: Option<BatteryWidgetData>,
     reveal_secret: bool,
     reveal_toggle_hovered: bool,
     reveal_toggle_pressed: bool,

@@ -1,6 +1,6 @@
 use super::{
-    AssetIcon, ICON_RASTER_CACHE, IconRasterKey, IconStyle, WeatherIcon, draw_icon, icon_source,
-    icon_visible_bounds,
+    AssetIcon, BatteryIcon, ICON_RASTER_CACHE, IconRasterKey, IconStyle, WeatherIcon, draw_icon,
+    icon_source, icon_visible_bounds,
     parser::extract_path_data,
     parser::extract_viewbox,
     parser::parse_path_data,
@@ -101,6 +101,24 @@ fn weather_svg_icons_preserve_source_fill_colors() {
         pixels
             .chunks_exact(4)
             .any(|pixel| { pixel[3] > 0 && (pixel[0] < 240 || pixel[1] < 240 || pixel[2] < 240) })
+    );
+}
+
+#[test]
+fn battery_svg_icons_follow_style_color() {
+    let key = IconRasterKey {
+        icon: AssetIcon::Battery(BatteryIcon::Full),
+        width: 48,
+        height: 48,
+        color: ClearColor::opaque(255, 255, 255),
+        padding: 0,
+    };
+    let pixels = rasterize_icon(key, icon_source(key.icon));
+
+    assert!(
+        pixels
+            .chunks_exact(4)
+            .any(|pixel| { pixel[3] > 0 && pixel[0] > 220 && pixel[1] > 220 && pixel[2] > 220 })
     );
 }
 
