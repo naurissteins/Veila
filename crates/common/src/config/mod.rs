@@ -111,12 +111,34 @@ impl AppConfig {
     }
 }
 
+pub fn bundled_theme_names() -> Result<Vec<String>> {
+    let mut names = Vec::new();
+    for entry in fs::read_dir(bundled_theme_dir())? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|extension| extension.to_str()) != Some("toml") {
+            continue;
+        }
+        let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+            continue;
+        };
+        validate_theme_name(stem)?;
+        names.push(stem.to_owned());
+    }
+    names.sort_unstable();
+    Ok(names)
+}
+
 fn default_path() -> Option<PathBuf> {
     let config_root = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
 
     Some(config_root.join("veila").join("config.toml"))
+}
+
+fn bundled_theme_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/themes")
 }
 
 fn parse_toml_value(input: &str) -> Result<Value> {
@@ -167,9 +189,7 @@ fn load_theme_value(theme: &str, config_dir: Option<&Path>) -> Result<Value> {
         }
     }
 
-    let bundled_theme_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../assets/themes")
-        .join(&file_name);
+    let bundled_theme_path = bundled_theme_dir().join(&file_name);
     if bundled_theme_path.exists() {
         let raw = fs::read_to_string(bundled_theme_path)?;
         return parse_toml_value(&raw);

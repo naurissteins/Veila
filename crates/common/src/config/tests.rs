@@ -376,6 +376,16 @@ fn first_run_defaults_match_bundled_theme() {
 }
 
 #[test]
+fn lists_bundled_theme_names() {
+    let themes = super::bundled_theme_names().expect("bundled themes should load");
+
+    assert_eq!(
+        themes,
+        vec![String::from("frost"), String::from("midnight")]
+    );
+}
+
+#[test]
 fn loads_config_from_file() {
     let dir = std::env::temp_dir().join(format!("veila-config-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");

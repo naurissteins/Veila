@@ -26,13 +26,14 @@ pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
 pub async fn run(options: DaemonOptions) -> Result<()> {
     let control_mode_count = usize::from(options.lock_now)
         + usize::from(options.stop)
+        + usize::from(options.list_themes)
         + usize::from(options.status)
         + usize::from(options.health)
         + usize::from(options.version)
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
         bail!(
-            "use only one of --lock-now, --stop, --status, --health, --version, or --reload-config at a time"
+            "use only one of --lock-now, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
         );
     }
 
@@ -40,6 +41,11 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     if options.stop {
         stop_running_daemon(&daemon_socket_path).await?;
         println!("stopped=true");
+        return Ok(());
+    }
+
+    if options.list_themes {
+        print_available_themes()?;
         return Ok(());
     }
 
@@ -97,6 +103,13 @@ async fn stop_running_daemon(daemon_socket_path: &std::path::Path) -> Result<()>
         bail!("daemon returned an unexpected response to --stop");
     }
 
+    Ok(())
+}
+
+fn print_available_themes() -> Result<()> {
+    for theme in veila_common::config::bundled_theme_names()? {
+        println!("{theme}");
+    }
     Ok(())
 }
 

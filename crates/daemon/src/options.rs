@@ -8,6 +8,7 @@ pub struct DaemonOptions {
     pub session_id: Option<String>,
     pub lock_now: bool,
     pub stop: bool,
+    pub list_themes: bool,
     pub status: bool,
     pub health: bool,
     pub version: bool,
@@ -36,6 +37,11 @@ impl DaemonOptions {
 
             if arg == "--stop" {
                 options.stop = true;
+                continue;
+            }
+
+            if arg == "--list-themes" {
+                options.list_themes = true;
                 continue;
             }
 
@@ -107,6 +113,15 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.stop);
+    }
+
+    #[test]
+    fn parses_list_themes_argument() {
+        let options =
+            DaemonOptions::parse_args(["veilad".to_string(), "--list-themes".to_string()])
+                .expect("arguments should parse");
+
+        assert!(options.list_themes);
     }
 
     #[test]

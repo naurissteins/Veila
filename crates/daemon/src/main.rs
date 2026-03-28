@@ -32,6 +32,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     if !options.stop
+        && !options.list_themes
         && !options.status
         && !options.health
         && !options.version
