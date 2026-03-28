@@ -6,6 +6,10 @@ It is built for wlroots-style compositors like Hyprland, Sway, MangoWC and other
 
 Veila is not a fullscreen desktop window pretending to be a lockscreen. It is a compositor-aware lock application that uses the Wayland session-lock protocol and a dedicated daemon to manage lock, auth, and unlock state.
 
+
+<img width="2006" height="1166" alt="veila-preview-default" src="https://github.com/user-attachments/assets/60c67e91-0d1b-4f29-b370-d390a33f39a4" />
+
+
 ## Why Veila Is Secure
 
 Veila is built around a security-first model:
