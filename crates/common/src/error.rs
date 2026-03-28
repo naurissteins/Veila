@@ -7,6 +7,10 @@ pub enum VeilaError {
     Config(#[from] toml::de::Error),
     #[error("failed to load config: {0}")]
     ConfigIo(#[from] std::io::Error),
+    #[error("unknown theme preset '{0}'")]
+    ThemeNotFound(String),
+    #[error("invalid theme preset name '{0}'")]
+    InvalidThemeName(String),
     #[error("failed to encode or decode ipc message: {0}")]
     IpcCodec(#[from] serde_json::Error),
 }

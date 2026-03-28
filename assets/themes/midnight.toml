@@ -1,0 +1,56 @@
+[background]
+color = "#111522"
+blur_radius = 24
+dim_strength = 62
+tint = "rgba(4, 8, 14, 0.46)"
+tint_opacity = 0
+
+[visuals.clock]
+font_family = "Geom"
+font_weight = 600
+color = "#F6F8FF"
+opacity = 52
+
+[visuals.date]
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "#AEBBD5"
+opacity = 76
+
+[visuals.input]
+background_opacity = 9
+border_width = 1
+border_opacity = 18
+
+[visuals.avatar]
+background_opacity = 12
+ring_width = 1
+
+[visuals.username]
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "#F6F8FF"
+opacity = 88
+
+[visuals.keyboard]
+background_color = "rgba(10, 14, 22, 0.34)"
+color = "#F6F8FF"
+opacity = 82
+
+[visuals.battery]
+background_color = "rgba(10, 14, 22, 0.34)"
+color = "#F6F8FF"
+opacity = 82
+
+[visuals.weather]
+alignment = "left"
+horizontal_padding = 54
+temperature_color = "#FFFFFF"
+location_color = "#AEBBD5"
+opacity = 62
+
+[visuals.now_playing]
+title_color = "#F6F8FF"
+artist_color = "#AEBBD5"
+opacity = 82
+artwork_radius = 10

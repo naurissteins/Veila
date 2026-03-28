@@ -1,6 +1,10 @@
 use std::fs;
 
-use super::{AppConfig, BackgroundMode, ClockFormat, InputVisualEntry, RgbColor, WeatherUnit};
+use super::{
+    AppConfig, BackgroundMode, ClockFormat, InputVisualEntry, RgbColor, WeatherAlignment,
+    WeatherUnit,
+};
+use crate::VeilaError;
 
 #[test]
 #[ignore = "legacy pre-theme defaults"]
@@ -590,6 +594,136 @@ fn loads_config_from_file() {
         loaded.config.visuals.input_mask_color(),
         Some(RgbColor::rgb(169, 196, 255))
     );
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn loads_bundled_theme_before_user_overrides() {
+    let dir = std::env::temp_dir().join(format!("veila-theme-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r#"
+            theme = "frost"
+
+            [visuals.clock]
+            size = 16
+        "#,
+    )
+    .expect("config file");
+
+    let loaded = AppConfig::load(Some(&path)).expect("config should load");
+
+    assert_eq!(
+        loaded.config.visuals.clock_font_family(),
+        Some("Google Sans Flex")
+    );
+    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(400));
+    assert_eq!(loaded.config.visuals.clock_size(), Some(16));
+    assert_eq!(
+        loaded.config.visuals.weather_alignment(),
+        WeatherAlignment::Right
+    );
+    assert_eq!(
+        loaded.config.visuals.now_playing_title_color(),
+        Some(RgbColor::rgb(248, 251, 255))
+    );
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn loads_second_bundled_theme() {
+    let dir = std::env::temp_dir().join(format!("veila-theme-midnight-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r#"
+            theme = "midnight"
+        "#,
+    )
+    .expect("write config");
+
+    let config = AppConfig::load_from_file(&path).expect("config should load");
+
+    assert_eq!(config.background.color, RgbColor::rgb(17, 21, 34));
+    assert_eq!(config.background.blur_radius, 24);
+    assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.clock_font_weight(), Some(600));
+    assert_eq!(
+        config.visuals.date_color(),
+        Some(RgbColor::rgb(174, 187, 213))
+    );
+    assert_eq!(
+        config.visuals.keyboard_background_color(),
+        Some(RgbColor::rgba(10, 14, 22, 87))
+    );
+    assert_eq!(config.visuals.weather_alignment(), WeatherAlignment::Left);
+    assert_eq!(config.visuals.now_playing_opacity(), Some(82));
+}
+
+#[test]
+fn loads_user_theme_from_config_directory() {
+    let dir = std::env::temp_dir().join(format!("veila-user-theme-{}", std::process::id()));
+    let themes_dir = dir.join("themes");
+    fs::create_dir_all(&themes_dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        themes_dir.join("custom.toml"),
+        r#"
+            [visuals.clock]
+            font_family = "Google Sans Flex"
+            opacity = 61
+        "#,
+    )
+    .expect("theme file");
+    fs::write(
+        &path,
+        r#"
+            theme = "custom"
+
+            [visuals.clock]
+            size = 17
+        "#,
+    )
+    .expect("config file");
+
+    let loaded = AppConfig::load(Some(&path)).expect("config should load");
+
+    assert_eq!(
+        loaded.config.visuals.clock_font_family(),
+        Some("Google Sans Flex")
+    );
+    assert_eq!(loaded.config.visuals.clock_opacity(), Some(61));
+    assert_eq!(loaded.config.visuals.clock_size(), Some(17));
+
+    fs::remove_file(themes_dir.join("custom.toml")).ok();
+    fs::remove_dir(themes_dir).ok();
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn errors_for_unknown_theme_preset() {
+    let dir = std::env::temp_dir().join(format!("veila-missing-theme-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r#"
+            theme = "missing_theme"
+        "#,
+    )
+    .expect("config file");
+
+    let error = AppConfig::load(Some(&path)).expect_err("theme should fail");
+
+    assert!(matches!(error, VeilaError::ThemeNotFound(theme) if theme == "missing_theme"));
 
     fs::remove_file(path).ok();
     fs::remove_dir(dir).ok();

@@ -12,9 +12,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use toml::Value;
 
-use crate::error::Result;
+use crate::error::{Result, VeilaError};
 
 pub use background::{BackgroundConfig, BackgroundMode};
 pub use battery::BatteryConfig;
@@ -88,7 +90,24 @@ impl AppConfig {
 
     pub fn load_from_file(path: &Path) -> Result<Self> {
         let content = fs::read_to_string(path)?;
-        Self::from_toml_str(&content)
+        Self::from_toml_str_with_theme_support(&content, path.parent())
+    }
+
+    fn from_toml_str_with_theme_support(input: &str, config_dir: Option<&Path>) -> Result<Self> {
+        let mut config_value = parse_toml_value(input)?;
+        let theme_name = extract_theme_name(&config_value)?;
+
+        if let Some(theme_name) = theme_name {
+            let mut preset_value = load_theme_value(&theme_name, config_dir)?;
+            merge_toml_values(&mut preset_value, config_value);
+            config_value = preset_value;
+        }
+
+        if let Some(table) = config_value.as_table_mut() {
+            table.remove("theme");
+        }
+
+        deserialize_toml_value(config_value)
     }
 }
 
@@ -98,4 +117,79 @@ fn default_path() -> Option<PathBuf> {
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
 
     Some(config_root.join("veila").join("config.toml"))
+}
+
+fn parse_toml_value(input: &str) -> Result<Value> {
+    toml::from_str(input).map_err(Into::into)
+}
+
+fn deserialize_toml_value<T>(value: Value) -> Result<T>
+where
+    T: DeserializeOwned,
+{
+    value.try_into().map_err(Into::into)
+}
+
+fn extract_theme_name(value: &Value) -> Result<Option<String>> {
+    let Some(theme) = value.get("theme") else {
+        return Ok(None);
+    };
+    let Some(theme) = theme.as_str() else {
+        return Err(VeilaError::InvalidThemeName(String::from("<non-string>")));
+    };
+    let theme = theme.trim();
+    if theme.is_empty() {
+        return Ok(None);
+    }
+    validate_theme_name(theme)?;
+    Ok(Some(theme.to_owned()))
+}
+
+fn validate_theme_name(theme: &str) -> Result<()> {
+    if theme
+        .chars()
+        .all(|char| char.is_ascii_alphanumeric() || matches!(char, '-' | '_'))
+    {
+        Ok(())
+    } else {
+        Err(VeilaError::InvalidThemeName(theme.to_owned()))
+    }
+}
+
+fn load_theme_value(theme: &str, config_dir: Option<&Path>) -> Result<Value> {
+    let file_name = format!("{theme}.toml");
+
+    if let Some(config_dir) = config_dir {
+        let user_theme_path = config_dir.join("themes").join(&file_name);
+        if user_theme_path.exists() {
+            let raw = fs::read_to_string(user_theme_path)?;
+            return parse_toml_value(&raw);
+        }
+    }
+
+    let bundled_theme_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/themes")
+        .join(&file_name);
+    if bundled_theme_path.exists() {
+        let raw = fs::read_to_string(bundled_theme_path)?;
+        return parse_toml_value(&raw);
+    }
+
+    Err(VeilaError::ThemeNotFound(theme.to_owned()))
+}
+
+fn merge_toml_values(base: &mut Value, override_value: Value) {
+    match (base, override_value) {
+        (Value::Table(base_table), Value::Table(override_table)) => {
+            for (key, override_entry) in override_table {
+                match base_table.get_mut(&key) {
+                    Some(base_entry) => merge_toml_values(base_entry, override_entry),
+                    None => {
+                        base_table.insert(key, override_entry);
+                    }
+                }
+            }
+        }
+        (base_slot, override_value) => *base_slot = override_value,
+    }
 }
