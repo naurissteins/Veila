@@ -1,0 +1,169 @@
+use anyhow::{Result, anyhow};
+use veila_renderer::{
+    ClearColor, FrameSize, SoftwareBuffer,
+    background::{load_cached_render, load_cached_render_variant},
+};
+
+use crate::state::CurtainApp;
+
+impl CurtainApp {
+    pub(super) fn prepare_background(&mut self, index: usize, size: (u32, u32)) -> Result<bool> {
+        let frame_size = FrameSize::new(size.0, size.1);
+        let needs_refresh = self.lock_surfaces[index]
+            .background
+            .as_ref()
+            .map(|buffer| buffer.size() != frame_size)
+            .unwrap_or(true);
+
+        if !needs_refresh {
+            return Ok(false);
+        }
+
+        if let Some(path) = self.background_path.as_deref() {
+            match load_cached_render(path, frame_size, self.background_treatment) {
+                Ok(Some(buffer)) => {
+                    tracing::debug!(
+                        path = %path.display(),
+                        width = frame_size.width,
+                        height = frame_size.height,
+                        "using cached rendered background for initial lock frame"
+                    );
+                    self.lock_surfaces[index].background = Some(buffer);
+                    return Ok(true);
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    tracing::debug!(
+                        path = %path.display(),
+                        width = frame_size.width,
+                        height = frame_size.height,
+                        "failed to load cached rendered background for initial frame: {error:#}"
+                    );
+                }
+            }
+        }
+
+        self.lock_surfaces[index].background = Some(
+            self.background_asset
+                .render(frame_size)
+                .map_err(|error| anyhow!("failed to render background asset: {error}"))?,
+        );
+
+        Ok(true)
+    }
+
+    pub(super) fn prepare_static_overlay(
+        &mut self,
+        index: usize,
+        size: (u32, u32),
+    ) -> Result<bool> {
+        let frame_size = FrameSize::new(size.0, size.1);
+        let revision = self.ui_shell.static_scene_revision();
+        let needs_refresh = self.lock_surfaces[index]
+            .static_overlay
+            .as_ref()
+            .map(|buffer| buffer.size() != frame_size)
+            .unwrap_or(true)
+            || self.lock_surfaces[index].static_overlay_revision != revision;
+
+        if !needs_refresh {
+            return Ok(false);
+        }
+
+        let mut overlay = SoftwareBuffer::new(frame_size)?;
+        overlay.clear(ClearColor::rgba(0, 0, 0, 0));
+        self.ui_shell.render_static_overlay(&mut overlay);
+        self.lock_surfaces[index].static_overlay = Some(overlay);
+        self.lock_surfaces[index].static_overlay_revision = revision;
+
+        Ok(true)
+    }
+
+    pub(super) fn prepare_scene_base(
+        &mut self,
+        index: usize,
+        size: (u32, u32),
+        background_refreshed: bool,
+    ) -> Result<bool> {
+        let frame_size = FrameSize::new(size.0, size.1);
+        let revision = self.ui_shell.static_scene_revision();
+        let needs_refresh = background_refreshed
+            || self.lock_surfaces[index]
+                .scene_base
+                .as_ref()
+                .map(|buffer| buffer.size() != frame_size)
+                .unwrap_or(true)
+            || self.lock_surfaces[index].scene_base_revision != revision;
+
+        if !needs_refresh {
+            return Ok(false);
+        }
+
+        if let Some(refreshed) =
+            self.try_prepare_scene_base_without_background(index, frame_size, revision)?
+        {
+            return Ok(refreshed);
+        }
+
+        let Some(background) = self.lock_surfaces[index].background.as_ref() else {
+            return Err(anyhow!("background buffer is unavailable"));
+        };
+
+        let mut buffer = background.clone();
+        self.ui_shell.render_backdrop_layer(&mut buffer);
+        self.lock_surfaces[index].scene_base = Some(buffer);
+        self.lock_surfaces[index].scene_base_revision = revision;
+
+        Ok(true)
+    }
+
+    pub(super) fn try_prepare_scene_base_without_background(
+        &mut self,
+        index: usize,
+        frame_size: FrameSize,
+        revision: u64,
+    ) -> Result<Option<bool>> {
+        let needs_refresh = self.lock_surfaces[index]
+            .scene_base
+            .as_ref()
+            .map(|buffer| buffer.size() != frame_size)
+            .unwrap_or(true)
+            || self.lock_surfaces[index].scene_base_revision != revision;
+
+        if !needs_refresh {
+            return Ok(Some(false));
+        }
+
+        if let Some(buffer) = self
+            .lock_surfaces
+            .iter()
+            .enumerate()
+            .find(|(candidate_index, surface)| {
+                *candidate_index != index
+                    && surface.scene_base_revision == revision
+                    && surface
+                        .scene_base
+                        .as_ref()
+                        .is_some_and(|buffer| buffer.size() == frame_size)
+            })
+            .and_then(|(_, surface)| surface.scene_base.clone())
+        {
+            self.lock_surfaces[index].scene_base = Some(buffer);
+            self.lock_surfaces[index].scene_base_revision = revision;
+            return Ok(Some(true));
+        }
+
+        if let (Some(path), Some(variant)) = (
+            self.background_path.as_deref(),
+            self.ui_shell.layer_cache_variant(),
+        ) && let Ok(Some(buffer)) =
+            load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
+        {
+            self.lock_surfaces[index].scene_base = Some(buffer);
+            self.lock_surfaces[index].scene_base_revision = revision;
+            return Ok(Some(true));
+        }
+
+        Ok(None)
+    }
+}
