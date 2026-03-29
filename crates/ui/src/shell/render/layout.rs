@@ -1,4 +1,4 @@
-use veila_common::{ClockAlignment, InputAlignment};
+use veila_common::{ClockAlignment, InputAlignment, LayerAlignment};
 use veila_renderer::shape::Rect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,6 +15,8 @@ pub(crate) struct SceneMetrics {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct InputPlacement {
     pub alignment: InputAlignment,
+    pub center_in_layer: bool,
+    pub layer_center_x: Option<i32>,
     pub horizontal_padding: Option<i32>,
     pub offset_x: Option<i32>,
 }
@@ -71,6 +73,8 @@ impl SceneMetrics {
             configured_avatar_size,
             InputPlacement {
                 alignment: input_alignment,
+                center_in_layer: false,
+                layer_center_x: None,
                 horizontal_padding: None,
                 offset_x: None,
             },
@@ -99,13 +103,25 @@ impl SceneMetrics {
         let horizontal_padding = input_placement
             .horizontal_padding
             .unwrap_or_else(|| horizontal_auth_padding(width));
-        let auth_center_x = apply_auth_offset_x(
+        let base_auth_center_x = if input_placement.center_in_layer {
+            input_placement.layer_center_x.unwrap_or_else(|| {
+                auth_center_x(
+                    width,
+                    input_width,
+                    horizontal_padding,
+                    input_placement.alignment,
+                )
+            })
+        } else {
             auth_center_x(
                 width,
                 input_width,
                 horizontal_padding,
                 input_placement.alignment,
-            ),
+            )
+        };
+        let auth_center_x = apply_auth_offset_x(
+            base_auth_center_x,
             width,
             input_width,
             input_placement.offset_x,
@@ -247,19 +263,54 @@ pub(super) fn hero_block_x(
     frame_width: i32,
     block_width: i32,
     alignment: ClockAlignment,
+    center_x_override: Option<i32>,
     offset_x: Option<i32>,
 ) -> i32 {
-    let base_x = match alignment {
-        ClockAlignment::TopCenter | ClockAlignment::CenterCenter => {
-            frame_width / 2 - block_width / 2
-        }
-        ClockAlignment::TopLeft => horizontal_auth_padding(frame_width),
-        ClockAlignment::TopRight => {
-            (frame_width - horizontal_auth_padding(frame_width) - block_width).max(0)
-        }
+    let base_x = match center_x_override {
+        Some(center_x) => center_x - block_width / 2,
+        None => match alignment {
+            ClockAlignment::TopCenter | ClockAlignment::CenterCenter => {
+                frame_width / 2 - block_width / 2
+            }
+            ClockAlignment::TopLeft => horizontal_auth_padding(frame_width),
+            ClockAlignment::TopRight => {
+                (frame_width - horizontal_auth_padding(frame_width) - block_width).max(0)
+            }
+        },
     };
 
     (base_x + offset_x.unwrap_or(0)).clamp(0, (frame_width - block_width).max(0))
+}
+
+pub(super) fn layer_rect(
+    frame_width: i32,
+    frame_height: i32,
+    alignment: LayerAlignment,
+    width: Option<i32>,
+    offset_x: Option<i32>,
+) -> Rect {
+    let width = width
+        .unwrap_or((frame_width as f32 * 0.36) as i32)
+        .clamp(1, frame_width.max(1));
+    let offset_x = offset_x.unwrap_or(0);
+    let unclamped_x = match alignment {
+        LayerAlignment::Left => offset_x,
+        LayerAlignment::Center => (frame_width - width) / 2 + offset_x,
+        LayerAlignment::Right => frame_width - width + offset_x,
+    };
+    let x = unclamped_x.clamp(-width + 1, frame_width - 1);
+
+    Rect::new(x, 0, width, frame_height)
+}
+
+pub(super) fn layer_center_x(
+    frame_width: i32,
+    alignment: LayerAlignment,
+    width: Option<i32>,
+    offset_x: Option<i32>,
+) -> i32 {
+    let rect = layer_rect(frame_width, 1, alignment, width, offset_x);
+    rect.x + rect.width / 2
 }
 
 pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) -> i32 {
@@ -268,10 +319,11 @@ pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) ->
 
 #[cfg(test)]
 mod tests {
-    use veila_common::{ClockAlignment, InputAlignment};
+    use veila_common::{ClockAlignment, InputAlignment, LayerAlignment};
 
     use super::{
-        AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, hero_block_x, role_anchors,
+        AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, hero_block_x, layer_center_x,
+        layer_rect, role_anchors,
     };
 
     #[test]
@@ -455,19 +507,33 @@ mod tests {
 
     #[test]
     fn supports_top_side_clock_alignment_positions() {
-        assert_eq!(hero_block_x(1280, 300, ClockAlignment::TopLeft, None), 53);
-        assert_eq!(hero_block_x(1280, 300, ClockAlignment::TopRight, None), 927);
+        assert_eq!(
+            hero_block_x(1280, 300, ClockAlignment::TopLeft, None, None),
+            53
+        );
+        assert_eq!(
+            hero_block_x(1280, 300, ClockAlignment::TopRight, None, None),
+            927
+        );
     }
 
     #[test]
     fn applies_clock_horizontal_offset() {
         assert_eq!(
-            hero_block_x(1280, 300, ClockAlignment::TopCenter, Some(24)),
+            hero_block_x(1280, 300, ClockAlignment::TopCenter, None, Some(24)),
             514
         );
         assert_eq!(
-            hero_block_x(1280, 300, ClockAlignment::TopRight, Some(-20)),
+            hero_block_x(1280, 300, ClockAlignment::TopRight, None, Some(-20)),
             907
+        );
+    }
+
+    #[test]
+    fn centers_clock_block_inside_layer_when_requested() {
+        assert_eq!(
+            hero_block_x(1280, 300, ClockAlignment::TopRight, Some(1000), None),
+            850
         );
     }
 
@@ -576,6 +642,8 @@ mod tests {
             None,
             InputPlacement {
                 alignment: InputAlignment::TopRight,
+                center_in_layer: false,
+                layer_center_x: None,
                 horizontal_padding: None,
                 offset_x: Some(-36),
             },
@@ -597,6 +665,8 @@ mod tests {
             None,
             InputPlacement {
                 alignment: InputAlignment::CenterLeft,
+                center_in_layer: false,
+                layer_center_x: None,
                 horizontal_padding: Some(96),
                 offset_x: None,
             },
@@ -604,6 +674,38 @@ mod tests {
 
         assert_eq!(default_metrics.auth_center_x, 203);
         assert_eq!(shifted_metrics.auth_center_x, 246);
+    }
+
+    #[test]
+    fn centers_auth_block_inside_layer_when_requested() {
+        let metrics = SceneMetrics::from_frame_with_input_placement(
+            1280,
+            720,
+            Some(300),
+            None,
+            None,
+            InputPlacement {
+                alignment: InputAlignment::BottomRight,
+                center_in_layer: true,
+                layer_center_x: Some(980),
+                horizontal_padding: None,
+                offset_x: None,
+            },
+        );
+
+        assert_eq!(metrics.auth_center_x, 980);
+        assert_eq!(metrics.input_rect(100).x, 830);
+    }
+
+    #[test]
+    fn computes_layer_center_from_layer_rect() {
+        let rect = layer_rect(1280, 720, LayerAlignment::Right, Some(520), Some(-12));
+
+        assert_eq!(rect.x, 748);
+        assert_eq!(
+            layer_center_x(1280, LayerAlignment::Right, Some(520), Some(-12)),
+            1008
+        );
     }
 
     #[test]

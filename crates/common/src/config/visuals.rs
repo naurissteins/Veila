@@ -20,6 +20,8 @@ pub struct InputVisualConfig {
     #[serde(default)]
     pub alignment: Option<InputAlignment>,
     #[serde(default)]
+    pub center_in_layer: Option<bool>,
+    #[serde(default)]
     pub horizontal_padding: Option<u16>,
     #[serde(default)]
     pub vertical_padding: Option<u16>,
@@ -59,6 +61,7 @@ impl Default for InputVisualConfig {
     fn default() -> Self {
         Self {
             alignment: Some(InputAlignment::CenterCenter),
+            center_in_layer: Some(false),
             horizontal_padding: None,
             vertical_padding: None,
             offset_x: Some(0),
@@ -200,6 +203,8 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub alignment: Option<ClockAlignment>,
     #[serde(default)]
+    pub center_in_layer: Option<bool>,
+    #[serde(default)]
     pub offset_x: Option<i16>,
     #[serde(default)]
     pub offset_y: Option<i16>,
@@ -230,6 +235,7 @@ impl Default for ClockVisualConfig {
             font_style: Some(FontStyle::Normal),
             style: Some(ClockStyle::Standard),
             alignment: Some(ClockAlignment::TopCenter),
+            center_in_layer: Some(false),
             offset_x: Some(0),
             offset_y: Some(0),
             format: Some(ClockFormat::TwentyFourHour),
@@ -741,6 +747,8 @@ pub struct VisualConfig {
     pub input_font_style: Option<FontStyle>,
     #[serde(default)]
     pub input_font_size: Option<u16>,
+    #[serde(default)]
+    pub input_center_in_layer: Option<bool>,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
     #[serde(default)]
@@ -791,6 +799,8 @@ pub struct VisualConfig {
     pub clock_font_style: Option<FontStyle>,
     #[serde(default)]
     pub clock_style: Option<ClockStyle>,
+    #[serde(default)]
+    pub clock_center_in_layer: Option<bool>,
     #[serde(default)]
     pub clock_offset_x: Option<i16>,
     #[serde(default)]
@@ -911,6 +921,7 @@ impl Default for VisualConfig {
             input_font_weight: Some(400),
             input_font_style: Some(FontStyle::Normal),
             input_font_size: Some(2),
+            input_center_in_layer: Some(false),
             input_border: RgbColor::rgb(255, 255, 255),
             input_border_opacity: Some(0),
             input_width: Some(310),
@@ -936,6 +947,7 @@ impl Default for VisualConfig {
             clock_font_weight: Some(600),
             clock_font_style: Some(FontStyle::Normal),
             clock_style: Some(ClockStyle::Standard),
+            clock_center_in_layer: Some(false),
             clock_offset_x: Some(0),
             clock_offset_y: Some(0),
             clock_format: Some(ClockFormat::TwentyFourHour),
@@ -1068,6 +1080,16 @@ impl VisualConfig {
         match &self.input {
             InputVisualEntry::Color(_) => None,
             InputVisualEntry::Section(config) => config.horizontal_padding,
+        }
+    }
+
+    pub fn input_center_in_layer(&self) -> bool {
+        match &self.input {
+            InputVisualEntry::Color(_) => self.input_center_in_layer.unwrap_or(false),
+            InputVisualEntry::Section(config) => config
+                .center_in_layer
+                .or(self.input_center_in_layer)
+                .unwrap_or(false),
         }
     }
 
@@ -1312,6 +1334,14 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.alignment)
             .unwrap_or_default()
+    }
+
+    pub fn clock_center_in_layer(&self) -> bool {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.center_in_layer)
+            .or(self.clock_center_in_layer)
+            .unwrap_or(false)
     }
 
     pub fn clock_offset_x(&self) -> Option<i16> {

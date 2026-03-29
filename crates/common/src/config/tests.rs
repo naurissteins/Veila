@@ -53,6 +53,7 @@ fn parses_partial_config_with_defaults() {
         config.visuals.input_alignment(),
         InputAlignment::CenterCenter
     );
+    assert!(!config.visuals.input_center_in_layer());
     assert!(config.visuals.input_horizontal_padding().is_none());
     assert!(config.visuals.input_vertical_padding().is_none());
     assert!(config.visuals.input_offset_x().is_none());
@@ -83,6 +84,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_font_style().is_none());
     assert_eq!(config.visuals.clock_alignment(), ClockAlignment::TopCenter);
+    assert!(!config.visuals.clock_center_in_layer());
     assert_eq!(config.visuals.clock_offset_x(), Some(0));
     assert_eq!(config.visuals.clock_offset_y(), Some(0));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
@@ -214,6 +216,7 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.input_alignment(),
         InputAlignment::CenterCenter
     );
+    assert!(!config.visuals.input_center_in_layer());
     assert!(config.visuals.input_horizontal_padding().is_none());
     assert!(config.visuals.input_vertical_padding().is_none());
     assert_eq!(config.visuals.input_offset_x(), Some(0));
@@ -273,6 +276,10 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_font_weight(), Some(600));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));
     assert_eq!(config.visuals.clock_style(), ClockStyle::Standard);
+    assert_eq!(config.visuals.clock_alignment(), ClockAlignment::TopCenter);
+    assert!(!config.visuals.clock_center_in_layer());
+    assert_eq!(config.visuals.clock_offset_x(), Some(0));
+    assert_eq!(config.visuals.clock_offset_y(), Some(0));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
@@ -902,6 +909,7 @@ fn loads_nested_visual_tables_with_precedence_over_flat_keys() {
 
 [visuals.input]
 alignment = "bottom-left"
+center_in_layer = true
 horizontal_padding = 64
 vertical_padding = 56
 offset_x = 14
@@ -945,6 +953,7 @@ border_color = "#DDDDDD"
             font_style = "italic"
             style = "stacked"
             alignment = "top-right"
+            center_in_layer = true
             offset_x = -18
             offset_y = 14
             format = "12h"
@@ -1081,6 +1090,7 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.input_font_size(), Some(3));
     assert_eq!(config.visuals.input_alignment(), InputAlignment::BottomLeft);
+    assert!(config.visuals.input_center_in_layer());
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));
@@ -1119,6 +1129,7 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.clock_style(), ClockStyle::Stacked);
     assert_eq!(config.visuals.clock_alignment(), ClockAlignment::TopRight);
+    assert!(config.visuals.clock_center_in_layer());
     assert_eq!(config.visuals.clock_offset_x(), Some(-18));
     assert_eq!(config.visuals.clock_offset_y(), Some(14));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);

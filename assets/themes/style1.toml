@@ -10,7 +10,7 @@ tint_opacity = 0
 [lock]
 user_hint = "Password"
 show_username = true
-# username = "Billy Ocean"
+username = "Billy Ocean"
 # avatar_path = ""
 #
 
@@ -37,6 +37,7 @@ unit = "celsius"
 
 [visuals.clock]
 alignment = "top-left"
+center_in_layer = true
 offset_x = 0
 offset_y = 0
 format = "24h"
@@ -60,9 +61,10 @@ opacity = 72
 
 [visuals.input]
 alignment = "center-left"
+center_in_layer = true
 horizontal_padding = 0
 vertical_padding = 0
-offset_x = 100
+offset_x = 0
 offset_y = 0
 background_color = "#FFFFFF"
 background_opacity = 8

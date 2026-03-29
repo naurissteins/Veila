@@ -8,7 +8,7 @@ mod widgets;
 
 pub(super) use cache::TextLayoutCache;
 
-use veila_common::{LayerAlignment, LayerMode};
+use veila_common::LayerMode;
 use veila_renderer::{
     SoftwareBuffer,
     layer::{BackdropLayerMode, BackdropLayerStyle, draw_backdrop_layer},
@@ -19,7 +19,7 @@ use self::{
     cache::SceneTextInputs,
     layout::{
         AnchorOffsets, FooterHeights, InputPlacement, RoleAnchors, SceneMetrics, hero_block_x,
-        role_anchors, top_role_top,
+        layer_center_x, layer_rect, role_anchors, top_role_top,
     },
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
@@ -108,6 +108,15 @@ impl ShellState {
     }
 
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
+        let layer_center_x =
+            (self.theme.layer_enabled && self.theme.input_center_in_layer).then(|| {
+                layer_center_x(
+                    size.width as i32,
+                    self.theme.layer_alignment,
+                    self.theme.layer_width,
+                    self.theme.layer_offset_x,
+                )
+            });
         let metrics = SceneMetrics::from_frame_with_input_placement(
             size.width as i32,
             size.height as i32,
@@ -116,6 +125,8 @@ impl ShellState {
             self.theme.avatar_size,
             InputPlacement {
                 alignment: self.theme.input_alignment,
+                center_in_layer: self.theme.input_center_in_layer,
+                layer_center_x,
                 horizontal_padding: self.theme.input_horizontal_padding,
                 offset_x: self.theme.input_offset_x,
             },
@@ -215,22 +226,13 @@ impl ShellState {
     }
 
     fn backdrop_layer_rect(&self, size: veila_renderer::FrameSize) -> Option<Rect> {
-        let frame_width = size.width as i32;
-        let frame_height = size.height as i32;
-        let width = self
-            .theme
-            .layer_width
-            .unwrap_or((frame_width as f32 * 0.36) as i32)
-            .clamp(1, frame_width.max(1));
-        let offset_x = self.theme.layer_offset_x.unwrap_or(0);
-        let unclamped_x = match self.theme.layer_alignment {
-            LayerAlignment::Left => offset_x,
-            LayerAlignment::Center => (frame_width - width) / 2 + offset_x,
-            LayerAlignment::Right => frame_width - width + offset_x,
-        };
-        let x = unclamped_x.clamp(-width + 1, frame_width - 1);
-
-        Some(Rect::new(x, 0, width, frame_height))
+        Some(layer_rect(
+            size.width as i32,
+            size.height as i32,
+            self.theme.layer_alignment,
+            self.theme.layer_width,
+            self.theme.layer_offset_x,
+        ))
     }
 
     fn render_role(
@@ -341,10 +343,20 @@ impl ShellState {
     ) {
         match &section.widget {
             SceneWidget::Clock(block) if dynamic => {
+                let layer_center_x = (self.theme.layer_enabled && self.theme.clock_center_in_layer)
+                    .then(|| {
+                        layer_center_x(
+                            buffer.size().width as i32,
+                            self.theme.layer_alignment,
+                            self.theme.layer_width,
+                            self.theme.layer_offset_x,
+                        )
+                    });
                 let x = hero_block_x(
                     buffer.size().width as i32,
                     block.width(),
                     self.theme.clock_alignment,
+                    layer_center_x,
                     self.theme.clock_offset_x,
                 );
                 draw_clock_widget(buffer, x, y, block);
@@ -353,10 +365,20 @@ impl ShellState {
                 if matches!(section.widget, SceneWidget::Status(_)) {
                     draw_centered_block(buffer, metrics.auth_center_x, y, block);
                 } else {
+                    let layer_center_x =
+                        (self.theme.layer_enabled && self.theme.clock_center_in_layer).then(|| {
+                            layer_center_x(
+                                buffer.size().width as i32,
+                                self.theme.layer_alignment,
+                                self.theme.layer_width,
+                                self.theme.layer_offset_x,
+                            )
+                        });
                     let x = hero_block_x(
                         buffer.size().width as i32,
                         block.width as i32,
                         self.theme.clock_alignment,
+                        layer_center_x,
                         self.theme.clock_offset_x,
                     );
                     draw_block(buffer, x, y, block);

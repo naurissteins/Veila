@@ -15,6 +15,7 @@ fn input_opacity_overrides_embedded_alpha() {
     let mut config = AppConfig::default();
     config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
         alignment: Some(veila_common::InputAlignment::CenterCenter),
+        center_in_layer: Some(true),
         horizontal_padding: Some(56),
         vertical_padding: Some(44),
         offset_x: Some(18),
@@ -61,6 +62,7 @@ fn input_opacity_overrides_embedded_alpha() {
         font_style: Some(FontStyle::Italic),
         style: Some(ClockStyle::Stacked),
         alignment: Some(ClockAlignment::TopLeft),
+        center_in_layer: Some(true),
         offset_x: Some(24),
         offset_y: Some(-16),
         format: Some(ClockFormat::TwelveHour),
@@ -196,6 +198,7 @@ fn input_opacity_overrides_embedded_alpha() {
         theme.input_alignment,
         veila_common::InputAlignment::CenterCenter
     );
+    assert!(theme.input_center_in_layer);
     assert_eq!(theme.input_horizontal_padding, Some(56));
     assert_eq!(theme.input_vertical_padding, Some(44));
     assert_eq!(theme.input_offset_x, Some(18));
@@ -240,6 +243,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.clock_style, ClockStyle::Stacked);
     assert_eq!(theme.clock_alignment, ClockAlignment::TopLeft);
+    assert!(theme.clock_center_in_layer);
     assert_eq!(theme.clock_offset_x, Some(24));
     assert_eq!(theme.clock_offset_y, Some(-16));
     assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
