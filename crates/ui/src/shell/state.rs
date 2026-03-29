@@ -11,6 +11,26 @@ use super::{
 };
 
 impl ShellState {
+    pub fn layer_cache_variant(&self) -> Option<String> {
+        if !self.theme.layer_enabled {
+            return None;
+        }
+
+        let color = self.theme.layer_color;
+        Some(format!(
+            "layer:v1:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}",
+            self.theme.layer_mode,
+            self.theme.layer_alignment,
+            self.theme.layer_width,
+            self.theme.layer_offset_x,
+            color.red,
+            color.green,
+            color.blue,
+            color.alpha,
+            self.theme.layer_blur_radius
+        ))
+    }
+
     pub fn new(
         theme: ShellTheme,
         user_hint: Option<String>,

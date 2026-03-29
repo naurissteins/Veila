@@ -1,6 +1,7 @@
 pub mod avatar;
 pub mod cover;
 pub mod icon;
+pub mod layer;
 pub mod masked;
 pub mod panel;
 pub mod progress;

@@ -455,6 +455,23 @@ pub enum WeatherAlignment {
     Right,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LayerAlignment {
+    Left,
+    #[default]
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LayerMode {
+    Solid,
+    #[default]
+    Blur,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherVisualConfig {
     #[serde(default)]
@@ -540,6 +557,41 @@ impl Default for WeatherVisualConfig {
             horizontal_padding: None,
             bottom_padding: Some(48),
             alignment: Some(WeatherAlignment::Left),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LayerVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub mode: Option<LayerMode>,
+    #[serde(default)]
+    pub alignment: Option<LayerAlignment>,
+    #[serde(default)]
+    pub width: Option<u16>,
+    #[serde(default)]
+    pub offset_x: Option<i16>,
+    #[serde(default)]
+    pub color: Option<RgbColor>,
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub blur_radius: Option<u8>,
+}
+
+impl Default for LayerVisualConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Some(false),
+            mode: Some(LayerMode::Blur),
+            alignment: Some(LayerAlignment::Center),
+            width: Some(560),
+            offset_x: Some(0),
+            color: Some(RgbColor::rgb(8, 10, 14)),
+            opacity: Some(42),
+            blur_radius: Some(12),
         }
     }
 }
@@ -824,6 +876,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
+    pub layer: Option<LayerVisualConfig>,
+    #[serde(default)]
     pub now_playing: Option<NowPlayingVisualConfig>,
     #[serde(default)]
     pub layout: Option<LayoutVisualConfig>,
@@ -915,6 +969,7 @@ impl Default for VisualConfig {
             keyboard: Some(KeyboardVisualConfig::default()),
             battery: Some(BatteryVisualConfig::default()),
             weather: Some(WeatherVisualConfig::default()),
+            layer: Some(LayerVisualConfig::default()),
             now_playing: Some(NowPlayingVisualConfig::default()),
             layout: Some(LayoutVisualConfig::default()),
             palette: None,
@@ -1657,6 +1712,47 @@ impl VisualConfig {
             .as_ref()
             .and_then(|weather| weather.alignment)
             .unwrap_or_default()
+    }
+
+    pub fn layer_enabled(&self) -> bool {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.enabled)
+            .unwrap_or(false)
+    }
+
+    pub fn layer_mode(&self) -> LayerMode {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.mode)
+            .unwrap_or_default()
+    }
+
+    pub fn layer_alignment(&self) -> LayerAlignment {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.alignment)
+            .unwrap_or_default()
+    }
+
+    pub fn layer_width(&self) -> Option<u16> {
+        self.layer.as_ref().and_then(|layer| layer.width)
+    }
+
+    pub fn layer_offset_x(&self) -> Option<i16> {
+        self.layer.as_ref().and_then(|layer| layer.offset_x)
+    }
+
+    pub fn layer_color(&self) -> Option<RgbColor> {
+        self.layer.as_ref().and_then(|layer| layer.color)
+    }
+
+    pub fn layer_opacity(&self) -> Option<u8> {
+        self.layer.as_ref().and_then(|layer| layer.opacity)
+    }
+
+    pub fn layer_blur_radius(&self) -> Option<u8> {
+        self.layer.as_ref().and_then(|layer| layer.blur_radius)
     }
 
     pub fn now_playing_title_color(&self) -> Option<RgbColor> {

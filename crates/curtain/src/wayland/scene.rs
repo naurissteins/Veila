@@ -6,7 +6,11 @@ use smithay_client_toolkit::{
     reexports::client::QueueHandle,
     session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
 };
-use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer, background::load_cached_render, shm};
+use veila_renderer::{
+    ClearColor, FrameSize, SoftwareBuffer,
+    background::{load_cached_render, load_cached_render_variant},
+    shm,
+};
 
 use crate::state::{CurtainApp, RenderTimingSample};
 
@@ -145,6 +149,7 @@ impl CurtainApp {
         let first_frame = self.lock_surfaces[index].shm_pool.is_none();
         let background_started_at = timing_enabled.then(Instant::now);
         let background_refreshed = self.prepare_background(index, size)?;
+        let scene_base_refreshed = self.prepare_scene_base(index, size, background_refreshed)?;
         let background_prepare_ms = background_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
@@ -154,12 +159,12 @@ impl CurtainApp {
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
 
-        let Some(background) = self.lock_surfaces[index].background.as_ref() else {
-            return Err(anyhow!("background buffer is unavailable"));
+        let Some(scene_base) = self.lock_surfaces[index].scene_base.as_ref() else {
+            return Err(anyhow!("scene base buffer is unavailable"));
         };
 
         let background_restore_started_at = timing_enabled.then(Instant::now);
-        let mut buffer = background.clone();
+        let mut buffer = scene_base.clone();
         let background_restore_ms = background_restore_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
@@ -224,6 +229,7 @@ impl CurtainApp {
                 height = frame_size.height,
                 first_frame = sample.first_frame,
                 background_refreshed,
+                scene_base_refreshed,
                 static_overlay_refreshed,
                 background_prepare_ms = sample.background_prepare_ms,
                 static_overlay_prepare_ms = sample.static_overlay_prepare_ms,
@@ -263,6 +269,48 @@ impl CurtainApp {
         Ok(true)
     }
 
+    fn prepare_scene_base(
+        &mut self,
+        index: usize,
+        size: (u32, u32),
+        background_refreshed: bool,
+    ) -> Result<bool> {
+        let frame_size = FrameSize::new(size.0, size.1);
+        let revision = self.ui_shell.static_scene_revision();
+        let needs_refresh = background_refreshed
+            || self.lock_surfaces[index]
+                .scene_base
+                .as_ref()
+                .map(|buffer| buffer.size() != frame_size)
+                .unwrap_or(true)
+            || self.lock_surfaces[index].scene_base_revision != revision;
+
+        if !needs_refresh {
+            return Ok(false);
+        }
+
+        if let (Some(path), Some(variant)) = (
+            self.background_path.as_deref(),
+            self.ui_shell.layer_cache_variant(),
+        ) && let Ok(Some(buffer)) =
+            load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
+        {
+            self.lock_surfaces[index].scene_base = Some(buffer);
+            self.lock_surfaces[index].scene_base_revision = revision;
+            return Ok(true);
+        }
+
+        let Some(background) = self.lock_surfaces[index].background.as_ref() else {
+            return Err(anyhow!("background buffer is unavailable"));
+        };
+
+        let mut buffer = background.clone();
+        self.ui_shell.render_backdrop_layer(&mut buffer);
+        self.lock_surfaces[index].scene_base = Some(buffer);
+        self.lock_surfaces[index].scene_base_revision = revision;
+
+        Ok(true)
+    }
     fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> (u32, u32) {
         if requested.0 > 0 && requested.1 > 0 {
             return requested;

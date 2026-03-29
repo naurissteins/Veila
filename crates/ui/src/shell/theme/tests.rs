@@ -1,9 +1,10 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockAlignment, ClockFormat, ClockStyle,
     ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
-    UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerMode,
+    LayerVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
+    WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -108,6 +109,16 @@ fn input_opacity_overrides_embedded_alpha() {
         top_offset: Some(-12),
         right_offset: Some(0),
         gap: Some(8),
+    });
+    config.visuals.layer = Some(LayerVisualConfig {
+        enabled: Some(true),
+        mode: Some(LayerMode::Blur),
+        alignment: Some(LayerAlignment::Right),
+        width: Some(520),
+        offset_x: Some(-12),
+        color: Some(ConfigColor::rgb(8, 10, 14)),
+        opacity: Some(44),
+        blur_radius: Some(16),
     });
     config.visuals.weather = Some(WeatherVisualConfig {
         enabled: Some(true),
@@ -274,6 +285,13 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.battery_top_offset, Some(-12));
     assert_eq!(theme.battery_right_offset, Some(0));
     assert_eq!(theme.battery_gap, Some(8));
+    assert!(theme.layer_enabled);
+    assert_eq!(theme.layer_mode, LayerMode::Blur);
+    assert_eq!(theme.layer_alignment, LayerAlignment::Right);
+    assert_eq!(theme.layer_width, Some(520));
+    assert_eq!(theme.layer_offset_x, Some(-12));
+    assert_eq!(theme.layer_color, ClearColor::rgba(8, 10, 14, 112));
+    assert_eq!(theme.layer_blur_radius, 16);
     assert_eq!(theme.weather_size, Some(3));
     assert_eq!(theme.weather_opacity, Some(62));
     assert_eq!(theme.weather_icon_opacity, Some(41));

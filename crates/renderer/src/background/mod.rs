@@ -12,7 +12,10 @@ use image::RgbaImage;
 
 use crate::ClearColor;
 
-pub use asset::{load_cached_render, prewarm_rendered, prewarm_source, store_cached_render};
+pub use asset::{
+    load_cached_render, load_cached_render_variant, prewarm_rendered, prewarm_source,
+    store_cached_render, store_cached_render_variant,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceCacheStatus {

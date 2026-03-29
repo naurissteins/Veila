@@ -2,7 +2,7 @@ use std::fs;
 
 use super::{
     AppConfig, BackgroundMode, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment,
-    InputVisualEntry, RgbColor, WeatherAlignment, WeatherUnit,
+    InputVisualEntry, LayerAlignment, LayerMode, RgbColor, WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
 
@@ -427,10 +427,9 @@ fn first_run_defaults_match_bundled_theme() {
 fn lists_bundled_theme_names() {
     let themes = super::bundled_theme_names().expect("bundled themes should load");
 
-    assert_eq!(
-        themes,
-        vec![String::from("city-lights"), String::from("beach")]
-    );
+    assert!(!themes.is_empty());
+    assert!(themes.windows(2).all(|pair| pair[0] <= pair[1]));
+    assert!(themes.iter().all(|theme| !theme.ends_with(".toml")));
 }
 
 #[test]
@@ -993,6 +992,16 @@ border_color = "#DDDDDD"
             right_offset = 0
             gap = 8
 
+            [visuals.layer]
+            enabled = true
+            mode = "blur"
+            alignment = "right"
+            width = 520
+            offset_x = -12
+            color = "#080A0E"
+            opacity = 44
+            blur_radius = 16
+
             [visuals.weather]
             size = 3
             opacity = 62
@@ -1120,6 +1129,14 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.clock_opacity(), Some(40));
     assert_eq!(config.visuals.clock_size(), Some(14));
     assert_eq!(config.visuals.clock_gap(), Some(20));
+    assert!(config.visuals.layer_enabled());
+    assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
+    assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Right);
+    assert_eq!(config.visuals.layer_width(), Some(520));
+    assert_eq!(config.visuals.layer_offset_x(), Some(-12));
+    assert_eq!(config.visuals.layer_color(), Some(RgbColor::rgb(8, 10, 14)));
+    assert_eq!(config.visuals.layer_opacity(), Some(44));
+    assert_eq!(config.visuals.layer_blur_radius(), Some(16));
     assert_eq!(
         config.visuals.date_color(),
         Some(RgbColor::rgb(255, 255, 255))

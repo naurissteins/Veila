@@ -8,7 +8,12 @@ mod widgets;
 
 pub(super) use cache::TextLayoutCache;
 
-use veila_renderer::SoftwareBuffer;
+use veila_common::{LayerAlignment, LayerMode};
+use veila_renderer::{
+    SoftwareBuffer,
+    layer::{BackdropLayerMode, BackdropLayerStyle, draw_backdrop_layer},
+    shape::Rect,
+};
 
 use self::{
     cache::SceneTextInputs,
@@ -45,6 +50,7 @@ impl ShellState {
     }
 
     pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
+        self.render_backdrop_layer(buffer);
         self.render_static_overlay(buffer);
         self.render_dynamic_overlay(buffer);
     }
@@ -184,6 +190,46 @@ impl ShellState {
                 _ => Some(section.height(metrics, &self.status) + section.gap_after),
             })
             .sum()
+    }
+
+    pub fn render_backdrop_layer(&self, buffer: &mut SoftwareBuffer) {
+        if !self.theme.layer_enabled {
+            return;
+        }
+
+        let Some(rect) = self.backdrop_layer_rect(buffer.size()) else {
+            return;
+        };
+
+        let mode = match self.theme.layer_mode {
+            LayerMode::Solid => BackdropLayerMode::Solid,
+            LayerMode::Blur => BackdropLayerMode::Blur,
+        };
+
+        draw_backdrop_layer(
+            buffer,
+            rect,
+            BackdropLayerStyle::new(mode, self.theme.layer_color, self.theme.layer_blur_radius),
+        );
+    }
+
+    fn backdrop_layer_rect(&self, size: veila_renderer::FrameSize) -> Option<Rect> {
+        let frame_width = size.width as i32;
+        let frame_height = size.height as i32;
+        let width = self
+            .theme
+            .layer_width
+            .unwrap_or((frame_width as f32 * 0.36) as i32)
+            .clamp(1, frame_width.max(1));
+        let offset_x = self.theme.layer_offset_x.unwrap_or(0);
+        let unclamped_x = match self.theme.layer_alignment {
+            LayerAlignment::Left => offset_x,
+            LayerAlignment::Center => (frame_width - width) / 2 + offset_x,
+            LayerAlignment::Right => frame_width - width + offset_x,
+        };
+        let x = unclamped_x.clamp(-width + 1, frame_width - 1);
+
+        Some(Rect::new(x, 0, width, frame_height))
     }
 
     fn render_role(

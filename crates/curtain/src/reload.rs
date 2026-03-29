@@ -53,6 +53,8 @@ impl CurtainApp {
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {
             surface.background = None;
+            surface.scene_base = None;
+            surface.scene_base_revision = 0;
             surface.static_overlay = None;
             surface.static_overlay_revision = 0;
         }

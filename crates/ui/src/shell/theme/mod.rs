@@ -3,7 +3,8 @@ mod color;
 mod tests;
 
 use veila_common::{
-    AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment, WeatherAlignment,
+    AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment, LayerAlignment,
+    LayerMode, WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -92,6 +93,13 @@ pub struct ShellTheme {
     pub battery_top_offset: Option<i32>,
     pub battery_right_offset: Option<i32>,
     pub battery_gap: Option<i32>,
+    pub layer_enabled: bool,
+    pub layer_mode: LayerMode,
+    pub layer_alignment: LayerAlignment,
+    pub layer_width: Option<i32>,
+    pub layer_offset_x: Option<i32>,
+    pub layer_color: ClearColor,
+    pub layer_blur_radius: u8,
     pub weather_enabled: bool,
     pub weather_size: Option<u32>,
     pub weather_opacity: Option<u8>,
@@ -260,6 +268,16 @@ impl ShellTheme {
             battery_top_offset: config.visuals.battery_top_offset().map(i32::from),
             battery_right_offset: config.visuals.battery_right_offset().map(i32::from),
             battery_gap: config.visuals.battery_gap().map(i32::from),
+            layer_enabled: config.visuals.layer_enabled(),
+            layer_mode: config.visuals.layer_mode(),
+            layer_alignment: config.visuals.layer_alignment(),
+            layer_width: config.visuals.layer_width().map(i32::from),
+            layer_offset_x: config.visuals.layer_offset_x().map(i32::from),
+            layer_color: to_color_with_opacity(
+                config.visuals.layer_color().unwrap_or(config.visuals.panel),
+                config.visuals.layer_opacity(),
+            ),
+            layer_blur_radius: config.visuals.layer_blur_radius().unwrap_or(12),
             weather_enabled: config.visuals.weather_enabled(),
             weather_size: config.visuals.weather_size().map(u32::from),
             weather_opacity: config.visuals.weather_opacity(),

@@ -5,7 +5,10 @@ use image::RgbaImage;
 use super::{
     BackgroundAsset, BackgroundKind, BackgroundTreatment, RenderCacheSummary, SourceCacheStatus,
     render::render_image,
-    render_cache::{load_cached_buffer, store_cached_buffer},
+    render_cache::{
+        load_cached_buffer, load_cached_buffer_with_variant, store_cached_buffer,
+        store_cached_buffer_with_variant,
+    },
     source_cache::{load_cached_rgba, store_cached_rgba},
     treatment::apply_treatment,
 };
@@ -57,6 +60,15 @@ pub fn load_cached_render(
     load_cached_buffer(path, size, treatment)
 }
 
+pub fn load_cached_render_variant(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+    variant: &str,
+) -> Result<Option<SoftwareBuffer>> {
+    load_cached_buffer_with_variant(path, size, treatment, Some(variant))
+}
+
 pub fn store_cached_render(
     path: &Path,
     size: FrameSize,
@@ -64,6 +76,16 @@ pub fn store_cached_render(
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
     store_cached_buffer(path, size, treatment, buffer)
+}
+
+pub fn store_cached_render_variant(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+    buffer: &SoftwareBuffer,
+    variant: &str,
+) -> Result<()> {
+    store_cached_buffer_with_variant(path, size, treatment, buffer, Some(variant))
 }
 
 pub fn prewarm_rendered(

@@ -1,0 +1,163 @@
+[background]
+mode = "bundled"
+color = "#202833"
+#path = "/home/ns/Pictures/88136191-abstract-blur-hd-wallpaper.jpg"
+#path = "/home/ns/Pictures/Wallpapers/04.jpg"
+blur_radius = 20
+dim_strength = 54
+tint = "rgba(8, 10, 14, 0.4)"
+tint_opacity = 0
+
+[lock]
+acquire_timeout_seconds = 5
+auth_backoff_base_ms = 750
+auth_backoff_max_seconds = 12
+user_hint = "Password"
+show_username = true
+username = "Billy Ocean"
+#avatar_path = ""
+
+[battery]
+enabled = true
+mock_percent = 84
+mock_charging = false
+
+[visuals.now_playing]
+content_gap = 18
+fade_duration_ms = 320
+title_color = "#ffffff"
+artist_color = "#ffffff"
+title_size = 2
+artist_size = 2
+artwork_size = 44
+artwork_radius = 8
+right_padding = 52
+bottom_padding = 56
+right_offset = 0
+bottom_offset = 0
+opacity = 72
+title_opacity = 74
+artist_opacity = 54
+artwork_opacity = 90
+title_font_family = "Google Sans Flex"
+title_font_weight = 400
+artist_font_family = "Google Sans Flex"
+artist_font_weight = 400
+width = 380
+text_gap = 10
+
+[weather]
+enabled = true
+location = "Riga"
+#latitude = 56.9496
+#longitude = 24.1052
+refresh_minutes = 15
+unit = "celsius"
+
+[visuals.keyboard]
+background_size = 46
+background_color = "rgba(255, 255, 255, 0.05)"
+color = "#ffffff"
+opacity = 68
+size = 2
+top_offset = -24
+right_offset = 8
+
+[visuals.battery]
+background_color = "rgba(255, 255, 255, 0.05)"
+background_size = 46
+color = "#ffffff"
+opacity = 68
+size = 20
+top_offset = -24
+right_offset = 8
+gap = 8
+
+[visuals.weather]
+size = 2
+temperature_color = "#FFFFFF"
+location_color = "#D6E3FF"
+temperature_size = 6
+location_size = 3
+icon_size = 40
+temperature_font_family = "Geom"
+temperature_font_weight = 600
+temperature_letter_spacing = 0
+location_font_family = "Google Sans Flex"
+location_font_weight = 400
+icon_gap = 1
+location_gap = 1
+opacity = 50
+left_offset = 12
+bottom_offset = -6
+left_padding = 48
+bottom_padding = 48
+alignment = "left"
+
+[visuals.input]
+background_color = "#FFFFFF"
+background_opacity = 5
+border_color = "#FFFFFF"
+border_width = 0
+border_opacity = 0
+width = 310
+height = 54
+radius = 10
+mask_color = "#ffffff"
+font_family = "Google Sans Flex"
+font_weight = 400
+font_size = 2
+
+[visuals.avatar]
+size = 192
+gap = 24
+background_color = "#ffffff"
+background_opacity = 6
+placeholder_padding = 28
+ring_color = "#94B2FF"
+ring_width = 0
+icon_color = "#ffffff"
+
+[visuals.username]
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "#ffffff"
+opacity = 84
+size = 4
+gap = 28
+
+[visuals.clock]
+format = "24h"
+meridiem_size = 3
+meridiem_offset_x = 6
+meridiem_offset_y = 7
+font_family = "Geom"
+font_weight = 600
+color = "#ffffff"
+opacity = 40
+size = 14
+gap = 20
+
+[visuals.date]
+color = "#ffffff"
+font_family = "Geom"
+opacity = 50
+font_weight = 600
+size = 2
+
+[visuals.placeholder]
+color = "#ffffff"
+opacity = 60
+
+[visuals.status]
+color = "#FFE0A0"
+opacity = 88
+gap = 18
+
+[visuals.eye]
+color = "#ffffff"
+opacity = 72
+
+[visuals.layout]
+header_top_offset = -12
+auth_stack_offset = 0

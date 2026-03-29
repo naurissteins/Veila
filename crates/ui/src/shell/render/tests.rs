@@ -2,7 +2,9 @@ use super::{
     SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics, model::LayoutRole,
 };
 use crate::shell::{ShellStatus, ShellTheme};
-use veila_common::{ClockStyle, InputAlignment, WeatherAlignment, WeatherUnit};
+use veila_common::{
+    ClockStyle, InputAlignment, LayerAlignment, LayerMode, WeatherAlignment, WeatherUnit,
+};
 use veila_common::{WeatherCondition, WeatherSnapshot};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
@@ -895,6 +897,47 @@ fn scene_metrics_use_configured_input_dimensions() {
 
     assert_eq!(metrics.input_width, 280);
     assert_eq!(metrics.input_height, 54);
+}
+
+#[test]
+fn backdrop_layer_rect_supports_center_and_right_alignment() {
+    let centered = ShellState::new(
+        ShellTheme {
+            layer_enabled: true,
+            layer_alignment: LayerAlignment::Center,
+            layer_width: Some(520),
+            layer_mode: LayerMode::Blur,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let right = ShellState::new(
+        ShellTheme {
+            layer_enabled: true,
+            layer_alignment: LayerAlignment::Right,
+            layer_width: Some(520),
+            layer_offset_x: Some(-12),
+            layer_mode: LayerMode::Blur,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+
+    let centered_rect = centered
+        .backdrop_layer_rect(FrameSize::new(1280, 720))
+        .expect("centered layer");
+    let right_rect = right
+        .backdrop_layer_rect(FrameSize::new(1280, 720))
+        .expect("right layer");
+
+    assert_eq!(centered_rect.x, 380);
+    assert_eq!(centered_rect.width, 520);
+    assert_eq!(centered_rect.height, 720);
+    assert_eq!(right_rect.x, 748);
 }
 
 #[test]

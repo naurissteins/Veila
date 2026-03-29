@@ -16,7 +16,16 @@ pub(crate) fn load_cached_buffer(
     size: FrameSize,
     treatment: BackgroundTreatment,
 ) -> Result<Option<SoftwareBuffer>> {
-    let cache_path = cache_path(path, size, treatment, None)?;
+    load_cached_buffer_with_variant(path, size, treatment, None)
+}
+
+pub(crate) fn load_cached_buffer_with_variant(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+    variant: Option<&str>,
+) -> Result<Option<SoftwareBuffer>> {
+    let cache_path = cache_path(path, size, treatment, variant, None)?;
     let Ok(mut file) = fs::File::open(&cache_path) else {
         return Ok(None);
     };
@@ -54,7 +63,17 @@ pub(crate) fn store_cached_buffer(
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
-    let cache_path = cache_path(path, size, treatment, None)?;
+    store_cached_buffer_with_variant(path, size, treatment, buffer, None)
+}
+
+pub(crate) fn store_cached_buffer_with_variant(
+    path: &Path,
+    size: FrameSize,
+    treatment: BackgroundTreatment,
+    buffer: &SoftwareBuffer,
+    variant: Option<&str>,
+) -> Result<()> {
+    let cache_path = cache_path(path, size, treatment, variant, None)?;
     let Some(cache_dir) = cache_path.parent() else {
         return Err(RendererError::Image(image::ImageError::IoError(
             std::io::Error::other("cache path has no parent"),
@@ -100,6 +119,7 @@ fn cache_path(
     path: &Path,
     size: FrameSize,
     treatment: BackgroundTreatment,
+    variant: Option<&str>,
     cache_home: Option<&Path>,
 ) -> Result<PathBuf> {
     let metadata = fs::metadata(path)
@@ -123,6 +143,7 @@ fn cache_path(
         "{key}:{:?}:{:?}:{:?}:{:?}",
         treatment.blur_radius, treatment.dim_strength, treatment.tint, treatment.tint_opacity
     ));
+    let key = stable_hash(format!("{key}:{}", variant.unwrap_or_default()));
 
     Ok(cache_root(cache_home)?.join(format!("{key:016x}.argb")))
 }
@@ -187,14 +208,79 @@ mod tests {
             size,
             BackgroundTreatment::default(),
             &buffer,
+            None,
             &root,
         )
         .expect("store");
 
-        let loaded = load_cached_buffer_at(&wallpaper, size, BackgroundTreatment::default(), &root)
-            .expect("load")
-            .expect("cached buffer");
+        let loaded = load_cached_buffer_at(
+            &wallpaper,
+            size,
+            BackgroundTreatment::default(),
+            None,
+            &root,
+        )
+        .expect("load")
+        .expect("cached buffer");
         assert_eq!(loaded, buffer);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn separates_variant_cache_entries() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("veila-render-cache-variant-test-{unique}"));
+        fs::create_dir_all(&root).expect("cache root");
+
+        let wallpaper = root.join("wallpaper.jpg");
+        fs::write(&wallpaper, b"stub").expect("wallpaper file");
+
+        let size = FrameSize::new(2, 1);
+        let base = SoftwareBuffer::solid(size, ClearColor::opaque(12, 16, 24)).expect("buffer");
+        let layered = SoftwareBuffer::solid(size, ClearColor::opaque(40, 50, 60)).expect("buffer");
+        store_cached_buffer_at(
+            &wallpaper,
+            size,
+            BackgroundTreatment::default(),
+            &base,
+            None,
+            &root,
+        )
+        .expect("store base");
+        store_cached_buffer_at(
+            &wallpaper,
+            size,
+            BackgroundTreatment::default(),
+            &layered,
+            Some("layer:v1"),
+            &root,
+        )
+        .expect("store layered");
+
+        let loaded_base = load_cached_buffer_at(
+            &wallpaper,
+            size,
+            BackgroundTreatment::default(),
+            None,
+            &root,
+        )
+        .expect("load")
+        .expect("cached buffer");
+        let loaded_layered = load_cached_buffer_at(
+            &wallpaper,
+            size,
+            BackgroundTreatment::default(),
+            Some("layer:v1"),
+            &root,
+        )
+        .expect("load")
+        .expect("cached buffer");
+        assert_eq!(loaded_base, base);
+        assert_eq!(loaded_layered, layered);
 
         let _ = fs::remove_dir_all(root);
     }
@@ -203,9 +289,10 @@ mod tests {
         wallpaper: &Path,
         size: FrameSize,
         treatment: BackgroundTreatment,
+        variant: Option<&str>,
         cache_home: &Path,
     ) -> crate::Result<Option<SoftwareBuffer>> {
-        let cache_path = cache_path(wallpaper, size, treatment, Some(cache_home))?;
+        let cache_path = cache_path(wallpaper, size, treatment, variant, Some(cache_home))?;
         let Ok(mut file) = fs::File::open(&cache_path) else {
             return Ok(None);
         };
@@ -232,9 +319,10 @@ mod tests {
         size: FrameSize,
         treatment: BackgroundTreatment,
         buffer: &SoftwareBuffer,
+        variant: Option<&str>,
         cache_home: &Path,
     ) -> crate::Result<()> {
-        let cache_path = cache_path(wallpaper, size, treatment, Some(cache_home))?;
+        let cache_path = cache_path(wallpaper, size, treatment, variant, Some(cache_home))?;
         let cache_dir = cache_path.parent().expect("cache dir");
         fs::create_dir_all(cache_dir).expect("cache dir");
         let mut file = fs::File::create(cache_path).expect("cache file");

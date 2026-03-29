@@ -14,9 +14,10 @@ pub use config::{
     AppConfig, AvatarVisualConfig, BatteryConfig, BatteryVisualConfig, CapsLockVisualConfig,
     ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, FontStyle, GeoCoordinate, InputAlignment, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayoutVisualConfig, LoadedConfig, NowPlayingVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, RgbColor, StatusVisualConfig,
-    UsernameVisualConfig, WeatherAlignment, WeatherConfig, WeatherUnit, WeatherVisualConfig,
+    KeyboardVisualConfig, LayerAlignment, LayerMode, LayerVisualConfig, LayoutVisualConfig,
+    LoadedConfig, NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, RgbColor,
+    StatusVisualConfig, UsernameVisualConfig, WeatherAlignment, WeatherConfig, WeatherUnit,
+    WeatherVisualConfig,
 };
 pub use error::{Result, VeilaError};
 pub use now_playing::NowPlayingSnapshot;

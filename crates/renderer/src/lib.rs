@@ -7,7 +7,7 @@ pub mod draw;
 pub mod shm;
 
 // Re-export draw submodules at the crate root for ergonomic access.
-pub use draw::{avatar, cover, icon, masked, panel, progress, shape, symbol, text};
+pub use draw::{avatar, cover, icon, layer, masked, panel, progress, shape, symbol, text};
 
 use std::path::Path;
 

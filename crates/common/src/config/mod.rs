@@ -25,9 +25,10 @@ pub use lock::LockConfig;
 pub use visuals::{
     AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, ClockAlignment, ClockFormat,
     ClockStyle, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, FontStyle, InputAlignment,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
-    UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerMode,
+    LayerVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, VisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 
