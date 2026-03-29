@@ -18,13 +18,13 @@ use veila_renderer::{
 use self::{
     cache::SceneTextInputs,
     layout::{
-        AnchorOffsets, FooterHeights, InputPlacement, RoleAnchors, SceneMetrics, role_anchors,
-        top_role_top,
+        AnchorOffsets, FooterHeights, InputPlacement, RoleAnchors, SceneMetrics, hero_block_x,
+        role_anchors, top_role_top,
     },
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
-        InputWidget, NowPlayingWidget, draw_avatar_widget, draw_centered_block,
-        draw_centered_clock_widget, draw_input_content, draw_input_shell, draw_now_playing_widget,
+        InputWidget, NowPlayingWidget, draw_avatar_widget, draw_block, draw_centered_block,
+        draw_clock_widget, draw_input_content, draw_input_shell, draw_now_playing_widget,
         draw_top_right_block, draw_top_right_icon_chip, draw_weather_widget, input_toggle_hitbox,
         top_right_chip_diameter,
     },
@@ -149,6 +149,7 @@ impl ShellState {
                 input_offset_y: self.theme.input_offset_y,
                 header_top: self.theme.header_top_offset,
                 clock_alignment: self.theme.clock_alignment,
+                clock_offset_y: self.theme.clock_offset_y,
                 weather_bottom_padding: self.theme.weather_bottom_padding,
             },
         );
@@ -340,15 +341,26 @@ impl ShellState {
     ) {
         match &section.widget {
             SceneWidget::Clock(block) if dynamic => {
-                draw_centered_clock_widget(buffer, metrics.center_x, y, block);
+                let x = hero_block_x(
+                    buffer.size().width as i32,
+                    block.width(),
+                    self.theme.clock_alignment,
+                    self.theme.clock_offset_x,
+                );
+                draw_clock_widget(buffer, x, y, block);
             }
             SceneWidget::Date(block) | SceneWidget::Status(block) if dynamic => {
-                let center_x = if matches!(section.widget, SceneWidget::Status(_)) {
-                    metrics.auth_center_x
+                if matches!(section.widget, SceneWidget::Status(_)) {
+                    draw_centered_block(buffer, metrics.auth_center_x, y, block);
                 } else {
-                    metrics.center_x
-                };
-                draw_centered_block(buffer, center_x, y, block);
+                    let x = hero_block_x(
+                        buffer.size().width as i32,
+                        block.width as i32,
+                        self.theme.clock_alignment,
+                        self.theme.clock_offset_x,
+                    );
+                    draw_block(buffer, x, y, block);
+                }
             }
             SceneWidget::Username(block) if !dynamic => {
                 draw_centered_block(buffer, metrics.auth_center_x, y, block);

@@ -83,6 +83,8 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_font_style().is_none());
     assert_eq!(config.visuals.clock_alignment(), ClockAlignment::TopCenter);
+    assert_eq!(config.visuals.clock_offset_x(), Some(0));
+    assert_eq!(config.visuals.clock_offset_y(), Some(0));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
     assert!(config.visuals.clock_meridiem_size().is_none());
     assert!(config.visuals.clock_meridiem_offset_x().is_none());
@@ -942,7 +944,9 @@ border_color = "#DDDDDD"
             font_weight = 700
             font_style = "italic"
             style = "stacked"
-            alignment = "center-center"
+            alignment = "top-right"
+            offset_x = -18
+            offset_y = 14
             format = "12h"
             meridiem_size = 3
             meridiem_offset_x = 6
@@ -1114,10 +1118,9 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.clock_font_weight(), Some(700));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.clock_style(), ClockStyle::Stacked);
-    assert_eq!(
-        config.visuals.clock_alignment(),
-        ClockAlignment::CenterCenter
-    );
+    assert_eq!(config.visuals.clock_alignment(), ClockAlignment::TopRight);
+    assert_eq!(config.visuals.clock_offset_x(), Some(-18));
+    assert_eq!(config.visuals.clock_offset_y(), Some(14));
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));

@@ -200,6 +200,10 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub alignment: Option<ClockAlignment>,
     #[serde(default)]
+    pub offset_x: Option<i16>,
+    #[serde(default)]
+    pub offset_y: Option<i16>,
+    #[serde(default)]
     pub format: Option<ClockFormat>,
     #[serde(default)]
     pub meridiem_size: Option<u16>,
@@ -226,6 +230,8 @@ impl Default for ClockVisualConfig {
             font_style: Some(FontStyle::Normal),
             style: Some(ClockStyle::Standard),
             alignment: Some(ClockAlignment::TopCenter),
+            offset_x: Some(0),
+            offset_y: Some(0),
             format: Some(ClockFormat::TwentyFourHour),
             meridiem_size: Some(3),
             meridiem_offset_x: Some(6),
@@ -252,6 +258,10 @@ pub enum ClockAlignment {
     #[default]
     #[serde(rename = "top-center")]
     TopCenter,
+    #[serde(rename = "top-right")]
+    TopRight,
+    #[serde(rename = "top-left")]
+    TopLeft,
     #[serde(rename = "center-center")]
     CenterCenter,
 }
@@ -782,6 +792,10 @@ pub struct VisualConfig {
     #[serde(default)]
     pub clock_style: Option<ClockStyle>,
     #[serde(default)]
+    pub clock_offset_x: Option<i16>,
+    #[serde(default)]
+    pub clock_offset_y: Option<i16>,
+    #[serde(default)]
     pub clock_format: Option<ClockFormat>,
     #[serde(default)]
     pub clock_meridiem_size: Option<u16>,
@@ -922,6 +936,8 @@ impl Default for VisualConfig {
             clock_font_weight: Some(600),
             clock_font_style: Some(FontStyle::Normal),
             clock_style: Some(ClockStyle::Standard),
+            clock_offset_x: Some(0),
+            clock_offset_y: Some(0),
             clock_format: Some(ClockFormat::TwentyFourHour),
             clock_meridiem_size: Some(3),
             clock_meridiem_offset_x: Some(6),
@@ -1296,6 +1312,20 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.alignment)
             .unwrap_or_default()
+    }
+
+    pub fn clock_offset_x(&self) -> Option<i16> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.offset_x)
+            .or(self.clock_offset_x)
+    }
+
+    pub fn clock_offset_y(&self) -> Option<i16> {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.offset_y)
+            .or(self.clock_offset_y)
     }
 
     pub fn clock_format(&self) -> ClockFormat {

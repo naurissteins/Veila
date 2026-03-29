@@ -1,6 +1,6 @@
 [background]
 mode = "file"
-path = "/home/ns/Downloads/colin-watts-M1ObxvsWVhY-unsplash.jpg"
+path = "/home/ns/Downloads/wallpapersden.com_ghost-in-the-shell-cool-anime-art_2912x1632.jpg"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64
@@ -9,7 +9,7 @@ tint_opacity = 0
 
 [lock]
 user_hint = "Password"
-show_username = false
+show_username = true
 # username = "Billy Ocean"
 # avatar_path = ""
 #
@@ -17,8 +17,8 @@ show_username = false
 [visuals.layer]
 enabled = true
 mode = "blur"        # "blur" | "solid"
-alignment = "right"  # "left" | "center" | "right"
-width = 560
+alignment = "left"  # "left" | "center" | "right"
+width = 540
 offset_x = 0
 color = "#080A0E"
 opacity = 42
@@ -36,17 +36,20 @@ refresh_minutes = 15
 unit = "celsius"
 
 [visuals.clock]
+alignment = "top-left"
+offset_x = 0
+offset_y = 0
 format = "24h"
-style = "stacked"
+style = "standard"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
-font_family = "Nunito"
-font_weight = 800
-font_style = "italic"
+font_family = "Geom"
+font_weight = 600
+#font_style = "italic"
 color = "#ffffff"
 opacity = 40
-size = 54
+size = 14
 gap = 20
 
 [visuals.date]
@@ -56,10 +59,10 @@ color = "#C8D8F2"
 opacity = 72
 
 [visuals.input]
-alignment = "bottom-center"
+alignment = "center-left"
 horizontal_padding = 0
 vertical_padding = 0
-offset_x = 0
+offset_x = 100
 offset_y = 0
 background_color = "#FFFFFF"
 background_opacity = 8
@@ -79,7 +82,7 @@ color = "#ffffff"
 opacity = 60
 
 [visuals.avatar]
-enabled = false
+#enabled = false
 size = 192
 gap = 24
 background_color = "#ffffff"
@@ -123,9 +126,9 @@ location_color = "#D6E3FF"
 temperature_size = 6
 location_size = 3
 icon_size = 40
-temperature_font_family = "Nunito"
-temperature_font_style = "italic"
-temperature_font_weight = 800
+temperature_font_family = "Google Sans Flex"
+#temperature_font_style = "italic"
+temperature_font_weight = 400
 temperature_letter_spacing = 0
 location_font_family = "Google Sans Flex"
 location_font_weight = 400

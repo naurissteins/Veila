@@ -33,6 +33,7 @@ pub(super) struct AnchorOffsets {
     pub input_offset_y: Option<i32>,
     pub header_top: Option<i32>,
     pub clock_alignment: ClockAlignment,
+    pub clock_offset_y: Option<i32>,
     pub weather_bottom_padding: Option<i32>,
 }
 
@@ -143,8 +144,10 @@ pub(super) fn role_anchors(
     let hero_y = top_role_top(frame_height, offsets.header_top);
     let hero_y = match offsets.clock_alignment {
         ClockAlignment::TopCenter => hero_y,
+        ClockAlignment::TopRight => hero_y,
+        ClockAlignment::TopLeft => hero_y,
         ClockAlignment::CenterCenter => centered_role_top(frame_height, hero_height, 0.5),
-    };
+    } + offsets.clock_offset_y.unwrap_or(0);
     let footer_y = frame_height
         - footer_heights.render
         - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
@@ -240,6 +243,25 @@ fn centered_role_top(frame_height: i32, role_height: i32, center_factor: f32) ->
     ((frame_height as f32) * center_factor) as i32 - role_height / 2
 }
 
+pub(super) fn hero_block_x(
+    frame_width: i32,
+    block_width: i32,
+    alignment: ClockAlignment,
+    offset_x: Option<i32>,
+) -> i32 {
+    let base_x = match alignment {
+        ClockAlignment::TopCenter | ClockAlignment::CenterCenter => {
+            frame_width / 2 - block_width / 2
+        }
+        ClockAlignment::TopLeft => horizontal_auth_padding(frame_width),
+        ClockAlignment::TopRight => {
+            (frame_width - horizontal_auth_padding(frame_width) - block_width).max(0)
+        }
+    };
+
+    (base_x + offset_x.unwrap_or(0)).clamp(0, (frame_width - block_width).max(0))
+}
+
 pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) -> i32 {
     ((frame_height / 14).clamp(28, 72) + header_top_offset.unwrap_or(0)).max(0)
 }
@@ -248,7 +270,9 @@ pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) ->
 mod tests {
     use veila_common::{ClockAlignment, InputAlignment};
 
-    use super::{AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, role_anchors};
+    use super::{
+        AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, hero_block_x, role_anchors,
+    };
 
     #[test]
     fn falls_back_to_stacked_roles_when_they_would_overlap() {
@@ -427,6 +451,42 @@ mod tests {
 
         assert_eq!(default_anchors.hero_y, 51);
         assert_eq!(centered_anchors.hero_y, 333);
+    }
+
+    #[test]
+    fn supports_top_side_clock_alignment_positions() {
+        assert_eq!(hero_block_x(1280, 300, ClockAlignment::TopLeft, None), 53);
+        assert_eq!(hero_block_x(1280, 300, ClockAlignment::TopRight, None), 927);
+    }
+
+    #[test]
+    fn applies_clock_horizontal_offset() {
+        assert_eq!(
+            hero_block_x(1280, 300, ClockAlignment::TopCenter, Some(24)),
+            514
+        );
+        assert_eq!(
+            hero_block_x(1280, 300, ClockAlignment::TopRight, Some(-20)),
+            907
+        );
+    }
+
+    #[test]
+    fn applies_clock_vertical_offset() {
+        let anchors = role_anchors(
+            720,
+            54,
+            197,
+            197,
+            FooterHeights::same(0),
+            InputAlignment::CenterCenter,
+            AnchorOffsets {
+                clock_offset_y: Some(18),
+                ..AnchorOffsets::default()
+            },
+        );
+
+        assert_eq!(anchors.hero_y, 69);
     }
 
     #[test]

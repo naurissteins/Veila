@@ -63,13 +63,16 @@ pub(super) fn draw_centered_block(
     block.draw(buffer, x, y);
 }
 
-pub(super) fn draw_centered_clock_widget(
+pub(super) fn draw_block(buffer: &mut SoftwareBuffer, x: i32, y: i32, block: &TextBlock) {
+    block.draw(buffer, x, y);
+}
+
+pub(super) fn draw_clock_widget(
     buffer: &mut SoftwareBuffer,
-    center_x: i32,
+    x: i32,
     y: i32,
     clock: &SceneClockBlocks,
 ) {
-    let x = center_x - clock.width() / 2;
     let base_width = match clock.style {
         ClockStyle::Standard => clock.primary.width as i32,
         ClockStyle::Stacked => (clock.primary.width as i32).max(
