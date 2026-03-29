@@ -13,6 +13,11 @@ show_username = false
 # username = "Billy Ocean"
 # avatar_path = ""
 
+[battery]
+enabled = true
+mock_percent = 84
+mock_charging = false
+
 [weather]
 enabled = true
 location = "Boracay"

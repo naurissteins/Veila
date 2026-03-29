@@ -3,7 +3,7 @@ mod color;
 mod tests;
 
 use veila_common::{
-    AppConfig, ClockFormat, ClockStyle, FontStyle, InputAlignment, WeatherAlignment,
+    AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment, WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -49,6 +49,7 @@ pub struct ShellTheme {
     pub auth_stack_offset: Option<i32>,
     pub header_top_offset: Option<i32>,
     pub clock_enabled: bool,
+    pub clock_alignment: ClockAlignment,
     pub clock_font_family: Option<String>,
     pub clock_font_weight: Option<u16>,
     pub clock_font_style: Option<FontStyle>,
@@ -208,6 +209,7 @@ impl ShellTheme {
             auth_stack_offset: config.visuals.auth_stack_offset().map(i32::from),
             header_top_offset: config.visuals.header_top_offset().map(i32::from),
             clock_enabled: config.visuals.clock_enabled(),
+            clock_alignment: config.visuals.clock_alignment(),
             clock_font_family: config.visuals.clock_font_family().map(str::to_owned),
             clock_font_weight: config.visuals.clock_font_weight(),
             clock_font_style: config.visuals.clock_font_style(),

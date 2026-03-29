@@ -198,6 +198,8 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub style: Option<ClockStyle>,
     #[serde(default)]
+    pub alignment: Option<ClockAlignment>,
+    #[serde(default)]
     pub format: Option<ClockFormat>,
     #[serde(default)]
     pub meridiem_size: Option<u16>,
@@ -223,6 +225,7 @@ impl Default for ClockVisualConfig {
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
             style: Some(ClockStyle::Standard),
+            alignment: Some(ClockAlignment::TopCenter),
             format: Some(ClockFormat::TwentyFourHour),
             meridiem_size: Some(3),
             meridiem_offset_x: Some(6),
@@ -242,6 +245,15 @@ pub enum ClockStyle {
     Standard,
     #[serde(rename = "stacked")]
     Stacked,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ClockAlignment {
+    #[default]
+    #[serde(rename = "top-center")]
+    TopCenter,
+    #[serde(rename = "center-center")]
+    CenterCenter,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -1221,6 +1233,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|clock| clock.style)
             .or(self.clock_style)
+            .unwrap_or_default()
+    }
+
+    pub fn clock_alignment(&self) -> ClockAlignment {
+        self.clock
+            .as_ref()
+            .and_then(|clock| clock.alignment)
             .unwrap_or_default()
     }
 

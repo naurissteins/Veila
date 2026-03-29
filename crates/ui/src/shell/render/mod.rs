@@ -142,6 +142,7 @@ impl ShellState {
                 input_vertical_padding: self.theme.input_vertical_padding,
                 input_offset_y: self.theme.input_offset_y,
                 header_top: self.theme.header_top_offset,
+                clock_alignment: self.theme.clock_alignment,
                 weather_bottom_padding: self.theme.weather_bottom_padding,
             },
         );

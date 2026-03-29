@@ -1,4 +1,4 @@
-use veila_common::InputAlignment;
+use veila_common::{ClockAlignment, InputAlignment};
 use veila_renderer::shape::Rect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +32,7 @@ pub(super) struct AnchorOffsets {
     pub input_vertical_padding: Option<i32>,
     pub input_offset_y: Option<i32>,
     pub header_top: Option<i32>,
+    pub clock_alignment: ClockAlignment,
     pub weather_bottom_padding: Option<i32>,
 }
 
@@ -140,6 +141,10 @@ pub(super) fn role_anchors(
     offsets: AnchorOffsets,
 ) -> RoleAnchors {
     let hero_y = top_role_top(frame_height, offsets.header_top);
+    let hero_y = match offsets.clock_alignment {
+        ClockAlignment::TopCenter => hero_y,
+        ClockAlignment::CenterCenter => centered_role_top(frame_height, hero_height, 0.5),
+    };
     let footer_y = frame_height
         - footer_heights.render
         - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
@@ -241,7 +246,7 @@ pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) ->
 
 #[cfg(test)]
 mod tests {
-    use veila_common::InputAlignment;
+    use veila_common::{ClockAlignment, InputAlignment};
 
     use super::{AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, role_anchors};
 
@@ -394,6 +399,34 @@ mod tests {
 
         assert_eq!(default_anchors.hero_y, 51);
         assert_eq!(shifted_anchors.hero_y, 39);
+    }
+
+    #[test]
+    fn supports_centered_clock_alignment() {
+        let default_anchors = role_anchors(
+            720,
+            54,
+            197,
+            197,
+            FooterHeights::same(0),
+            InputAlignment::CenterCenter,
+            AnchorOffsets::default(),
+        );
+        let centered_anchors = role_anchors(
+            720,
+            54,
+            197,
+            197,
+            FooterHeights::same(0),
+            InputAlignment::CenterCenter,
+            AnchorOffsets {
+                clock_alignment: ClockAlignment::CenterCenter,
+                ..AnchorOffsets::default()
+            },
+        );
+
+        assert_eq!(default_anchors.hero_y, 51);
+        assert_eq!(centered_anchors.hero_y, 333);
     }
 
     #[test]

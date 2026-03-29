@@ -12,8 +12,8 @@ pub mod weather;
 pub use battery::BatterySnapshot;
 pub use config::{
     AppConfig, AvatarVisualConfig, BatteryConfig, BatteryVisualConfig, CapsLockVisualConfig,
-    ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig,
-    FontStyle, GeoCoordinate, InputAlignment, InputVisualConfig, InputVisualEntry,
+    ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
+    EyeVisualConfig, FontStyle, GeoCoordinate, InputAlignment, InputVisualConfig, InputVisualEntry,
     KeyboardVisualConfig, LayoutVisualConfig, LoadedConfig, NowPlayingVisualConfig,
     PaletteVisualConfig, PlaceholderVisualConfig, RgbColor, StatusVisualConfig,
     UsernameVisualConfig, WeatherAlignment, WeatherConfig, WeatherUnit, WeatherVisualConfig,

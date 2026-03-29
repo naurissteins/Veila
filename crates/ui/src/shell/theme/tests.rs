@@ -1,9 +1,9 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig,
-    ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
-    WeatherVisualConfig,
+    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockAlignment, ClockFormat, ClockStyle,
+    ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -59,6 +59,7 @@ fn input_opacity_overrides_embedded_alpha() {
         font_weight: Some(700),
         font_style: Some(FontStyle::Italic),
         style: Some(ClockStyle::Stacked),
+        alignment: Some(ClockAlignment::CenterCenter),
         format: Some(ClockFormat::TwelveHour),
         meridiem_size: Some(3),
         meridiem_offset_x: Some(6),
@@ -225,6 +226,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_font_weight, Some(700));
     assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.clock_style, ClockStyle::Stacked);
+    assert_eq!(theme.clock_alignment, ClockAlignment::CenterCenter);
     assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
     assert_eq!(theme.clock_meridiem_size, Some(3));
     assert_eq!(theme.clock_meridiem_offset_x, Some(6));

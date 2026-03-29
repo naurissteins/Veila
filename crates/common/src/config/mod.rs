@@ -23,8 +23,8 @@ pub use battery::BatteryConfig;
 pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{
-    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, ClockFormat, ClockStyle,
-    ClockVisualConfig, DateVisualConfig, EyeVisualConfig, FontStyle, InputAlignment,
+    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, ClockAlignment, ClockFormat,
+    ClockStyle, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, FontStyle, InputAlignment,
     InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayoutVisualConfig,
     NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
     UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,

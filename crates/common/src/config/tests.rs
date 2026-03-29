@@ -1,7 +1,7 @@
 use std::fs;
 
 use super::{
-    AppConfig, BackgroundMode, ClockFormat, ClockStyle, FontStyle, InputAlignment,
+    AppConfig, BackgroundMode, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment,
     InputVisualEntry, RgbColor, WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
@@ -82,6 +82,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_font_family().is_none());
     assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_font_style().is_none());
+    assert_eq!(config.visuals.clock_alignment(), ClockAlignment::TopCenter);
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
     assert!(config.visuals.clock_meridiem_size().is_none());
     assert!(config.visuals.clock_meridiem_offset_x().is_none());
@@ -428,7 +429,7 @@ fn lists_bundled_theme_names() {
 
     assert_eq!(
         themes,
-        vec![String::from("frost"), String::from("midnight")]
+        vec![String::from("city-lights"), String::from("beach")]
     );
 }
 
@@ -733,7 +734,7 @@ fn loads_bundled_theme_before_user_overrides() {
     fs::write(
         &path,
         r#"
-            theme = "frost"
+            theme = "beach"
 
             [visuals.clock]
             size = 16
@@ -756,7 +757,7 @@ fn loads_bundled_theme_before_user_overrides() {
     );
     assert_eq!(
         loaded.config.visuals.now_playing_title_color(),
-        Some(RgbColor::rgb(248, 251, 255))
+        Some(RgbColor::rgb(255, 255, 255))
     );
 
     fs::remove_file(path).ok();
@@ -771,27 +772,27 @@ fn loads_second_bundled_theme() {
     fs::write(
         &path,
         r#"
-            theme = "midnight"
+            theme = "city-lights"
         "#,
     )
     .expect("write config");
 
     let config = AppConfig::load_from_file(&path).expect("config should load");
 
-    assert_eq!(config.background.color, RgbColor::rgb(17, 21, 34));
-    assert_eq!(config.background.blur_radius, 24);
-    assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
-    assert_eq!(config.visuals.clock_font_weight(), Some(600));
+    assert_eq!(config.background.color, RgbColor::rgb(0, 0, 0));
+    assert_eq!(config.background.blur_radius, 20);
+    assert_eq!(config.visuals.clock_font_family(), Some("Google Sans Flex"));
+    assert_eq!(config.visuals.clock_font_weight(), Some(400));
     assert_eq!(
         config.visuals.date_color(),
-        Some(RgbColor::rgb(174, 187, 213))
+        Some(RgbColor::rgb(200, 216, 242))
     );
     assert_eq!(
         config.visuals.keyboard_background_color(),
-        Some(RgbColor::rgba(10, 14, 22, 87))
+        Some(RgbColor::rgba(255, 255, 255, 13))
     );
     assert_eq!(config.visuals.weather_alignment(), WeatherAlignment::Left);
-    assert_eq!(config.visuals.now_playing_opacity(), Some(82));
+    assert_eq!(config.visuals.now_playing_opacity(), Some(72));
 }
 
 #[test]
@@ -942,6 +943,7 @@ border_color = "#DDDDDD"
             font_weight = 700
             font_style = "italic"
             style = "stacked"
+            alignment = "center-center"
             format = "12h"
             meridiem_size = 3
             meridiem_offset_x = 6
@@ -1103,6 +1105,10 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.clock_font_weight(), Some(700));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.clock_style(), ClockStyle::Stacked);
+    assert_eq!(
+        config.visuals.clock_alignment(),
+        ClockAlignment::CenterCenter
+    );
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);
     assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
     assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
