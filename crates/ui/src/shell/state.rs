@@ -1,6 +1,7 @@
 use std::{cell::RefCell, path::PathBuf};
 
 use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, WeatherUnit};
+use veila_renderer::ClearColor;
 
 use super::{
     ClockState, NowPlayingTransition, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
@@ -17,17 +18,31 @@ impl ShellState {
         }
 
         let color = self.theme.layer_color;
+        let border = self
+            .theme
+            .layer_border_color
+            .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
         Some(format!(
-            "layer:v1:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}",
+            "layer:v2:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}:{},{},{},{}:{}",
             self.theme.layer_mode,
             self.theme.layer_alignment,
             self.theme.layer_width,
             self.theme.layer_offset_x,
+            self.theme.layer_left_padding,
+            self.theme.layer_right_padding,
+            self.theme.layer_top_padding,
+            self.theme.layer_bottom_padding,
+            self.theme.layer_radius,
             color.red,
             color.green,
             color.blue,
             color.alpha,
-            self.theme.layer_blur_radius
+            self.theme.layer_blur_radius,
+            border.red,
+            border.green,
+            border.blue,
+            border.alpha,
+            self.theme.layer_border_width,
         ))
     }
 

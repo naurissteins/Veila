@@ -906,6 +906,8 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
             layer_enabled: true,
             layer_alignment: LayerAlignment::Center,
             layer_width: Some(520),
+            layer_top_padding: Some(18),
+            layer_bottom_padding: Some(22),
             layer_mode: LayerMode::Blur,
             ..ShellTheme::default()
         },
@@ -919,6 +921,8 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
             layer_alignment: LayerAlignment::Right,
             layer_width: Some(520),
             layer_offset_x: Some(-12),
+            layer_left_padding: Some(24),
+            layer_right_padding: Some(36),
             layer_mode: LayerMode::Blur,
             ..ShellTheme::default()
         },
@@ -935,9 +939,10 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
         .expect("right layer");
 
     assert_eq!(centered_rect.x, 380);
+    assert_eq!(centered_rect.y, 18);
     assert_eq!(centered_rect.width, 520);
-    assert_eq!(centered_rect.height, 720);
-    assert_eq!(right_rect.x, 748);
+    assert_eq!(centered_rect.height, 680);
+    assert_eq!(right_rect.x, 712);
 }
 
 #[test]

@@ -45,6 +45,17 @@ pub(super) struct FooterHeights {
     pub clearance: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct LayerPlacement {
+    pub alignment: LayerAlignment,
+    pub width: Option<i32>,
+    pub offset_x: Option<i32>,
+    pub left_padding: Option<i32>,
+    pub right_padding: Option<i32>,
+    pub top_padding: Option<i32>,
+    pub bottom_padding: Option<i32>,
+}
+
 impl FooterHeights {
     #[cfg(test)]
     const fn same(height: i32) -> Self {
@@ -282,34 +293,45 @@ pub(super) fn hero_block_x(
     (base_x + offset_x.unwrap_or(0)).clamp(0, (frame_width - block_width).max(0))
 }
 
-pub(super) fn layer_rect(
-    frame_width: i32,
-    frame_height: i32,
-    alignment: LayerAlignment,
-    width: Option<i32>,
-    offset_x: Option<i32>,
-) -> Rect {
-    let width = width
+pub(super) fn layer_rect(frame_width: i32, frame_height: i32, placement: LayerPlacement) -> Rect {
+    let left_padding = placement
+        .left_padding
+        .unwrap_or(0)
+        .clamp(0, frame_width.max(0));
+    let right_padding = placement
+        .right_padding
+        .unwrap_or(0)
+        .clamp(0, frame_width.max(0));
+    let top_padding = placement
+        .top_padding
+        .unwrap_or(0)
+        .clamp(0, frame_height.max(0));
+    let bottom_padding = placement
+        .bottom_padding
+        .unwrap_or(0)
+        .clamp(0, frame_height.max(0));
+    let safe_left = left_padding;
+    let safe_right = (frame_width - right_padding).max(safe_left + 1);
+    let safe_width = (safe_right - safe_left).max(1);
+    let width = placement
+        .width
         .unwrap_or((frame_width as f32 * 0.36) as i32)
-        .clamp(1, frame_width.max(1));
-    let offset_x = offset_x.unwrap_or(0);
-    let unclamped_x = match alignment {
-        LayerAlignment::Left => offset_x,
-        LayerAlignment::Center => (frame_width - width) / 2 + offset_x,
-        LayerAlignment::Right => frame_width - width + offset_x,
+        .clamp(1, safe_width);
+    let offset_x = placement.offset_x.unwrap_or(0);
+    let unclamped_x = match placement.alignment {
+        LayerAlignment::Left => safe_left + offset_x,
+        LayerAlignment::Center => safe_left + (safe_width - width) / 2 + offset_x,
+        LayerAlignment::Right => safe_right - width + offset_x,
     };
-    let x = unclamped_x.clamp(-width + 1, frame_width - 1);
+    let x = unclamped_x.clamp(safe_left - width + 1, safe_right - 1);
+    let y = top_padding.min(frame_height.saturating_sub(1));
+    let height = (frame_height - top_padding - bottom_padding).max(1);
 
-    Rect::new(x, 0, width, frame_height)
+    Rect::new(x, y, width, height)
 }
 
-pub(super) fn layer_center_x(
-    frame_width: i32,
-    alignment: LayerAlignment,
-    width: Option<i32>,
-    offset_x: Option<i32>,
-) -> i32 {
-    let rect = layer_rect(frame_width, 1, alignment, width, offset_x);
+pub(super) fn layer_center_x(frame_width: i32, placement: LayerPlacement) -> i32 {
+    let rect = layer_rect(frame_width, 1, placement);
     rect.x + rect.width / 2
 }
 
@@ -322,8 +344,8 @@ mod tests {
     use veila_common::{ClockAlignment, InputAlignment, LayerAlignment};
 
     use super::{
-        AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, hero_block_x, layer_center_x,
-        layer_rect, role_anchors,
+        AnchorOffsets, FooterHeights, InputPlacement, LayerPlacement, SceneMetrics, hero_block_x,
+        layer_center_x, layer_rect, role_anchors,
     };
 
     #[test]
@@ -699,12 +721,37 @@ mod tests {
 
     #[test]
     fn computes_layer_center_from_layer_rect() {
-        let rect = layer_rect(1280, 720, LayerAlignment::Right, Some(520), Some(-12));
+        let rect = layer_rect(
+            1280,
+            720,
+            LayerPlacement {
+                alignment: LayerAlignment::Right,
+                width: Some(520),
+                offset_x: Some(-12),
+                left_padding: Some(24),
+                right_padding: Some(36),
+                top_padding: Some(18),
+                bottom_padding: Some(22),
+            },
+        );
 
-        assert_eq!(rect.x, 748);
+        assert_eq!(rect.x, 712);
+        assert_eq!(rect.y, 18);
+        assert_eq!(rect.height, 680);
         assert_eq!(
-            layer_center_x(1280, LayerAlignment::Right, Some(520), Some(-12)),
-            1008
+            layer_center_x(
+                1280,
+                LayerPlacement {
+                    alignment: LayerAlignment::Right,
+                    width: Some(520),
+                    offset_x: Some(-12),
+                    left_padding: Some(24),
+                    right_padding: Some(36),
+                    top_padding: Some(18),
+                    bottom_padding: Some(22),
+                },
+            ),
+            972
         );
     }
 

@@ -120,9 +120,20 @@ fn input_opacity_overrides_embedded_alpha() {
         alignment: Some(LayerAlignment::Right),
         width: Some(520),
         offset_x: Some(-12),
+        left_margin: Some(24),
+        right_margin: Some(36),
+        top_margin: Some(18),
+        bottom_margin: Some(22),
+        left_padding: Some(24),
+        right_padding: Some(36),
+        top_padding: Some(18),
+        bottom_padding: Some(22),
         color: Some(ConfigColor::rgb(8, 10, 14)),
         opacity: Some(44),
         blur_radius: Some(16),
+        radius: Some(20),
+        border_color: Some(ConfigColor::rgba(255, 255, 255, 48)),
+        border_width: Some(2),
     });
     config.visuals.weather = Some(WeatherVisualConfig {
         enabled: Some(true),
@@ -298,8 +309,18 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.layer_alignment, LayerAlignment::Right);
     assert_eq!(theme.layer_width, Some(520));
     assert_eq!(theme.layer_offset_x, Some(-12));
+    assert_eq!(theme.layer_left_padding, Some(24));
+    assert_eq!(theme.layer_right_padding, Some(36));
+    assert_eq!(theme.layer_top_padding, Some(18));
+    assert_eq!(theme.layer_bottom_padding, Some(22));
     assert_eq!(theme.layer_color, ClearColor::rgba(8, 10, 14, 112));
     assert_eq!(theme.layer_blur_radius, 16);
+    assert_eq!(theme.layer_radius, 20);
+    assert_eq!(
+        theme.layer_border_color,
+        Some(ClearColor::rgba(255, 255, 255, 48))
+    );
+    assert_eq!(theme.layer_border_width, 2);
     assert_eq!(theme.weather_size, Some(3));
     assert_eq!(theme.weather_opacity, Some(62));
     assert_eq!(theme.weather_icon_opacity, Some(41));

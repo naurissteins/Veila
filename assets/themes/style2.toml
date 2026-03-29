@@ -24,6 +24,13 @@ color = "#080A0E"
 opacity = 42
 blur_radius = 12
 
+left_margin = 22
+top_margin = 22
+bottom_margin = 22
+#radius = 28
+#border_color = "rgba(255, 255, 255, 0.14)"
+#border_width = 4
+
 [battery]
 enabled = true
 mock_percent = 84

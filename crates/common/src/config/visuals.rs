@@ -590,11 +590,33 @@ pub struct LayerVisualConfig {
     #[serde(default)]
     pub offset_x: Option<i16>,
     #[serde(default)]
+    pub left_margin: Option<u16>,
+    #[serde(default)]
+    pub right_margin: Option<u16>,
+    #[serde(default)]
+    pub top_margin: Option<u16>,
+    #[serde(default)]
+    pub bottom_margin: Option<u16>,
+    #[serde(default)]
+    pub left_padding: Option<u16>,
+    #[serde(default)]
+    pub right_padding: Option<u16>,
+    #[serde(default)]
+    pub top_padding: Option<u16>,
+    #[serde(default)]
+    pub bottom_padding: Option<u16>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub opacity: Option<u8>,
     #[serde(default)]
     pub blur_radius: Option<u8>,
+    #[serde(default)]
+    pub radius: Option<u16>,
+    #[serde(default)]
+    pub border_color: Option<RgbColor>,
+    #[serde(default)]
+    pub border_width: Option<u16>,
 }
 
 impl Default for LayerVisualConfig {
@@ -605,9 +627,20 @@ impl Default for LayerVisualConfig {
             alignment: Some(LayerAlignment::Center),
             width: Some(560),
             offset_x: Some(0),
+            left_margin: Some(0),
+            right_margin: Some(0),
+            top_margin: Some(0),
+            bottom_margin: Some(0),
+            left_padding: Some(0),
+            right_padding: Some(0),
+            top_padding: Some(0),
+            bottom_padding: Some(0),
             color: Some(RgbColor::rgb(8, 10, 14)),
             opacity: Some(42),
             blur_radius: Some(12),
+            radius: Some(0),
+            border_color: Some(RgbColor::rgb(255, 255, 255)),
+            border_width: Some(0),
         }
     }
 }
@@ -1807,12 +1840,64 @@ impl VisualConfig {
         self.layer.as_ref().and_then(|layer| layer.color)
     }
 
+    pub fn layer_left_margin(&self) -> Option<u16> {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.left_margin.or(layer.left_padding))
+    }
+
+    pub fn layer_right_margin(&self) -> Option<u16> {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.right_margin.or(layer.right_padding))
+    }
+
+    pub fn layer_top_margin(&self) -> Option<u16> {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.top_margin.or(layer.top_padding))
+    }
+
+    pub fn layer_bottom_margin(&self) -> Option<u16> {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.bottom_margin.or(layer.bottom_padding))
+    }
+
+    pub fn layer_left_padding(&self) -> Option<u16> {
+        self.layer_left_margin()
+    }
+
+    pub fn layer_right_padding(&self) -> Option<u16> {
+        self.layer_right_margin()
+    }
+
+    pub fn layer_top_padding(&self) -> Option<u16> {
+        self.layer_top_margin()
+    }
+
+    pub fn layer_bottom_padding(&self) -> Option<u16> {
+        self.layer_bottom_margin()
+    }
+
     pub fn layer_opacity(&self) -> Option<u8> {
         self.layer.as_ref().and_then(|layer| layer.opacity)
     }
 
     pub fn layer_blur_radius(&self) -> Option<u8> {
         self.layer.as_ref().and_then(|layer| layer.blur_radius)
+    }
+
+    pub fn layer_radius(&self) -> Option<u16> {
+        self.layer.as_ref().and_then(|layer| layer.radius)
+    }
+
+    pub fn layer_border_color(&self) -> Option<RgbColor> {
+        self.layer.as_ref().and_then(|layer| layer.border_color)
+    }
+
+    pub fn layer_border_width(&self) -> Option<u16> {
+        self.layer.as_ref().and_then(|layer| layer.border_width)
     }
 
     pub fn now_playing_title_color(&self) -> Option<RgbColor> {

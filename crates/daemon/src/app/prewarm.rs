@@ -171,17 +171,26 @@ fn prewarm_layered_backgrounds(
 fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::SoftwareBuffer) {
     let frame_width = buffer.size().width as i32;
     let frame_height = buffer.size().height as i32;
+    let left_margin = layer.left_margin.clamp(0, frame_width.max(0));
+    let right_margin = layer.right_margin.clamp(0, frame_width.max(0));
+    let top_margin = layer.top_margin.clamp(0, frame_height.max(0));
+    let bottom_margin = layer.bottom_margin.clamp(0, frame_height.max(0));
+    let safe_left = left_margin;
+    let safe_right = (frame_width - right_margin).max(safe_left + 1);
+    let safe_width = (safe_right - safe_left).max(1);
     let width = layer
         .width
         .unwrap_or((frame_width as f32 * 0.36) as i32)
-        .clamp(1, frame_width.max(1));
+        .clamp(1, safe_width);
     let offset_x = layer.offset_x;
     let unclamped_x = match layer.alignment {
-        LayerAlignment::Left => offset_x,
-        LayerAlignment::Center => (frame_width - width) / 2 + offset_x,
-        LayerAlignment::Right => frame_width - width + offset_x,
+        LayerAlignment::Left => safe_left + offset_x,
+        LayerAlignment::Center => safe_left + (safe_width - width) / 2 + offset_x,
+        LayerAlignment::Right => safe_right - width + offset_x,
     };
-    let x = unclamped_x.clamp(-width + 1, frame_width - 1);
+    let x = unclamped_x.clamp(safe_left - width + 1, safe_right - 1);
+    let y = top_margin.min(frame_height.saturating_sub(1));
+    let height = (frame_height - top_margin - bottom_margin).max(1);
     let mode = match layer.mode {
         LayerMode::Solid => BackdropLayerMode::Solid,
         LayerMode::Blur => BackdropLayerMode::Blur,
@@ -189,8 +198,15 @@ fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::Softw
 
     draw_backdrop_layer(
         buffer,
-        Rect::new(x, 0, width, frame_height),
-        BackdropLayerStyle::new(mode, layer.color, layer.blur_radius),
+        Rect::new(x, y, width, height),
+        BackdropLayerStyle::new(
+            mode,
+            layer.color,
+            layer.blur_radius,
+            layer.radius,
+            layer.border_color,
+            layer.border_width,
+        ),
     );
 }
 
@@ -201,25 +217,40 @@ fn layer_prewarm_spec(config: &AppConfig) -> Option<LayerPrewarmSpec> {
 
     let raw_color = config.visuals.layer_color().unwrap_or(config.visuals.panel);
     let color = to_layer_color(raw_color, config.visuals.layer_opacity());
+    let border_color = config.visuals.layer_border_color().map(to_clear_color);
     Some(LayerPrewarmSpec {
         variant: format!(
-            "layer:v1:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}",
+            "layer:v2:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}:{:?}:{}",
             config.visuals.layer_mode(),
             config.visuals.layer_alignment(),
             config.visuals.layer_width(),
             config.visuals.layer_offset_x(),
+            config.visuals.layer_left_margin(),
+            config.visuals.layer_right_margin(),
+            config.visuals.layer_top_margin(),
+            config.visuals.layer_bottom_margin(),
+            config.visuals.layer_radius(),
             color.red,
             color.green,
             color.blue,
             color.alpha,
-            config.visuals.layer_blur_radius().unwrap_or(12)
+            config.visuals.layer_blur_radius().unwrap_or(12),
+            border_color,
+            config.visuals.layer_border_width().unwrap_or(0),
         ),
         mode: config.visuals.layer_mode(),
         alignment: config.visuals.layer_alignment(),
         width: config.visuals.layer_width().map(i32::from),
         offset_x: i32::from(config.visuals.layer_offset_x().unwrap_or(0)),
+        left_margin: i32::from(config.visuals.layer_left_margin().unwrap_or(0)),
+        right_margin: i32::from(config.visuals.layer_right_margin().unwrap_or(0)),
+        top_margin: i32::from(config.visuals.layer_top_margin().unwrap_or(0)),
+        bottom_margin: i32::from(config.visuals.layer_bottom_margin().unwrap_or(0)),
         color,
         blur_radius: config.visuals.layer_blur_radius().unwrap_or(12),
+        radius: i32::from(config.visuals.layer_radius().unwrap_or(0)),
+        border_color,
+        border_width: i32::from(config.visuals.layer_border_width().unwrap_or(0)),
     })
 }
 
@@ -259,20 +290,26 @@ struct RenderedPrewarmReport {
     summary: RenderCacheSummary,
 }
 
-struct LayeredPrewarmReport {
-    elapsed_ms: u64,
-    probed_outputs: usize,
-    cache_hits: usize,
-    warmed_sizes: usize,
-}
-
-#[derive(Clone)]
 struct LayerPrewarmSpec {
     variant: String,
     mode: LayerMode,
     alignment: LayerAlignment,
     width: Option<i32>,
     offset_x: i32,
+    left_margin: i32,
+    right_margin: i32,
+    top_margin: i32,
+    bottom_margin: i32,
     color: ClearColor,
     blur_radius: u8,
+    radius: i32,
+    border_color: Option<ClearColor>,
+    border_width: i32,
+}
+
+struct LayeredPrewarmReport {
+    elapsed_ms: u64,
+    probed_outputs: usize,
+    cache_hits: usize,
+    warmed_sizes: usize,
 }

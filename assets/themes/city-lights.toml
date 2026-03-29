@@ -1,10 +1,10 @@
 [background]
 mode = "file"
-path = "/home/ns/Downloads/wallpapersden.com_ghost-in-the-shell-cool-anime-art_2912x1632.jpg"
+path = "/home/ns/Downloads/001.jpg"
 color = "#000000"
 blur_radius = 20
 dim_strength = 64
-tint = "rgba(0, 0, 0, 0.1)"
+tint = "rgba(255, 255, 255, 0.1)"
 tint_opacity = 0
 
 [lock]

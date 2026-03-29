@@ -1,8 +1,12 @@
 use image::{RgbaImage, imageops};
+use tiny_skia::{FillRule, Paint, PathBuilder, Stroke, Transform};
 
 use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::Rect};
 
-use super::shape::fill_rect;
+use super::{
+    shape::fill_rect,
+    skia::{color as skia_color, draw_overlay},
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BackdropLayerMode {
@@ -16,14 +20,27 @@ pub struct BackdropLayerStyle {
     pub mode: BackdropLayerMode,
     pub color: ClearColor,
     pub blur_radius: u8,
+    pub radius: i32,
+    pub border_color: Option<ClearColor>,
+    pub border_width: i32,
 }
 
 impl BackdropLayerStyle {
-    pub const fn new(mode: BackdropLayerMode, color: ClearColor, blur_radius: u8) -> Self {
+    pub const fn new(
+        mode: BackdropLayerMode,
+        color: ClearColor,
+        blur_radius: u8,
+        radius: i32,
+        border_color: Option<ClearColor>,
+        border_width: i32,
+    ) -> Self {
         Self {
             mode,
             color,
             blur_radius,
+            radius,
+            border_color,
+            border_width,
         }
     }
 }
@@ -40,18 +57,30 @@ pub fn draw_backdrop_layer(buffer: &mut SoftwareBuffer, rect: Rect, style: Backd
 
     match style.mode {
         BackdropLayerMode::Solid => {
-            fill_rect(buffer, clipped, style.color);
+            fill_layer_shape(buffer, clipped, style.color, style.radius);
         }
         BackdropLayerMode::Blur => {
-            blur_region(buffer, clipped, style.blur_radius);
+            blur_region(buffer, clipped, style.blur_radius, style.radius);
             if style.color.alpha > 0 {
-                fill_rect(buffer, clipped, style.color);
+                fill_layer_shape(buffer, clipped, style.color, style.radius);
             }
         }
     }
+
+    if let Some(border_color) = style.border_color.filter(|color| color.alpha > 0)
+        && style.border_width > 0
+    {
+        stroke_layer_shape(
+            buffer,
+            clipped,
+            border_color,
+            style.radius,
+            style.border_width,
+        );
+    }
 }
 
-fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, blur_radius: u8) {
+fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, blur_radius: u8, radius: i32) {
     let width = rect.width.max(0) as u32;
     let height = rect.height.max(0) as u32;
     if width == 0 || height == 0 {
@@ -62,12 +91,81 @@ fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, blur_radius: u8) {
     let Some(region) = RgbaImage::from_raw(width, height, rgba) else {
         return;
     };
+    let original = region.clone();
     let blurred = if blur_radius == 0 {
         region
     } else {
         imageops::blur(&region, f32::from(blur_radius.min(24)))
     };
-    write_rgba_region(buffer, rect, &blurred);
+    if radius <= 0 {
+        write_rgba_region(buffer, rect, &blurred);
+        return;
+    }
+
+    let rgba = apply_rounded_mask(original, blurred, radius);
+    write_rgba_region(buffer, rect, &rgba);
+}
+
+fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor, radius: i32) {
+    if radius <= 0 {
+        fill_rect(buffer, rect, color);
+        return;
+    }
+
+    draw_overlay(
+        buffer,
+        rect.x,
+        rect.y,
+        rect.width.max(1) as u32,
+        rect.height.max(1) as u32,
+        |overlay| {
+            let Some(path) = rounded_rect_path(rect.width, rect.height, radius) else {
+                return;
+            };
+
+            let mut paint = Paint::default();
+            paint.set_color(skia_color(color));
+            paint.anti_alias = true;
+            overlay.fill_path(
+                &path,
+                &paint,
+                FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
+        },
+    );
+}
+
+fn stroke_layer_shape(
+    buffer: &mut SoftwareBuffer,
+    rect: Rect,
+    color: ClearColor,
+    radius: i32,
+    width: i32,
+) {
+    draw_overlay(
+        buffer,
+        rect.x,
+        rect.y,
+        rect.width.max(1) as u32,
+        rect.height.max(1) as u32,
+        |overlay| {
+            let Some(path) = rounded_rect_path(rect.width, rect.height, radius) else {
+                return;
+            };
+
+            let mut paint = Paint::default();
+            paint.set_color(skia_color(color));
+            paint.anti_alias = true;
+
+            let stroke = Stroke {
+                width: width.max(1) as f32,
+                ..Stroke::default()
+            };
+            overlay.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+        },
+    );
 }
 
 fn clip_rect(rect: Rect, size: FrameSize) -> Rect {
@@ -128,6 +226,88 @@ fn write_rgba_region(buffer: &mut SoftwareBuffer, rect: Rect, image: &RgbaImage)
     }
 }
 
+fn apply_rounded_mask(original: RgbaImage, blurred: RgbaImage, radius: i32) -> RgbaImage {
+    let width = blurred.width();
+    let height = blurred.height();
+    let Some(mask) = rounded_mask(width, height, radius) else {
+        return blurred;
+    };
+    let mut output = original;
+
+    for y in 0..height {
+        for x in 0..width {
+            let mask_alpha = u16::from(mask.get_pixel(x, y).0[3]);
+            if mask_alpha == 0 {
+                continue;
+            }
+            if mask_alpha == 255 {
+                output.put_pixel(x, y, *blurred.get_pixel(x, y));
+                continue;
+            }
+
+            let src = blurred.get_pixel(x, y).0;
+            let dst = output.get_pixel(x, y).0;
+            let mut blended = [0u8; 4];
+            for index in 0..4 {
+                blended[index] = (((u16::from(src[index]) * mask_alpha)
+                    + (u16::from(dst[index]) * (255 - mask_alpha))
+                    + 127)
+                    / 255) as u8;
+            }
+            output.put_pixel(x, y, image::Rgba(blended));
+        }
+    }
+
+    output
+}
+
+fn rounded_mask(width: u32, height: u32, radius: i32) -> Option<RgbaImage> {
+    let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
+    let path = rounded_rect_path(width as i32, height as i32, radius)?;
+    let mut paint = Paint::default();
+    paint.set_color_rgba8(255, 255, 255, 255);
+    paint.anti_alias = true;
+    pixmap.fill_path(
+        &path,
+        &paint,
+        FillRule::Winding,
+        Transform::identity(),
+        None,
+    );
+    RgbaImage::from_raw(width, height, pixmap.take())
+}
+
+fn rounded_rect_path(width: i32, height: i32, radius: i32) -> Option<tiny_skia::Path> {
+    if width <= 0 || height <= 0 {
+        return None;
+    }
+
+    let radius = radius.clamp(0, width.min(height) / 2) as f32;
+    let right = width as f32;
+    let bottom = height as f32;
+    let mut builder = PathBuilder::new();
+
+    if radius <= 0.0 {
+        builder.move_to(0.0, 0.0);
+        builder.line_to(right, 0.0);
+        builder.line_to(right, bottom);
+        builder.line_to(0.0, bottom);
+    } else {
+        builder.move_to(radius, 0.0);
+        builder.line_to(right - radius, 0.0);
+        builder.quad_to(right, 0.0, right, radius);
+        builder.line_to(right, bottom - radius);
+        builder.quad_to(right, bottom, right - radius, bottom);
+        builder.line_to(radius, bottom);
+        builder.quad_to(0.0, bottom, 0.0, bottom - radius);
+        builder.line_to(0.0, radius);
+        builder.quad_to(0.0, 0.0, radius, 0.0);
+    }
+
+    builder.close();
+    builder.finish()
+}
+
 const fn premultiply_channel(channel: u8, alpha: u8) -> u8 {
     ((channel as u16 * alpha as u16 + 127) / 255) as u8
 }
@@ -156,6 +336,9 @@ mod tests {
                 BackdropLayerMode::Solid,
                 ClearColor::rgba(255, 255, 255, 64),
                 0,
+                0,
+                None,
+                0,
             ),
         );
 
@@ -176,9 +359,64 @@ mod tests {
         draw_backdrop_layer(
             &mut buffer,
             Rect::new(0, 0, 4, 4),
-            BackdropLayerStyle::new(BackdropLayerMode::Blur, ClearColor::rgba(8, 10, 14, 0), 8),
+            BackdropLayerStyle::new(
+                BackdropLayerMode::Blur,
+                ClearColor::rgba(8, 10, 14, 0),
+                8,
+                0,
+                None,
+                0,
+            ),
         );
 
         assert_ne!(buffer.pixels(), before.as_slice());
+    }
+
+    #[test]
+    fn rounded_blur_layer_preserves_corner_pixels() {
+        let mut buffer =
+            SoftwareBuffer::solid(FrameSize::new(8, 8), ClearColor::opaque(0, 0, 0)).unwrap();
+        fill_rect(
+            &mut buffer,
+            Rect::new(0, 0, 8, 8),
+            ClearColor::opaque(255, 255, 255),
+        );
+
+        let before_corner = buffer.pixels()[..4].to_vec();
+        draw_backdrop_layer(
+            &mut buffer,
+            Rect::new(0, 0, 8, 8),
+            BackdropLayerStyle::new(
+                BackdropLayerMode::Blur,
+                ClearColor::rgba(8, 10, 14, 0),
+                8,
+                3,
+                None,
+                0,
+            ),
+        );
+
+        assert_eq!(&buffer.pixels()[..4], before_corner.as_slice());
+    }
+
+    #[test]
+    fn draws_rounded_layer_border() {
+        let mut buffer =
+            SoftwareBuffer::solid(FrameSize::new(8, 8), ClearColor::opaque(0, 0, 0)).unwrap();
+
+        draw_backdrop_layer(
+            &mut buffer,
+            Rect::new(1, 1, 6, 6),
+            BackdropLayerStyle::new(
+                BackdropLayerMode::Solid,
+                ClearColor::rgba(8, 10, 14, 0),
+                0,
+                2,
+                Some(ClearColor::opaque(255, 255, 255)),
+                1,
+            ),
+        );
+
+        assert!(buffer.pixels()[4 * (8 + 3) + 2] > 0);
     }
 }

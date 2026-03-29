@@ -341,6 +341,24 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.battery_top_offset(), Some(-24));
     assert_eq!(config.visuals.battery_right_offset(), Some(8));
     assert_eq!(config.visuals.battery_gap(), Some(8));
+    assert!(!config.visuals.layer_enabled());
+    assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
+    assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Center);
+    assert_eq!(config.visuals.layer_width(), Some(560));
+    assert_eq!(config.visuals.layer_offset_x(), Some(0));
+    assert_eq!(config.visuals.layer_left_padding(), Some(0));
+    assert_eq!(config.visuals.layer_right_padding(), Some(0));
+    assert_eq!(config.visuals.layer_top_padding(), Some(0));
+    assert_eq!(config.visuals.layer_bottom_padding(), Some(0));
+    assert_eq!(config.visuals.layer_color(), Some(RgbColor::rgb(8, 10, 14)));
+    assert_eq!(config.visuals.layer_opacity(), Some(42));
+    assert_eq!(config.visuals.layer_blur_radius(), Some(12));
+    assert_eq!(config.visuals.layer_radius(), Some(0));
+    assert_eq!(
+        config.visuals.layer_border_color(),
+        Some(RgbColor::rgb(255, 255, 255))
+    );
+    assert_eq!(config.visuals.layer_border_width(), Some(0));
     assert_eq!(config.visuals.weather_size(), Some(2));
     assert_eq!(config.visuals.weather_opacity(), Some(50));
     assert_eq!(
@@ -1011,9 +1029,16 @@ border_color = "#DDDDDD"
             alignment = "right"
             width = 520
             offset_x = -12
+            left_margin = 24
+            right_margin = 36
+            top_margin = 18
+            bottom_margin = 22
             color = "#080A0E"
             opacity = 44
             blur_radius = 16
+            radius = 20
+            border_color = "rgba(255, 255, 255, 0.18)"
+            border_width = 2
 
             [visuals.weather]
             size = 3
@@ -1148,9 +1173,19 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Right);
     assert_eq!(config.visuals.layer_width(), Some(520));
     assert_eq!(config.visuals.layer_offset_x(), Some(-12));
+    assert_eq!(config.visuals.layer_left_padding(), Some(24));
+    assert_eq!(config.visuals.layer_right_padding(), Some(36));
+    assert_eq!(config.visuals.layer_top_padding(), Some(18));
+    assert_eq!(config.visuals.layer_bottom_padding(), Some(22));
     assert_eq!(config.visuals.layer_color(), Some(RgbColor::rgb(8, 10, 14)));
     assert_eq!(config.visuals.layer_opacity(), Some(44));
     assert_eq!(config.visuals.layer_blur_radius(), Some(16));
+    assert_eq!(config.visuals.layer_radius(), Some(20));
+    assert_eq!(
+        config.visuals.layer_border_color(),
+        Some(RgbColor::rgba(255, 255, 255, 46))
+    );
+    assert_eq!(config.visuals.layer_border_width(), Some(2));
     assert_eq!(
         config.visuals.date_color(),
         Some(RgbColor::rgb(255, 255, 255))

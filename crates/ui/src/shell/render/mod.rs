@@ -18,8 +18,8 @@ use veila_renderer::{
 use self::{
     cache::SceneTextInputs,
     layout::{
-        AnchorOffsets, FooterHeights, InputPlacement, RoleAnchors, SceneMetrics, hero_block_x,
-        layer_center_x, layer_rect, role_anchors, top_role_top,
+        AnchorOffsets, FooterHeights, InputPlacement, LayerPlacement, RoleAnchors, SceneMetrics,
+        hero_block_x, layer_center_x, layer_rect, role_anchors, top_role_top,
     },
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
@@ -108,15 +108,17 @@ impl ShellState {
     }
 
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
-        let layer_center_x =
-            (self.theme.layer_enabled && self.theme.input_center_in_layer).then(|| {
-                layer_center_x(
-                    size.width as i32,
-                    self.theme.layer_alignment,
-                    self.theme.layer_width,
-                    self.theme.layer_offset_x,
-                )
-            });
+        let layer_placement = LayerPlacement {
+            alignment: self.theme.layer_alignment,
+            width: self.theme.layer_width,
+            offset_x: self.theme.layer_offset_x,
+            left_padding: self.theme.layer_left_padding,
+            right_padding: self.theme.layer_right_padding,
+            top_padding: self.theme.layer_top_padding,
+            bottom_padding: self.theme.layer_bottom_padding,
+        };
+        let layer_center_x = (self.theme.layer_enabled && self.theme.input_center_in_layer)
+            .then(|| layer_center_x(size.width as i32, layer_placement));
         let metrics = SceneMetrics::from_frame_with_input_placement(
             size.width as i32,
             size.height as i32,
@@ -221,7 +223,14 @@ impl ShellState {
         draw_backdrop_layer(
             buffer,
             rect,
-            BackdropLayerStyle::new(mode, self.theme.layer_color, self.theme.layer_blur_radius),
+            BackdropLayerStyle::new(
+                mode,
+                self.theme.layer_color,
+                self.theme.layer_blur_radius,
+                self.theme.layer_radius,
+                self.theme.layer_border_color,
+                self.theme.layer_border_width,
+            ),
         );
     }
 
@@ -229,9 +238,15 @@ impl ShellState {
         Some(layer_rect(
             size.width as i32,
             size.height as i32,
-            self.theme.layer_alignment,
-            self.theme.layer_width,
-            self.theme.layer_offset_x,
+            LayerPlacement {
+                alignment: self.theme.layer_alignment,
+                width: self.theme.layer_width,
+                offset_x: self.theme.layer_offset_x,
+                left_padding: self.theme.layer_left_padding,
+                right_padding: self.theme.layer_right_padding,
+                top_padding: self.theme.layer_top_padding,
+                bottom_padding: self.theme.layer_bottom_padding,
+            },
         ))
     }
 
@@ -347,9 +362,15 @@ impl ShellState {
                     .then(|| {
                         layer_center_x(
                             buffer.size().width as i32,
-                            self.theme.layer_alignment,
-                            self.theme.layer_width,
-                            self.theme.layer_offset_x,
+                            LayerPlacement {
+                                alignment: self.theme.layer_alignment,
+                                width: self.theme.layer_width,
+                                offset_x: self.theme.layer_offset_x,
+                                left_padding: self.theme.layer_left_padding,
+                                right_padding: self.theme.layer_right_padding,
+                                top_padding: self.theme.layer_top_padding,
+                                bottom_padding: self.theme.layer_bottom_padding,
+                            },
                         )
                     });
                 let x = hero_block_x(
@@ -369,9 +390,15 @@ impl ShellState {
                         (self.theme.layer_enabled && self.theme.clock_center_in_layer).then(|| {
                             layer_center_x(
                                 buffer.size().width as i32,
-                                self.theme.layer_alignment,
-                                self.theme.layer_width,
-                                self.theme.layer_offset_x,
+                                LayerPlacement {
+                                    alignment: self.theme.layer_alignment,
+                                    width: self.theme.layer_width,
+                                    offset_x: self.theme.layer_offset_x,
+                                    left_padding: self.theme.layer_left_padding,
+                                    right_padding: self.theme.layer_right_padding,
+                                    top_padding: self.theme.layer_top_padding,
+                                    bottom_padding: self.theme.layer_bottom_padding,
+                                },
                             )
                         });
                     let x = hero_block_x(
