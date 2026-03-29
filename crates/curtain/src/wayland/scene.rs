@@ -34,12 +34,6 @@ impl CurtainApp {
         self.lock_surfaces[index].size = Some(size);
         self.maybe_start_background_render();
 
-        if let Err(error) = self.prepare_background(index, size) {
-            self.failure_reason = Some(format!("failed to prepare curtain background: {error:#}"));
-            self.exit_requested = true;
-            return;
-        }
-
         if let Err(error) = self.render_surface(&surface, size, queue_handle) {
             self.failure_reason = Some(format!("failed to render curtain surface: {error:#}"));
             self.exit_requested = true;
@@ -147,9 +141,20 @@ impl CurtainApp {
         let timing_enabled = tracing::enabled!(tracing::Level::DEBUG);
         let total_started_at = timing_enabled.then(Instant::now);
         let first_frame = self.lock_surfaces[index].shm_pool.is_none();
+        let frame_size = FrameSize::new(size.0, size.1);
+        let revision = self.ui_shell.static_scene_revision();
         let background_started_at = timing_enabled.then(Instant::now);
-        let background_refreshed = self.prepare_background(index, size)?;
-        let scene_base_refreshed = self.prepare_scene_base(index, size, background_refreshed)?;
+        let scene_base_cache_ready =
+            self.try_prepare_scene_base_without_background(index, frame_size, revision)?;
+        let background_refreshed = if scene_base_cache_ready.is_some() {
+            false
+        } else {
+            self.prepare_background(index, size)?
+        };
+        let scene_base_refreshed = match scene_base_cache_ready {
+            Some(refreshed) => refreshed,
+            None => self.prepare_scene_base(index, size, background_refreshed)?,
+        };
         let background_prepare_ms = background_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
@@ -289,15 +294,10 @@ impl CurtainApp {
             return Ok(false);
         }
 
-        if let (Some(path), Some(variant)) = (
-            self.background_path.as_deref(),
-            self.ui_shell.layer_cache_variant(),
-        ) && let Ok(Some(buffer)) =
-            load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
+        if let Some(refreshed) =
+            self.try_prepare_scene_base_without_background(index, frame_size, revision)?
         {
-            self.lock_surfaces[index].scene_base = Some(buffer);
-            self.lock_surfaces[index].scene_base_revision = revision;
-            return Ok(true);
+            return Ok(refreshed);
         }
 
         let Some(background) = self.lock_surfaces[index].background.as_ref() else {
@@ -310,6 +310,56 @@ impl CurtainApp {
         self.lock_surfaces[index].scene_base_revision = revision;
 
         Ok(true)
+    }
+
+    fn try_prepare_scene_base_without_background(
+        &mut self,
+        index: usize,
+        frame_size: FrameSize,
+        revision: u64,
+    ) -> Result<Option<bool>> {
+        let needs_refresh = self.lock_surfaces[index]
+            .scene_base
+            .as_ref()
+            .map(|buffer| buffer.size() != frame_size)
+            .unwrap_or(true)
+            || self.lock_surfaces[index].scene_base_revision != revision;
+
+        if !needs_refresh {
+            return Ok(Some(false));
+        }
+
+        if let Some(buffer) = self
+            .lock_surfaces
+            .iter()
+            .enumerate()
+            .find(|(candidate_index, surface)| {
+                *candidate_index != index
+                    && surface.scene_base_revision == revision
+                    && surface
+                        .scene_base
+                        .as_ref()
+                        .is_some_and(|buffer| buffer.size() == frame_size)
+            })
+            .and_then(|(_, surface)| surface.scene_base.clone())
+        {
+            self.lock_surfaces[index].scene_base = Some(buffer);
+            self.lock_surfaces[index].scene_base_revision = revision;
+            return Ok(Some(true));
+        }
+
+        if let (Some(path), Some(variant)) = (
+            self.background_path.as_deref(),
+            self.ui_shell.layer_cache_variant(),
+        ) && let Ok(Some(buffer)) =
+            load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
+        {
+            self.lock_surfaces[index].scene_base = Some(buffer);
+            self.lock_surfaces[index].scene_base_revision = revision;
+            return Ok(Some(true));
+        }
+
+        Ok(None)
     }
     fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> (u32, u32) {
         if requested.0 > 0 && requested.1 > 0 {
