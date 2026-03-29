@@ -35,6 +35,22 @@ pub(super) struct AnchorOffsets {
     pub weather_bottom_padding: Option<i32>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct FooterHeights {
+    pub render: i32,
+    pub clearance: i32,
+}
+
+impl FooterHeights {
+    #[cfg(test)]
+    const fn same(height: i32) -> Self {
+        Self {
+            render: height,
+            clearance: height,
+        }
+    }
+}
+
 impl SceneMetrics {
     #[cfg(test)]
     pub(super) fn from_frame(
@@ -119,13 +135,14 @@ pub(super) fn role_anchors(
     hero_height: i32,
     auth_anchor_height: i32,
     auth_render_height: i32,
-    footer_height: i32,
+    footer_heights: FooterHeights,
     input_alignment: InputAlignment,
     offsets: AnchorOffsets,
 ) -> RoleAnchors {
     let hero_y = top_role_top(frame_height, offsets.header_top);
-    let footer_y =
-        frame_height - footer_height - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
+    let footer_y = frame_height
+        - footer_heights.render
+        - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
     let hero_bottom = hero_y + hero_height;
     let minimum_gap = if hero_height > 0 && auth_anchor_height > 0 {
         18
@@ -137,10 +154,13 @@ pub(super) fn role_anchors(
     let input_offset_y = offsets.input_offset_y.unwrap_or(0);
     let top_auth_y = vertical_padding.max(hero_bottom + minimum_gap);
     let centered_auth_y = centered_role_top(frame_height, auth_anchor_height, 0.5);
+    let auth_footer_y = frame_height
+        - footer_heights.clearance
+        - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
     let bottom_auth_y = (frame_height - vertical_padding - auth_render_height)
-        .min(footer_y - auth_render_height - 24);
+        .min(auth_footer_y - auth_render_height - 24);
     let min_auth_y = hero_bottom + minimum_gap;
-    let max_auth_y = footer_y - auth_render_height - 24;
+    let max_auth_y = auth_footer_y - auth_render_height - 24;
 
     if max_auth_y < min_auth_y {
         let combined_height = hero_height + minimum_gap + auth_render_height;
@@ -223,7 +243,7 @@ pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) ->
 mod tests {
     use veila_common::InputAlignment;
 
-    use super::{AnchorOffsets, InputPlacement, SceneMetrics, role_anchors};
+    use super::{AnchorOffsets, FooterHeights, InputPlacement, SceneMetrics, role_anchors};
 
     #[test]
     fn falls_back_to_stacked_roles_when_they_would_overlap() {
@@ -232,7 +252,7 @@ mod tests {
             160,
             170,
             170,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -314,7 +334,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -330,7 +350,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -339,7 +359,7 @@ mod tests {
             54,
             197,
             235,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -355,7 +375,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -364,7 +384,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets {
                 header_top: Some(-12),
@@ -383,7 +403,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -392,7 +412,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::CenterCenter,
             AnchorOffsets {
                 auth_stack: Some(16),
@@ -411,7 +431,7 @@ mod tests {
             54,
             197,
             197,
-            80,
+            FooterHeights::same(80),
             InputAlignment::CenterCenter,
             AnchorOffsets::default(),
         );
@@ -420,7 +440,7 @@ mod tests {
             54,
             197,
             197,
-            80,
+            FooterHeights::same(80),
             InputAlignment::CenterCenter,
             AnchorOffsets {
                 weather_bottom_padding: Some(72),
@@ -500,7 +520,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::TopCenter,
             AnchorOffsets::default(),
         );
@@ -509,7 +529,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::TopCenter,
             AnchorOffsets {
                 input_offset_y: Some(22),
@@ -528,7 +548,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::BottomCenter,
             AnchorOffsets::default(),
         );
@@ -537,7 +557,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::BottomCenter,
             AnchorOffsets {
                 input_offset_y: Some(24),
@@ -556,7 +576,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::TopCenter,
             AnchorOffsets::default(),
         );
@@ -565,7 +585,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::TopCenter,
             AnchorOffsets {
                 input_vertical_padding: Some(180),
@@ -584,7 +604,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::TopCenter,
             AnchorOffsets::default(),
         );
@@ -593,7 +613,7 @@ mod tests {
             54,
             197,
             197,
-            0,
+            FooterHeights::same(0),
             InputAlignment::BottomCenter,
             AnchorOffsets::default(),
         );

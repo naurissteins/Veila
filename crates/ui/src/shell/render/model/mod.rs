@@ -218,6 +218,12 @@ impl SceneWeatherBlocks {
             + self.location.height as i32
     }
 
+    pub(super) fn width(&self) -> i32 {
+        self.icon_size
+            .max(self.temperature.width as i32)
+            .max(self.location.width as i32)
+    }
+
     pub(super) fn clamped_icon_size(size: i32) -> i32 {
         size.clamp(Self::MIN_ICON_SIZE, Self::MAX_ICON_SIZE)
     }

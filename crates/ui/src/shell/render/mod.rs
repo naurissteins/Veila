@@ -13,7 +13,8 @@ use veila_renderer::SoftwareBuffer;
 use self::{
     cache::SceneTextInputs,
     layout::{
-        AnchorOffsets, InputPlacement, RoleAnchors, SceneMetrics, role_anchors, top_role_top,
+        AnchorOffsets, FooterHeights, InputPlacement, RoleAnchors, SceneMetrics, role_anchors,
+        top_role_top,
     },
     model::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget},
     widgets::{
@@ -122,12 +123,19 @@ impl ShellState {
             self.theme.username_gap,
             self.theme.status_gap,
         );
+        let footer_render_height =
+            model.total_height_for_role(LayoutRole::Footer, metrics, &self.status);
+        let footer_clearance_height =
+            self.footer_clearance_height(&model, size.width as i32, metrics);
         let anchors = role_anchors(
             size.height as i32,
             model.anchor_height_for_role(LayoutRole::Hero, metrics, &self.status),
             model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
             model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
-            model.total_height_for_role(LayoutRole::Footer, metrics, &self.status),
+            FooterHeights {
+                render: footer_render_height,
+                clearance: footer_clearance_height,
+            },
             self.theme.input_alignment,
             AnchorOffsets {
                 auth_stack: self.theme.auth_stack_offset,
@@ -143,6 +151,38 @@ impl ShellState {
             model,
             anchors,
         }
+    }
+
+    fn footer_clearance_height(
+        &self,
+        model: &SceneModel,
+        frame_width: i32,
+        metrics: SceneMetrics,
+    ) -> i32 {
+        let auth_left = metrics.auth_center_x - metrics.content_width as i32 / 2;
+        let auth_right = metrics.auth_center_x + metrics.content_width as i32 / 2;
+
+        model
+            .sections_for_role(LayoutRole::Footer)
+            .filter_map(|section| match &section.widget {
+                SceneWidget::Weather(weather) => {
+                    let widget_left = match weather.alignment {
+                        veila_common::WeatherAlignment::Left => {
+                            weather.horizontal_padding + weather.left_offset
+                        }
+                        veila_common::WeatherAlignment::Right => {
+                            frame_width - weather.horizontal_padding - weather.width()
+                                + weather.left_offset
+                        }
+                    };
+                    let widget_right = widget_left + weather.width();
+
+                    horizontal_ranges_overlap(auth_left, auth_right, widget_left, widget_right)
+                        .then_some(section.height(metrics, &self.status) + section.gap_after)
+                }
+                _ => Some(section.height(metrics, &self.status) + section.gap_after),
+            })
+            .sum()
     }
 
     fn render_role(
@@ -594,6 +634,10 @@ impl ShellState {
             },
         }
     }
+}
+
+fn horizontal_ranges_overlap(left_a: i32, right_a: i32, left_b: i32, right_b: i32) -> bool {
+    left_a < right_b && left_b < right_a
 }
 
 fn apply_block_opacity(

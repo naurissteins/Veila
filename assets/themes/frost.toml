@@ -1,20 +1,32 @@
 [background]
 mode = "file"
 path = "/home/ns/Downloads/colin-watts-M1ObxvsWVhY-unsplash.jpg"
-color = "#202833"
-blur_radius = 10
-dim_strength = 54
+color = "#ffffff"
+blur_radius = 0
+dim_strength = 64
 tint = "rgba(255, 255, 255, 0.1)"
 tint_opacity = 0
 
+[lock]
+user_hint = "Password"
+show_username = false
+# username = "Billy Ocean"
+# avatar_path = ""
+
+[weather]
+enabled = true
+location = "Boracay"
+refresh_minutes = 15
+unit = "celsius"
+
 [visuals.clock]
-format = "12h"
+format = "24h"
 style = "stacked"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
-font_family = "Raleway"
-font_weight = 600
+font_family = "Nunito"
+font_weight = 800
 font_style = "italic"
 color = "#ffffff"
 opacity = 40
@@ -22,7 +34,6 @@ size = 54
 gap = 20
 
 [visuals.date]
-enabled = false
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "#C8D8F2"
@@ -53,9 +64,22 @@ opacity = 60
 
 [visuals.avatar]
 enabled = false
+size = 192
+gap = 24
+background_color = "#ffffff"
+background_opacity = 6
+placeholder_padding = 28
+ring_color = "#94B2FF"
+ring_width = 0
+icon_color = "#ffffff"
 
 [visuals.username]
-enabled = false
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "#ffffff"
+opacity = 84
+size = 4
+gap = 28
 
 [visuals.keyboard]
 background_size = 46
@@ -67,20 +91,56 @@ top_offset = -44
 right_offset = 8
 
 [visuals.battery]
-enabled = true
-background_color = "rgba(234, 242, 255, 0.08)"
-color = "#F8FBFF"
+background_color = "rgba(255, 255, 255, 0.05)"
+background_size = 46
+color = "#ffffff"
+opacity = 68
+size = 20
+top_offset = -44
+right_offset = 8
+gap = 8
 
 [visuals.weather]
-enabled = false
-alignment = "right"
-horizontal_padding = 56
-temperature_color = "#F8FBFF"
-location_color = "#C8D8F2"
+size = 2
+temperature_color = "#FFFFFF"
+location_color = "#D6E3FF"
+temperature_size = 6
+location_size = 3
+icon_size = 40
+temperature_font_family = "Nunito"
+temperature_font_style = "italic"
+temperature_font_weight = 800
+temperature_letter_spacing = 0
+location_font_family = "Google Sans Flex"
+location_font_weight = 400
+icon_gap = 6
+location_gap = 1
+opacity = 80
+left_offset = 0
+bottom_offset = 0
+left_padding = 48
+bottom_padding = 48
+alignment = "left"
 
 [visuals.now_playing]
-enabled = false
-title_color = "#F8FBFF"
-artist_color = "#C8D8F2"
-opacity = 78
-artwork_radius = 12
+content_gap = 18
+fade_duration_ms = 320
+title_color = "#ffffff"
+artist_color = "#ffffff"
+title_size = 2
+artist_size = 2
+artwork_size = 44
+artwork_radius = 8
+right_padding = 48
+bottom_padding = 48
+right_offset = 0
+bottom_offset = 0
+opacity = 72
+title_opacity = 74
+artist_opacity = 54
+artwork_opacity = 90
+title_font_family = "Google Sans Flex"
+title_font_weight = 400
+artist_font_family = "Google Sans Flex"
+artist_font_weight = 400
+width = 380

@@ -166,14 +166,14 @@ fn resolves_bundled_google_sans_flex_postscript_name_to_family_name() {
 }
 
 #[test]
-fn resolves_bundled_raleway_font_family_from_loaded_database() {
-    assert_eq!(resolve_font_family("Raleway").as_deref(), Some("Raleway"));
+fn resolves_bundled_nunito_font_family_from_loaded_database() {
+    assert_eq!(resolve_font_family("Nunito").as_deref(), Some("Nunito"));
 }
 
 #[test]
-fn resolves_bundled_raleway_postscript_name_to_family_name() {
+fn resolves_bundled_nunito_postscript_name_to_family_name() {
     assert_eq!(
-        resolve_font_family("Raleway-SemiBoldItalic").as_deref(),
-        Some("Raleway")
+        resolve_font_family("Nunito-ExtraBoldItalic").as_deref(),
+        Some("Nunito")
     );
 }

@@ -1,6 +1,9 @@
-use super::{SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics};
+use super::{
+    SceneTextInputs, ShellState, TextLayoutCache, layout::SceneMetrics, model::LayoutRole,
+};
 use crate::shell::{ShellStatus, ShellTheme};
-use veila_common::{ClockStyle, InputAlignment, WeatherAlignment};
+use veila_common::{ClockStyle, InputAlignment, WeatherAlignment, WeatherUnit};
+use veila_common::{WeatherCondition, WeatherSnapshot};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     text::{TextStyle, bundled_clock_font_family},
@@ -892,6 +895,73 @@ fn scene_metrics_use_configured_input_dimensions() {
 
     assert_eq!(metrics.input_width, 280);
     assert_eq!(metrics.input_height, 54);
+}
+
+#[test]
+fn bottom_center_auth_does_not_reserve_left_weather_footer_space() {
+    let theme = ShellTheme {
+        input_alignment: InputAlignment::BottomCenter,
+        weather_enabled: true,
+        weather_alignment: WeatherAlignment::Left,
+        weather_horizontal_padding: Some(48),
+        weather_bottom_padding: Some(48),
+        ..ShellTheme::default()
+    };
+    let without_weather = ShellState::new(theme.clone(), None, None, true);
+    let with_weather = ShellState::new_with_username_and_weather(
+        theme,
+        None,
+        None,
+        None,
+        true,
+        Some(String::from("Riga")),
+        Some(WeatherSnapshot {
+            temperature_celsius: 7,
+            condition: WeatherCondition::Rain,
+            fetched_at_unix: 0,
+        }),
+        WeatherUnit::Celsius,
+        None,
+    );
+
+    let without_layout = without_weather.scene_layout(FrameSize::new(1280, 720));
+    let with_layout = with_weather.scene_layout(FrameSize::new(1280, 720));
+
+    assert_eq!(with_layout.anchors.auth_y, without_layout.anchors.auth_y);
+}
+
+#[test]
+fn left_weather_footer_anchor_uses_real_widget_height() {
+    let theme = ShellTheme {
+        weather_enabled: true,
+        weather_alignment: WeatherAlignment::Left,
+        weather_horizontal_padding: Some(48),
+        weather_bottom_padding: Some(48),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new_with_username_and_weather(
+        theme,
+        None,
+        None,
+        None,
+        true,
+        Some(String::from("Riga")),
+        Some(WeatherSnapshot {
+            temperature_celsius: 7,
+            condition: WeatherCondition::Rain,
+            fetched_at_unix: 0,
+        }),
+        WeatherUnit::Celsius,
+        None,
+    );
+
+    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let footer_height =
+        layout
+            .model
+            .total_height_for_role(LayoutRole::Footer, layout.metrics, &shell.status);
+
+    assert_eq!(layout.anchors.footer_y, 720 - footer_height - 48);
 }
 
 #[test]

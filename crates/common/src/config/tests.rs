@@ -743,8 +743,8 @@ fn loads_bundled_theme_before_user_overrides() {
 
     let loaded = AppConfig::load(Some(&path)).expect("config should load");
 
-    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Raleway"));
-    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(600));
+    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Nunito"));
+    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(800));
     assert_eq!(
         loaded.config.visuals.clock_font_style(),
         Some(FontStyle::Italic)
@@ -752,7 +752,7 @@ fn loads_bundled_theme_before_user_overrides() {
     assert_eq!(loaded.config.visuals.clock_size(), Some(16));
     assert_eq!(
         loaded.config.visuals.weather_alignment(),
-        WeatherAlignment::Right
+        WeatherAlignment::Left
     );
     assert_eq!(
         loaded.config.visuals.now_playing_title_color(),
