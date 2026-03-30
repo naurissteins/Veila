@@ -131,6 +131,17 @@ pub fn bundled_theme_names() -> Result<Vec<String>> {
     Ok(names)
 }
 
+pub fn read_theme_source(
+    explicit_config_path: Option<&Path>,
+    theme: &str,
+) -> Result<(PathBuf, String)> {
+    validate_theme_name(theme)?;
+    let config_dir = config_dir_for_theme_lookup(explicit_config_path);
+    let path = resolve_theme_path(theme, config_dir.as_deref())?;
+    let raw = fs::read_to_string(&path)?;
+    Ok((path, raw))
+}
+
 pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<PathBuf> {
     validate_theme_name(theme)?;
 
@@ -144,7 +155,7 @@ pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<
         })?,
     };
 
-    load_theme_value(theme, path.parent())?;
+    resolve_theme_path(theme, path.parent())?;
 
     let mut config_value = if path.exists() {
         let raw = fs::read_to_string(&path)?;
@@ -187,6 +198,13 @@ fn bundled_theme_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/themes")
 }
 
+fn config_dir_for_theme_lookup(explicit_config_path: Option<&Path>) -> Option<PathBuf> {
+    explicit_config_path
+        .and_then(Path::parent)
+        .map(Path::to_path_buf)
+        .or_else(|| default_path().and_then(|path| path.parent().map(Path::to_path_buf)))
+}
+
 fn parse_toml_value(input: &str) -> Result<Value> {
     toml::from_str(input).map_err(Into::into)
 }
@@ -225,20 +243,24 @@ fn validate_theme_name(theme: &str) -> Result<()> {
 }
 
 fn load_theme_value(theme: &str, config_dir: Option<&Path>) -> Result<Value> {
+    let path = resolve_theme_path(theme, config_dir)?;
+    let raw = fs::read_to_string(path)?;
+    parse_toml_value(&raw)
+}
+
+fn resolve_theme_path(theme: &str, config_dir: Option<&Path>) -> Result<PathBuf> {
     let file_name = format!("{theme}.toml");
 
     if let Some(config_dir) = config_dir {
         let user_theme_path = config_dir.join("themes").join(&file_name);
         if user_theme_path.exists() {
-            let raw = fs::read_to_string(user_theme_path)?;
-            return parse_toml_value(&raw);
+            return Ok(user_theme_path);
         }
     }
 
     let bundled_theme_path = bundled_theme_dir().join(&file_name);
     if bundled_theme_path.exists() {
-        let raw = fs::read_to_string(bundled_theme_path)?;
-        return parse_toml_value(&raw);
+        return Ok(bundled_theme_path);
     }
 
     Err(VeilaError::ThemeNotFound(theme.to_owned()))

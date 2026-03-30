@@ -25,6 +25,7 @@ pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> Result<()> {
     let control_mode_count = usize::from(options.lock_now)
+        + usize::from(options.print_theme.is_some())
         + usize::from(options.set_theme.is_some())
         + usize::from(options.stop)
         + usize::from(options.list_themes)
@@ -34,11 +35,16 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
         bail!(
-            "use only one of --lock-now, --set-theme, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
+            "use only one of --lock-now, --print-theme, --set-theme, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
         );
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
+    if let Some(theme) = options.print_theme.as_deref() {
+        print_theme_source(theme, options.config_path.as_deref())?;
+        return Ok(());
+    }
+
     if let Some(theme) = options.set_theme.as_deref() {
         set_theme_and_reload(theme, options.config_path.as_deref(), &daemon_socket_path).await?;
         return Ok(());
@@ -116,6 +122,15 @@ fn print_available_themes() -> Result<()> {
     for theme in veila_common::config::bundled_theme_names()? {
         println!("{theme}");
     }
+    Ok(())
+}
+
+fn print_theme_source(theme: &str, config_path: Option<&std::path::Path>) -> Result<()> {
+    let (path, raw) = veila_common::config::read_theme_source(config_path, theme)?;
+    println!("theme={theme}");
+    println!("source={}", path.display());
+    println!();
+    print!("{raw}");
     Ok(())
 }
 

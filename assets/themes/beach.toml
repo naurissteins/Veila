@@ -1,3 +1,4 @@
+# Wallpaper by Colin Watts on Unsplash: https://unsplash.com/photos/boat-on-body-of-water-under-cloudy-sky-M1ObxvsWVhY
 [background]
 mode = "file"
 path = "/home/ns/Downloads/colin-watts-M1ObxvsWVhY-unsplash.jpg"
@@ -10,8 +11,6 @@ tint_opacity = 0
 [lock]
 user_hint = "Password"
 show_username = false
-# username = "Billy Ocean"
-# avatar_path = ""
 
 [battery]
 enabled = true
@@ -106,6 +105,7 @@ right_offset = 8
 gap = 8
 
 [visuals.weather]
+alignment = "left"
 size = 2
 temperature_color = "#FFFFFF"
 location_color = "#D6E3FF"
@@ -125,7 +125,6 @@ left_offset = 0
 bottom_offset = 0
 left_padding = 48
 bottom_padding = 48
-alignment = "left"
 
 [visuals.now_playing]
 content_gap = 18

@@ -943,6 +943,15 @@ fn set_theme_in_config_preserves_existing_overrides() {
 }
 
 #[test]
+fn reads_bundled_theme_source() {
+    let (path, raw) = super::read_theme_source(None, "beach").expect("theme source should load");
+
+    assert!(path.ends_with("assets/themes/beach.toml"));
+    assert!(raw.contains("font_family = \"Nunito\""));
+    assert!(raw.contains("style = \"stacked\""));
+}
+
+#[test]
 fn infers_file_mode_from_legacy_background_path() {
     let config = AppConfig::from_toml_str(
         r#"
