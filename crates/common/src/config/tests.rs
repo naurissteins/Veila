@@ -194,7 +194,7 @@ fn first_run_defaults_match_bundled_theme() {
             .resolved_path()
             .is_some_and(|path| path.ends_with("assets/bg/abstract-blur-blue.jpg"))
     );
-    assert_eq!(config.background.blur_radius, 20);
+    assert_eq!(config.background.blur_radius, 12);
     assert_eq!(config.background.dim_strength, 54);
     assert_eq!(config.background.tint, Some(RgbColor::rgba(8, 10, 14, 102)));
     assert_eq!(config.background.tint_opacity, 0);
@@ -806,7 +806,7 @@ fn loads_second_bundled_theme() {
     let config = AppConfig::load_from_file(&path).expect("config should load");
 
     assert_eq!(config.background.color, RgbColor::rgb(0, 0, 0));
-    assert_eq!(config.background.blur_radius, 20);
+    assert_eq!(config.background.blur_radius, 12);
     assert_eq!(config.visuals.clock_font_family(), Some("Google Sans Flex"));
     assert_eq!(config.visuals.clock_font_weight(), Some(400));
     assert_eq!(
@@ -878,6 +878,65 @@ fn errors_for_unknown_theme_preset() {
     let error = AppConfig::load(Some(&path)).expect_err("theme should fail");
 
     assert!(matches!(error, VeilaError::ThemeNotFound(theme) if theme == "missing_theme"));
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn set_theme_in_config_creates_missing_file() {
+    let dir = std::env::temp_dir().join(format!("veila-set-theme-create-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+
+    let written_path = super::set_theme_in_config(Some(&path), "beach").expect("theme should set");
+
+    assert_eq!(written_path, path);
+    let raw = fs::read_to_string(&written_path).expect("written config");
+    assert!(raw.contains("theme = \"beach\""));
+
+    let loaded = AppConfig::load(Some(&written_path)).expect("config should load");
+    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Nunito"));
+    assert_eq!(
+        loaded.config.visuals.clock_font_style(),
+        Some(FontStyle::Italic)
+    );
+
+    fs::remove_file(written_path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn set_theme_in_config_preserves_existing_overrides() {
+    let dir = std::env::temp_dir().join(format!("veila-set-theme-preserve-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r#"
+            [lock]
+            show_username = false
+
+            [visuals.input]
+            width = 420
+        "#,
+    )
+    .expect("config file");
+
+    super::set_theme_in_config(Some(&path), "city-lights").expect("theme should set");
+
+    let raw = fs::read_to_string(&path).expect("written config");
+    assert!(raw.contains("theme = \"city-lights\""));
+    assert!(raw.contains("show_username = false"));
+    assert!(raw.contains("width = 420"));
+
+    let loaded = AppConfig::load(Some(&path)).expect("config should load");
+    assert!(!loaded.config.lock.show_username);
+    assert_eq!(loaded.config.visuals.input_width(), Some(420));
+    assert_eq!(
+        loaded.config.visuals.clock_font_family(),
+        Some("Google Sans Flex")
+    );
 
     fs::remove_file(path).ok();
     fs::remove_dir(dir).ok();

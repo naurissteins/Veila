@@ -8,7 +8,7 @@ mod visuals;
 mod weather;
 
 use std::{
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -129,6 +129,50 @@ pub fn bundled_theme_names() -> Result<Vec<String>> {
     }
     names.sort_unstable();
     Ok(names)
+}
+
+pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<PathBuf> {
+    validate_theme_name(theme)?;
+
+    let path = match explicit_path {
+        Some(path) => path.to_path_buf(),
+        None => default_path().ok_or_else(|| {
+            VeilaError::ConfigIo(io::Error::new(
+                io::ErrorKind::NotFound,
+                "failed to resolve default config path",
+            ))
+        })?,
+    };
+
+    load_theme_value(theme, path.parent())?;
+
+    let mut config_value = if path.exists() {
+        let raw = fs::read_to_string(&path)?;
+        parse_toml_value(&raw)?
+    } else {
+        Value::Table(Default::default())
+    };
+
+    let Some(table) = config_value.as_table_mut() else {
+        return Err(VeilaError::ConfigIo(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "top-level config must be a TOML table",
+        )));
+    };
+
+    table.insert(String::from("theme"), Value::String(theme.to_owned()));
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let encoded = toml::to_string_pretty(&config_value).map_err(|error| {
+        VeilaError::ConfigIo(io::Error::other(format!(
+            "failed to encode config after setting theme: {error}"
+        )))
+    })?;
+    fs::write(&path, encoded)?;
+    Ok(path)
 }
 
 fn default_path() -> Option<PathBuf> {

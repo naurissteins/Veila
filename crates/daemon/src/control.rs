@@ -25,6 +25,7 @@ pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> Result<()> {
     let control_mode_count = usize::from(options.lock_now)
+        + usize::from(options.set_theme.is_some())
         + usize::from(options.stop)
         + usize::from(options.list_themes)
         + usize::from(options.status)
@@ -33,11 +34,16 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
         bail!(
-            "use only one of --lock-now, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
+            "use only one of --lock-now, --set-theme, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
         );
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
+    if let Some(theme) = options.set_theme.as_deref() {
+        set_theme_and_reload(theme, options.config_path.as_deref(), &daemon_socket_path).await?;
+        return Ok(());
+    }
+
     if options.stop {
         stop_running_daemon(&daemon_socket_path).await?;
         println!("stopped=true");
@@ -221,6 +227,62 @@ async fn reload_running_config(daemon_socket_path: &std::path::Path) -> Result<(
         veila_common::ipc::DaemonControlResponse::Error { reason } => bail!(reason),
         _ => bail!("daemon returned an unexpected response to --reload-config"),
     }
+}
+
+async fn set_theme_and_reload(
+    theme: &str,
+    config_path: Option<&std::path::Path>,
+    daemon_socket_path: &std::path::Path,
+) -> Result<()> {
+    let written_path = veila_common::config::set_theme_in_config(config_path, theme)?;
+    println!("theme={theme}");
+    println!("config={}", written_path.display());
+
+    if !daemon_socket_path.exists() {
+        println!("live_reload=not-running");
+        return Ok(());
+    }
+
+    let response = ipc::send_daemon_control_message(
+        daemon_socket_path,
+        &veila_common::ipc::DaemonControlMessage::ReloadConfig,
+    )
+    .await;
+
+    match response {
+        Ok(veila_common::ipc::DaemonControlResponse::Reloaded(status)) => {
+            let daemon_config = status.config_path.as_deref().unwrap_or("defaults");
+            println!("daemon_config={daemon_config}");
+            println!(
+                "daemon_config_matches={}",
+                status
+                    .config_path
+                    .as_deref()
+                    .is_some_and(|path| path == written_path.to_string_lossy())
+            );
+            println!(
+                "live_reload={}",
+                match status.live_reload {
+                    veila_common::ipc::LiveReloadStatus::NotActive => "not-active",
+                    veila_common::ipc::LiveReloadStatus::Forwarded => "forwarded",
+                }
+            );
+        }
+        Ok(veila_common::ipc::DaemonControlResponse::Error { reason }) => {
+            println!("live_reload=error");
+            println!("reload_error={reason}");
+        }
+        Ok(_) => {
+            println!("live_reload=error");
+            println!("reload_error=unexpected-daemon-response");
+        }
+        Err(error) => {
+            println!("live_reload=error");
+            println!("reload_error={error}");
+        }
+    }
+
+    Ok(())
 }
 
 fn ensure_running_daemon(daemon_socket_path: &std::path::Path) -> Result<()> {

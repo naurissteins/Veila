@@ -6,6 +6,7 @@ use anyhow::{Result, bail};
 pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
     pub session_id: Option<String>,
+    pub set_theme: Option<String>,
     pub lock_now: bool,
     pub stop: bool,
     pub list_themes: bool,
@@ -27,6 +28,11 @@ impl DaemonOptions {
 
             if let Some(session_id) = arg.strip_prefix("--session-id=") {
                 options.session_id = Some(session_id.to_string());
+                continue;
+            }
+
+            if let Some(theme) = arg.strip_prefix("--set-theme=") {
+                options.set_theme = Some(theme.to_string());
                 continue;
             }
 
@@ -122,6 +128,15 @@ mod tests {
                 .expect("arguments should parse");
 
         assert!(options.list_themes);
+    }
+
+    #[test]
+    fn parses_set_theme_argument() {
+        let options =
+            DaemonOptions::parse_args(["veilad".to_string(), "--set-theme=beach".to_string()])
+                .expect("arguments should parse");
+
+        assert_eq!(options.set_theme.as_deref(), Some("beach"));
     }
 
     #[test]

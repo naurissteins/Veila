@@ -83,7 +83,7 @@ const fn default_background_color() -> RgbColor {
 }
 
 const fn default_background_blur_radius() -> u8 {
-    20
+    12
 }
 
 const fn default_background_dim_strength() -> u8 {

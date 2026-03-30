@@ -1,6 +1,6 @@
 [background]
 mode = "file"
-path = "/home/ns/Downloads/001.jpg"
+path = "/home/ns/Downloads/002.jpg"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64
