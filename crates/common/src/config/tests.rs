@@ -760,7 +760,7 @@ fn loads_bundled_theme_before_user_overrides() {
     fs::write(
         &path,
         r#"
-            theme = "beach"
+            theme = "boracay"
 
             [visuals.clock]
             size = 16
@@ -889,11 +889,12 @@ fn set_theme_in_config_creates_missing_file() {
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
 
-    let written_path = super::set_theme_in_config(Some(&path), "beach").expect("theme should set");
+    let written_path =
+        super::set_theme_in_config(Some(&path), "boracay").expect("theme should set");
 
     assert_eq!(written_path, path);
     let raw = fs::read_to_string(&written_path).expect("written config");
-    assert!(raw.contains("theme = \"beach\""));
+    assert!(raw.contains("theme = \"boracay\""));
 
     let loaded = AppConfig::load(Some(&written_path)).expect("config should load");
     assert_eq!(loaded.config.visuals.clock_font_family(), Some("Nunito"));
@@ -943,10 +944,69 @@ fn set_theme_in_config_preserves_existing_overrides() {
 }
 
 #[test]
-fn reads_bundled_theme_source() {
-    let (path, raw) = super::read_theme_source(None, "beach").expect("theme source should load");
+fn unset_theme_in_config_removes_only_theme_key() {
+    let dir = std::env::temp_dir().join(format!("veila-unset-theme-remove-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r#"
+            theme = "city-lights"
 
-    assert!(path.ends_with("assets/themes/beach.toml"));
+            [lock]
+            show_username = false
+
+            [visuals.input]
+            width = 420
+        "#,
+    )
+    .expect("config file");
+
+    let (written_path, changed) =
+        super::unset_theme_in_config(Some(&path)).expect("theme should unset");
+
+    assert_eq!(written_path, path);
+    assert!(changed);
+
+    let raw = fs::read_to_string(&path).expect("written config");
+    assert!(!raw.contains("theme ="));
+    assert!(raw.contains("show_username = false"));
+    assert!(raw.contains("width = 420"));
+
+    let loaded = AppConfig::load(Some(&path)).expect("config should load");
+    assert!(!loaded.config.lock.show_username);
+    assert_eq!(loaded.config.visuals.input_width(), Some(420));
+    assert!(loaded.config.visuals.clock_font_family().is_none());
+
+    fs::remove_file(written_path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn unset_theme_in_config_returns_not_changed_for_missing_file() {
+    let dir =
+        std::env::temp_dir().join(format!("veila-unset-theme-missing-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+
+    let (written_path, changed) =
+        super::unset_theme_in_config(Some(&path)).expect("unset should succeed");
+
+    assert_eq!(written_path, path);
+    assert!(!changed);
+    assert!(!path.exists());
+
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn reads_bundled_theme_source() {
+    let (path, raw) = super::read_theme_source(None, "boracay").expect("theme source should load");
+
+    assert_eq!(
+        path.file_name().and_then(|name| name.to_str()),
+        Some("boracay.toml")
+    );
     assert!(raw.contains("font_family = \"Nunito\""));
     assert!(raw.contains("style = \"stacked\""));
 }

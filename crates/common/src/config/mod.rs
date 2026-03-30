@@ -186,6 +186,48 @@ pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<
     Ok(path)
 }
 
+pub fn unset_theme_in_config(explicit_path: Option<&Path>) -> Result<(PathBuf, bool)> {
+    let path = match explicit_path {
+        Some(path) => path.to_path_buf(),
+        None => default_path().ok_or_else(|| {
+            VeilaError::ConfigIo(io::Error::new(
+                io::ErrorKind::NotFound,
+                "failed to resolve default config path",
+            ))
+        })?,
+    };
+
+    if !path.exists() {
+        return Ok((path, false));
+    }
+
+    let raw = fs::read_to_string(&path)?;
+    let mut config_value = parse_toml_value(&raw)?;
+
+    let Some(table) = config_value.as_table_mut() else {
+        return Err(VeilaError::ConfigIo(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "top-level config must be a TOML table",
+        )));
+    };
+
+    if table.remove("theme").is_none() {
+        return Ok((path, false));
+    }
+
+    let encoded = if table.is_empty() {
+        String::new()
+    } else {
+        toml::to_string_pretty(&config_value).map_err(|error| {
+            VeilaError::ConfigIo(io::Error::other(format!(
+                "failed to encode config after unsetting theme: {error}"
+            )))
+        })?
+    };
+    fs::write(&path, encoded)?;
+    Ok((path, true))
+}
+
 fn default_path() -> Option<PathBuf> {
     let config_root = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)

@@ -34,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
     if !options.stop
         && options.print_theme.is_none()
         && options.set_theme.is_none()
+        && !options.unset_theme
         && !options.list_themes
         && !options.status
         && !options.health

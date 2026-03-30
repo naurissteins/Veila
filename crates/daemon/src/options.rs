@@ -8,6 +8,7 @@ pub struct DaemonOptions {
     pub session_id: Option<String>,
     pub print_theme: Option<String>,
     pub set_theme: Option<String>,
+    pub unset_theme: bool,
     pub lock_now: bool,
     pub stop: bool,
     pub list_themes: bool,
@@ -39,6 +40,11 @@ impl DaemonOptions {
 
             if let Some(theme) = arg.strip_prefix("--set-theme=") {
                 options.set_theme = Some(theme.to_string());
+                continue;
+            }
+
+            if arg == "--unset-theme" {
+                options.unset_theme = true;
                 continue;
             }
 
@@ -152,6 +158,15 @@ mod tests {
                 .expect("arguments should parse");
 
         assert_eq!(options.print_theme.as_deref(), Some("beach"));
+    }
+
+    #[test]
+    fn parses_unset_theme_argument() {
+        let options =
+            DaemonOptions::parse_args(["veilad".to_string(), "--unset-theme".to_string()])
+                .expect("arguments should parse");
+
+        assert!(options.unset_theme);
     }
 
     #[test]

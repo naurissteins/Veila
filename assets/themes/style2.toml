@@ -1,6 +1,7 @@
+# Wallpaper source: https://wallpapersden.com/ghost-in-the-shell-cool-anime-art-wallpaper/
 [background]
 mode = "file"
-path = "/home/ns/Downloads/002.jpg"
+path = "/home/ns/Downloads/001.jpg"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64
@@ -24,9 +25,9 @@ color = "#080A0E"
 opacity = 42
 blur_radius = 12
 
-# left_margin = 22
-# top_margin = 22
-# bottom_margin = 22
+left_margin = 22
+top_margin = 22
+bottom_margin = 22
 # radius = 28
 # border_color = "rgba(255, 255, 255, 0.14)"
 # border_width = 4
