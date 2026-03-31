@@ -798,7 +798,7 @@ fn loads_second_bundled_theme() {
     fs::write(
         &path,
         r#"
-            theme = "city-lights"
+            theme = "midnight"
         "#,
     )
     .expect("write config");
@@ -924,10 +924,10 @@ fn set_theme_in_config_preserves_existing_overrides() {
     )
     .expect("config file");
 
-    super::set_theme_in_config(Some(&path), "city-lights").expect("theme should set");
+    super::set_theme_in_config(Some(&path), "midnight").expect("theme should set");
 
     let raw = fs::read_to_string(&path).expect("written config");
-    assert!(raw.contains("theme = \"city-lights\""));
+    assert!(raw.contains("theme = \"midnight\""));
     assert!(raw.contains("show_username = false"));
     assert!(raw.contains("width = 420"));
 
@@ -951,7 +951,7 @@ fn unset_theme_in_config_removes_only_theme_key() {
     fs::write(
         &path,
         r#"
-            theme = "city-lights"
+            theme = "midnight"
 
             [lock]
             show_username = false

@@ -1,7 +1,7 @@
-# Wallpaper source: https://wallpapersden.com/ghost-in-the-shell-cool-anime-art-wallpaper/
+# Wallpaper source: https://unsplash.com/photos/a-city-skyline-at-night-with-lights-reflecting-off-the-water-Q1u2Lbc8qn8
 [background]
 mode = "file"
-path = "/home/ns/Downloads/001.jpg"
+path = "/usr/share/veila/bg/midnight.jpg"
 color = "#000000"
 blur_radius = 12
 dim_strength = 64
@@ -11,8 +11,6 @@ tint_opacity = 0
 [lock]
 user_hint = "Password"
 show_username = false
-# username = "Billy Ocean"
-# avatar_path = ""
 
 [battery]
 enabled = true
@@ -21,7 +19,7 @@ mock_charging = false
 
 [weather]
 enabled = true
-location = "Tokyo"
+location = "Manila"
 refresh_minutes = 15
 unit = "celsius"
 
@@ -114,7 +112,6 @@ temperature_size = 6
 location_size = 3
 icon_size = 40
 temperature_font_family = "Google Sans Flex"
-#temperature_font_style = "italic"
 temperature_font_weight = 400
 temperature_letter_spacing = 0
 location_font_family = "Google Sans Flex"

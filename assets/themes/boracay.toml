@@ -1,7 +1,7 @@
 # Wallpaper by Colin Watts on Unsplash: https://unsplash.com/photos/boat-on-body-of-water-under-cloudy-sky-M1ObxvsWVhY
 [background]
 mode = "file"
-path = ""
+path = "/usr/share/veila/bg/boracay.jpg"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64

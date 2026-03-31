@@ -168,11 +168,11 @@ pub(super) fn role_anchors(
     input_alignment: InputAlignment,
     offsets: AnchorOffsets,
 ) -> RoleAnchors {
-    let hero_y = top_role_top(frame_height, offsets.header_top);
+    let hero_top = top_role_top(frame_height, offsets.header_top);
     let hero_y = match offsets.clock_alignment {
-        ClockAlignment::TopCenter => hero_y,
-        ClockAlignment::TopRight => hero_y,
-        ClockAlignment::TopLeft => hero_y,
+        ClockAlignment::TopCenter => hero_top,
+        ClockAlignment::TopRight => hero_top,
+        ClockAlignment::TopLeft => hero_top,
         ClockAlignment::CenterCenter => centered_role_top(frame_height, hero_height, 0.5),
     } + offsets.clock_offset_y.unwrap_or(0);
     let footer_y = frame_height
@@ -197,10 +197,29 @@ pub(super) fn role_anchors(
     let min_auth_y = hero_bottom + minimum_gap;
     let max_auth_y = auth_footer_y - auth_render_height - 24;
 
+    if matches!(offsets.clock_alignment, ClockAlignment::CenterCenter)
+        && matches!(input_alignment, InputAlignment::CenterCenter)
+        && hero_height > 0
+        && auth_anchor_height > 0
+    {
+        let combined_height = hero_height + minimum_gap + auth_anchor_height;
+        let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
+            hero_top,
+            (max_auth_y - hero_height - minimum_gap).max(hero_top),
+        ) + offsets.clock_offset_y.unwrap_or(0);
+        let auth_y = (centered_hero_y + hero_height + minimum_gap + auth_offset + input_offset_y)
+            .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
+
+        return RoleAnchors {
+            hero_y: centered_hero_y,
+            auth_y,
+            footer_y,
+        };
+    }
+
     if max_auth_y < min_auth_y {
         let combined_height = hero_height + minimum_gap + auth_render_height;
-        let combined_top = ((frame_height - combined_height) / 2)
-            .max(top_role_top(frame_height, offsets.header_top));
+        let combined_top = ((frame_height - combined_height) / 2).max(hero_top);
 
         return RoleAnchors {
             hero_y: combined_top,
@@ -524,7 +543,41 @@ mod tests {
         );
 
         assert_eq!(default_anchors.hero_y, 51);
-        assert_eq!(centered_anchors.hero_y, 333);
+        assert_eq!(centered_anchors.hero_y, 226);
+        assert_eq!(centered_anchors.auth_y, 298);
+    }
+
+    #[test]
+    fn keeps_centered_clock_and_auth_visually_grouped() {
+        let without_status = role_anchors(
+            720,
+            54,
+            197,
+            197,
+            FooterHeights::same(0),
+            InputAlignment::CenterCenter,
+            AnchorOffsets {
+                clock_alignment: ClockAlignment::CenterCenter,
+                ..AnchorOffsets::default()
+            },
+        );
+        let with_status = role_anchors(
+            720,
+            54,
+            197,
+            235,
+            FooterHeights::same(0),
+            InputAlignment::CenterCenter,
+            AnchorOffsets {
+                clock_alignment: ClockAlignment::CenterCenter,
+                ..AnchorOffsets::default()
+            },
+        );
+
+        assert_eq!(without_status.hero_y, 226);
+        assert_eq!(without_status.auth_y, 298);
+        assert_eq!(with_status.hero_y, 226);
+        assert_eq!(with_status.auth_y, 298);
     }
 
     #[test]
