@@ -19,6 +19,7 @@ use super::{
 
 pub(super) struct AppRuntime {
     pub(super) loaded_config: LoadedConfig,
+    pub(super) last_reload_result: Option<String>,
     pub(super) auth_policy: AuthPolicy,
     pub(super) weather: WeatherHandle,
     pub(super) battery: BatteryHandle,
@@ -45,6 +46,7 @@ impl AppRuntime {
 
         Self {
             loaded_config,
+            last_reload_result: None,
             auth_policy,
             weather,
             battery,
@@ -79,9 +81,15 @@ impl AppRuntime {
 
     pub(super) fn control_inputs(
         &mut self,
-    ) -> (&mut LoadedConfig, &mut AuthPolicy, RuntimeSlots<'_>) {
+    ) -> (
+        &mut LoadedConfig,
+        &mut Option<String>,
+        &mut AuthPolicy,
+        RuntimeSlots<'_>,
+    ) {
         let Self {
             loaded_config,
+            last_reload_result,
             auth_policy,
             state,
             curtain,
@@ -96,6 +104,7 @@ impl AppRuntime {
 
         (
             loaded_config,
+            last_reload_result,
             auth_policy,
             RuntimeSlots {
                 state,

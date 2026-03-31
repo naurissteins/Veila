@@ -12,6 +12,7 @@ use super::{
     battery::BatteryHandle,
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
+    watch::effective_auto_reload_debounce_ms,
     weather::WeatherHandle,
 };
 use crate::{
@@ -97,7 +98,8 @@ pub(super) fn build_daemon_status(
     session: &str,
     curtain_running: bool,
     control_socket_path: Option<&Path>,
-    config_path: Option<&Path>,
+    loaded_config: &LoadedConfig,
+    last_reload_result: Option<&str>,
 ) -> DaemonStatus {
     DaemonStatus {
         state: state.to_string(),
@@ -107,7 +109,13 @@ pub(super) fn build_daemon_status(
         live_reload_available: state.is_active()
             && curtain_running
             && control_socket_path.is_some(),
-        config_path: config_path.map(|path| path.display().to_string()),
+        auto_reload_enabled: loaded_config.config.lock.auto_reload_config,
+        auto_reload_debounce_ms: effective_auto_reload_debounce_ms(loaded_config),
+        last_reload_result: last_reload_result.map(str::to_string),
+        config_path: loaded_config
+            .path
+            .as_deref()
+            .map(|path| path.display().to_string()),
     }
 }
 
@@ -116,78 +124,108 @@ pub(super) fn build_daemon_health() -> DaemonHealth {
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(super) async fn apply_loaded_config(
+    state: &LockState,
+    control_socket_path: Option<&Path>,
+    loaded_config: &mut LoadedConfig,
+    new_loaded_config: LoadedConfig,
+    last_reload_result: &mut Option<String>,
+    reload_source: &str,
+    auth_policy: &mut AuthPolicy,
+    auth_state: &mut AuthState,
+    weather: &WeatherHandle,
+    battery: &BatteryHandle,
+) -> Result<DaemonReloadStatus, String> {
+    *loaded_config = new_loaded_config;
+    *auth_policy = AuthPolicy::new(
+        Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
+        Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
+    );
+    if !state.is_active() {
+        *auth_state = AuthState::new(*auth_policy);
+    }
+    prewarm::spawn_background_prewarm(&loaded_config.config);
+    weather.update_config(&loaded_config.config.weather);
+    battery.update_config(&loaded_config.config.battery);
+
+    let live_reload = if !state.is_active() {
+        Ok(LiveReloadStatus::NotActive)
+    } else if let Some(control_socket_path) = control_socket_path {
+        process::request_curtain_reload(control_socket_path)
+            .await
+            .map_err(|error| format!("failed to forward live config reload to curtain: {error:#}"))
+            .map(|_| LiveReloadStatus::Forwarded)
+    } else {
+        Err(
+            "failed to forward live config reload to curtain: active lock has no control socket"
+                .to_string(),
+        )
+    }?;
+
+    tracing::info!(
+        active_lock = state.is_active(),
+        live_reload = match live_reload {
+            LiveReloadStatus::NotActive => "not-active",
+            LiveReloadStatus::Forwarded => "forwarded",
+        },
+        config = loaded_config
+            .path
+            .as_deref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "defaults".to_string()),
+        "reloaded daemon config"
+    );
+
+    *last_reload_result = Some(format!("ok:{reload_source}"));
+
+    Ok(DaemonReloadStatus {
+        config_path: loaded_config
+            .path
+            .as_deref()
+            .map(|path| path.display().to_string()),
+        active_lock: state.is_active(),
+        live_reload,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn reload_config_response(
     options: &DaemonOptions,
     state: &LockState,
     control_socket_path: Option<&Path>,
     loaded_config: &mut LoadedConfig,
+    last_reload_result: &mut Option<String>,
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
     weather: &WeatherHandle,
     battery: &BatteryHandle,
 ) -> DaemonControlResponse {
     match AppConfig::load(options.config_path.as_deref()) {
-        Ok(new_loaded_config) => {
-            *loaded_config = new_loaded_config;
-            *auth_policy = AuthPolicy::new(
-                Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
-                Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
-            );
-            if !state.is_active() {
-                *auth_state = AuthState::new(*auth_policy);
+        Ok(new_loaded_config) => match apply_loaded_config(
+            state,
+            control_socket_path,
+            loaded_config,
+            new_loaded_config,
+            last_reload_result,
+            "manual",
+            auth_policy,
+            auth_state,
+            weather,
+            battery,
+        )
+        .await
+        {
+            Ok(status) => DaemonControlResponse::Reloaded(status),
+            Err(reason) => {
+                *last_reload_result = Some(format!("error:manual:{reason}"));
+                tracing::warn!("{reason}");
+                DaemonControlResponse::Error { reason }
             }
-            prewarm::spawn_background_prewarm(&loaded_config.config);
-            weather.update_config(&loaded_config.config.weather);
-            battery.update_config(&loaded_config.config.battery);
-
-            let live_reload = if !state.is_active() {
-                Ok(LiveReloadStatus::NotActive)
-            } else if let Some(control_socket_path) = control_socket_path {
-                process::request_curtain_reload(control_socket_path)
-                    .await
-                    .map_err(|error| {
-                        format!("failed to forward live config reload to curtain: {error:#}")
-                    })
-                    .map(|_| LiveReloadStatus::Forwarded)
-            } else {
-                Err(
-                    "failed to forward live config reload to curtain: active lock has no control socket"
-                        .to_string(),
-                )
-            };
-
-            match live_reload {
-                Ok(live_reload) => {
-                    tracing::info!(
-                        active_lock = state.is_active(),
-                        live_reload = match live_reload {
-                            LiveReloadStatus::NotActive => "not-active",
-                            LiveReloadStatus::Forwarded => "forwarded",
-                        },
-                        config = loaded_config
-                            .path
-                            .as_deref()
-                            .map(|path| path.display().to_string())
-                            .unwrap_or_else(|| "defaults".to_string()),
-                        "reloaded daemon config"
-                    );
-                    DaemonControlResponse::Reloaded(DaemonReloadStatus {
-                        config_path: loaded_config
-                            .path
-                            .as_deref()
-                            .map(|path| path.display().to_string()),
-                        active_lock: state.is_active(),
-                        live_reload,
-                    })
-                }
-                Err(reason) => {
-                    tracing::warn!("{reason}");
-                    DaemonControlResponse::Error { reason }
-                }
-            }
-        }
-        Err(error) => DaemonControlResponse::Error {
-            reason: format!("failed to reload daemon config: {error:#}"),
         },
+        Err(error) => {
+            let reason = format!("failed to reload daemon config: {error:#}");
+            *last_reload_result = Some(format!("error:manual:{reason}"));
+            DaemonControlResponse::Error { reason }
+        }
     }
 }

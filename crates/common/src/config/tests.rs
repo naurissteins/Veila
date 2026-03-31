@@ -19,6 +19,8 @@ fn parses_partial_config_with_defaults() {
     .expect("config should parse");
 
     assert_eq!(config.lock.acquire_timeout_seconds, 5);
+    assert!(!config.lock.auto_reload_config);
+    assert_eq!(config.lock.auto_reload_debounce_ms, 250);
     assert!(config.lock.show_username);
     assert!(config.lock.username.is_none());
     assert!(config.lock.user_hint.is_none());
@@ -183,6 +185,8 @@ fn first_run_defaults_match_bundled_theme() {
     let config = AppConfig::default();
 
     assert_eq!(config.lock.acquire_timeout_seconds, 5);
+    assert!(!config.lock.auto_reload_config);
+    assert_eq!(config.lock.auto_reload_debounce_ms, 250);
     assert!(config.lock.show_username);
     assert!(config.lock.username.is_none());
     assert_eq!(config.lock.user_hint.as_deref(), Some("Password"));
@@ -540,6 +544,21 @@ fn parses_full_layer_width_keyword() {
 }
 
 #[test]
+fn parses_lock_auto_reload_config_flag() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            auto_reload_config = true
+            auto_reload_debounce_ms = 180
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.lock.auto_reload_config);
+    assert_eq!(config.lock.auto_reload_debounce_ms, 180);
+}
+
+#[test]
 fn loads_config_from_file() {
     let dir = std::env::temp_dir().join(format!("veila-config-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
@@ -815,13 +834,13 @@ fn loads_bundled_theme_before_user_overrides() {
 
 #[test]
 fn loads_second_bundled_theme() {
-    let dir = std::env::temp_dir().join(format!("veila-theme-midnight-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("veila-theme-shanghai-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
     fs::write(
         &path,
         r#"
-            theme = "midnight"
+            theme = "shanghai"
         "#,
     )
     .expect("write config");
@@ -947,10 +966,10 @@ fn set_theme_in_config_preserves_existing_overrides() {
     )
     .expect("config file");
 
-    super::set_theme_in_config(Some(&path), "midnight").expect("theme should set");
+    super::set_theme_in_config(Some(&path), "shanghai").expect("theme should set");
 
     let raw = fs::read_to_string(&path).expect("written config");
-    assert!(raw.contains("theme = \"midnight\""));
+    assert!(raw.contains("theme = \"shanghai\""));
     assert!(raw.contains("show_username = false"));
     assert!(raw.contains("width = 420"));
 
@@ -974,7 +993,7 @@ fn unset_theme_in_config_removes_only_theme_key() {
     fs::write(
         &path,
         r#"
-            theme = "midnight"
+            theme = "shanghai"
 
             [lock]
             show_username = false

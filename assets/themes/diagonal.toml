@@ -1,7 +1,7 @@
-# Wallpaper source: https://wallpapersden.com/ghost-in-the-shell-cool-anime-art-wallpaper/
+# Wallpaper source: https://unsplash.com/photos/landscape-photo-of-mountain-alps-vddccTqwal8
 [background]
 mode = "file"
-path = "/usr/share/veila/bg/"
+path = "/usr/share/veila/bg/diagonal.jpg"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64
@@ -13,25 +13,17 @@ user_hint = "Password"
 show_username = true
 username = "Billy Ocean"
 # avatar_path = ""
-#
 
 [visuals.layer]
-enabled = false
+enabled = true
+mode = "solid"
 style = "diagonal"
-mode = "solid"        # "blur" | "solid"
-alignment = "left"  # "left" | "center" | "right"
+alignment = "right"
 width = "full"
 offset_x = 0
 color = "#080A0E"
 opacity = 42
 blur_radius = 12
-
-# left_margin = 22
-# top_margin = 22
-# bottom_margin = 22
-# radius = 28
-# border_color = "rgba(255, 255, 255, 0.14)"
-# border_width = 4
 
 [battery]
 enabled = true
@@ -40,7 +32,7 @@ mock_charging = false
 
 [weather]
 enabled = true
-location = "Boracay"
+location = "Adelboden"
 refresh_minutes = 15
 unit = "celsius"
 
@@ -56,7 +48,6 @@ meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Geom"
 font_weight = 600
-#font_style = "italic"
 color = "#ffffff"
 opacity = 40
 size = 14
@@ -69,7 +60,7 @@ color = "#C8D8F2"
 opacity = 72
 
 [visuals.input]
-alignment = "center-left"
+alignment = "bottom-center"
 center_in_layer = true
 horizontal_padding = 0
 vertical_padding = 0
@@ -93,7 +84,6 @@ color = "#ffffff"
 opacity = 60
 
 [visuals.avatar]
-#enabled = false
 size = 192
 gap = 24
 background_color = "#ffffff"
@@ -138,7 +128,6 @@ temperature_size = 6
 location_size = 3
 icon_size = 40
 temperature_font_family = "Google Sans Flex"
-#temperature_font_style = "italic"
 temperature_font_weight = 400
 temperature_letter_spacing = 0
 location_font_family = "Google Sans Flex"

@@ -158,6 +158,12 @@ async fn print_running_status(daemon_socket_path: &std::path::Path) -> Result<()
     println!("active_lock={}", status.active_lock);
     println!("curtain_running={}", status.curtain_running);
     println!("live_reload_available={}", status.live_reload_available);
+    println!("auto_reload_enabled={}", status.auto_reload_enabled);
+    println!("auto_reload_debounce_ms={}", status.auto_reload_debounce_ms);
+    println!(
+        "last_reload_result={}",
+        status.last_reload_result.as_deref().unwrap_or("none")
+    );
     println!(
         "config={}",
         status.config_path.as_deref().unwrap_or("defaults")

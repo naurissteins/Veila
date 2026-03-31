@@ -131,6 +131,10 @@ pub fn bundled_theme_names() -> Result<Vec<String>> {
     Ok(names)
 }
 
+pub fn default_config_path() -> Option<PathBuf> {
+    default_path()
+}
+
 pub fn read_theme_source(
     explicit_config_path: Option<&Path>,
     theme: &str,

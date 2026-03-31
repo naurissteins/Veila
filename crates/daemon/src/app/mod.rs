@@ -6,6 +6,7 @@ mod output_probe;
 mod prewarm;
 mod runtime;
 mod state;
+mod watch;
 mod weather;
 
 use std::path::PathBuf;
@@ -16,6 +17,7 @@ use futures_util::StreamExt;
 use tokio::{
     net::UnixListener,
     signal::unix::{SignalKind, signal},
+    time::{self, MissedTickBehavior},
 };
 use veila_common::AppConfig;
 
@@ -29,6 +31,7 @@ use self::runtime::{
     wait_for_curtain_exit,
 };
 use self::state::AppRuntime;
+use self::watch::{AutoReloadTrigger, AutoReloadWatcher, effective_auto_reload_debounce_ms};
 
 pub async fn run(
     options: DaemonOptions,
@@ -56,6 +59,10 @@ pub async fn run(
     let mut sigterm =
         signal(SignalKind::terminate()).context("failed to register SIGTERM handler")?;
     let mut now_playing_updates = runtime.now_playing.subscribe();
+    let mut auto_reload_watcher =
+        AutoReloadWatcher::new(options.config_path.as_deref(), &runtime.loaded_config);
+    let mut auto_reload_tick = time::interval(std::time::Duration::from_millis(250));
+    auto_reload_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     tracing::info!(
         session = %session_path,
@@ -155,13 +162,14 @@ pub async fn run(
                 let weather_snapshot = weather.current_snapshot();
                 let battery_snapshot = battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                let (loaded_config, auth_policy, slots) = runtime.control_inputs();
+                let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
                 if handle_control_connection(
                     result?,
                     &options,
                     &session_proxy,
                     &session_path,
                     loaded_config,
+                    last_reload_result,
                     weather_snapshot.as_ref(),
                     battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
@@ -184,6 +192,101 @@ pub async fn run(
                     runtime.control_socket_path.as_deref(),
                     snapshot.as_ref(),
                 ).await;
+            }
+            _ = auto_reload_tick.tick() => {
+                match auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
+                    Some(AutoReloadTrigger::ConfigChanged) => {
+                        let current_auto_reload = runtime.loaded_config.config.lock.auto_reload_config;
+                        match AppConfig::load(options.config_path.as_deref()) {
+                            Ok(new_loaded_config) => {
+                                let should_apply = current_auto_reload || new_loaded_config.config.lock.auto_reload_config;
+                                if should_apply {
+                                    let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
+                                    let weather = runtime.weather.clone();
+                                    let battery = runtime.battery.clone();
+                                    let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                                    match helpers::apply_loaded_config(
+                                        slots.state,
+                                        slots.control_socket_path.as_deref(),
+                                        loaded_config,
+                                        new_loaded_config,
+                                        last_reload_result,
+                                        "config-change",
+                                        auth_policy,
+                                        slots.auth_state,
+                                        &weather,
+                                        &battery,
+                                    ).await {
+                                        Ok(status) => {
+                                            tracing::info!(
+                                                active_lock = status.active_lock,
+                                                debounce_ms,
+                                                "auto reloaded daemon config after config file change"
+                                            );
+                                        }
+                                        Err(reason) => {
+                                            *last_reload_result =
+                                                Some(format!("error:config-change:{reason}"));
+                                            tracing::warn!("{reason}");
+                                        }
+                                    }
+                                } else {
+                                    tracing::debug!("ignoring config file change because auto_reload_config is disabled");
+                                }
+                            }
+                            Err(error) => {
+                                if current_auto_reload {
+                                    runtime.last_reload_result = Some(format!(
+                                        "error:config-change:failed to auto reload daemon config after config file change: {error:#}"
+                                    ));
+                                    tracing::warn!("failed to auto reload daemon config after config file change: {error:#}");
+                                }
+                            }
+                        }
+                    }
+                    Some(AutoReloadTrigger::WallpaperChanged) => {
+                        match AppConfig::load(options.config_path.as_deref()) {
+                            Ok(new_loaded_config) => {
+                                let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
+                                let weather = runtime.weather.clone();
+                                let battery = runtime.battery.clone();
+                                let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                                match helpers::apply_loaded_config(
+                                    slots.state,
+                                    slots.control_socket_path.as_deref(),
+                                    loaded_config,
+                                    new_loaded_config,
+                                    last_reload_result,
+                                    "wallpaper-change",
+                                    auth_policy,
+                                    slots.auth_state,
+                                    &weather,
+                                    &battery,
+                                    ).await {
+                                        Ok(status) => {
+                                            tracing::info!(
+                                                active_lock = status.active_lock,
+                                                debounce_ms,
+                                                "auto reloaded daemon config after wallpaper change"
+                                            );
+                                        }
+                                    Err(reason) => {
+                                        *last_reload_result =
+                                            Some(format!("error:wallpaper-change:{reason}"));
+                                        tracing::warn!("{reason}");
+                                    }
+                                }
+                            }
+                            Err(error) => {
+                                runtime.last_reload_result = Some(format!(
+                                    "error:wallpaper-change:failed to auto reload daemon config after wallpaper change: {error:#}"
+                                ));
+                                tracing::warn!("failed to auto reload daemon config after wallpaper change: {error:#}");
+                            }
+                        }
+                    }
+                    None => {}
+                }
             }
             _ = sigint.recv() => {
                 tracing::info!("received SIGINT");
