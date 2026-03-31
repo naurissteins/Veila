@@ -195,7 +195,7 @@ pub async fn run(
             }
             _ = auto_reload_tick.tick() => {
                 match auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
-                    Some(AutoReloadTrigger::ConfigChanged) => {
+                    Some(AutoReloadTrigger::Config) => {
                         let current_auto_reload = runtime.loaded_config.config.lock.auto_reload_config;
                         match AppConfig::load(options.config_path.as_deref()) {
                             Ok(new_loaded_config) => {
@@ -244,7 +244,48 @@ pub async fn run(
                             }
                         }
                     }
-                    Some(AutoReloadTrigger::WallpaperChanged) => {
+                    Some(AutoReloadTrigger::Theme) => {
+                        match AppConfig::load(options.config_path.as_deref()) {
+                            Ok(new_loaded_config) => {
+                                let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
+                                let weather = runtime.weather.clone();
+                                let battery = runtime.battery.clone();
+                                let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                                match helpers::apply_loaded_config(
+                                    slots.state,
+                                    slots.control_socket_path.as_deref(),
+                                    loaded_config,
+                                    new_loaded_config,
+                                    last_reload_result,
+                                    "theme-change",
+                                    auth_policy,
+                                    slots.auth_state,
+                                    &weather,
+                                    &battery,
+                                ).await {
+                                    Ok(status) => {
+                                        tracing::info!(
+                                            active_lock = status.active_lock,
+                                            debounce_ms,
+                                            "auto reloaded daemon config after theme file change"
+                                        );
+                                    }
+                                    Err(reason) => {
+                                        *last_reload_result =
+                                            Some(format!("error:theme-change:{reason}"));
+                                        tracing::warn!("{reason}");
+                                    }
+                                }
+                            }
+                            Err(error) => {
+                                runtime.last_reload_result = Some(format!(
+                                    "error:theme-change:failed to auto reload daemon config after theme file change: {error:#}"
+                                ));
+                                tracing::warn!("failed to auto reload daemon config after theme file change: {error:#}");
+                            }
+                        }
+                    }
+                    Some(AutoReloadTrigger::Wallpaper) => {
                         match AppConfig::load(options.config_path.as_deref()) {
                             Ok(new_loaded_config) => {
                                 let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);

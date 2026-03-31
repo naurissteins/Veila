@@ -4,15 +4,16 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use veila_common::{LoadedConfig, default_config_path};
+use veila_common::{LoadedConfig, active_theme_source_path, default_config_path};
 
 const MIN_AUTO_RELOAD_DEBOUNCE_MS: u64 = 250;
 const MAX_AUTO_RELOAD_DEBOUNCE_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AutoReloadTrigger {
-    ConfigChanged,
-    WallpaperChanged,
+    Config,
+    Theme,
+    Wallpaper,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,8 @@ pub(super) struct AutoReloadWatcher {
     config_stamp: Option<FileStamp>,
     wallpaper_path: Option<PathBuf>,
     wallpaper_stamp: Option<FileStamp>,
+    theme_path: Option<PathBuf>,
+    theme_stamp: Option<FileStamp>,
     pending: Option<AutoReloadTrigger>,
     debounce_until: Option<std::time::Instant>,
 }
@@ -56,6 +59,8 @@ impl AutoReloadWatcher {
             config_stamp: None,
             wallpaper_path: None,
             wallpaper_stamp: None,
+            theme_path: None,
+            theme_stamp: None,
             pending: None,
             debounce_until: None,
         };
@@ -75,7 +80,7 @@ impl AutoReloadWatcher {
             let stamp = FileStamp::read(path);
             if self.config_stamp != Some(stamp) {
                 self.config_stamp = Some(stamp);
-                changed = Some(AutoReloadTrigger::ConfigChanged);
+                changed = Some(AutoReloadTrigger::Config);
             }
         }
 
@@ -85,7 +90,17 @@ impl AutoReloadWatcher {
             let stamp = FileStamp::read(path);
             if self.wallpaper_stamp != Some(stamp) {
                 self.wallpaper_stamp = Some(stamp);
-                changed = Some(AutoReloadTrigger::WallpaperChanged);
+                changed = Some(AutoReloadTrigger::Wallpaper);
+            }
+        }
+
+        if loaded_config.config.lock.auto_reload_config
+            && let Some(path) = self.theme_path.as_deref()
+        {
+            let stamp = FileStamp::read(path);
+            if self.theme_stamp != Some(stamp) {
+                self.theme_stamp = Some(stamp);
+                changed = Some(AutoReloadTrigger::Theme);
             }
         }
 
@@ -125,6 +140,13 @@ impl AutoReloadWatcher {
             &mut self.wallpaper_path,
             &mut self.wallpaper_stamp,
             next_wallpaper_path.as_deref(),
+        );
+
+        let next_theme_path = active_theme_source_path(next_config_path.as_deref()).unwrap_or(None);
+        sync_path(
+            &mut self.theme_path,
+            &mut self.theme_stamp,
+            next_theme_path.as_deref(),
         );
     }
 }
@@ -181,7 +203,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(300));
         assert_eq!(
             watcher.poll(Some(&config_path), &loaded),
-            Some(AutoReloadTrigger::ConfigChanged)
+            Some(AutoReloadTrigger::Config)
         );
 
         let _ = fs::remove_dir_all(root);
@@ -212,5 +234,43 @@ mod tests {
 
         assert_eq!(effective_auto_reload_debounce_ms(&low), 250);
         assert_eq!(effective_auto_reload_debounce_ms(&high), 5_000);
+    }
+
+    #[test]
+    fn triggers_on_theme_change_after_debounce() {
+        let unique = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("veila-auto-reload-theme-{unique}"));
+        let themes_dir = root.join("themes");
+        fs::create_dir_all(&themes_dir).expect("dir");
+        let config_path = root.join("config.toml");
+        let theme_path = themes_dir.join("custom.toml");
+        fs::write(&theme_path, b"[visuals.clock]\nsize = 14\n").expect("theme");
+        fs::write(
+            &config_path,
+            b"theme = \"custom\"\n\n[lock]\nauto_reload_config = true\n",
+        )
+        .expect("config");
+
+        let loaded = veila_common::LoadedConfig {
+            path: Some(config_path.clone()),
+            config: AppConfig::load_from_file(&config_path).expect("load"),
+        };
+        let mut watcher = AutoReloadWatcher::new(Some(&config_path), &loaded);
+
+        fs::write(&theme_path, b"[visuals.clock]\nsize = 15\n").expect("theme");
+        assert_eq!(watcher.poll(Some(&config_path), &loaded), None);
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert_eq!(
+            watcher.poll(Some(&config_path), &loaded),
+            Some(AutoReloadTrigger::Theme)
+        );
+
+        let _ = fs::remove_file(theme_path);
+        let _ = fs::remove_dir(themes_dir);
+        let _ = fs::remove_file(config_path);
+        let _ = fs::remove_dir(root);
     }
 }

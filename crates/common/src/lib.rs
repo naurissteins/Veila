@@ -17,7 +17,7 @@ pub use config::{
     KeyboardVisualConfig, LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, LayerWidth,
     LayoutVisualConfig, LoadedConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, RgbColor, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
-    WeatherConfig, WeatherUnit, WeatherVisualConfig, default_config_path,
+    WeatherConfig, WeatherUnit, WeatherVisualConfig, active_theme_source_path, default_config_path,
 };
 pub use error::{Result, VeilaError};
 pub use now_playing::NowPlayingSnapshot;
