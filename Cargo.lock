@@ -1952,6 +1952,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "calloop",
+ "serde",
+ "serde_json",
  "smithay-client-toolkit",
  "time",
  "tracing",

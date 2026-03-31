@@ -1,7 +1,7 @@
 # Wallpaper source: https://wallpapersden.com/ghost-in-the-shell-cool-anime-art-wallpaper/
 [background]
 mode = "file"
-path = "/usr/share/veila/assets/bg/"
+path = "/usr/share/veila/bg/"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64

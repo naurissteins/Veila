@@ -1,5 +1,11 @@
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::{
+    collections::hash_map::DefaultHasher,
+    fs,
+    hash::{Hash, Hasher},
+    path::{Path, PathBuf},
+};
+use time::{OffsetDateTime, UtcOffset};
 use veila_common::{AppConfig, ConfigColor, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
@@ -91,11 +97,101 @@ fn preview_weather_snapshot(config: &AppConfig) -> Option<WeatherSnapshot> {
     }
 
     config.weather.location.as_ref()?;
+    if let Some(snapshot) = load_cached_preview_weather_snapshot(config).ok().flatten() {
+        return Some(snapshot);
+    }
     Some(WeatherSnapshot {
         temperature_celsius: 21,
-        condition: WeatherCondition::ClearDay,
+        condition: preview_weather_condition_now(),
         fetched_at_unix: 0,
     })
+}
+
+fn load_cached_preview_weather_snapshot(config: &AppConfig) -> Result<Option<WeatherSnapshot>> {
+    let cache_root = preview_weather_cache_root()?;
+    load_cached_preview_weather_snapshot_from(config, &cache_root)
+}
+
+fn load_cached_preview_weather_snapshot_from(
+    config: &AppConfig,
+    cache_root: &Path,
+) -> Result<Option<WeatherSnapshot>> {
+    let Some((latitude, longitude)) = cached_preview_coordinates_from(config, cache_root)? else {
+        return Ok(None);
+    };
+    let cache_path = preview_weather_cache_path_for_coordinates(cache_root, latitude, longitude);
+    let Ok(raw) = fs::read_to_string(&cache_path) else {
+        return Ok(None);
+    };
+    serde_json::from_str(&raw)
+        .map(Some)
+        .context("failed to parse cached preview weather snapshot")
+}
+
+fn cached_preview_coordinates_from(
+    config: &AppConfig,
+    cache_root: &Path,
+) -> Result<Option<(f64, f64)>> {
+    if let Some((latitude, longitude)) = config.weather.clone().coordinates() {
+        return Ok(Some((latitude, longitude)));
+    }
+
+    let Some(location) = config.weather.normalized_location() else {
+        return Ok(None);
+    };
+    load_cached_preview_coordinates(cache_root, &location)
+}
+
+fn load_cached_preview_coordinates(
+    cache_root: &Path,
+    location: &str,
+) -> Result<Option<(f64, f64)>> {
+    let cache_path = preview_weather_location_cache_path(cache_root, location);
+    let Ok(raw) = fs::read_to_string(&cache_path) else {
+        return Ok(None);
+    };
+    let entry: PreviewGeocodedLocationCache = serde_json::from_str(&raw)
+        .context("failed to parse cached preview geocoded weather coordinates")?;
+    Ok(Some((entry.latitude, entry.longitude)))
+}
+
+fn preview_weather_cache_path_for_coordinates(
+    cache_root: &Path,
+    latitude: f64,
+    longitude: f64,
+) -> PathBuf {
+    let mut hasher = DefaultHasher::new();
+    latitude.to_bits().hash(&mut hasher);
+    longitude.to_bits().hash(&mut hasher);
+    cache_root.join(format!("{:016x}.json", hasher.finish()))
+}
+
+fn preview_weather_location_cache_path(cache_root: &Path, location: &str) -> PathBuf {
+    let mut hasher = DefaultHasher::new();
+    location.trim().to_lowercase().hash(&mut hasher);
+    cache_root.join(format!("location-{:016x}.json", hasher.finish()))
+}
+
+fn preview_weather_cache_root() -> Result<PathBuf> {
+    let base = std::env::var_os("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+        .context("failed to resolve XDG cache directory")?;
+    Ok(base.join("veila").join("weather"))
+}
+
+fn preview_weather_condition_now() -> WeatherCondition {
+    let now = OffsetDateTime::now_utc()
+        .to_offset(UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
+    preview_weather_condition_for_hour(now.hour())
+}
+
+const fn preview_weather_condition_for_hour(hour: u8) -> WeatherCondition {
+    if hour >= 6 && hour < 18 {
+        WeatherCondition::ClearDay
+    } else {
+        WeatherCondition::ClearNight
+    }
 }
 
 fn preview_now_playing_snapshot(
@@ -109,4 +205,116 @@ fn preview_now_playing_snapshot(
         artwork_path,
         fetched_at_unix: 0,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        PreviewGeocodedLocationCache, load_cached_preview_weather_snapshot_from,
+        preview_weather_cache_path_for_coordinates, preview_weather_condition_for_hour,
+        preview_weather_location_cache_path,
+    };
+    use std::fs;
+    use veila_common::{AppConfig, WeatherCondition, WeatherSnapshot};
+
+    #[test]
+    fn uses_day_icon_during_daylight_preview_hours() {
+        assert_eq!(
+            preview_weather_condition_for_hour(6),
+            WeatherCondition::ClearDay
+        );
+        assert_eq!(
+            preview_weather_condition_for_hour(12),
+            WeatherCondition::ClearDay
+        );
+        assert_eq!(
+            preview_weather_condition_for_hour(17),
+            WeatherCondition::ClearDay
+        );
+    }
+
+    #[test]
+    fn uses_night_icon_outside_daylight_preview_hours() {
+        assert_eq!(
+            preview_weather_condition_for_hour(0),
+            WeatherCondition::ClearNight
+        );
+        assert_eq!(
+            preview_weather_condition_for_hour(5),
+            WeatherCondition::ClearNight
+        );
+        assert_eq!(
+            preview_weather_condition_for_hour(18),
+            WeatherCondition::ClearNight
+        );
+        assert_eq!(
+            preview_weather_condition_for_hour(23),
+            WeatherCondition::ClearNight
+        );
+    }
+
+    #[test]
+    fn prefers_cached_weather_snapshot_for_preview_when_available() {
+        let cache_root =
+            std::env::temp_dir().join(format!("veila-preview-weather-{}", std::process::id()));
+        let weather_root = cache_root.join("veila").join("weather");
+        fs::create_dir_all(&weather_root).expect("weather cache dir");
+
+        let config = AppConfig::from_toml_str(
+            r#"
+                [weather]
+                enabled = true
+                location = "Tokyo"
+            "#,
+        )
+        .expect("config");
+
+        let location_cache = preview_weather_location_cache_path(&weather_root, "Tokyo");
+        fs::write(
+            &location_cache,
+            serde_json::to_vec(&PreviewGeocodedLocationCache {
+                latitude: 35.6762,
+                longitude: 139.6503,
+            })
+            .expect("location cache"),
+        )
+        .expect("write location cache");
+
+        let snapshot_cache =
+            preview_weather_cache_path_for_coordinates(&weather_root, 35.6762, 139.6503);
+        fs::write(
+            &snapshot_cache,
+            serde_json::to_vec(&WeatherSnapshot {
+                temperature_celsius: 12,
+                condition: WeatherCondition::Rain,
+                fetched_at_unix: 123,
+            })
+            .expect("snapshot cache"),
+        )
+        .expect("write snapshot cache");
+
+        let snapshot = load_cached_preview_weather_snapshot_from(&config, &weather_root)
+            .expect("load cached preview snapshot");
+
+        assert_eq!(
+            snapshot,
+            Some(WeatherSnapshot {
+                temperature_celsius: 12,
+                condition: WeatherCondition::Rain,
+                fetched_at_unix: 123,
+            })
+        );
+
+        fs::remove_file(location_cache).ok();
+        fs::remove_file(snapshot_cache).ok();
+        fs::remove_dir(weather_root).ok();
+        fs::remove_dir(cache_root.join("veila")).ok();
+        fs::remove_dir(cache_root).ok();
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PreviewGeocodedLocationCache {
+    latitude: f64,
+    longitude: f64,
 }

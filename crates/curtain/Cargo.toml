@@ -18,6 +18,8 @@ veila-ui = { path = "../ui" }
 anyhow = { workspace = true }
 calloop = { workspace = true }
 smithay-client-toolkit = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
