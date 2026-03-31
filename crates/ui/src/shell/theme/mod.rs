@@ -4,7 +4,7 @@ mod tests;
 
 use veila_common::{
     AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment, LayerAlignment,
-    LayerMode, WeatherAlignment,
+    LayerMode, LayerStyle, WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -99,7 +99,9 @@ pub struct ShellTheme {
     pub battery_gap: Option<i32>,
     pub layer_enabled: bool,
     pub layer_mode: LayerMode,
+    pub layer_style: LayerStyle,
     pub layer_alignment: LayerAlignment,
+    pub layer_full_width: bool,
     pub layer_width: Option<i32>,
     pub layer_offset_x: Option<i32>,
     pub layer_left_padding: Option<i32>,
@@ -285,7 +287,9 @@ impl ShellTheme {
             battery_gap: config.visuals.battery_gap().map(i32::from),
             layer_enabled: config.visuals.layer_enabled(),
             layer_mode: config.visuals.layer_mode(),
+            layer_style: config.visuals.layer_style(),
             layer_alignment: config.visuals.layer_alignment(),
+            layer_full_width: config.visuals.layer_full_width(),
             layer_width: config.visuals.layer_width().map(i32::from),
             layer_offset_x: config.visuals.layer_offset_x().map(i32::from),
             layer_left_padding: config.visuals.layer_left_padding().map(i32::from),

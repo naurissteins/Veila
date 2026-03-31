@@ -16,18 +16,19 @@ username = "Billy Ocean"
 #
 
 [visuals.layer]
-enabled = true
-mode = "blur"        # "blur" | "solid"
+enabled = false
+style = "diagonal"
+mode = "solid"        # "blur" | "solid"
 alignment = "left"  # "left" | "center" | "right"
-width = 540
+width = "full"
 offset_x = 0
 color = "#080A0E"
 opacity = 42
 blur_radius = 12
 
-left_margin = 22
-top_margin = 22
-bottom_margin = 22
+# left_margin = 22
+# top_margin = 22
+# bottom_margin = 22
 # radius = 28
 # border_color = "rgba(255, 255, 255, 0.14)"
 # border_width = 4

@@ -9,6 +9,21 @@ use super::{
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum BackdropLayerAlignment {
+    Left,
+    #[default]
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum BackdropLayerShape {
+    #[default]
+    Panel,
+    Diagonal(BackdropLayerAlignment),
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BackdropLayerMode {
     Solid,
     #[default]
@@ -18,6 +33,7 @@ pub enum BackdropLayerMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BackdropLayerStyle {
     pub mode: BackdropLayerMode,
+    pub shape: BackdropLayerShape,
     pub color: ClearColor,
     pub blur_radius: u8,
     pub radius: i32,
@@ -28,6 +44,7 @@ pub struct BackdropLayerStyle {
 impl BackdropLayerStyle {
     pub const fn new(
         mode: BackdropLayerMode,
+        shape: BackdropLayerShape,
         color: ClearColor,
         blur_radius: u8,
         radius: i32,
@@ -36,6 +53,7 @@ impl BackdropLayerStyle {
     ) -> Self {
         Self {
             mode,
+            shape,
             color,
             blur_radius,
             radius,
@@ -56,13 +74,11 @@ pub fn draw_backdrop_layer(buffer: &mut SoftwareBuffer, rect: Rect, style: Backd
     }
 
     match style.mode {
-        BackdropLayerMode::Solid => {
-            fill_layer_shape(buffer, clipped, style.color, style.radius);
-        }
+        BackdropLayerMode::Solid => fill_layer_shape(buffer, clipped, style),
         BackdropLayerMode::Blur => {
-            blur_region(buffer, clipped, style.blur_radius, style.radius);
+            blur_region(buffer, clipped, style);
             if style.color.alpha > 0 {
-                fill_layer_shape(buffer, clipped, style.color, style.radius);
+                fill_layer_shape(buffer, clipped, style);
             }
         }
     }
@@ -73,14 +89,15 @@ pub fn draw_backdrop_layer(buffer: &mut SoftwareBuffer, rect: Rect, style: Backd
         stroke_layer_shape(
             buffer,
             clipped,
-            border_color,
-            style.radius,
-            style.border_width,
+            BackdropLayerStyle {
+                color: border_color,
+                ..style
+            },
         );
     }
 }
 
-fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, blur_radius: u8, radius: i32) {
+fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
     let width = rect.width.max(0) as u32;
     let height = rect.height.max(0) as u32;
     if width == 0 || height == 0 {
@@ -92,23 +109,24 @@ fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, blur_radius: u8, radius:
         return;
     };
     let original = region.clone();
-    let blurred = if blur_radius == 0 {
+    let blurred = if style.blur_radius == 0 {
         region
     } else {
-        imageops::blur(&region, f32::from(blur_radius.min(24)))
+        imageops::blur(&region, f32::from(style.blur_radius.min(24)))
     };
-    if radius <= 0 {
+
+    if matches!(style.shape, BackdropLayerShape::Panel) && style.radius <= 0 {
         write_rgba_region(buffer, rect, &blurred);
         return;
     }
 
-    let rgba = apply_rounded_mask(original, blurred, radius);
+    let rgba = apply_shape_mask(original, blurred, style, rect.width, rect.height);
     write_rgba_region(buffer, rect, &rgba);
 }
 
-fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor, radius: i32) {
-    if radius <= 0 {
-        fill_rect(buffer, rect, color);
+fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
+    if matches!(style.shape, BackdropLayerShape::Panel) && style.radius <= 0 {
+        fill_rect(buffer, rect, style.color);
         return;
     }
 
@@ -119,12 +137,12 @@ fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor, 
         rect.width.max(1) as u32,
         rect.height.max(1) as u32,
         |overlay| {
-            let Some(path) = rounded_rect_path(rect.width, rect.height, radius) else {
+            let Some(path) = layer_path(rect.width, rect.height, style) else {
                 return;
             };
 
             let mut paint = Paint::default();
-            paint.set_color(skia_color(color));
+            paint.set_color(skia_color(style.color));
             paint.anti_alias = true;
             overlay.fill_path(
                 &path,
@@ -137,13 +155,7 @@ fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor, 
     );
 }
 
-fn stroke_layer_shape(
-    buffer: &mut SoftwareBuffer,
-    rect: Rect,
-    color: ClearColor,
-    radius: i32,
-    width: i32,
-) {
+fn stroke_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
     draw_overlay(
         buffer,
         rect.x,
@@ -151,16 +163,16 @@ fn stroke_layer_shape(
         rect.width.max(1) as u32,
         rect.height.max(1) as u32,
         |overlay| {
-            let Some(path) = rounded_rect_path(rect.width, rect.height, radius) else {
+            let Some(path) = layer_path(rect.width, rect.height, style) else {
                 return;
             };
 
             let mut paint = Paint::default();
-            paint.set_color(skia_color(color));
+            paint.set_color(skia_color(style.color));
             paint.anti_alias = true;
 
             let stroke = Stroke {
-                width: width.max(1) as f32,
+                width: style.border_width.max(1) as f32,
                 ..Stroke::default()
             };
             overlay.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
@@ -226,16 +238,20 @@ fn write_rgba_region(buffer: &mut SoftwareBuffer, rect: Rect, image: &RgbaImage)
     }
 }
 
-fn apply_rounded_mask(original: RgbaImage, blurred: RgbaImage, radius: i32) -> RgbaImage {
-    let width = blurred.width();
-    let height = blurred.height();
-    let Some(mask) = rounded_mask(width, height, radius) else {
+fn apply_shape_mask(
+    original: RgbaImage,
+    blurred: RgbaImage,
+    style: BackdropLayerStyle,
+    width: i32,
+    height: i32,
+) -> RgbaImage {
+    let Some(mask) = layer_mask(width as u32, height as u32, style) else {
         return blurred;
     };
     let mut output = original;
 
-    for y in 0..height {
-        for x in 0..width {
+    for y in 0..height as u32 {
+        for x in 0..width as u32 {
             let mask_alpha = u16::from(mask.get_pixel(x, y).0[3]);
             if mask_alpha == 0 {
                 continue;
@@ -261,9 +277,9 @@ fn apply_rounded_mask(original: RgbaImage, blurred: RgbaImage, radius: i32) -> R
     output
 }
 
-fn rounded_mask(width: u32, height: u32, radius: i32) -> Option<RgbaImage> {
+fn layer_mask(width: u32, height: u32, style: BackdropLayerStyle) -> Option<RgbaImage> {
     let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
-    let path = rounded_rect_path(width as i32, height as i32, radius)?;
+    let path = layer_path(width as i32, height as i32, style)?;
     let mut paint = Paint::default();
     paint.set_color_rgba8(255, 255, 255, 255);
     paint.anti_alias = true;
@@ -275,6 +291,13 @@ fn rounded_mask(width: u32, height: u32, radius: i32) -> Option<RgbaImage> {
         None,
     );
     RgbaImage::from_raw(width, height, pixmap.take())
+}
+
+fn layer_path(width: i32, height: i32, style: BackdropLayerStyle) -> Option<tiny_skia::Path> {
+    match style.shape {
+        BackdropLayerShape::Panel => rounded_rect_path(width, height, style.radius),
+        BackdropLayerShape::Diagonal(alignment) => diagonal_path(width, height, alignment),
+    }
 }
 
 fn rounded_rect_path(width: i32, height: i32, radius: i32) -> Option<tiny_skia::Path> {
@@ -308,6 +331,43 @@ fn rounded_rect_path(width: i32, height: i32, radius: i32) -> Option<tiny_skia::
     builder.finish()
 }
 
+fn diagonal_path(
+    width: i32,
+    height: i32,
+    alignment: BackdropLayerAlignment,
+) -> Option<tiny_skia::Path> {
+    if width <= 0 || height <= 0 {
+        return None;
+    }
+
+    let right = width as f32;
+    let bottom = height as f32;
+    let mut builder = PathBuilder::new();
+
+    match alignment {
+        BackdropLayerAlignment::Left => {
+            builder.move_to(0.0, 0.0);
+            builder.line_to(right, 0.0);
+            builder.line_to(0.0, bottom);
+        }
+        BackdropLayerAlignment::Center => {
+            let inset = right * 0.28;
+            builder.move_to(inset, 0.0);
+            builder.line_to(right, 0.0);
+            builder.line_to(right - inset, bottom);
+            builder.line_to(0.0, bottom);
+        }
+        BackdropLayerAlignment::Right => {
+            builder.move_to(0.0, 0.0);
+            builder.line_to(right, 0.0);
+            builder.line_to(right, bottom);
+        }
+    }
+
+    builder.close();
+    builder.finish()
+}
+
 const fn premultiply_channel(channel: u8, alpha: u8) -> u8 {
     ((channel as u16 * alpha as u16 + 127) / 255) as u8
 }
@@ -318,7 +378,10 @@ fn unpremultiply_channel(channel: u8, alpha: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{BackdropLayerMode, BackdropLayerStyle, draw_backdrop_layer};
+    use super::{
+        BackdropLayerAlignment, BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle,
+        draw_backdrop_layer,
+    };
     use crate::{
         ClearColor, FrameSize, SoftwareBuffer,
         shape::{Rect, fill_rect},
@@ -334,6 +397,7 @@ mod tests {
             Rect::new(1, 0, 2, 4),
             BackdropLayerStyle::new(
                 BackdropLayerMode::Solid,
+                BackdropLayerShape::Panel,
                 ClearColor::rgba(255, 255, 255, 64),
                 0,
                 0,
@@ -361,6 +425,7 @@ mod tests {
             Rect::new(0, 0, 4, 4),
             BackdropLayerStyle::new(
                 BackdropLayerMode::Blur,
+                BackdropLayerShape::Panel,
                 ClearColor::rgba(8, 10, 14, 0),
                 8,
                 0,
@@ -388,6 +453,7 @@ mod tests {
             Rect::new(0, 0, 8, 8),
             BackdropLayerStyle::new(
                 BackdropLayerMode::Blur,
+                BackdropLayerShape::Panel,
                 ClearColor::rgba(8, 10, 14, 0),
                 8,
                 3,
@@ -409,6 +475,7 @@ mod tests {
             Rect::new(1, 1, 6, 6),
             BackdropLayerStyle::new(
                 BackdropLayerMode::Solid,
+                BackdropLayerShape::Panel,
                 ClearColor::rgba(8, 10, 14, 0),
                 0,
                 2,
@@ -418,5 +485,32 @@ mod tests {
         );
 
         assert!(buffer.pixels()[4 * (8 + 3) + 2] > 0);
+    }
+
+    #[test]
+    fn diagonal_layer_keeps_bottom_right_unfilled() {
+        let mut buffer =
+            SoftwareBuffer::solid(FrameSize::new(6, 6), ClearColor::opaque(0, 0, 0)).unwrap();
+
+        draw_backdrop_layer(
+            &mut buffer,
+            Rect::new(0, 0, 6, 6),
+            BackdropLayerStyle::new(
+                BackdropLayerMode::Solid,
+                BackdropLayerShape::Diagonal(BackdropLayerAlignment::Left),
+                ClearColor::opaque(255, 0, 0),
+                0,
+                0,
+                None,
+                0,
+            ),
+        );
+
+        assert_eq!(&buffer.pixels()[0..4], &[0, 0, 255, 255]);
+        let bottom_right = ((5 * 6) + 5) * 4;
+        assert_eq!(
+            &buffer.pixels()[bottom_right..bottom_right + 4],
+            &[0, 0, 0, 255]
+        );
     }
 }

@@ -23,9 +23,11 @@ impl ShellState {
             .layer_border_color
             .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
         Some(format!(
-            "layer:v2:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}:{},{},{},{}:{}",
+            "layer:v3:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
+            self.theme.layer_style,
             self.theme.layer_mode,
             self.theme.layer_alignment,
+            self.theme.layer_full_width,
             self.theme.layer_width,
             self.theme.layer_offset_x,
             self.theme.layer_left_padding,

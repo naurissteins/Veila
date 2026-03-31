@@ -107,6 +107,7 @@ impl ShellState {
                             buffer.size().width as i32,
                             LayerPlacement {
                                 alignment: self.theme.layer_alignment,
+                                full_width: self.theme.layer_full_width,
                                 width: self.theme.layer_width,
                                 offset_x: self.theme.layer_offset_x,
                                 left_padding: self.theme.layer_left_padding,
@@ -135,6 +136,7 @@ impl ShellState {
                                 buffer.size().width as i32,
                                 LayerPlacement {
                                     alignment: self.theme.layer_alignment,
+                                    full_width: self.theme.layer_full_width,
                                     width: self.theme.layer_width,
                                     offset_x: self.theme.layer_offset_x,
                                     left_padding: self.theme.layer_left_padding,

@@ -2,7 +2,8 @@ use std::fs;
 
 use super::{
     AppConfig, BackgroundMode, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment,
-    InputVisualEntry, LayerAlignment, LayerMode, RgbColor, WeatherAlignment, WeatherUnit,
+    InputVisualEntry, LayerAlignment, LayerMode, LayerStyle, LayerWidth, RgbColor,
+    WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
 
@@ -343,6 +344,8 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.battery_gap(), Some(8));
     assert!(!config.visuals.layer_enabled());
     assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
+    assert_eq!(config.visuals.layer_style(), LayerStyle::Panel);
+    assert!(!config.visuals.layer_full_width());
     assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Center);
     assert_eq!(config.visuals.layer_width(), Some(560));
     assert_eq!(config.visuals.layer_offset_x(), Some(0));
@@ -514,6 +517,26 @@ fn parses_widget_enable_flags() {
     assert!(!config.visuals.battery_enabled());
     assert!(!config.visuals.weather_enabled());
     assert!(!config.visuals.now_playing_enabled());
+}
+
+#[test]
+fn parses_full_layer_width_keyword() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.layer]
+            enabled = true
+            width = "full"
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.visuals.layer_enabled());
+    assert!(config.visuals.layer_full_width());
+    assert_eq!(config.visuals.layer_width(), None);
+    assert_eq!(
+        config.visuals.layer.as_ref().and_then(|layer| layer.width),
+        Some(LayerWidth::Keyword(super::visuals::LayerWidthKeyword::Full))
+    );
 }
 
 #[test]
@@ -1154,6 +1177,7 @@ border_color = "#DDDDDD"
             [visuals.layer]
             enabled = true
             mode = "blur"
+            style = "diagonal"
             alignment = "right"
             width = 520
             offset_x = -12
@@ -1298,6 +1322,8 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.clock_gap(), Some(20));
     assert!(config.visuals.layer_enabled());
     assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
+    assert_eq!(config.visuals.layer_style(), LayerStyle::Diagonal);
+    assert!(!config.visuals.layer_full_width());
     assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Right);
     assert_eq!(config.visuals.layer_width(), Some(520));
     assert_eq!(config.visuals.layer_offset_x(), Some(-12));

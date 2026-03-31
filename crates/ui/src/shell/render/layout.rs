@@ -48,6 +48,7 @@ pub(super) struct FooterHeights {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct LayerPlacement {
     pub alignment: LayerAlignment,
+    pub full_width: bool,
     pub width: Option<i32>,
     pub offset_x: Option<i32>,
     pub left_padding: Option<i32>,
@@ -332,10 +333,14 @@ pub(super) fn layer_rect(frame_width: i32, frame_height: i32, placement: LayerPl
     let safe_left = left_padding;
     let safe_right = (frame_width - right_padding).max(safe_left + 1);
     let safe_width = (safe_right - safe_left).max(1);
-    let width = placement
-        .width
-        .unwrap_or((frame_width as f32 * 0.36) as i32)
-        .clamp(1, safe_width);
+    let width = if placement.full_width {
+        safe_width
+    } else {
+        placement
+            .width
+            .unwrap_or((frame_width as f32 * 0.36) as i32)
+            .clamp(1, safe_width)
+    };
     let offset_x = placement.offset_x.unwrap_or(0);
     let unclamped_x = match placement.alignment {
         LayerAlignment::Left => safe_left + offset_x,
@@ -779,6 +784,7 @@ mod tests {
             720,
             LayerPlacement {
                 alignment: LayerAlignment::Right,
+                full_width: false,
                 width: Some(520),
                 offset_x: Some(-12),
                 left_padding: Some(24),
@@ -796,6 +802,7 @@ mod tests {
                 1280,
                 LayerPlacement {
                     alignment: LayerAlignment::Right,
+                    full_width: false,
                     width: Some(520),
                     offset_x: Some(-12),
                     left_padding: Some(24),

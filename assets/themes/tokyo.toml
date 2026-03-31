@@ -1,7 +1,7 @@
 # Wallpaper source: https://wallpapersden.com/ghost-in-the-shell-cool-anime-art-wallpaper/
 [background]
 mode = "file"
-path = "/usr/share/veila/bg/"
+path = "/usr/share/veila/bg/tokyo.jpg"
 color = "#ffffff"
 blur_radius = 0
 dim_strength = 64
@@ -13,12 +13,11 @@ user_hint = "Password"
 show_username = true
 username = "Billy Ocean"
 # avatar_path = ""
-#
 
 [visuals.layer]
 enabled = true
-mode = "blur"        # "blur" | "solid"
-alignment = "left"  # "left" | "center" | "right"
+mode = "blur"
+alignment = "left"
 width = 540
 offset_x = 0
 color = "#080A0E"
@@ -48,7 +47,6 @@ meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Geom"
 font_weight = 600
-#font_style = "italic"
 color = "#ffffff"
 opacity = 40
 size = 14
@@ -85,7 +83,6 @@ color = "#ffffff"
 opacity = 60
 
 [visuals.avatar]
-#enabled = false
 size = 192
 gap = 24
 background_color = "#ffffff"
@@ -130,7 +127,6 @@ temperature_size = 6
 location_size = 3
 icon_size = 40
 temperature_font_family = "Google Sans Flex"
-#temperature_font_style = "italic"
 temperature_font_weight = 400
 temperature_letter_spacing = 0
 location_font_family = "Google Sans Flex"

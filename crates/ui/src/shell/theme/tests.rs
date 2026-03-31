@@ -2,9 +2,9 @@ use veila_common::{
     AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockAlignment, ClockFormat, ClockStyle,
     ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle,
     InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerMode,
-    LayerVisualConfig, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
-    WeatherVisualConfig,
+    LayerStyle, LayerVisualConfig, LayerWidth, LayoutVisualConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -117,8 +117,9 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.layer = Some(LayerVisualConfig {
         enabled: Some(true),
         mode: Some(LayerMode::Blur),
+        style: Some(LayerStyle::Diagonal),
         alignment: Some(LayerAlignment::Right),
-        width: Some(520),
+        width: Some(LayerWidth::Pixels(520)),
         offset_x: Some(-12),
         left_margin: Some(24),
         right_margin: Some(36),
@@ -306,7 +307,9 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.battery_gap, Some(8));
     assert!(theme.layer_enabled);
     assert_eq!(theme.layer_mode, LayerMode::Blur);
+    assert_eq!(theme.layer_style, LayerStyle::Diagonal);
     assert_eq!(theme.layer_alignment, LayerAlignment::Right);
+    assert!(!theme.layer_full_width);
     assert_eq!(theme.layer_width, Some(520));
     assert_eq!(theme.layer_offset_x, Some(-12));
     assert_eq!(theme.layer_left_padding, Some(24));

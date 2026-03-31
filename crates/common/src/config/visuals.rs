@@ -488,6 +488,33 @@ pub enum LayerMode {
     Blur,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LayerStyle {
+    #[default]
+    Panel,
+    Diagonal,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum LayerWidth {
+    Pixels(u16),
+    Keyword(LayerWidthKeyword),
+}
+
+impl Default for LayerWidth {
+    fn default() -> Self {
+        Self::Pixels(560)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LayerWidthKeyword {
+    #[serde(rename = "full")]
+    Full,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherVisualConfig {
     #[serde(default)]
@@ -584,9 +611,11 @@ pub struct LayerVisualConfig {
     #[serde(default)]
     pub mode: Option<LayerMode>,
     #[serde(default)]
+    pub style: Option<LayerStyle>,
+    #[serde(default)]
     pub alignment: Option<LayerAlignment>,
     #[serde(default)]
-    pub width: Option<u16>,
+    pub width: Option<LayerWidth>,
     #[serde(default)]
     pub offset_x: Option<i16>,
     #[serde(default)]
@@ -624,8 +653,9 @@ impl Default for LayerVisualConfig {
         Self {
             enabled: Some(false),
             mode: Some(LayerMode::Blur),
+            style: Some(LayerStyle::Panel),
             alignment: Some(LayerAlignment::Center),
-            width: Some(560),
+            width: Some(LayerWidth::default()),
             offset_x: Some(0),
             left_margin: Some(0),
             right_margin: Some(0),
@@ -1821,6 +1851,13 @@ impl VisualConfig {
             .unwrap_or_default()
     }
 
+    pub fn layer_style(&self) -> LayerStyle {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.style)
+            .unwrap_or_default()
+    }
+
     pub fn layer_alignment(&self) -> LayerAlignment {
         self.layer
             .as_ref()
@@ -1829,7 +1866,17 @@ impl VisualConfig {
     }
 
     pub fn layer_width(&self) -> Option<u16> {
-        self.layer.as_ref().and_then(|layer| layer.width)
+        match self.layer.as_ref().and_then(|layer| layer.width) {
+            Some(LayerWidth::Pixels(width)) => Some(width),
+            Some(LayerWidth::Keyword(LayerWidthKeyword::Full)) | None => None,
+        }
+    }
+
+    pub fn layer_full_width(&self) -> bool {
+        matches!(
+            self.layer.as_ref().and_then(|layer| layer.width),
+            Some(LayerWidth::Keyword(LayerWidthKeyword::Full))
+        )
     }
 
     pub fn layer_offset_x(&self) -> Option<i16> {

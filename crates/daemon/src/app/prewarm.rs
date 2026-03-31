@@ -3,14 +3,17 @@ use std::{
     time::Instant,
 };
 
-use veila_common::{AppConfig, LayerAlignment, LayerMode, RgbColor};
+use veila_common::{AppConfig, LayerAlignment, LayerMode, LayerStyle, RgbColor};
 use veila_renderer::{
     ClearColor,
     background::{
         BackgroundAsset, BackgroundTreatment, RenderCacheSummary, SourceCacheStatus,
         load_cached_render_variant, prewarm_rendered, prewarm_source, store_cached_render_variant,
     },
-    draw::layer::{BackdropLayerMode, BackdropLayerStyle, draw_backdrop_layer},
+    draw::layer::{
+        BackdropLayerAlignment, BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle,
+        draw_backdrop_layer,
+    },
     shape::Rect,
 };
 
@@ -178,10 +181,14 @@ fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::Softw
     let safe_left = left_margin;
     let safe_right = (frame_width - right_margin).max(safe_left + 1);
     let safe_width = (safe_right - safe_left).max(1);
-    let width = layer
-        .width
-        .unwrap_or((frame_width as f32 * 0.36) as i32)
-        .clamp(1, safe_width);
+    let width = if layer.full_width {
+        safe_width
+    } else {
+        layer
+            .width
+            .unwrap_or((frame_width as f32 * 0.36) as i32)
+            .clamp(1, safe_width)
+    };
     let offset_x = layer.offset_x;
     let unclamped_x = match layer.alignment {
         LayerAlignment::Left => safe_left + offset_x,
@@ -195,12 +202,22 @@ fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::Softw
         LayerMode::Solid => BackdropLayerMode::Solid,
         LayerMode::Blur => BackdropLayerMode::Blur,
     };
+    let alignment = match layer.alignment {
+        LayerAlignment::Left => BackdropLayerAlignment::Left,
+        LayerAlignment::Center => BackdropLayerAlignment::Center,
+        LayerAlignment::Right => BackdropLayerAlignment::Right,
+    };
+    let shape = match layer.style {
+        LayerStyle::Panel => BackdropLayerShape::Panel,
+        LayerStyle::Diagonal => BackdropLayerShape::Diagonal(alignment),
+    };
 
     draw_backdrop_layer(
         buffer,
         Rect::new(x, y, width, height),
         BackdropLayerStyle::new(
             mode,
+            shape,
             layer.color,
             layer.blur_radius,
             layer.radius,
@@ -220,9 +237,11 @@ fn layer_prewarm_spec(config: &AppConfig) -> Option<LayerPrewarmSpec> {
     let border_color = config.visuals.layer_border_color().map(to_clear_color);
     Some(LayerPrewarmSpec {
         variant: format!(
-            "layer:v2:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{},{},{},{}:{}:{:?}:{}",
+            "layer:v3:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
+            config.visuals.layer_style(),
             config.visuals.layer_mode(),
             config.visuals.layer_alignment(),
+            config.visuals.layer_full_width(),
             config.visuals.layer_width(),
             config.visuals.layer_offset_x(),
             config.visuals.layer_left_margin(),
@@ -239,7 +258,9 @@ fn layer_prewarm_spec(config: &AppConfig) -> Option<LayerPrewarmSpec> {
             config.visuals.layer_border_width().unwrap_or(0),
         ),
         mode: config.visuals.layer_mode(),
+        style: config.visuals.layer_style(),
         alignment: config.visuals.layer_alignment(),
+        full_width: config.visuals.layer_full_width(),
         width: config.visuals.layer_width().map(i32::from),
         offset_x: i32::from(config.visuals.layer_offset_x().unwrap_or(0)),
         left_margin: i32::from(config.visuals.layer_left_margin().unwrap_or(0)),
@@ -293,7 +314,9 @@ struct RenderedPrewarmReport {
 struct LayerPrewarmSpec {
     variant: String,
     mode: LayerMode,
+    style: LayerStyle,
     alignment: LayerAlignment,
+    full_width: bool,
     width: Option<i32>,
     offset_x: i32,
     left_margin: i32,

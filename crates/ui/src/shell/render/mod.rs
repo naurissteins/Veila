@@ -11,10 +11,13 @@ mod widgets;
 
 pub(super) use cache::TextLayoutCache;
 
-use veila_common::LayerMode;
+use veila_common::{LayerAlignment, LayerMode, LayerStyle};
 use veila_renderer::{
     SoftwareBuffer,
-    layer::{BackdropLayerMode, BackdropLayerStyle, draw_backdrop_layer},
+    layer::{
+        BackdropLayerAlignment, BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle,
+        draw_backdrop_layer,
+    },
     shape::Rect,
 };
 
@@ -44,6 +47,7 @@ impl ShellState {
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
         let layer_placement = LayerPlacement {
             alignment: self.theme.layer_alignment,
+            full_width: self.theme.layer_full_width,
             width: self.theme.layer_width,
             offset_x: self.theme.layer_offset_x,
             left_padding: self.theme.layer_left_padding,
@@ -153,12 +157,22 @@ impl ShellState {
             LayerMode::Solid => BackdropLayerMode::Solid,
             LayerMode::Blur => BackdropLayerMode::Blur,
         };
+        let alignment = match self.theme.layer_alignment {
+            LayerAlignment::Left => BackdropLayerAlignment::Left,
+            LayerAlignment::Center => BackdropLayerAlignment::Center,
+            LayerAlignment::Right => BackdropLayerAlignment::Right,
+        };
+        let shape = match self.theme.layer_style {
+            LayerStyle::Panel => BackdropLayerShape::Panel,
+            LayerStyle::Diagonal => BackdropLayerShape::Diagonal(alignment),
+        };
 
         draw_backdrop_layer(
             buffer,
             rect,
             BackdropLayerStyle::new(
                 mode,
+                shape,
                 self.theme.layer_color,
                 self.theme.layer_blur_radius,
                 self.theme.layer_radius,
@@ -174,6 +188,7 @@ impl ShellState {
             size.height as i32,
             LayerPlacement {
                 alignment: self.theme.layer_alignment,
+                full_width: self.theme.layer_full_width,
                 width: self.theme.layer_width,
                 offset_x: self.theme.layer_offset_x,
                 left_padding: self.theme.layer_left_padding,
