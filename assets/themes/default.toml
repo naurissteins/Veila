@@ -1,17 +1,12 @@
 [background]
 mode = "bundled"
 color = "#202833"
-#path = "/home/ns/Pictures/88136191-abstract-blur-hd-wallpaper.jpg"
-#path = "/home/ns/Pictures/Wallpapers/04.jpg"
 blur_radius = 12
 dim_strength = 54
 tint = "rgba(8, 10, 14, 0.4)"
 tint_opacity = 0
 
 [lock]
-acquire_timeout_seconds = 5
-auth_backoff_base_ms = 750
-auth_backoff_max_seconds = 12
 user_hint = "Password"
 show_username = true
 username = "Billy Ocean"
@@ -49,8 +44,6 @@ text_gap = 10
 [weather]
 enabled = true
 location = "Riga"
-#latitude = 56.9496
-#longitude = 24.1052
 refresh_minutes = 15
 unit = "celsius"
 
