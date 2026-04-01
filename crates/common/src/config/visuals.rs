@@ -482,6 +482,15 @@ pub enum LayerAlignment {
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum LayerVerticalAlignment {
+    #[default]
+    Top,
+    Center,
+    Bottom,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum LayerMode {
     Solid,
     #[default]
@@ -511,6 +520,25 @@ impl Default for LayerWidth {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum LayerWidthKeyword {
+    #[serde(rename = "full")]
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum LayerHeight {
+    Pixels(u16),
+    Keyword(LayerHeightKeyword),
+}
+
+impl Default for LayerHeight {
+    fn default() -> Self {
+        Self::Keyword(LayerHeightKeyword::Full)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LayerHeightKeyword {
     #[serde(rename = "full")]
     Full,
 }
@@ -617,7 +645,13 @@ pub struct LayerVisualConfig {
     #[serde(default)]
     pub width: Option<LayerWidth>,
     #[serde(default)]
+    pub height: Option<LayerHeight>,
+    #[serde(default)]
+    pub vertical_alignment: Option<LayerVerticalAlignment>,
+    #[serde(default)]
     pub offset_x: Option<i16>,
+    #[serde(default)]
+    pub offset_y: Option<i16>,
     #[serde(default)]
     pub left_margin: Option<u16>,
     #[serde(default)]
@@ -656,7 +690,10 @@ impl Default for LayerVisualConfig {
             style: Some(LayerStyle::Panel),
             alignment: Some(LayerAlignment::Center),
             width: Some(LayerWidth::default()),
+            height: Some(LayerHeight::default()),
+            vertical_alignment: Some(LayerVerticalAlignment::Top),
             offset_x: Some(0),
+            offset_y: Some(0),
             left_margin: Some(0),
             right_margin: Some(0),
             top_margin: Some(0),
@@ -1943,8 +1980,33 @@ impl VisualConfig {
         )
     }
 
+    pub fn layer_height(&self) -> Option<u16> {
+        match self.layer.as_ref().and_then(|layer| layer.height) {
+            Some(LayerHeight::Pixels(height)) => Some(height),
+            Some(LayerHeight::Keyword(LayerHeightKeyword::Full)) | None => None,
+        }
+    }
+
+    pub fn layer_full_height(&self) -> bool {
+        matches!(
+            self.layer.as_ref().and_then(|layer| layer.height),
+            Some(LayerHeight::Keyword(LayerHeightKeyword::Full))
+        )
+    }
+
+    pub fn layer_vertical_alignment(&self) -> LayerVerticalAlignment {
+        self.layer
+            .as_ref()
+            .and_then(|layer| layer.vertical_alignment)
+            .unwrap_or_default()
+    }
+
     pub fn layer_offset_x(&self) -> Option<i16> {
         self.layer.as_ref().and_then(|layer| layer.offset_x)
+    }
+
+    pub fn layer_offset_y(&self) -> Option<i16> {
+        self.layer.as_ref().and_then(|layer| layer.offset_y)
     }
 
     pub fn layer_color(&self) -> Option<RgbColor> {

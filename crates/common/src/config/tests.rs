@@ -2,8 +2,9 @@ use std::fs;
 
 use super::{
     AppConfig, BackgroundMode, CenterStackOrder, CenterStackStyle, ClockAlignment, ClockFormat,
-    ClockStyle, FontStyle, InputAlignment, InputVisualEntry, LayerAlignment, LayerMode, LayerStyle,
-    LayerWidth, RgbColor, WeatherAlignment, WeatherUnit,
+    ClockStyle, FontStyle, InputAlignment, InputVisualEntry, LayerAlignment, LayerHeight,
+    LayerMode, LayerStyle, LayerVerticalAlignment, LayerWidth, RgbColor, WeatherAlignment,
+    WeatherUnit,
 };
 use crate::VeilaError;
 
@@ -368,7 +369,14 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(!config.visuals.layer_full_width());
     assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Center);
     assert_eq!(config.visuals.layer_width(), Some(560));
+    assert!(config.visuals.layer_full_height());
+    assert_eq!(config.visuals.layer_height(), None);
+    assert_eq!(
+        config.visuals.layer_vertical_alignment(),
+        LayerVerticalAlignment::Top
+    );
     assert_eq!(config.visuals.layer_offset_x(), Some(0));
+    assert_eq!(config.visuals.layer_offset_y(), Some(0));
     assert_eq!(config.visuals.layer_left_padding(), Some(0));
     assert_eq!(config.visuals.layer_right_padding(), Some(0));
     assert_eq!(config.visuals.layer_top_padding(), Some(0));
@@ -557,6 +565,47 @@ fn parses_full_layer_width_keyword() {
         config.visuals.layer.as_ref().and_then(|layer| layer.width),
         Some(LayerWidth::Keyword(super::visuals::LayerWidthKeyword::Full))
     );
+}
+
+#[test]
+fn parses_full_layer_height_keyword() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.layer]
+            enabled = true
+            height = "full"
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.visuals.layer_enabled());
+    assert!(config.visuals.layer_full_height());
+    assert_eq!(config.visuals.layer_height(), None);
+    assert_eq!(
+        config.visuals.layer.as_ref().and_then(|layer| layer.height),
+        Some(LayerHeight::Keyword(
+            super::visuals::LayerHeightKeyword::Full
+        ))
+    );
+}
+
+#[test]
+fn parses_layer_vertical_alignment() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.layer]
+            enabled = true
+            vertical_alignment = "bottom"
+            offset_y = 18
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(
+        config.visuals.layer_vertical_alignment(),
+        LayerVerticalAlignment::Bottom
+    );
+    assert_eq!(config.visuals.layer_offset_y(), Some(18));
 }
 
 #[test]
@@ -1246,7 +1295,10 @@ border_color = "#DDDDDD"
             style = "diagonal"
             alignment = "right"
             width = 520
+            height = 420
+            vertical_alignment = "bottom"
             offset_x = -12
+            offset_y = 16
             left_margin = 24
             right_margin = 36
             top_margin = 18
@@ -1394,7 +1446,14 @@ border_color = "#DDDDDD"
     assert!(!config.visuals.layer_full_width());
     assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Right);
     assert_eq!(config.visuals.layer_width(), Some(520));
+    assert!(!config.visuals.layer_full_height());
+    assert_eq!(config.visuals.layer_height(), Some(420));
+    assert_eq!(
+        config.visuals.layer_vertical_alignment(),
+        LayerVerticalAlignment::Bottom
+    );
     assert_eq!(config.visuals.layer_offset_x(), Some(-12));
+    assert_eq!(config.visuals.layer_offset_y(), Some(16));
     assert_eq!(config.visuals.layer_left_padding(), Some(24));
     assert_eq!(config.visuals.layer_right_padding(), Some(36));
     assert_eq!(config.visuals.layer_top_padding(), Some(18));

@@ -3,7 +3,8 @@ use super::{
 };
 use crate::shell::{ShellStatus, ShellTheme};
 use veila_common::{
-    ClockStyle, InputAlignment, LayerAlignment, LayerMode, WeatherAlignment, WeatherUnit,
+    ClockStyle, InputAlignment, LayerAlignment, LayerMode, LayerVerticalAlignment,
+    WeatherAlignment, WeatherUnit,
 };
 use veila_common::{WeatherCondition, WeatherSnapshot};
 use veila_renderer::{
@@ -905,9 +906,13 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
         ShellTheme {
             layer_enabled: true,
             layer_alignment: LayerAlignment::Center,
+            layer_full_height: false,
             layer_width: Some(520),
+            layer_height: Some(420),
+            layer_vertical_alignment: LayerVerticalAlignment::Bottom,
             layer_top_padding: Some(18),
             layer_bottom_padding: Some(22),
+            layer_offset_y: Some(-24),
             layer_mode: LayerMode::Blur,
             ..ShellTheme::default()
         },
@@ -939,9 +944,9 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
         .expect("right layer");
 
     assert_eq!(centered_rect.x, 380);
-    assert_eq!(centered_rect.y, 18);
+    assert_eq!(centered_rect.y, 254);
     assert_eq!(centered_rect.width, 520);
-    assert_eq!(centered_rect.height, 680);
+    assert_eq!(centered_rect.height, 420);
     assert_eq!(right_rect.x, 712);
 }
 

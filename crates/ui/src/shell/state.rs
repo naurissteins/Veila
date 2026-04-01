@@ -23,13 +23,17 @@ impl ShellState {
             .layer_border_color
             .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
         Some(format!(
-            "layer:v3:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
+            "layer:v5:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
             self.theme.layer_style,
             self.theme.layer_mode,
             self.theme.layer_alignment,
             self.theme.layer_full_width,
             self.theme.layer_width,
+            self.theme.layer_full_height,
+            self.theme.layer_height,
+            self.theme.layer_vertical_alignment,
             self.theme.layer_offset_x,
+            self.theme.layer_offset_y,
             self.theme.layer_left_padding,
             self.theme.layer_right_padding,
             self.theme.layer_top_padding,

@@ -26,9 +26,10 @@ pub use visuals::{
     AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackOrder,
     CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig,
     EyeVisualConfig, FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, LayerWidth,
-    LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
-    StatusVisualConfig, UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
+    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

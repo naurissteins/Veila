@@ -2,9 +2,10 @@ use veila_common::{
     AppConfig, AvatarVisualConfig, BatteryVisualConfig, CenterStackOrder, CenterStackStyle,
     ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,
-    LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
-    UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
+    LayerAlignment, LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig,
+    LayerWidth, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
+    WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -120,7 +121,10 @@ fn input_opacity_overrides_embedded_alpha() {
         style: Some(LayerStyle::Diagonal),
         alignment: Some(LayerAlignment::Right),
         width: Some(LayerWidth::Pixels(520)),
+        height: Some(LayerHeight::Pixels(420)),
+        vertical_alignment: Some(LayerVerticalAlignment::Bottom),
         offset_x: Some(-12),
+        offset_y: Some(16),
         left_margin: Some(24),
         right_margin: Some(36),
         top_margin: Some(18),
@@ -317,7 +321,14 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.layer_alignment, LayerAlignment::Right);
     assert!(!theme.layer_full_width);
     assert_eq!(theme.layer_width, Some(520));
+    assert!(!theme.layer_full_height);
+    assert_eq!(theme.layer_height, Some(420));
+    assert_eq!(
+        theme.layer_vertical_alignment,
+        LayerVerticalAlignment::Bottom
+    );
     assert_eq!(theme.layer_offset_x, Some(-12));
+    assert_eq!(theme.layer_offset_y, Some(16));
     assert_eq!(theme.layer_left_padding, Some(24));
     assert_eq!(theme.layer_right_padding, Some(36));
     assert_eq!(theme.layer_top_padding, Some(18));

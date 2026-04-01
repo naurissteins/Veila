@@ -4,7 +4,8 @@ mod tests;
 
 use veila_common::{
     AppConfig, CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
-    InputAlignment, LayerAlignment, LayerMode, LayerStyle, WeatherAlignment,
+    InputAlignment, LayerAlignment, LayerMode, LayerStyle, LayerVerticalAlignment,
+    WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -104,7 +105,11 @@ pub struct ShellTheme {
     pub layer_alignment: LayerAlignment,
     pub layer_full_width: bool,
     pub layer_width: Option<i32>,
+    pub layer_full_height: bool,
+    pub layer_height: Option<i32>,
+    pub layer_vertical_alignment: LayerVerticalAlignment,
     pub layer_offset_x: Option<i32>,
+    pub layer_offset_y: Option<i32>,
     pub layer_left_padding: Option<i32>,
     pub layer_right_padding: Option<i32>,
     pub layer_top_padding: Option<i32>,
@@ -293,7 +298,11 @@ impl ShellTheme {
             layer_alignment: config.visuals.layer_alignment(),
             layer_full_width: config.visuals.layer_full_width(),
             layer_width: config.visuals.layer_width().map(i32::from),
+            layer_full_height: config.visuals.layer_full_height(),
+            layer_height: config.visuals.layer_height().map(i32::from),
+            layer_vertical_alignment: config.visuals.layer_vertical_alignment(),
             layer_offset_x: config.visuals.layer_offset_x().map(i32::from),
+            layer_offset_y: config.visuals.layer_offset_y().map(i32::from),
             layer_left_padding: config.visuals.layer_left_padding().map(i32::from),
             layer_right_padding: config.visuals.layer_right_padding().map(i32::from),
             layer_top_padding: config.visuals.layer_top_padding().map(i32::from),

@@ -1,4 +1,6 @@
-use veila_common::{CenterStackStyle, ClockAlignment, InputAlignment, LayerAlignment};
+use veila_common::{
+    CenterStackStyle, ClockAlignment, InputAlignment, LayerAlignment, LayerVerticalAlignment,
+};
 use veila_renderer::shape::Rect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,7 +73,11 @@ pub(super) struct LayerPlacement {
     pub alignment: LayerAlignment,
     pub full_width: bool,
     pub width: Option<i32>,
+    pub full_height: bool,
+    pub height: Option<i32>,
+    pub vertical_alignment: LayerVerticalAlignment,
     pub offset_x: Option<i32>,
+    pub offset_y: Option<i32>,
     pub left_padding: Option<i32>,
     pub right_padding: Option<i32>,
     pub top_padding: Option<i32>,
@@ -462,6 +468,9 @@ pub(super) fn layer_rect(frame_width: i32, frame_height: i32, placement: LayerPl
     let safe_left = left_padding;
     let safe_right = (frame_width - right_padding).max(safe_left + 1);
     let safe_width = (safe_right - safe_left).max(1);
+    let safe_top = top_padding.min(frame_height.saturating_sub(1));
+    let safe_bottom = (frame_height - bottom_padding).max(safe_top + 1);
+    let safe_height = (safe_bottom - safe_top).max(1);
     let width = if placement.full_width {
         safe_width
     } else {
@@ -470,15 +479,28 @@ pub(super) fn layer_rect(frame_width: i32, frame_height: i32, placement: LayerPl
             .unwrap_or((frame_width as f32 * 0.36) as i32)
             .clamp(1, safe_width)
     };
+    let height = if placement.full_height {
+        safe_height
+    } else {
+        placement
+            .height
+            .unwrap_or(safe_height)
+            .clamp(1, safe_height)
+    };
     let offset_x = placement.offset_x.unwrap_or(0);
+    let offset_y = placement.offset_y.unwrap_or(0);
     let unclamped_x = match placement.alignment {
         LayerAlignment::Left => safe_left + offset_x,
         LayerAlignment::Center => safe_left + (safe_width - width) / 2 + offset_x,
         LayerAlignment::Right => safe_right - width + offset_x,
     };
     let x = unclamped_x.clamp(safe_left - width + 1, safe_right - 1);
-    let y = top_padding.min(frame_height.saturating_sub(1));
-    let height = (frame_height - top_padding - bottom_padding).max(1);
+    let unclamped_y = match placement.vertical_alignment {
+        LayerVerticalAlignment::Top => safe_top,
+        LayerVerticalAlignment::Center => safe_top + (safe_height - height) / 2,
+        LayerVerticalAlignment::Bottom => safe_bottom - height,
+    } + offset_y;
+    let y = unclamped_y.clamp(safe_top, safe_bottom - height);
 
     Rect::new(x, y, width, height)
 }
@@ -494,7 +516,9 @@ pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) ->
 
 #[cfg(test)]
 mod tests {
-    use veila_common::{CenterStackStyle, ClockAlignment, InputAlignment, LayerAlignment};
+    use veila_common::{
+        CenterStackStyle, ClockAlignment, InputAlignment, LayerAlignment, LayerVerticalAlignment,
+    };
 
     use super::{
         AnchorOffsets, AuthGroupHeights, FooterHeights, InputPlacement, LayerPlacement,
@@ -969,7 +993,11 @@ mod tests {
                 alignment: LayerAlignment::Right,
                 full_width: false,
                 width: Some(520),
+                full_height: false,
+                height: Some(420),
+                vertical_alignment: LayerVerticalAlignment::Top,
                 offset_x: Some(-12),
+                offset_y: Some(0),
                 left_padding: Some(24),
                 right_padding: Some(36),
                 top_padding: Some(18),
@@ -979,7 +1007,7 @@ mod tests {
 
         assert_eq!(rect.x, 712);
         assert_eq!(rect.y, 18);
-        assert_eq!(rect.height, 680);
+        assert_eq!(rect.height, 420);
         assert_eq!(
             layer_center_x(
                 1280,
@@ -987,7 +1015,11 @@ mod tests {
                     alignment: LayerAlignment::Right,
                     full_width: false,
                     width: Some(520),
+                    full_height: false,
+                    height: Some(420),
+                    vertical_alignment: LayerVerticalAlignment::Top,
                     offset_x: Some(-12),
+                    offset_y: Some(0),
                     left_padding: Some(24),
                     right_padding: Some(36),
                     top_padding: Some(18),
@@ -996,6 +1028,73 @@ mod tests {
             ),
             972
         );
+    }
+
+    #[test]
+    fn supports_configured_layer_vertical_alignment() {
+        let center_rect = layer_rect(
+            1280,
+            720,
+            LayerPlacement {
+                alignment: LayerAlignment::Center,
+                full_width: false,
+                width: Some(520),
+                full_height: false,
+                height: Some(420),
+                vertical_alignment: LayerVerticalAlignment::Center,
+                offset_x: None,
+                offset_y: Some(0),
+                left_padding: Some(24),
+                right_padding: Some(36),
+                top_padding: Some(18),
+                bottom_padding: Some(22),
+            },
+        );
+        let bottom_rect = layer_rect(
+            1280,
+            720,
+            LayerPlacement {
+                alignment: LayerAlignment::Center,
+                full_width: false,
+                width: Some(520),
+                full_height: false,
+                height: Some(420),
+                vertical_alignment: LayerVerticalAlignment::Bottom,
+                offset_x: None,
+                offset_y: Some(0),
+                left_padding: Some(24),
+                right_padding: Some(36),
+                top_padding: Some(18),
+                bottom_padding: Some(22),
+            },
+        );
+
+        assert_eq!(center_rect.y, 148);
+        assert_eq!(bottom_rect.y, 278);
+    }
+
+    #[test]
+    fn applies_configured_layer_offset_y() {
+        let rect = layer_rect(
+            1280,
+            720,
+            LayerPlacement {
+                alignment: LayerAlignment::Center,
+                full_width: false,
+                width: Some(520),
+                full_height: false,
+                height: Some(420),
+                vertical_alignment: LayerVerticalAlignment::Center,
+                offset_x: None,
+                offset_y: Some(24),
+                left_padding: Some(24),
+                right_padding: Some(36),
+                top_padding: Some(18),
+                bottom_padding: Some(22),
+            },
+        );
+
+        assert_eq!(rect.y, 172);
     }
 
     #[test]
