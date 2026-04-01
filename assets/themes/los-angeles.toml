@@ -1,11 +1,11 @@
-# Wallpaper source: https://wallpapersden.com/ghost-in-the-shell-cool-anime-art-wallpaper/
+# Wallpaper source: https://hdqwalls.com/wallpaper/3440x1440/stunning-anime-girl-with-bright-blue-eyes
 [background]
 mode = "file"
-path = "/usr/share/veila/bg/tokyo.jpg"
-color = "#ffffff"
+path = "/usr/share/veila/bg/los-angeles.jpg"
+color = "#050213"
 blur_radius = 0
-dim_strength = 64
-tint = "rgba(255, 255, 255, 0.1)"
+dim_strength = 4
+tint = "rgba(0, 0, 0, 0.1)"
 tint_opacity = 0
 
 [lock]
@@ -16,13 +16,18 @@ username = "Billy Ocean"
 
 [visuals.layer]
 enabled = true
+style = "panel"
 mode = "blur"
-alignment = "left"
+alignment = "right"
 width = 540
 offset_x = 0
-color = "#080A0E"
-opacity = 42
+color = "#0C0819"
+opacity = 80
 blur_radius = 12
+
+top_margin = 10
+bottom_margin = 10
+right_margin = 10
 
 [battery]
 enabled = true
@@ -31,23 +36,23 @@ mock_charging = false
 
 [weather]
 enabled = true
-location = "Boracay"
+location = "Los Angeles"
 refresh_minutes = 15
-unit = "celsius"
+unit = "fahrenheit"
 
 [visuals.clock]
-alignment = "top-left"
+alignment = "top-right"
 center_in_layer = true
 offset_x = 0
 offset_y = 0
-format = "24h"
+format = "12h"
 style = "standard"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Geom"
 font_weight = 600
-color = "#ffffff"
+color = "#FA7EF0"
 opacity = 40
 size = 14
 gap = 20
@@ -55,7 +60,7 @@ gap = 20
 [visuals.date]
 font_family = "Google Sans Flex"
 font_weight = 400
-color = "#C8D8F2"
+color = "#FA7EF0"
 opacity = 72
 
 [visuals.input]
@@ -65,8 +70,8 @@ horizontal_padding = 0
 vertical_padding = 0
 offset_x = 0
 offset_y = 0
-background_color = "#FFFFFF"
-background_opacity = 8
+background_color = "#FA7EF0"
+background_opacity = 6
 border_color = "#FFFFFF"
 border_width = 0
 border_opacity = 0
@@ -79,23 +84,23 @@ font_weight = 400
 font_size = 2
 
 [visuals.placeholder]
-color = "#ffffff"
+color = "#FA7EF0"
 opacity = 60
 
 [visuals.avatar]
 size = 160
 gap = 24
-background_color = "#ffffff"
+background_color = "#FA7EF0"
 background_opacity = 6
 placeholder_padding = 28
 ring_color = "#94B2FF"
 ring_width = 0
-icon_color = "#ffffff"
+icon_color = "#FA7EF0"
 
 [visuals.username]
 font_family = "Google Sans Flex"
 font_weight = 400
-color = "#ffffff"
+color = "#FA7EF0"
 opacity = 84
 size = 4
 gap = 28
@@ -103,7 +108,7 @@ gap = 28
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(255, 255, 255, 0.05)"
-color = "#ffffff"
+color = "#FA7EF0"
 opacity = 68
 size = 2
 top_offset = -44
@@ -112,7 +117,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.05)"
 background_size = 46
-color = "#ffffff"
+color = "#FA7EF0"
 opacity = 68
 size = 20
 top_offset = -44
@@ -121,8 +126,8 @@ gap = 8
 
 [visuals.weather]
 size = 2
-temperature_color = "#FFFFFF"
-location_color = "#D6E3FF"
+temperature_color = "#FA7EF0"
+location_color = "#D74399"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -143,7 +148,7 @@ alignment = "left"
 [visuals.now_playing]
 content_gap = 18
 fade_duration_ms = 320
-title_color = "#ffffff"
+title_color = "#FA7EF0"
 artist_color = "#ffffff"
 title_size = 2
 artist_size = 2
