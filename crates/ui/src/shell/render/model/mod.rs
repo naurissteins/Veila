@@ -50,6 +50,12 @@ pub(super) enum LayoutRole {
     Footer,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AuthGroup {
+    Identity,
+    Input,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SceneModel {
     sections: Vec<SceneSection>,
@@ -81,6 +87,14 @@ impl SceneModel {
         self.sections
             .iter()
             .filter(move |section| section.role == role)
+    }
+
+    pub(super) fn sections_for_auth_group(
+        &self,
+        group: AuthGroup,
+    ) -> impl Iterator<Item = &SceneSection> {
+        self.sections_for_role(LayoutRole::Auth)
+            .filter(move |section| section.auth_group() == Some(group))
     }
 
     pub(super) fn total_height_for_role(
@@ -123,6 +137,47 @@ impl SceneModel {
             })
             .sum()
     }
+
+    pub(super) fn total_height_for_auth_group(
+        &self,
+        group: AuthGroup,
+        metrics: SceneMetrics,
+        status: &ShellStatus,
+    ) -> i32 {
+        self.sections_for_auth_group(group)
+            .map(|section| section.height(metrics, status) + section.gap_after)
+            .sum()
+    }
+
+    pub(super) fn anchor_height_for_auth_group(
+        &self,
+        group: AuthGroup,
+        metrics: SceneMetrics,
+        status: &ShellStatus,
+    ) -> i32 {
+        let sections = self.sections_for_auth_group(group).collect::<Vec<_>>();
+
+        sections
+            .iter()
+            .enumerate()
+            .filter(|(_, section)| !matches!(section.widget, SceneWidget::Status(_)))
+            .map(|(index, section)| {
+                let gap_after = if matches!(
+                    (
+                        &section.widget,
+                        sections.get(index + 1).map(|next| &next.widget)
+                    ),
+                    (SceneWidget::Input(_), Some(SceneWidget::Status(_)))
+                ) {
+                    0
+                } else {
+                    section.gap_after
+                };
+
+                section.height(metrics, status) + gap_after
+            })
+            .sum()
+    }
 }
 
 impl SceneSection {
@@ -137,6 +192,10 @@ impl SceneSection {
     pub(super) fn height(&self, metrics: SceneMetrics, status: &ShellStatus) -> i32 {
         self.widget.height(metrics, status)
     }
+
+    pub(super) fn auth_group(&self) -> Option<AuthGroup> {
+        self.widget.auth_group()
+    }
 }
 
 impl SceneWidget {
@@ -147,6 +206,14 @@ impl SceneWidget {
             Self::Avatar => metrics.avatar_size,
             Self::Input(_) => metrics.input_height,
             Self::Weather(blocks) => blocks.height(),
+        }
+    }
+
+    fn auth_group(&self) -> Option<AuthGroup> {
+        match self {
+            Self::Avatar | Self::Username(_) => Some(AuthGroup::Identity),
+            Self::Input(_) | Self::Status(_) => Some(AuthGroup::Input),
+            Self::Clock(_) | Self::Date(_) | Self::Weather(_) => None,
         }
     }
 }

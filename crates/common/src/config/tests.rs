@@ -1,9 +1,9 @@
 use std::fs;
 
 use super::{
-    AppConfig, BackgroundMode, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment,
-    InputVisualEntry, LayerAlignment, LayerMode, LayerStyle, LayerWidth, RgbColor,
-    WeatherAlignment, WeatherUnit,
+    AppConfig, BackgroundMode, CenterStackOrder, CenterStackStyle, ClockAlignment, ClockFormat,
+    ClockStyle, FontStyle, InputAlignment, InputVisualEntry, LayerAlignment, LayerMode, LayerStyle,
+    LayerWidth, RgbColor, WeatherAlignment, WeatherUnit,
 };
 use crate::VeilaError;
 
@@ -83,6 +83,14 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_gap().is_none());
     assert!(config.visuals.auth_stack_offset().is_none());
     assert!(config.visuals.header_top_offset().is_none());
+    assert_eq!(
+        config.visuals.center_stack_order(),
+        CenterStackOrder::HeroAuth
+    );
+    assert_eq!(
+        config.visuals.center_stack_style(),
+        CenterStackStyle::HeroAuth
+    );
     assert!(config.visuals.clock_font_family().is_none());
     assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_font_style().is_none());
@@ -277,6 +285,14 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_gap(), Some(20));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
+    assert_eq!(
+        config.visuals.center_stack_order(),
+        CenterStackOrder::HeroAuth
+    );
+    assert_eq!(
+        config.visuals.center_stack_style(),
+        CenterStackStyle::HeroAuth
+    );
     assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
     assert_eq!(config.visuals.clock_font_weight(), Some(600));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));
@@ -625,6 +641,8 @@ fn loads_config_from_file() {
             clock_gap = 10
             auth_stack_offset = 16
             header_top_offset = -12
+            center_stack_order = "auth-hero"
+            center_stack_style = "identity-hero-input"
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
             clock_font_style = "italic"
@@ -741,6 +759,14 @@ fn loads_config_from_file() {
     assert_eq!(loaded.config.visuals.clock_gap(), Some(10));
     assert_eq!(loaded.config.visuals.auth_stack_offset(), Some(16));
     assert_eq!(loaded.config.visuals.header_top_offset(), Some(-12));
+    assert_eq!(
+        loaded.config.visuals.center_stack_order(),
+        CenterStackOrder::AuthHero
+    );
+    assert_eq!(
+        loaded.config.visuals.center_stack_style(),
+        CenterStackStyle::IdentityHeroInput
+    );
     assert_eq!(
         loaded.config.visuals.clock_font_family(),
         Some("Bebas Neue")
@@ -1288,6 +1314,8 @@ border_color = "#DDDDDD"
             [visuals.layout]
             header_top_offset = -12
             auth_stack_offset = 0
+            center_stack_order = "auth-hero"
+            center_stack_style = "identity-hero-input"
 
             [visuals.palette]
             foreground = "rgba(255, 255, 255, 0.1)"
@@ -1516,6 +1544,14 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.now_playing_bottom_offset(), Some(10));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
+    assert_eq!(
+        config.visuals.center_stack_order(),
+        CenterStackOrder::AuthHero
+    );
+    assert_eq!(
+        config.visuals.center_stack_style(),
+        CenterStackStyle::IdentityHeroInput
+    );
     assert_eq!(
         config.visuals.foreground_color(),
         RgbColor::rgba(255, 255, 255, 26)

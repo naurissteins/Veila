@@ -4,7 +4,7 @@ use super::super::{ShellState, ShellStatus};
 use super::{
     SceneLayout,
     layout::{LayerPlacement, SceneMetrics, hero_block_x, layer_center_x},
-    model::{LayoutRole, SceneSection, SceneWidget},
+    model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
         InputWidget, draw_avatar_widget, draw_block, draw_centered_block, draw_clock_widget,
         draw_input_content, draw_input_shell, draw_weather_widget, input_toggle_hitbox,
@@ -25,6 +25,7 @@ impl ShellState {
 
     pub fn render_static_overlay(&self, buffer: &mut SoftwareBuffer) {
         let layout = self.scene_layout(buffer.size());
+        self.render_identity_group(buffer, &layout, false);
         self.render_role(
             buffer,
             &layout,
@@ -32,13 +33,7 @@ impl ShellState {
             layout.anchors.hero_y,
             false,
         );
-        self.render_role(
-            buffer,
-            &layout,
-            LayoutRole::Auth,
-            layout.anchors.auth_y,
-            false,
-        );
+        self.render_auth_or_input_group(buffer, &layout, false);
         self.render_role(
             buffer,
             &layout,
@@ -50,6 +45,7 @@ impl ShellState {
 
     pub fn render_dynamic_overlay(&self, buffer: &mut SoftwareBuffer) {
         let layout = self.scene_layout(buffer.size());
+        self.render_identity_group(buffer, &layout, true);
         self.render_role(
             buffer,
             &layout,
@@ -57,13 +53,7 @@ impl ShellState {
             layout.anchors.hero_y,
             true,
         );
-        self.render_role(
-            buffer,
-            &layout,
-            LayoutRole::Auth,
-            layout.anchors.auth_y,
-            true,
-        );
+        self.render_auth_or_input_group(buffer, &layout, true);
         self.render_role(
             buffer,
             &layout,
@@ -88,6 +78,46 @@ impl ShellState {
         for section in layout.model.sections_for_role(role) {
             self.render_section(buffer, layout.metrics, section, y, dynamic);
             y += section.height(layout.metrics, &self.status) + section.gap_after;
+        }
+    }
+
+    fn render_identity_group(
+        &self,
+        buffer: &mut SoftwareBuffer,
+        layout: &SceneLayout,
+        dynamic: bool,
+    ) {
+        let Some(start_y) = layout.anchors.identity_y else {
+            return;
+        };
+
+        let mut y = start_y;
+        for section in layout.model.sections_for_auth_group(AuthGroup::Identity) {
+            self.render_section(buffer, layout.metrics, section, y, dynamic);
+            y += section.height(layout.metrics, &self.status) + section.gap_after;
+        }
+    }
+
+    fn render_auth_or_input_group(
+        &self,
+        buffer: &mut SoftwareBuffer,
+        layout: &SceneLayout,
+        dynamic: bool,
+    ) {
+        if layout.anchors.identity_y.is_some() {
+            let mut y = layout.anchors.auth_y;
+            for section in layout.model.sections_for_auth_group(AuthGroup::Input) {
+                self.render_section(buffer, layout.metrics, section, y, dynamic);
+                y += section.height(layout.metrics, &self.status) + section.gap_after;
+            }
+        } else {
+            self.render_role(
+                buffer,
+                layout,
+                LayoutRole::Auth,
+                layout.anchors.auth_y,
+                dynamic,
+            );
         }
     }
 
@@ -227,15 +257,28 @@ impl ShellState {
         ));
         let mut y = layout.anchors.auth_y;
 
-        for section in layout.model.sections_for_role(LayoutRole::Auth) {
-            if matches!(section.widget, SceneWidget::Input(_)) {
-                return if self.theme.eye_enabled {
-                    input_toggle_hitbox(layout.metrics.input_rect(y))
-                } else {
-                    veila_renderer::shape::Rect::new(0, 0, 0, 0)
-                };
+        if layout.anchors.identity_y.is_some() {
+            for section in layout.model.sections_for_auth_group(AuthGroup::Input) {
+                if matches!(section.widget, SceneWidget::Input(_)) {
+                    return if self.theme.eye_enabled {
+                        input_toggle_hitbox(layout.metrics.input_rect(y))
+                    } else {
+                        veila_renderer::shape::Rect::new(0, 0, 0, 0)
+                    };
+                }
+                y += section.height(layout.metrics, &self.status) + section.gap_after;
             }
-            y += section.height(layout.metrics, &self.status) + section.gap_after;
+        } else {
+            for section in layout.model.sections_for_role(LayoutRole::Auth) {
+                if matches!(section.widget, SceneWidget::Input(_)) {
+                    return if self.theme.eye_enabled {
+                        input_toggle_hitbox(layout.metrics.input_rect(y))
+                    } else {
+                        veila_renderer::shape::Rect::new(0, 0, 0, 0)
+                    };
+                }
+                y += section.height(layout.metrics, &self.status) + section.gap_after;
+            }
         }
 
         veila_renderer::shape::Rect::new(0, 0, 0, 0)

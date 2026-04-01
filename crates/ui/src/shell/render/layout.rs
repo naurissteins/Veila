@@ -1,4 +1,4 @@
-use veila_common::{ClockAlignment, InputAlignment, LayerAlignment};
+use veila_common::{CenterStackStyle, ClockAlignment, InputAlignment, LayerAlignment};
 use veila_renderer::shape::Rect;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +23,7 @@ pub(super) struct InputPlacement {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct RoleAnchors {
+    pub identity_y: Option<i32>,
     pub hero_y: i32,
     pub auth_y: i32,
     pub footer_y: i32,
@@ -34,6 +35,7 @@ pub(super) struct AnchorOffsets {
     pub input_vertical_padding: Option<i32>,
     pub input_offset_y: Option<i32>,
     pub header_top: Option<i32>,
+    pub center_stack_style: CenterStackStyle,
     pub clock_alignment: ClockAlignment,
     pub clock_offset_y: Option<i32>,
     pub weather_bottom_padding: Option<i32>,
@@ -43,6 +45,25 @@ pub(super) struct AnchorOffsets {
 pub(super) struct FooterHeights {
     pub render: i32,
     pub clearance: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct AuthGroupHeights {
+    pub identity: i32,
+    pub input_anchor: i32,
+    pub input_render: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct RoleAnchorInput {
+    pub frame_height: i32,
+    pub hero_height: i32,
+    pub auth_anchor_height: i32,
+    pub auth_render_height: i32,
+    pub auth_groups: AuthGroupHeights,
+    pub footer_heights: FooterHeights,
+    pub input_alignment: InputAlignment,
+    pub offsets: AnchorOffsets,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,6 +181,7 @@ impl SceneMetrics {
     }
 }
 
+#[cfg(test)]
 pub(super) fn role_anchors(
     frame_height: i32,
     hero_height: i32,
@@ -169,6 +191,34 @@ pub(super) fn role_anchors(
     input_alignment: InputAlignment,
     offsets: AnchorOffsets,
 ) -> RoleAnchors {
+    role_anchors_with_groups(RoleAnchorInput {
+        frame_height,
+        hero_height,
+        auth_anchor_height,
+        auth_render_height,
+        auth_groups: AuthGroupHeights {
+            identity: 0,
+            input_anchor: auth_anchor_height,
+            input_render: auth_render_height,
+        },
+        footer_heights,
+        input_alignment,
+        offsets,
+    })
+}
+
+pub(super) fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
+    let frame_height = input.frame_height;
+    let hero_height = input.hero_height;
+    let auth_anchor_height = input.auth_anchor_height;
+    let auth_render_height = input.auth_render_height;
+    let auth_groups = input.auth_groups;
+    let footer_heights = input.footer_heights;
+    let input_alignment = input.input_alignment;
+    let offsets = input.offsets;
+    let identity_height = auth_groups.identity;
+    let input_anchor_height = auth_groups.input_anchor;
+    let input_render_height = auth_groups.input_render;
     let hero_top = top_role_top(frame_height, offsets.header_top);
     let hero_y = match offsets.clock_alignment {
         ClockAlignment::TopCenter => hero_top,
@@ -204,17 +254,94 @@ pub(super) fn role_anchors(
         && auth_anchor_height > 0
     {
         let combined_height = hero_height + minimum_gap + auth_anchor_height;
-        let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
-            hero_top,
-            (max_auth_y - hero_height - minimum_gap).max(hero_top),
-        ) + offsets.clock_offset_y.unwrap_or(0);
-        let auth_y = (centered_hero_y + hero_height + minimum_gap + auth_offset + input_offset_y)
-            .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
+        let group_shift = offsets.clock_offset_y.unwrap_or(0);
 
-        return RoleAnchors {
-            hero_y: centered_hero_y,
-            auth_y,
-            footer_y,
+        return match offsets.center_stack_style {
+            CenterStackStyle::HeroAuth => {
+                let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
+                    hero_top,
+                    (max_auth_y - hero_height - minimum_gap).max(hero_top),
+                ) + group_shift;
+                let auth_y =
+                    (centered_hero_y + hero_height + minimum_gap + auth_offset + input_offset_y)
+                        .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
+
+                RoleAnchors {
+                    identity_y: None,
+                    hero_y: centered_hero_y,
+                    auth_y,
+                    footer_y,
+                }
+            }
+            CenterStackStyle::AuthHero => {
+                let max_group_top =
+                    (auth_footer_y - auth_anchor_height - minimum_gap - hero_height - 24).max(0);
+                let centered_auth_y =
+                    centered_role_top(frame_height, combined_height, 0.5).clamp(0, max_group_top);
+                let auth_y = (centered_auth_y + group_shift + auth_offset + input_offset_y)
+                    .clamp(0, max_group_top);
+
+                RoleAnchors {
+                    identity_y: None,
+                    hero_y: auth_y + auth_anchor_height + minimum_gap,
+                    auth_y,
+                    footer_y,
+                }
+            }
+            CenterStackStyle::IdentityHeroInput
+                if identity_height > 0 && input_anchor_height > 0 =>
+            {
+                let identity_gap = if identity_height > 0 && hero_height > 0 {
+                    18
+                } else {
+                    0
+                };
+                let input_gap = if hero_height > 0 && input_anchor_height > 0 {
+                    18
+                } else {
+                    0
+                };
+                let combined_height =
+                    identity_height + identity_gap + hero_height + input_gap + input_anchor_height;
+                let max_identity_y = (auth_footer_y
+                    - input_render_height
+                    - 24
+                    - input_gap
+                    - hero_height
+                    - identity_gap
+                    - identity_height)
+                    .max(0);
+                let identity_y = (centered_role_top(frame_height, combined_height, 0.5)
+                    + group_shift)
+                    .clamp(0, max_identity_y);
+                let hero_y = identity_y + identity_height + identity_gap;
+                let max_input_y = auth_footer_y - input_render_height - 24;
+                let auth_y = (hero_y + hero_height + input_gap + auth_offset + input_offset_y)
+                    .clamp(hero_y + hero_height + input_gap, max_input_y);
+
+                RoleAnchors {
+                    identity_y: Some(identity_y),
+                    hero_y,
+                    auth_y,
+                    footer_y,
+                }
+            }
+            CenterStackStyle::IdentityHeroInput => {
+                let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
+                    hero_top,
+                    (max_auth_y - hero_height - minimum_gap).max(hero_top),
+                ) + group_shift;
+                let auth_y =
+                    (centered_hero_y + hero_height + minimum_gap + auth_offset + input_offset_y)
+                        .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
+
+                RoleAnchors {
+                    identity_y: None,
+                    hero_y: centered_hero_y,
+                    auth_y,
+                    footer_y,
+                }
+            }
         };
     }
 
@@ -223,6 +350,7 @@ pub(super) fn role_anchors(
         let combined_top = ((frame_height - combined_height) / 2).max(hero_top);
 
         return RoleAnchors {
+            identity_y: None,
             hero_y: combined_top,
             auth_y: combined_top + hero_height + minimum_gap,
             footer_y,
@@ -244,6 +372,7 @@ pub(super) fn role_anchors(
         .clamp(min_auth_y, max_auth_y);
 
     RoleAnchors {
+        identity_y: None,
         hero_y,
         auth_y,
         footer_y,
@@ -365,11 +494,12 @@ pub(super) fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) ->
 
 #[cfg(test)]
 mod tests {
-    use veila_common::{ClockAlignment, InputAlignment, LayerAlignment};
+    use veila_common::{CenterStackStyle, ClockAlignment, InputAlignment, LayerAlignment};
 
     use super::{
-        AnchorOffsets, FooterHeights, InputPlacement, LayerPlacement, SceneMetrics, hero_block_x,
-        layer_center_x, layer_rect, role_anchors,
+        AnchorOffsets, AuthGroupHeights, FooterHeights, InputPlacement, LayerPlacement,
+        RoleAnchorInput, SceneMetrics, hero_block_x, layer_center_x, layer_rect, role_anchors,
+        role_anchors_with_groups,
     };
 
     #[test]
@@ -583,6 +713,59 @@ mod tests {
         assert_eq!(without_status.auth_y, 298);
         assert_eq!(with_status.hero_y, 226);
         assert_eq!(with_status.auth_y, 298);
+    }
+
+    #[test]
+    fn supports_auth_hero_order_for_centered_grouped_layouts() {
+        let anchors = role_anchors(
+            720,
+            54,
+            197,
+            197,
+            FooterHeights::same(0),
+            InputAlignment::CenterCenter,
+            AnchorOffsets {
+                center_stack_style: CenterStackStyle::AuthHero,
+                clock_alignment: ClockAlignment::CenterCenter,
+                ..AnchorOffsets::default()
+            },
+        );
+
+        assert_eq!(anchors.auth_y, 226);
+        assert_eq!(anchors.hero_y, 441);
+        assert!(anchors.auth_y < anchors.hero_y);
+    }
+
+    #[test]
+    fn supports_identity_hero_input_style_for_centered_grouped_layouts() {
+        let anchors = role_anchors_with_groups(RoleAnchorInput {
+            frame_height: 720,
+            hero_height: 54,
+            auth_anchor_height: 197,
+            auth_render_height: 197,
+            auth_groups: AuthGroupHeights {
+                identity: 72,
+                input_anchor: 51,
+                input_render: 51,
+            },
+            footer_heights: FooterHeights::same(0),
+            input_alignment: InputAlignment::CenterCenter,
+            offsets: AnchorOffsets {
+                center_stack_style: CenterStackStyle::IdentityHeroInput,
+                clock_alignment: ClockAlignment::CenterCenter,
+                ..AnchorOffsets::default()
+            },
+        });
+
+        assert_eq!(anchors.identity_y, Some(254));
+        assert_eq!(anchors.hero_y, 344);
+        assert_eq!(anchors.auth_y, 416);
+        assert!(
+            anchors
+                .identity_y
+                .is_some_and(|identity_y| identity_y < anchors.hero_y)
+        );
+        assert!(anchors.hero_y < anchors.auth_y);
     }
 
     #[test]

@@ -23,12 +23,12 @@ pub use battery::BatteryConfig;
 pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use visuals::{
-    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, ClockAlignment, ClockFormat,
-    ClockStyle, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, FontStyle, InputAlignment,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerMode,
-    LayerStyle, LayerVisualConfig, LayerWidth, LayoutVisualConfig, NowPlayingVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackOrder,
+    CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig,
+    EyeVisualConfig, FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry,
+    KeyboardVisualConfig, LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, LayerWidth,
+    LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
+    StatusVisualConfig, UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

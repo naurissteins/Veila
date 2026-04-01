@@ -1,10 +1,10 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockAlignment, ClockFormat, ClockStyle,
-    ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerMode,
-    LayerStyle, LayerVisualConfig, LayerWidth, LayoutVisualConfig, NowPlayingVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    WeatherAlignment, WeatherVisualConfig,
+    AppConfig, AvatarVisualConfig, BatteryVisualConfig, CenterStackOrder, CenterStackStyle,
+    ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
+    EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,
+    LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -200,6 +200,8 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.layout = Some(LayoutVisualConfig {
         auth_stack_offset: Some(16),
         header_top_offset: Some(-12),
+        center_stack_order: Some(CenterStackOrder::AuthHero),
+        center_stack_style: Some(CenterStackStyle::IdentityHeroInput),
     });
 
     let theme = ShellTheme::from_config(&config);
@@ -250,6 +252,10 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_gap, Some(10));
     assert_eq!(theme.auth_stack_offset, Some(16));
     assert_eq!(theme.header_top_offset, Some(-12));
+    assert_eq!(
+        theme.center_stack_style,
+        CenterStackStyle::IdentityHeroInput
+    );
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
     assert_eq!(theme.clock_font_weight, Some(700));
     assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));

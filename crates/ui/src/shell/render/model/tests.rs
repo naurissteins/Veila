@@ -5,7 +5,7 @@ use veila_renderer::{
 
 use veila_common::{ClockStyle, InputAlignment};
 
-use super::{LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget};
+use super::{AuthGroup, LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget};
 use crate::shell::{ShellStatus, render::layout::SceneMetrics};
 
 #[test]
@@ -296,6 +296,43 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
         without_status.anchor_height_for_role(LayoutRole::Auth, metrics, &ShellStatus::Idle),
         with_status.anchor_height_for_role(LayoutRole::Auth, metrics, &ShellStatus::Idle),
     );
+}
+
+#[test]
+fn splits_auth_sections_into_identity_and_input_groups() {
+    let model = SceneModel::standard(
+        SceneTextBlocks {
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
+            username: Some(block("ramces")),
+            placeholder: Some(block("Type your password to unlock")),
+            status: Some(block("Checking password")),
+            weather: None,
+        },
+        InputAlignment::CenterCenter,
+        true,
+        None,
+        None,
+        None,
+        Some(20),
+    );
+
+    let identity_sections = model
+        .sections_for_auth_group(AuthGroup::Identity)
+        .collect::<Vec<_>>();
+    let input_sections = model
+        .sections_for_auth_group(AuthGroup::Input)
+        .collect::<Vec<_>>();
+
+    assert_eq!(identity_sections.len(), 2);
+    assert!(matches!(identity_sections[0].widget, SceneWidget::Avatar));
+    assert!(matches!(
+        identity_sections[1].widget,
+        SceneWidget::Username(_)
+    ));
+    assert_eq!(input_sections.len(), 2);
+    assert!(matches!(input_sections[0].widget, SceneWidget::Input(_)));
+    assert!(matches!(input_sections[1].widget, SceneWidget::Status(_)));
 }
 
 #[test]

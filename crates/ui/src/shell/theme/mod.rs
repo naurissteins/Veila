@@ -3,8 +3,8 @@ mod color;
 mod tests;
 
 use veila_common::{
-    AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment, LayerAlignment,
-    LayerMode, LayerStyle, WeatherAlignment,
+    AppConfig, CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
+    InputAlignment, LayerAlignment, LayerMode, LayerStyle, WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -50,6 +50,7 @@ pub struct ShellTheme {
     pub clock_gap: Option<i32>,
     pub auth_stack_offset: Option<i32>,
     pub header_top_offset: Option<i32>,
+    pub center_stack_style: CenterStackStyle,
     pub clock_enabled: bool,
     pub clock_alignment: ClockAlignment,
     pub clock_center_in_layer: bool,
@@ -230,6 +231,7 @@ impl ShellTheme {
             clock_gap: config.visuals.clock_gap().map(i32::from),
             auth_stack_offset: config.visuals.auth_stack_offset().map(i32::from),
             header_top_offset: config.visuals.header_top_offset().map(i32::from),
+            center_stack_style: config.visuals.center_stack_style(),
             clock_enabled: config.visuals.clock_enabled(),
             clock_alignment: config.visuals.clock_alignment(),
             clock_center_in_layer: config.visuals.clock_center_in_layer(),

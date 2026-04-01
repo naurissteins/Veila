@@ -24,10 +24,11 @@ use veila_renderer::{
 use self::{
     cache::SceneTextInputs,
     layout::{
-        AnchorOffsets, FooterHeights, InputPlacement, LayerPlacement, RoleAnchors, SceneMetrics,
-        layer_center_x, layer_rect, role_anchors,
+        AnchorOffsets, AuthGroupHeights, FooterHeights, InputPlacement, LayerPlacement,
+        RoleAnchorInput, RoleAnchors, SceneMetrics, layer_center_x, layer_rect,
+        role_anchors_with_groups,
     },
-    model::{LayoutRole, SceneModel, SceneTextBlocks, SceneWidget},
+    model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, SceneWidget},
 };
 use super::ShellState;
 
@@ -84,26 +85,52 @@ impl ShellState {
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status);
         let footer_clearance_height =
             self.footer_clearance_height(&model, size.width as i32, metrics);
-        let anchors = role_anchors(
-            size.height as i32,
-            model.anchor_height_for_role(LayoutRole::Hero, metrics, &self.status),
-            model.anchor_height_for_role(LayoutRole::Auth, metrics, &self.status),
-            model.total_height_for_role(LayoutRole::Auth, metrics, &self.status),
-            FooterHeights {
+        let anchors = role_anchors_with_groups(RoleAnchorInput {
+            frame_height: size.height as i32,
+            hero_height: model.anchor_height_for_role(LayoutRole::Hero, metrics, &self.status),
+            auth_anchor_height: model.anchor_height_for_role(
+                LayoutRole::Auth,
+                metrics,
+                &self.status,
+            ),
+            auth_render_height: model.total_height_for_role(
+                LayoutRole::Auth,
+                metrics,
+                &self.status,
+            ),
+            auth_groups: AuthGroupHeights {
+                identity: model.anchor_height_for_auth_group(
+                    AuthGroup::Identity,
+                    metrics,
+                    &self.status,
+                ),
+                input_anchor: model.anchor_height_for_auth_group(
+                    AuthGroup::Input,
+                    metrics,
+                    &self.status,
+                ),
+                input_render: model.total_height_for_auth_group(
+                    AuthGroup::Input,
+                    metrics,
+                    &self.status,
+                ),
+            },
+            footer_heights: FooterHeights {
                 render: footer_render_height,
                 clearance: footer_clearance_height,
             },
-            self.theme.input_alignment,
-            AnchorOffsets {
+            input_alignment: self.theme.input_alignment,
+            offsets: AnchorOffsets {
                 auth_stack: self.theme.auth_stack_offset,
                 input_vertical_padding: self.theme.input_vertical_padding,
                 input_offset_y: self.theme.input_offset_y,
                 header_top: self.theme.header_top_offset,
+                center_stack_style: self.theme.center_stack_style,
                 clock_alignment: self.theme.clock_alignment,
                 clock_offset_y: self.theme.clock_offset_y,
                 weather_bottom_padding: self.theme.weather_bottom_padding,
             },
-        );
+        });
 
         SceneLayout {
             metrics,

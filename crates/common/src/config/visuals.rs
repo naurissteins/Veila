@@ -767,6 +767,10 @@ pub struct LayoutVisualConfig {
     pub auth_stack_offset: Option<i16>,
     #[serde(default)]
     pub header_top_offset: Option<i16>,
+    #[serde(default)]
+    pub center_stack_order: Option<CenterStackOrder>,
+    #[serde(default)]
+    pub center_stack_style: Option<CenterStackStyle>,
 }
 
 impl Default for LayoutVisualConfig {
@@ -774,6 +778,37 @@ impl Default for LayoutVisualConfig {
         Self {
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
+            center_stack_order: Some(CenterStackOrder::HeroAuth),
+            center_stack_style: Some(CenterStackStyle::HeroAuth),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CenterStackOrder {
+    #[default]
+    #[serde(rename = "hero-auth")]
+    HeroAuth,
+    #[serde(rename = "auth-hero")]
+    AuthHero,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CenterStackStyle {
+    #[default]
+    #[serde(rename = "hero-auth")]
+    HeroAuth,
+    #[serde(rename = "auth-hero")]
+    AuthHero,
+    #[serde(rename = "identity-hero-input")]
+    IdentityHeroInput,
+}
+
+impl From<CenterStackOrder> for CenterStackStyle {
+    fn from(value: CenterStackOrder) -> Self {
+        match value {
+            CenterStackOrder::HeroAuth => Self::HeroAuth,
+            CenterStackOrder::AuthHero => Self::AuthHero,
         }
     }
 }
@@ -854,6 +889,10 @@ pub struct VisualConfig {
     pub auth_stack_offset: Option<i16>,
     #[serde(default)]
     pub header_top_offset: Option<i16>,
+    #[serde(default)]
+    pub center_stack_order: Option<CenterStackOrder>,
+    #[serde(default)]
+    pub center_stack_style: Option<CenterStackStyle>,
     #[serde(default)]
     pub clock_font_family: Option<String>,
     #[serde(default)]
@@ -1006,6 +1045,8 @@ impl Default for VisualConfig {
             clock_gap: Some(20),
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
+            center_stack_order: Some(CenterStackOrder::HeroAuth),
+            center_stack_style: Some(CenterStackStyle::HeroAuth),
             clock_font_family: Some(default_geom_font_family()),
             clock_font_weight: Some(600),
             clock_font_style: Some(FontStyle::Normal),
@@ -1354,6 +1395,29 @@ impl VisualConfig {
             .as_ref()
             .and_then(|layout| layout.header_top_offset)
             .or(self.header_top_offset)
+    }
+
+    pub fn center_stack_order(&self) -> CenterStackOrder {
+        match self.center_stack_style() {
+            CenterStackStyle::HeroAuth => CenterStackOrder::HeroAuth,
+            CenterStackStyle::AuthHero | CenterStackStyle::IdentityHeroInput => {
+                CenterStackOrder::AuthHero
+            }
+        }
+    }
+
+    pub fn center_stack_style(&self) -> CenterStackStyle {
+        self.layout
+            .as_ref()
+            .and_then(|layout| layout.center_stack_style)
+            .or_else(|| {
+                self.layout
+                    .as_ref()
+                    .and_then(|layout| layout.center_stack_order.map(Into::into))
+            })
+            .or(self.center_stack_style)
+            .or_else(|| self.center_stack_order.map(Into::into))
+            .unwrap_or_default()
     }
 
     pub fn clock_font_family(&self) -> Option<&str> {
