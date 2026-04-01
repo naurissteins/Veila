@@ -212,18 +212,13 @@ pub async fn run(
                                         new_loaded_config,
                                         last_reload_result,
                                         "config-change",
+                                        Some(debounce_ms),
                                         auth_policy,
                                         slots.auth_state,
                                         &weather,
                                         &battery,
                                     ).await {
-                                        Ok(status) => {
-                                            tracing::info!(
-                                                active_lock = status.active_lock,
-                                                debounce_ms,
-                                                "auto reloaded daemon config after config file change"
-                                            );
-                                        }
+                                        Ok(_) => {}
                                         Err(reason) => {
                                             *last_reload_result =
                                                 Some(format!("error:config-change:{reason}"));
@@ -258,18 +253,13 @@ pub async fn run(
                                     new_loaded_config,
                                     last_reload_result,
                                     "theme-change",
+                                    Some(debounce_ms),
                                     auth_policy,
                                     slots.auth_state,
                                     &weather,
                                     &battery,
                                 ).await {
-                                    Ok(status) => {
-                                        tracing::info!(
-                                            active_lock = status.active_lock,
-                                            debounce_ms,
-                                            "auto reloaded daemon config after theme file change"
-                                        );
-                                    }
+                                    Ok(_) => {}
                                     Err(reason) => {
                                         *last_reload_result =
                                             Some(format!("error:theme-change:{reason}"));
@@ -299,18 +289,13 @@ pub async fn run(
                                     new_loaded_config,
                                     last_reload_result,
                                     "wallpaper-change",
+                                    Some(debounce_ms),
                                     auth_policy,
                                     slots.auth_state,
                                     &weather,
                                     &battery,
                                     ).await {
-                                        Ok(status) => {
-                                            tracing::info!(
-                                                active_lock = status.active_lock,
-                                                debounce_ms,
-                                                "auto reloaded daemon config after wallpaper change"
-                                            );
-                                        }
+                                        Ok(_) => {}
                                     Err(reason) => {
                                         *last_reload_result =
                                             Some(format!("error:wallpaper-change:{reason}"));

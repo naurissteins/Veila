@@ -68,7 +68,7 @@ opacity = 60
 
 [visuals.avatar]
 enabled = false
-size = 192
+size = 160
 gap = 24
 background_color = "#ffffff"
 background_opacity = 6

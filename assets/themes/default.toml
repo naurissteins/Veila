@@ -109,7 +109,7 @@ font_weight = 400
 font_size = 2
 
 [visuals.avatar]
-size = 192
+size = 160
 gap = 24
 background_color = "#ffffff"
 background_opacity = 6

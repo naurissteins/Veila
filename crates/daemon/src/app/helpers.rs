@@ -131,6 +131,7 @@ pub(super) async fn apply_loaded_config(
     new_loaded_config: LoadedConfig,
     last_reload_result: &mut Option<String>,
     reload_source: &str,
+    reload_debounce_ms: Option<u64>,
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
     weather: &WeatherHandle,
@@ -162,19 +163,33 @@ pub(super) async fn apply_loaded_config(
         )
     }?;
 
-    tracing::info!(
-        active_lock = state.is_active(),
-        live_reload = match live_reload {
-            LiveReloadStatus::NotActive => "not-active",
-            LiveReloadStatus::Forwarded => "forwarded",
-        },
-        config = loaded_config
-            .path
-            .as_deref()
-            .map(|path| path.display().to_string())
-            .unwrap_or_else(|| "defaults".to_string()),
-        "reloaded daemon config"
-    );
+    let config = loaded_config
+        .path
+        .as_deref()
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "defaults".to_string());
+    let live_reload_status = match live_reload {
+        LiveReloadStatus::NotActive => "not-active",
+        LiveReloadStatus::Forwarded => "forwarded",
+    };
+    if let Some(reload_debounce_ms) = reload_debounce_ms {
+        tracing::info!(
+            active_lock = state.is_active(),
+            live_reload = live_reload_status,
+            config,
+            reload_source,
+            reload_debounce_ms,
+            "reloaded daemon config"
+        );
+    } else {
+        tracing::info!(
+            active_lock = state.is_active(),
+            live_reload = live_reload_status,
+            config,
+            reload_source,
+            "reloaded daemon config"
+        );
+    }
 
     *last_reload_result = Some(format!("ok:{reload_source}"));
 
@@ -208,6 +223,7 @@ pub(super) async fn reload_config_response(
             new_loaded_config,
             last_reload_result,
             "manual",
+            None,
             auth_policy,
             auth_state,
             weather,
