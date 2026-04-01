@@ -57,6 +57,7 @@ pub struct DaemonStatus {
     pub auto_reload_enabled: bool,
     pub auto_reload_debounce_ms: u64,
     pub last_reload_result: Option<String>,
+    pub last_reload_unix_ms: Option<u64>,
     pub config_path: Option<String>,
 }
 
@@ -207,6 +208,7 @@ mod tests {
             auto_reload_enabled: true,
             auto_reload_debounce_ms: 250,
             last_reload_result: Some("ok:config-change".to_string()),
+            last_reload_unix_ms: Some(1_744_000_000_000),
             config_path: Some("/tmp/veila.toml".to_string()),
         });
         let encoded = encode_message(&message).expect("daemon control response should encode");

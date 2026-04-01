@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use time::{OffsetDateTime, UtcOffset};
 
 use crate::{DaemonOptions, adapters::ipc, app};
 
@@ -165,10 +166,43 @@ async fn print_running_status(daemon_socket_path: &std::path::Path) -> Result<()
         status.last_reload_result.as_deref().unwrap_or("none")
     );
     println!(
+        "last_reload_unix_ms={}",
+        status
+            .last_reload_unix_ms
+            .map(|value| value.to_string())
+            .as_deref()
+            .unwrap_or("none")
+    );
+    println!(
+        "last_reload_local={}",
+        status
+            .last_reload_unix_ms
+            .and_then(format_local_unix_ms)
+            .as_deref()
+            .unwrap_or("none")
+    );
+    println!(
         "config={}",
         status.config_path.as_deref().unwrap_or("defaults")
     );
     Ok(())
+}
+
+fn format_local_unix_ms(unix_ms: u64) -> Option<String> {
+    let unix_ns = i128::from(unix_ms).checked_mul(1_000_000)?;
+    let datetime = OffsetDateTime::from_unix_timestamp_nanos(unix_ns).ok()?;
+    let local = datetime.to_offset(UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
+    Some(format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02} {:+03}:{:02}",
+        local.year(),
+        u8::from(local.month()),
+        local.day(),
+        local.hour(),
+        local.minute(),
+        local.second(),
+        local.offset().whole_hours(),
+        local.offset().minutes_past_hour().unsigned_abs()
+    ))
 }
 
 async fn print_running_health(daemon_socket_path: &std::path::Path) -> Result<()> {

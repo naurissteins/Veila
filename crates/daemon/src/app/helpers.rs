@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow};
 use nix::unistd::{Uid, User};
@@ -100,6 +100,7 @@ pub(super) fn build_daemon_status(
     control_socket_path: Option<&Path>,
     loaded_config: &LoadedConfig,
     last_reload_result: Option<&str>,
+    last_reload_unix_ms: Option<u64>,
 ) -> DaemonStatus {
     DaemonStatus {
         state: state.to_string(),
@@ -112,6 +113,7 @@ pub(super) fn build_daemon_status(
         auto_reload_enabled: loaded_config.config.lock.auto_reload_config,
         auto_reload_debounce_ms: effective_auto_reload_debounce_ms(loaded_config),
         last_reload_result: last_reload_result.map(str::to_string),
+        last_reload_unix_ms,
         config_path: loaded_config
             .path
             .as_deref()
@@ -123,6 +125,13 @@ pub(super) fn build_daemon_health() -> DaemonHealth {
     crate::local_build_info()
 }
 
+fn current_unix_ms() -> Option<u64> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn apply_loaded_config(
     state: &LockState,
@@ -130,6 +139,7 @@ pub(super) async fn apply_loaded_config(
     loaded_config: &mut LoadedConfig,
     new_loaded_config: LoadedConfig,
     last_reload_result: &mut Option<String>,
+    last_reload_unix_ms: &mut Option<u64>,
     reload_source: &str,
     reload_debounce_ms: Option<u64>,
     auth_policy: &mut AuthPolicy,
@@ -192,6 +202,7 @@ pub(super) async fn apply_loaded_config(
     }
 
     *last_reload_result = Some(format!("ok:{reload_source}"));
+    *last_reload_unix_ms = current_unix_ms();
 
     Ok(DaemonReloadStatus {
         config_path: loaded_config
@@ -211,6 +222,7 @@ pub(super) async fn reload_config_response(
     control_socket_path: Option<&Path>,
     loaded_config: &mut LoadedConfig,
     last_reload_result: &mut Option<String>,
+    last_reload_unix_ms: &mut Option<u64>,
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
     weather: &WeatherHandle,
@@ -223,6 +235,7 @@ pub(super) async fn reload_config_response(
             loaded_config,
             new_loaded_config,
             last_reload_result,
+            last_reload_unix_ms,
             "manual",
             None,
             auth_policy,
@@ -235,6 +248,7 @@ pub(super) async fn reload_config_response(
             Ok(status) => DaemonControlResponse::Reloaded(status),
             Err(reason) => {
                 *last_reload_result = Some(format!("error:manual:{reason}"));
+                *last_reload_unix_ms = current_unix_ms();
                 tracing::warn!("{reason}");
                 DaemonControlResponse::Error { reason }
             }
@@ -242,6 +256,7 @@ pub(super) async fn reload_config_response(
         Err(error) => {
             let reason = format!("failed to reload daemon config: {error:#}");
             *last_reload_result = Some(format!("error:manual:{reason}"));
+            *last_reload_unix_ms = current_unix_ms();
             DaemonControlResponse::Error { reason }
         }
     }

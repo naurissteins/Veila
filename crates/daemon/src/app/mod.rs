@@ -162,7 +162,7 @@ pub async fn run(
                 let weather_snapshot = weather.current_snapshot();
                 let battery_snapshot = battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                 if handle_control_connection(
                     result?,
                     &options,
@@ -170,6 +170,7 @@ pub async fn run(
                     &session_path,
                     loaded_config,
                     last_reload_result,
+                    last_reload_unix_ms,
                     weather_snapshot.as_ref(),
                     battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
@@ -204,13 +205,14 @@ pub async fn run(
                                     let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
                                     let weather = runtime.weather.clone();
                                     let battery = runtime.battery.clone();
-                                    let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                                    let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                                     match helpers::apply_loaded_config(
                                         slots.state,
                                         slots.control_socket_path.as_deref(),
                                         loaded_config,
                                         new_loaded_config,
                                         last_reload_result,
+                                        last_reload_unix_ms,
                                         "config-change",
                                         Some(debounce_ms),
                                         auth_policy,
@@ -222,6 +224,10 @@ pub async fn run(
                                         Err(reason) => {
                                             *last_reload_result =
                                                 Some(format!("error:config-change:{reason}"));
+                                            *last_reload_unix_ms = std::time::SystemTime::now()
+                                                .duration_since(std::time::UNIX_EPOCH)
+                                                .ok()
+                                                .and_then(|duration| u64::try_from(duration.as_millis()).ok());
                                             tracing::warn!("{reason}");
                                         }
                                     }
@@ -234,6 +240,10 @@ pub async fn run(
                                     runtime.last_reload_result = Some(format!(
                                         "error:config-change:failed to auto reload daemon config after config file change: {error:#}"
                                     ));
+                                    runtime.last_reload_unix_ms = std::time::SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .ok()
+                                        .and_then(|duration| u64::try_from(duration.as_millis()).ok());
                                     tracing::warn!("failed to auto reload daemon config after config file change: {error:#}");
                                 }
                             }
@@ -245,13 +255,14 @@ pub async fn run(
                                 let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
-                                let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                                let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
                                     slots.control_socket_path.as_deref(),
                                     loaded_config,
                                     new_loaded_config,
                                     last_reload_result,
+                                    last_reload_unix_ms,
                                     "theme-change",
                                     Some(debounce_ms),
                                     auth_policy,
@@ -263,6 +274,10 @@ pub async fn run(
                                     Err(reason) => {
                                         *last_reload_result =
                                             Some(format!("error:theme-change:{reason}"));
+                                        *last_reload_unix_ms = std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .ok()
+                                            .and_then(|duration| u64::try_from(duration.as_millis()).ok());
                                         tracing::warn!("{reason}");
                                     }
                                 }
@@ -271,6 +286,10 @@ pub async fn run(
                                 runtime.last_reload_result = Some(format!(
                                     "error:theme-change:failed to auto reload daemon config after theme file change: {error:#}"
                                 ));
+                                runtime.last_reload_unix_ms = std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .ok()
+                                    .and_then(|duration| u64::try_from(duration.as_millis()).ok());
                                 tracing::warn!("failed to auto reload daemon config after theme file change: {error:#}");
                             }
                         }
@@ -281,13 +300,14 @@ pub async fn run(
                                 let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
-                                let (loaded_config, last_reload_result, auth_policy, slots) = runtime.control_inputs();
+                                let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
                                     slots.control_socket_path.as_deref(),
                                     loaded_config,
                                     new_loaded_config,
                                     last_reload_result,
+                                    last_reload_unix_ms,
                                     "wallpaper-change",
                                     Some(debounce_ms),
                                     auth_policy,
@@ -299,6 +319,10 @@ pub async fn run(
                                     Err(reason) => {
                                         *last_reload_result =
                                             Some(format!("error:wallpaper-change:{reason}"));
+                                        *last_reload_unix_ms = std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .ok()
+                                            .and_then(|duration| u64::try_from(duration.as_millis()).ok());
                                         tracing::warn!("{reason}");
                                     }
                                 }
@@ -307,6 +331,10 @@ pub async fn run(
                                 runtime.last_reload_result = Some(format!(
                                     "error:wallpaper-change:failed to auto reload daemon config after wallpaper change: {error:#}"
                                 ));
+                                runtime.last_reload_unix_ms = std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .ok()
+                                    .and_then(|duration| u64::try_from(duration.as_millis()).ok());
                                 tracing::warn!("failed to auto reload daemon config after wallpaper change: {error:#}");
                             }
                         }
