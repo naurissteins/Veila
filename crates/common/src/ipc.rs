@@ -73,6 +73,7 @@ pub struct DaemonHealth {
 pub struct DaemonReloadStatus {
     pub config_path: Option<String>,
     pub active_lock: bool,
+    pub reload_source: String,
     pub live_reload: LiveReloadStatus,
 }
 
@@ -185,6 +186,7 @@ mod tests {
         let message = DaemonControlResponse::Reloaded(DaemonReloadStatus {
             config_path: Some("/tmp/veila.toml".to_string()),
             active_lock: true,
+            reload_source: "manual".to_string(),
             live_reload: LiveReloadStatus::Forwarded,
         });
         let encoded = encode_message(&message).expect("daemon control response should encode");

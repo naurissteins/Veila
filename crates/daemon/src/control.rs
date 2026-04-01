@@ -242,6 +242,7 @@ async fn reload_running_config(daemon_socket_path: &std::path::Path) -> Result<(
                 status.config_path.as_deref().unwrap_or("defaults")
             );
             println!("active_lock={}", status.active_lock);
+            println!("reload_source={}", status.reload_source);
             println!(
                 "live_reload={}",
                 match status.live_reload {
@@ -287,6 +288,7 @@ async fn set_theme_and_reload(
                     .as_deref()
                     .is_some_and(|path| path == written_path.to_string_lossy())
             );
+            println!("reload_source={}", status.reload_source);
             println!(
                 "live_reload={}",
                 match status.live_reload {
@@ -347,6 +349,7 @@ async fn unset_theme_and_reload(
                     .as_deref()
                     .is_some_and(|path| path == written_path.to_string_lossy())
             );
+            println!("reload_source={}", status.reload_source);
             println!(
                 "live_reload={}",
                 match status.live_reload {

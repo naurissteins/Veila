@@ -199,6 +199,7 @@ pub(super) async fn apply_loaded_config(
             .as_deref()
             .map(|path| path.display().to_string()),
         active_lock: state.is_active(),
+        reload_source: reload_source.to_string(),
         live_reload,
     })
 }
