@@ -129,6 +129,7 @@ impl ShellState {
                 input_vertical_padding: self.theme.input_vertical_padding,
                 input_offset_y: self.theme.input_offset_y,
                 header_top: self.theme.header_top_offset,
+                identity_gap: self.theme.identity_gap,
                 center_stack_style: self.theme.center_stack_style,
                 clock_alignment: self.theme.clock_alignment,
                 clock_offset_y: self.theme.clock_offset_y,

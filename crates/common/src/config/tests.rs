@@ -84,6 +84,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_gap().is_none());
     assert!(config.visuals.auth_stack_offset().is_none());
     assert!(config.visuals.header_top_offset().is_none());
+    assert!(config.visuals.identity_gap().is_none());
     assert_eq!(
         config.visuals.center_stack_order(),
         CenterStackOrder::HeroAuth
@@ -288,6 +289,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_gap(), Some(20));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
+    assert_eq!(config.visuals.identity_gap(), Some(18));
     assert_eq!(
         config.visuals.center_stack_order(),
         CenterStackOrder::HeroAuth
@@ -694,6 +696,7 @@ fn loads_config_from_file() {
             clock_gap = 10
             auth_stack_offset = 16
             header_top_offset = -12
+            identity_gap = 26
             center_stack_order = "auth-hero"
             center_stack_style = "identity-hero-input"
             clock_font_family = "Bebas Neue"
@@ -814,6 +817,7 @@ fn loads_config_from_file() {
     assert_eq!(loaded.config.visuals.clock_gap(), Some(10));
     assert_eq!(loaded.config.visuals.auth_stack_offset(), Some(16));
     assert_eq!(loaded.config.visuals.header_top_offset(), Some(-12));
+    assert_eq!(loaded.config.visuals.identity_gap(), Some(26));
     assert_eq!(
         loaded.config.visuals.center_stack_order(),
         CenterStackOrder::AuthHero
@@ -1374,6 +1378,7 @@ border_color = "#DDDDDD"
             [visuals.layout]
             header_top_offset = -12
             auth_stack_offset = 0
+            identity_gap = 26
             center_stack_order = "auth-hero"
             center_stack_style = "identity-hero-input"
 
@@ -1613,6 +1618,7 @@ border_color = "#DDDDDD"
     assert_eq!(config.visuals.now_playing_bottom_offset(), Some(10));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
+    assert_eq!(config.visuals.identity_gap(), Some(26));
     assert_eq!(
         config.visuals.center_stack_order(),
         CenterStackOrder::AuthHero

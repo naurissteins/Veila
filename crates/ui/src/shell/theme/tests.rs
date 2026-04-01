@@ -206,6 +206,7 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.layout = Some(LayoutVisualConfig {
         auth_stack_offset: Some(16),
         header_top_offset: Some(-12),
+        identity_gap: Some(26),
         center_stack_order: Some(CenterStackOrder::AuthHero),
         center_stack_style: Some(CenterStackStyle::IdentityHeroInput),
     });
@@ -260,6 +261,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.clock_gap, Some(10));
     assert_eq!(theme.auth_stack_offset, Some(16));
     assert_eq!(theme.header_top_offset, Some(-12));
+    assert_eq!(theme.identity_gap, Some(26));
     assert_eq!(
         theme.center_stack_style,
         CenterStackStyle::IdentityHeroInput

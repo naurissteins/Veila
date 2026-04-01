@@ -811,6 +811,8 @@ pub struct LayoutVisualConfig {
     #[serde(default)]
     pub header_top_offset: Option<i16>,
     #[serde(default)]
+    pub identity_gap: Option<u16>,
+    #[serde(default)]
     pub center_stack_order: Option<CenterStackOrder>,
     #[serde(default)]
     pub center_stack_style: Option<CenterStackStyle>,
@@ -821,6 +823,7 @@ impl Default for LayoutVisualConfig {
         Self {
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
+            identity_gap: Some(18),
             center_stack_order: Some(CenterStackOrder::HeroAuth),
             center_stack_style: Some(CenterStackStyle::HeroAuth),
         }
@@ -936,6 +939,8 @@ pub struct VisualConfig {
     pub auth_stack_offset: Option<i16>,
     #[serde(default)]
     pub header_top_offset: Option<i16>,
+    #[serde(default)]
+    pub identity_gap: Option<u16>,
     #[serde(default)]
     pub center_stack_order: Option<CenterStackOrder>,
     #[serde(default)]
@@ -1094,6 +1099,7 @@ impl Default for VisualConfig {
             clock_gap: Some(20),
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
+            identity_gap: Some(18),
             center_stack_order: Some(CenterStackOrder::HeroAuth),
             center_stack_style: Some(CenterStackStyle::HeroAuth),
             clock_font_family: Some(default_geom_font_family()),
@@ -1458,6 +1464,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|layout| layout.header_top_offset)
             .or(self.header_top_offset)
+    }
+
+    pub fn identity_gap(&self) -> Option<u16> {
+        self.layout
+            .as_ref()
+            .and_then(|layout| layout.identity_gap)
+            .or(self.identity_gap)
     }
 
     pub fn center_stack_order(&self) -> CenterStackOrder {

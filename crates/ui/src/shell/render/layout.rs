@@ -37,6 +37,7 @@ pub(super) struct AnchorOffsets {
     pub input_vertical_padding: Option<i32>,
     pub input_offset_y: Option<i32>,
     pub header_top: Option<i32>,
+    pub identity_gap: Option<i32>,
     pub center_stack_style: CenterStackStyle,
     pub clock_alignment: ClockAlignment,
     pub clock_offset_y: Option<i32>,
@@ -298,7 +299,7 @@ pub(super) fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
                 if identity_height > 0 && input_anchor_height > 0 =>
             {
                 let identity_gap = if identity_height > 0 && hero_height > 0 {
-                    18
+                    offsets.identity_gap.unwrap_or(18).clamp(0, 160)
                 } else {
                     0
                 };
@@ -790,6 +791,53 @@ mod tests {
                 .is_some_and(|identity_y| identity_y < anchors.hero_y)
         );
         assert!(anchors.hero_y < anchors.auth_y);
+    }
+
+    #[test]
+    fn applies_configured_identity_gap_for_centered_grouped_layouts() {
+        let default_anchors = role_anchors_with_groups(RoleAnchorInput {
+            frame_height: 720,
+            hero_height: 54,
+            auth_anchor_height: 197,
+            auth_render_height: 197,
+            auth_groups: AuthGroupHeights {
+                identity: 72,
+                input_anchor: 51,
+                input_render: 51,
+            },
+            footer_heights: FooterHeights::same(0),
+            input_alignment: InputAlignment::CenterCenter,
+            offsets: AnchorOffsets {
+                center_stack_style: CenterStackStyle::IdentityHeroInput,
+                clock_alignment: ClockAlignment::CenterCenter,
+                ..AnchorOffsets::default()
+            },
+        });
+        let widened_gap_anchors = role_anchors_with_groups(RoleAnchorInput {
+            frame_height: 720,
+            hero_height: 54,
+            auth_anchor_height: 197,
+            auth_render_height: 197,
+            auth_groups: AuthGroupHeights {
+                identity: 72,
+                input_anchor: 51,
+                input_render: 51,
+            },
+            footer_heights: FooterHeights::same(0),
+            input_alignment: InputAlignment::CenterCenter,
+            offsets: AnchorOffsets {
+                center_stack_style: CenterStackStyle::IdentityHeroInput,
+                clock_alignment: ClockAlignment::CenterCenter,
+                identity_gap: Some(30),
+                ..AnchorOffsets::default()
+            },
+        });
+
+        assert_eq!(default_anchors.identity_y, Some(254));
+        assert_eq!(default_anchors.hero_y, 344);
+        assert_eq!(widened_gap_anchors.identity_y, Some(248));
+        assert_eq!(widened_gap_anchors.hero_y, 350);
+        assert_eq!(widened_gap_anchors.auth_y, 422);
     }
 
     #[test]
