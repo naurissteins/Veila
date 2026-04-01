@@ -23,6 +23,7 @@ pub const fn component_name() -> &'static str {
 /// Command-line options for the curtain process.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CurtainOptions {
+    pub help: bool,
     pub notify_socket: Option<PathBuf>,
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
@@ -43,6 +44,11 @@ impl CurtainOptions {
         let mut options = Self::default();
 
         for arg in args.into_iter().skip(1) {
+            if arg == "--help" || arg == "-h" {
+                options.help = true;
+                continue;
+            }
+
             if let Some(path) = arg.strip_prefix("--notify-socket=") {
                 options.notify_socket = Some(PathBuf::from(path));
                 continue;
@@ -117,7 +123,47 @@ impl CurtainOptions {
 
 /// Starts the secure curtain process.
 pub fn run(options: CurtainOptions) -> Result<()> {
+    if options.help {
+        print_help();
+        return Ok(());
+    }
+
     app::run(options)
+}
+
+fn print_help() {
+    println!(
+        "\
+Veila secure curtain and preview CLI
+
+Usage:
+  {name} [options]
+
+General:
+  -h, --help                         Show this help text
+      --config=<path>                Use a specific config file
+      --notify-socket=<path>         Notify socket for curtain readiness
+      --daemon-socket=<path>         Daemon auth IPC socket
+      --control-socket=<path>        Curtain live-control IPC socket
+
+Preview mode:
+      --preview-png=<path>           Render the scene to a PNG instead of locking
+      --preview-size=<width>x<height>  Output size for preview rendering
+      --preview-artwork=<path>       Override now playing artwork for preview
+      --preview-title=<text>         Override now playing title for preview
+      --preview-artist=<text>        Override now playing artist for preview
+
+Daemon snapshot overrides:
+      --weather-snapshot=<payload>   Inject a weather snapshot
+      --battery-snapshot=<payload>   Inject a battery snapshot
+      --now-playing-snapshot=<payload>  Inject a now playing snapshot
+
+Notes:
+  If no preview option is given, {name} starts the secure session-lock curtain.
+  --preview-png renders directly to a PNG without taking a real lock.
+",
+        name = component_name()
+    );
 }
 
 fn parse_preview_size(input: &str) -> Result<veila_renderer::FrameSize> {
@@ -186,6 +232,17 @@ mod tests {
         );
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+    }
+
+    #[test]
+    fn parses_help_arguments() {
+        let long = CurtainOptions::parse_args(["veila-curtain".to_string(), "--help".to_string()])
+            .expect("arguments should parse");
+        let short = CurtainOptions::parse_args(["veila-curtain".to_string(), "-h".to_string()])
+            .expect("arguments should parse");
+
+        assert!(long.help);
+        assert!(short.help);
     }
 
     #[test]

@@ -20,6 +20,8 @@ impl FormatTime for ShortLocalTime {
 }
 
 fn main() -> anyhow::Result<()> {
+    let options = veila_curtain::CurtainOptions::parse_args(std::env::args())?;
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
@@ -28,11 +30,12 @@ fn main() -> anyhow::Result<()> {
         .with_timer(ShortLocalTime)
         .init();
 
-    tracing::info!(
-        component = veila_curtain::component_name(),
-        "starting curtain"
-    );
+    if !options.help {
+        tracing::info!(
+            component = veila_curtain::component_name(),
+            "starting curtain"
+        );
+    }
 
-    let options = veila_curtain::CurtainOptions::parse_args(std::env::args())?;
     veila_curtain::run(options)
 }

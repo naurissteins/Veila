@@ -31,7 +31,8 @@ async fn main() -> anyhow::Result<()> {
         .with_timer(ShortLocalTime)
         .init();
 
-    if !options.stop
+    if !options.help
+        && !options.stop
         && options.print_theme.is_none()
         && options.set_theme.is_none()
         && !options.unset_theme

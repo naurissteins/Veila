@@ -6,6 +6,7 @@ use anyhow::{Result, bail};
 pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
     pub session_id: Option<String>,
+    pub help: bool,
     pub print_theme: Option<String>,
     pub set_theme: Option<String>,
     pub unset_theme: bool,
@@ -23,6 +24,11 @@ impl DaemonOptions {
         let mut options = Self::default();
 
         for arg in args.into_iter().skip(1) {
+            if arg == "--help" || arg == "-h" {
+                options.help = true;
+                continue;
+            }
+
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
                 continue;
@@ -106,6 +112,17 @@ mod tests {
             options.config_path.as_deref(),
             Some(std::path::Path::new("/tmp/veila.toml"))
         );
+    }
+
+    #[test]
+    fn parses_help_arguments() {
+        let long = DaemonOptions::parse_args(["veilad".to_string(), "--help".to_string()])
+            .expect("arguments should parse");
+        let short = DaemonOptions::parse_args(["veilad".to_string(), "-h".to_string()])
+            .expect("arguments should parse");
+
+        assert!(long.help);
+        assert!(short.help);
     }
 
     #[test]

@@ -25,6 +25,11 @@ pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
 
 /// Starts the daemon runtime.
 pub async fn run(options: DaemonOptions) -> Result<()> {
+    if options.help {
+        print_help();
+        return Ok(());
+    }
+
     let control_mode_count = usize::from(options.lock_now)
         + usize::from(options.print_theme.is_some())
         + usize::from(options.set_theme.is_some())
@@ -107,6 +112,42 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
             }
         }
     }
+}
+
+fn print_help() {
+    println!(
+        "\
+Veila daemon and control CLI
+
+Usage:
+  {name} [options]
+
+General:
+  -h, --help                 Show this help text
+      --version              Print local and running daemon version info
+      --config=<path>        Use a specific config file
+      --session-id=<id>      Override the logind session id
+
+Daemon control:
+      --lock-now             Trigger an immediate lock
+      --reload-config        Ask a running daemon to reload config from disk
+      --status               Print daemon runtime status
+      --health               Print daemon build and platform info
+      --stop                 Stop the running daemon
+
+Themes:
+      --list-themes          List bundled themes
+      --print-theme=<name>   Print a theme source file
+      --set-theme=<name>     Set the active theme in config.toml
+      --unset-theme          Remove the top-level theme key from config.toml
+
+Notes:
+  Only one control action can be used at a time.
+  If no control action is given, {name} starts the daemon.
+  --set-theme creates config.toml automatically if it does not exist.
+",
+        name = component_name()
+    );
 }
 
 async fn stop_running_daemon(daemon_socket_path: &std::path::Path) -> Result<()> {
