@@ -38,6 +38,7 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.avatar = Some(AvatarVisualConfig {
         enabled: Some(true),
         size: Some(92),
+        offset_y: Some(18),
         gap: Some(14),
         background_color: Some(ConfigColor::rgb(24, 30, 42)),
         background_opacity: Some(36),
@@ -54,6 +55,7 @@ fn input_opacity_overrides_embedded_alpha() {
         color: Some(ConfigColor::rgb(215, 227, 255)),
         opacity: Some(72),
         size: Some(3),
+        offset_y: Some(-12),
         gap: Some(28),
     });
     config.visuals.clock = Some(ClockVisualConfig {
@@ -230,6 +232,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.input_height, Some(54));
     assert_eq!(theme.input_border_width, Some(3));
     assert_eq!(theme.avatar_size, Some(92));
+    assert_eq!(theme.avatar_offset_y, Some(18));
     assert_eq!(theme.avatar_placeholder_padding, Some(14));
     assert_eq!(
         theme.avatar_icon_color,
@@ -250,6 +253,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.username_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.username_opacity, Some(72));
     assert_eq!(theme.username_size, Some(3));
+    assert_eq!(theme.username_offset_y, Some(-12));
     assert_eq!(theme.avatar_gap, Some(14));
     assert_eq!(theme.username_gap, Some(28));
     assert_eq!(theme.status_gap, Some(18));

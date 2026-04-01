@@ -254,6 +254,7 @@ fn first_run_defaults_match_bundled_theme() {
         Some(RgbColor::rgb(255, 255, 255))
     );
     assert_eq!(config.visuals.avatar_size(), Some(192));
+    assert_eq!(config.visuals.avatar_offset_y(), Some(0));
     assert_eq!(config.visuals.avatar_placeholder_padding(), Some(28));
     assert_eq!(
         config.visuals.avatar_icon_color(),
@@ -280,6 +281,7 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(config.visuals.username_opacity(), Some(84));
     assert_eq!(config.visuals.username_size(), Some(4));
+    assert_eq!(config.visuals.username_offset_y(), Some(0));
     assert_eq!(config.visuals.avatar_gap(), Some(24));
     assert_eq!(config.visuals.username_gap(), Some(28));
     assert_eq!(config.visuals.status_gap(), Some(18));
@@ -676,6 +678,7 @@ fn loads_config_from_file() {
             input_radius = 20
             input_border_width = 3
             avatar_size = 92
+            avatar_offset_y = 18
             avatar_placeholder_padding = 12
             avatar_icon_color = "#E8EEF9"
             avatar_ring_color = "#94B2FF"
@@ -684,6 +687,7 @@ fn loads_config_from_file() {
             username_color = "#D7E3FF"
             username_opacity = 72
             username_size = 3
+            username_offset_y = -12
             avatar_gap = 14
             username_gap = 28
             status_gap = 18
@@ -785,6 +789,7 @@ fn loads_config_from_file() {
     assert_eq!(loaded.config.visuals.input_radius(), 20);
     assert_eq!(loaded.config.visuals.input_border_width(), Some(3));
     assert_eq!(loaded.config.visuals.avatar_size(), Some(92));
+    assert_eq!(loaded.config.visuals.avatar_offset_y(), Some(18));
     assert_eq!(loaded.config.visuals.avatar_placeholder_padding(), Some(12));
     assert_eq!(
         loaded.config.visuals.avatar_icon_color(),
@@ -802,6 +807,7 @@ fn loads_config_from_file() {
     );
     assert_eq!(loaded.config.visuals.username_opacity(), Some(72));
     assert_eq!(loaded.config.visuals.username_size(), Some(3));
+    assert_eq!(loaded.config.visuals.username_offset_y(), Some(-12));
     assert_eq!(loaded.config.visuals.avatar_gap(), Some(14));
     assert_eq!(loaded.config.visuals.username_gap(), Some(28));
     assert_eq!(loaded.config.visuals.status_gap(), Some(18));
@@ -1214,6 +1220,7 @@ border_color = "#DDDDDD"
 
             [visuals.avatar]
             size = 192
+            offset_y = 12
             gap = 14
             background_color = "#ffffff"
             background_opacity = 6
@@ -1229,6 +1236,7 @@ border_color = "#DDDDDD"
             color = "#ffffff"
             opacity = 84
             size = 4
+            offset_y = -10
             gap = 28
 
             [visuals.clock]
@@ -1407,6 +1415,7 @@ border_color = "#DDDDDD"
         Some(RgbColor::rgb(255, 255, 255))
     );
     assert_eq!(config.visuals.avatar_size(), Some(192));
+    assert_eq!(config.visuals.avatar_offset_y(), Some(12));
     assert_eq!(config.visuals.avatar_gap(), Some(14));
     assert_eq!(
         config.visuals.username_color(),
@@ -1420,6 +1429,7 @@ border_color = "#DDDDDD"
     );
     assert_eq!(config.visuals.username_opacity(), Some(84));
     assert_eq!(config.visuals.username_size(), Some(4));
+    assert_eq!(config.visuals.username_offset_y(), Some(-10));
     assert_eq!(config.visuals.username_gap(), Some(28));
     assert_eq!(config.visuals.clock_font_family(), Some("Prototype"));
     assert_eq!(config.visuals.clock_font_weight(), Some(700));

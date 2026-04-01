@@ -195,14 +195,19 @@ impl ShellState {
                 }
             }
             SceneWidget::Username(block) if !dynamic => {
-                draw_centered_block(buffer, metrics.auth_center_x, y, block);
+                draw_centered_block(
+                    buffer,
+                    metrics.auth_center_x,
+                    y + self.theme.username_offset_y.unwrap_or(0),
+                    block,
+                );
             }
             SceneWidget::Avatar if !dynamic && self.theme.avatar_enabled => {
                 draw_avatar_widget(
                     buffer,
                     &self.avatar,
                     metrics.auth_center_x,
-                    y,
+                    y + self.theme.avatar_offset_y.unwrap_or(0),
                     metrics.avatar_size as u32,
                     self.avatar_style(),
                 );

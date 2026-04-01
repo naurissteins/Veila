@@ -122,6 +122,8 @@ pub struct AvatarVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
+    pub offset_y: Option<i16>,
+    #[serde(default)]
     pub gap: Option<u16>,
     #[serde(default)]
     pub background_color: Option<RgbColor>,
@@ -142,6 +144,7 @@ impl Default for AvatarVisualConfig {
         Self {
             enabled: Some(true),
             size: Some(192),
+            offset_y: Some(0),
             gap: Some(24),
             background_color: Some(RgbColor::rgb(255, 255, 255)),
             background_opacity: Some(6),
@@ -170,6 +173,8 @@ pub struct UsernameVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
+    pub offset_y: Option<i16>,
+    #[serde(default)]
     pub gap: Option<u16>,
 }
 
@@ -183,6 +188,7 @@ impl Default for UsernameVisualConfig {
             color: Some(RgbColor::rgb(255, 255, 255)),
             opacity: Some(84),
             size: Some(4),
+            offset_y: Some(0),
             gap: Some(28),
         }
     }
@@ -899,6 +905,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub avatar_size: Option<u16>,
     #[serde(default)]
+    pub avatar_offset_y: Option<i16>,
+    #[serde(default)]
     pub avatar_placeholder_padding: Option<u16>,
     #[serde(default)]
     pub avatar_icon_color: Option<RgbColor>,
@@ -914,6 +922,8 @@ pub struct VisualConfig {
     pub username_opacity: Option<u8>,
     #[serde(default)]
     pub username_size: Option<u16>,
+    #[serde(default)]
+    pub username_offset_y: Option<i16>,
     #[serde(default)]
     pub avatar_gap: Option<u16>,
     #[serde(default)]
@@ -1068,6 +1078,7 @@ impl Default for VisualConfig {
             input_radius: 10,
             input_border_width: Some(0),
             avatar_size: Some(192),
+            avatar_offset_y: Some(0),
             avatar_placeholder_padding: Some(28),
             avatar_icon_color: Some(RgbColor::rgb(255, 255, 255)),
             avatar_ring_color: Some(RgbColor::rgb(148, 178, 255)),
@@ -1076,6 +1087,7 @@ impl Default for VisualConfig {
             username_color: Some(RgbColor::rgb(255, 255, 255)),
             username_opacity: Some(84),
             username_size: Some(4),
+            username_offset_y: Some(0),
             avatar_gap: Some(24),
             username_gap: Some(28),
             status_gap: Some(18),
@@ -1318,6 +1330,13 @@ impl VisualConfig {
             .or(self.avatar_gap)
     }
 
+    pub fn avatar_offset_y(&self) -> Option<i16> {
+        self.avatar
+            .as_ref()
+            .and_then(|avatar| avatar.offset_y)
+            .or(self.avatar_offset_y)
+    }
+
     pub fn avatar_background_opacity(&self) -> Option<u8> {
         self.avatar
             .as_ref()
@@ -1404,6 +1423,13 @@ impl VisualConfig {
             .as_ref()
             .and_then(|username| username.gap)
             .or(self.username_gap)
+    }
+
+    pub fn username_offset_y(&self) -> Option<i16> {
+        self.username
+            .as_ref()
+            .and_then(|username| username.offset_y)
+            .or(self.username_offset_y)
     }
 
     pub fn status_gap(&self) -> Option<u16> {
