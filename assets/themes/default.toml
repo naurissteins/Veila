@@ -1,8 +1,8 @@
 [background]
 mode = "bundled"
 color = "#202833"
-blur_radius = 12
-dim_strength = 54
+blur_radius = 0
+dim_strength = 0
 tint = "rgba(8, 10, 14, 0.4)"
 tint_opacity = 0
 
@@ -14,8 +14,6 @@ username = "Billy Ocean"
 
 [battery]
 enabled = true
-mock_percent = 84
-mock_charging = false
 
 [visuals.now_playing]
 content_gap = 18

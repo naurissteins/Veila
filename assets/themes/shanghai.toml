@@ -14,8 +14,6 @@ show_username = false
 
 [battery]
 enabled = true
-mock_percent = 84
-mock_charging = false
 
 [weather]
 enabled = true
