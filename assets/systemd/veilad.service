@@ -1,0 +1,13 @@
+[Unit]
+Description=Veila screen locker daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/veilad
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

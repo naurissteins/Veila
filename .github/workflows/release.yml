@@ -1,0 +1,99 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version label for the packaged artifact"
+        required: false
+        default: "manual"
+      artifact_name:
+        description: "Artifact name for manual packaging test uploads"
+        required: false
+        default: "veila-release-preview"
+
+permissions:
+  contents: write
+
+jobs:
+  linux-x86_64:
+    name: linux-x86_64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libpam0g-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-rust-cache
+
+      - name: Build optimized release
+        run: cargo build --locked --release --workspace
+
+      - name: Show release binary sizes
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ls -lh \
+            target/release/veilad \
+            target/release/veila-curtain
+
+      - name: Package release tarball
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            version="${{ github.event.inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          dist_dir="dist/veila-${version}-x86_64-linux"
+
+          rm -rf "$dist_dir"
+          mkdir -p \
+            "$dist_dir/bin" \
+            "$dist_dir/share/veila"
+
+          install -m755 target/release/veilad "$dist_dir/bin/veilad"
+          install -m755 target/release/veila-curtain "$dist_dir/bin/veila-curtain"
+          cp -R assets/bg "$dist_dir/share/veila/"
+          cp -R assets/fonts "$dist_dir/share/veila/"
+          cp -R assets/icons "$dist_dir/share/veila/"
+          cp -R assets/systemd "$dist_dir/share/veila/"
+          cp -R assets/themes "$dist_dir/share/veila/"
+          install -m644 README.md "$dist_dir/README.md"
+          install -m644 LICENSE "$dist_dir/LICENSE"
+
+          tar -C dist -czf "dist/veila-${version}-x86_64-linux.tar.gz" "veila-${version}-x86_64-linux"
+
+      - name: Upload release asset
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/veila-*-x86_64-linux.tar.gz
+
+      - name: Upload manual packaging artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.artifact_name }}
+          path: dist/veila-*-x86_64-linux.tar.gz
