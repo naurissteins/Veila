@@ -19,12 +19,10 @@ pub use indicators::{
 };
 pub use input::{FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry};
 pub use layer::{
-    LayerAlignment, LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig,
-    LayerWidth,
+    LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
+    LayerVisualConfig, LayerWidth, LayerWidthKeyword,
 };
-pub use layout::{
-    CenterStackOrder, CenterStackStyle, LayoutVisualConfig, PaletteVisualConfig,
-};
+pub use layout::{CenterStackOrder, CenterStackStyle, LayoutVisualConfig, PaletteVisualConfig};
 pub use now_playing::NowPlayingVisualConfig;
 pub use weather::{WeatherAlignment, WeatherVisualConfig};
 

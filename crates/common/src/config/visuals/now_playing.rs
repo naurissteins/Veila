@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{input::FontStyle, RgbColor};
+use super::{RgbColor, input::FontStyle};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NowPlayingVisualConfig {

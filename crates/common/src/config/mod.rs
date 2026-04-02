@@ -26,8 +26,8 @@ pub use visuals::{
     AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackOrder,
     CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig,
     EyeVisualConfig, FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
-    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
+    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle,
+    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayerWidthKeyword, LayoutVisualConfig,
     NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
     UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };

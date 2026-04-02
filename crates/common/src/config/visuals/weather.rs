@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{input::FontStyle, RgbColor};
+use super::{RgbColor, input::FontStyle};
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
