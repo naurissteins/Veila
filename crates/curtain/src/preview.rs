@@ -6,14 +6,16 @@ use std::{
     path::{Path, PathBuf},
 };
 use time::{OffsetDateTime, UtcOffset};
-use veila_common::{AppConfig, ConfigColor, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot};
+use veila_common::{
+    AppConfig, BatterySnapshot, ConfigColor, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot,
+};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     background::{BackgroundAsset, BackgroundTreatment},
 };
 use veila_ui::{ShellState, ShellTheme};
 
-use crate::CurtainOptions;
+use crate::{CurtainOptions, PreviewClockTime};
 
 const DEFAULT_PREVIEW_SIZE: FrameSize = FrameSize::new(2560, 1440);
 
@@ -26,9 +28,8 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let loaded = AppConfig::load(options.config_path.as_deref())
         .context("failed to load config for preview rendering")?;
     let config = loaded.config;
-    let weather_snapshot = options
-        .weather_snapshot
-        .or_else(|| preview_weather_snapshot(&config));
+    let weather_snapshot = preview_weather_snapshot(&options, &config);
+    let battery_snapshot = preview_battery_snapshot(&options, &config);
     let now_playing_snapshot = options.now_playing_snapshot.or_else(|| {
         preview_now_playing_snapshot(
             options.preview_title.clone(),
@@ -62,12 +63,13 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
         config.weather.location.clone(),
         weather_snapshot,
         config.weather.unit,
-        options
-            .battery_snapshot
-            .or_else(|| config.battery.mock_snapshot()),
+        battery_snapshot,
         now_playing_snapshot,
     );
     let mut shell = shell;
+    if let Some(preview_time) = options.preview_time {
+        shell.set_preview_time(preview_clock_datetime(preview_time));
+    }
     shell.set_keyboard_layout_label(Some(String::from("EN")));
     render_shell(&shell, &mut buffer);
     buffer
@@ -91,7 +93,18 @@ fn to_clear_color(color: ConfigColor) -> ClearColor {
     ClearColor::rgba(color.0, color.1, color.2, color.3)
 }
 
-fn preview_weather_snapshot(config: &AppConfig) -> Option<WeatherSnapshot> {
+fn preview_weather_snapshot(
+    options: &CurtainOptions,
+    config: &AppConfig,
+) -> Option<WeatherSnapshot> {
+    if let Some(snapshot) = options.weather_snapshot.clone() {
+        return Some(snapshot);
+    }
+
+    if let Some(snapshot) = preview_weather_override_snapshot(options) {
+        return Some(snapshot);
+    }
+
     if !config.weather.enabled {
         return None;
     }
@@ -103,6 +116,17 @@ fn preview_weather_snapshot(config: &AppConfig) -> Option<WeatherSnapshot> {
     Some(WeatherSnapshot {
         temperature_celsius: 21,
         condition: preview_weather_condition_now(),
+        fetched_at_unix: 0,
+    })
+}
+
+fn preview_weather_override_snapshot(options: &CurtainOptions) -> Option<WeatherSnapshot> {
+    let temperature_celsius = options.preview_weather_temperature_celsius?;
+    Some(WeatherSnapshot {
+        temperature_celsius,
+        condition: options
+            .preview_weather_condition
+            .unwrap_or_else(preview_weather_condition_now),
         fetched_at_unix: 0,
     })
 }
@@ -207,15 +231,53 @@ fn preview_now_playing_snapshot(
     })
 }
 
+fn preview_battery_snapshot(
+    options: &CurtainOptions,
+    config: &AppConfig,
+) -> Option<BatterySnapshot> {
+    if let Some(snapshot) = options.battery_snapshot.clone() {
+        return Some(snapshot);
+    }
+
+    if let Some(percent) = options.preview_battery_percent {
+        return Some(BatterySnapshot {
+            percent,
+            charging: options.preview_battery_charging.unwrap_or(false),
+        });
+    }
+
+    if let Some(charging) = options.preview_battery_charging {
+        return Some(BatterySnapshot {
+            percent: 84,
+            charging,
+        });
+    }
+
+    config.battery.mock_snapshot()
+}
+
+fn preview_clock_datetime(time: PreviewClockTime) -> OffsetDateTime {
+    let now = OffsetDateTime::now_utc()
+        .to_offset(UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
+    now.replace_hour(time.hour)
+        .and_then(|datetime| datetime.replace_minute(time.minute))
+        .and_then(|datetime| datetime.replace_second(0))
+        .and_then(|datetime| datetime.replace_millisecond(0))
+        .unwrap_or(now)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         PreviewGeocodedLocationCache, load_cached_preview_weather_snapshot_from,
+        preview_battery_snapshot, preview_clock_datetime,
         preview_weather_cache_path_for_coordinates, preview_weather_condition_for_hour,
-        preview_weather_location_cache_path,
+        preview_weather_location_cache_path, preview_weather_override_snapshot,
     };
     use std::fs;
-    use veila_common::{AppConfig, WeatherCondition, WeatherSnapshot};
+    use veila_common::{AppConfig, BatterySnapshot, WeatherCondition, WeatherSnapshot};
+
+    use crate::{CurtainOptions, PreviewClockTime};
 
     #[test]
     fn uses_day_icon_during_daylight_preview_hours() {
@@ -310,6 +372,54 @@ mod tests {
         fs::remove_dir(weather_root).ok();
         fs::remove_dir(cache_root.join("veila")).ok();
         fs::remove_dir(cache_root).ok();
+    }
+
+    #[test]
+    fn preview_weather_override_uses_requested_condition_and_temperature() {
+        let options = CurtainOptions {
+            preview_weather_condition: Some(WeatherCondition::Snow),
+            preview_weather_temperature_celsius: Some(-4),
+            ..CurtainOptions::default()
+        };
+
+        assert_eq!(
+            preview_weather_override_snapshot(&options),
+            Some(WeatherSnapshot {
+                temperature_celsius: -4,
+                condition: WeatherCondition::Snow,
+                fetched_at_unix: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn preview_battery_override_uses_requested_percent_and_charging() {
+        let options = CurtainOptions {
+            preview_battery_percent: Some(91),
+            preview_battery_charging: Some(true),
+            ..CurtainOptions::default()
+        };
+        let config = AppConfig::default();
+
+        assert_eq!(
+            preview_battery_snapshot(&options, &config),
+            Some(BatterySnapshot {
+                percent: 91,
+                charging: true,
+            })
+        );
+    }
+
+    #[test]
+    fn preview_clock_datetime_reuses_local_date_with_requested_time() {
+        let datetime = preview_clock_datetime(PreviewClockTime {
+            hour: 21,
+            minute: 54,
+        });
+
+        assert_eq!(datetime.hour(), 21);
+        assert_eq!(datetime.minute(), 54);
+        assert_eq!(datetime.second(), 0);
     }
 }
 

@@ -13,7 +13,9 @@ mod wayland;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
-use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, ipc::decode_message};
+use veila_common::{
+    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, ipc::decode_message,
+};
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {
@@ -33,9 +35,20 @@ pub struct CurtainOptions {
     pub preview_artwork: Option<PathBuf>,
     pub preview_title: Option<String>,
     pub preview_artist: Option<String>,
+    pub preview_weather_condition: Option<WeatherCondition>,
+    pub preview_weather_temperature_celsius: Option<i16>,
+    pub preview_battery_percent: Option<u8>,
+    pub preview_battery_charging: Option<bool>,
+    pub preview_time: Option<PreviewClockTime>,
     pub weather_snapshot: Option<WeatherSnapshot>,
     pub battery_snapshot: Option<BatterySnapshot>,
     pub now_playing_snapshot: Option<NowPlayingSnapshot>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreviewClockTime {
+    pub hour: u8,
+    pub minute: u8,
 }
 
 impl CurtainOptions {
@@ -92,6 +105,45 @@ impl CurtainOptions {
 
             if let Some(artist) = arg.strip_prefix("--preview-artist=") {
                 options.preview_artist = Some(artist.to_string());
+                continue;
+            }
+
+            if let Some(condition) = arg.strip_prefix("--preview-weather-condition=") {
+                options.preview_weather_condition = Some(
+                    parse_preview_weather_condition(condition)
+                        .context("failed to parse preview weather condition")?,
+                );
+                continue;
+            }
+
+            if let Some(temperature) = arg.strip_prefix("--preview-weather-temperature=") {
+                options.preview_weather_temperature_celsius = Some(
+                    temperature
+                        .parse::<i16>()
+                        .context("invalid preview weather temperature")?,
+                );
+                continue;
+            }
+
+            if let Some(percent) = arg.strip_prefix("--preview-battery-percent=") {
+                options.preview_battery_percent = Some(
+                    parse_preview_battery_percent(percent)
+                        .context("failed to parse preview battery percent")?,
+                );
+                continue;
+            }
+
+            if let Some(charging) = arg.strip_prefix("--preview-battery-charging=") {
+                options.preview_battery_charging = Some(
+                    parse_preview_bool(charging)
+                        .context("failed to parse preview battery charging state")?,
+                );
+                continue;
+            }
+
+            if let Some(time) = arg.strip_prefix("--preview-time=") {
+                options.preview_time =
+                    Some(parse_preview_clock_time(time).context("failed to parse preview time")?);
                 continue;
             }
 
@@ -152,6 +204,11 @@ Preview mode:
       --preview-artwork=<path>       Override now playing artwork for preview
       --preview-title=<text>         Override now playing title for preview
       --preview-artist=<text>        Override now playing artist for preview
+      --preview-weather-condition=<name>  Override preview weather icon/condition
+      --preview-weather-temperature=<celsius>  Override preview weather temperature
+      --preview-battery-percent=<0-100>  Override preview battery percentage
+      --preview-battery-charging=<bool>  Override preview battery charging state
+      --preview-time=<HH:MM>         Override preview clock time using the local date
 
 Daemon snapshot overrides:
       --weather-snapshot=<payload>   Inject a weather snapshot
@@ -180,11 +237,67 @@ fn parse_preview_size(input: &str) -> Result<veila_renderer::FrameSize> {
     Ok(veila_renderer::FrameSize::new(width, height))
 }
 
+fn parse_preview_weather_condition(input: &str) -> Result<WeatherCondition> {
+    let normalized = input.trim().to_ascii_lowercase();
+    let condition = match normalized.as_str() {
+        "clear-day" | "clear_day" | "clearday" | "sunny" | "day" => WeatherCondition::ClearDay,
+        "clear-night" | "clear_night" | "clearnight" | "night" => WeatherCondition::ClearNight,
+        "partly-cloudy-day" | "partly_cloudy_day" | "partlycloudyday" => {
+            WeatherCondition::PartlyCloudyDay
+        }
+        "partly-cloudy-night" | "partly_cloudy_night" | "partlycloudynight" => {
+            WeatherCondition::PartlyCloudyNight
+        }
+        "cloudy" => WeatherCondition::Cloudy,
+        "overcast" => WeatherCondition::Overcast,
+        "fog" => WeatherCondition::Fog,
+        "drizzle" => WeatherCondition::Drizzle,
+        "rain" => WeatherCondition::Rain,
+        "snow" => WeatherCondition::Snow,
+        "thunderstorm" | "storm" => WeatherCondition::Thunderstorm,
+        "unknown" => WeatherCondition::Unknown,
+        _ => bail!("unsupported preview weather condition"),
+    };
+    Ok(condition)
+}
+
+fn parse_preview_battery_percent(input: &str) -> Result<u8> {
+    let percent = input
+        .parse::<u8>()
+        .context("invalid preview battery percent")?;
+    if percent > 100 {
+        bail!("preview battery percent must be between 0 and 100");
+    }
+    Ok(percent)
+}
+
+fn parse_preview_bool(input: &str) -> Result<bool> {
+    match input.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" | "on" => Ok(true),
+        "false" | "0" | "no" | "off" => Ok(false),
+        _ => bail!("expected true or false"),
+    }
+}
+
+fn parse_preview_clock_time(input: &str) -> Result<PreviewClockTime> {
+    let (hour, minute) = input
+        .split_once(':')
+        .ok_or_else(|| anyhow::anyhow!("preview time must use HH:MM"))?;
+    let hour = hour.parse::<u8>().context("invalid preview hour")?;
+    let minute = minute.parse::<u8>().context("invalid preview minute")?;
+    if hour > 23 || minute > 59 {
+        bail!("preview time must be a valid 24-hour clock value");
+    }
+    Ok(PreviewClockTime { hour, minute })
+}
+
 #[cfg(test)]
 mod tests {
-    use veila_common::{BatterySnapshot, NowPlayingSnapshot, ipc::encode_message};
+    use veila_common::{
+        BatterySnapshot, NowPlayingSnapshot, WeatherCondition, ipc::encode_message,
+    };
 
-    use super::CurtainOptions;
+    use super::{CurtainOptions, PreviewClockTime};
 
     #[test]
     fn parses_notify_socket_argument() {
@@ -199,6 +312,11 @@ mod tests {
             "--preview-artwork=/tmp/cover.png".to_string(),
             "--preview-title=After Dark".to_string(),
             "--preview-artist=Mr.Kitty".to_string(),
+            "--preview-weather-condition=rain".to_string(),
+            "--preview-weather-temperature=7".to_string(),
+            "--preview-battery-percent=84".to_string(),
+            "--preview-battery-charging=true".to_string(),
+            "--preview-time=21:54".to_string(),
         ])
         .expect("arguments should parse");
 
@@ -232,6 +350,20 @@ mod tests {
         );
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+        assert_eq!(
+            options.preview_weather_condition,
+            Some(WeatherCondition::Rain)
+        );
+        assert_eq!(options.preview_weather_temperature_celsius, Some(7));
+        assert_eq!(options.preview_battery_percent, Some(84));
+        assert_eq!(options.preview_battery_charging, Some(true));
+        assert_eq!(
+            options.preview_time,
+            Some(PreviewClockTime {
+                hour: 21,
+                minute: 54
+            })
+        );
     }
 
     #[test]
