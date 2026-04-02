@@ -80,12 +80,16 @@ pub(crate) struct CurtainApp {
     pub(crate) now_playing_snapshot: Option<NowPlayingSnapshot>,
     pub(crate) ui_shell: ShellState,
     pub(crate) lock_wait_timeout: Duration,
+    pub(crate) startup_started_at: Instant,
     lock_started_at: Instant,
     lock_acquisition_started: bool,
     pub(crate) session_locked: bool,
+    pub(crate) session_locked_at: Option<Instant>,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
     pub(crate) ready_notified: bool,
+    pub(crate) first_surface_configured_logged: bool,
+    pub(crate) all_surfaces_configured_logged: bool,
     pub(crate) background_render_started: bool,
     auth_in_flight: bool,
     next_auth_attempt_id: u64,
@@ -102,6 +106,7 @@ impl CurtainApp {
         globals: &GlobalList,
         queue_handle: &QueueHandle<Self>,
         options: CurtainOptions,
+        startup_started_at: Instant,
     ) -> Result<Self> {
         let (auth_sender, auth_events) = channel();
         let (background_sender, background_events) = channel();
@@ -184,11 +189,15 @@ impl CurtainApp {
             now_playing_snapshot: options.now_playing_snapshot,
             ui_shell,
             lock_wait_timeout,
+            startup_started_at,
             lock_started_at: Instant::now(),
             session_locked: false,
+            session_locked_at: None,
             session_finished: false,
             exit_requested: false,
             ready_notified: false,
+            first_surface_configured_logged: false,
+            all_surfaces_configured_logged: false,
             background_render_started: false,
             auth_in_flight: false,
             next_auth_attempt_id: 1,
@@ -316,6 +325,14 @@ impl CurtainApp {
             .iter()
             .any(|entry| entry.surface.wl_surface() == surface)
     }
+}
+
+pub(crate) fn elapsed_ms(started_at: Instant) -> u64 {
+    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
+}
+
+pub(crate) fn elapsed_us(started_at: Instant) -> u64 {
+    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
 }
 
 pub(crate) fn background_treatment(

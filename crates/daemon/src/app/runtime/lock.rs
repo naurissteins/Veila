@@ -20,6 +20,7 @@ use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
 use super::state::{ActiveRuntime, LockActivation, reset_runtime, update_locked_hint};
 
 pub(crate) async fn activate_lock(
+    trigger: &'static str,
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
@@ -27,13 +28,18 @@ pub(crate) async fn activate_lock(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
 ) -> Result<LockActivation> {
+    let activation_started_at = Instant::now();
     *state = LockState::Locking;
 
+    let socket_setup_started_at = Instant::now();
     let notify_path = process::notify_socket_path();
     let auth_socket_path = ipc::auth_socket_path();
     let control_socket_path = process::control_socket_path();
     let notify_listener = ipc::bind_listener(&notify_path).await?;
     let auth_listener = ipc::bind_listener(&auth_socket_path).await?;
+    let socket_setup_elapsed_ms = elapsed_ms(socket_setup_started_at);
+
+    let spawn_started_at = Instant::now();
     let mut child = process::spawn_curtain(
         &notify_path,
         &auth_socket_path,
@@ -44,20 +50,34 @@ pub(crate) async fn activate_lock(
         now_playing_snapshot,
     )
     .await?;
+    let spawn_elapsed_ms = elapsed_ms(spawn_started_at);
     let (auth_sender, auth_results) = unbounded_channel();
+    let ready_wait_started_at = Instant::now();
     let ready_result = tokio::select! {
         ready = timeout(Duration::from_secs(5), notify_listener.accept()) => ReadyResult::Ready(ready),
         status = child.wait() => ReadyResult::Exited(
             status.context("failed while waiting for curtain exit before readiness")?
         ),
     };
+    let ready_wait_elapsed_ms = elapsed_ms(ready_wait_started_at);
     let _ = std::fs::remove_file(&notify_path);
 
     match ready_result {
         ReadyResult::Ready(Ok(Ok((_stream, _addr)))) => {
             *state = LockState::Locked;
+            let locked_hint_started_at = Instant::now();
             update_locked_hint(session_proxy, true).await;
-            tracing::info!("curtain ready; session considered locked");
+            let locked_hint_elapsed_ms = elapsed_ms(locked_hint_started_at);
+            let activation_elapsed_ms = elapsed_ms(activation_started_at);
+            tracing::info!(
+                trigger,
+                socket_setup_elapsed_ms,
+                spawn_elapsed_ms,
+                ready_wait_elapsed_ms,
+                locked_hint_elapsed_ms,
+                activation_elapsed_ms,
+                "curtain ready; session considered locked"
+            );
             Ok(LockActivation {
                 curtain: child,
                 auth_listener,
@@ -94,6 +114,10 @@ If you ran `cargo run -p veila-daemon` after changing curtain startup arguments 
             ))
         }
     }
+}
+
+fn elapsed_ms(started_at: Instant) -> u64 {
+    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
 }
 
 pub(crate) async fn deactivate_lock(

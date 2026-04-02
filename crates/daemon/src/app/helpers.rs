@@ -26,6 +26,7 @@ use crate::{
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn activate_and_install(
+    trigger: &'static str,
     session_proxy: &logind::SessionProxy<'_>,
     state: &mut LockState,
     config_path: Option<&std::path::Path>,
@@ -37,6 +38,7 @@ pub(super) async fn activate_and_install(
     auth_state: &mut AuthState,
 ) -> Result<()> {
     let activation = activate_lock(
+        trigger,
         session_proxy,
         state,
         config_path,
@@ -65,6 +67,7 @@ pub(super) async fn activate_and_log(
 ) -> Result<()> {
     let started_at = Instant::now();
     activate_and_install(
+        trigger,
         session_proxy,
         state,
         config_path,

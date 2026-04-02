@@ -10,11 +10,16 @@ use smithay_client_toolkit::{
     },
 };
 
-use crate::state::CurtainApp;
+use crate::state::{CurtainApp, elapsed_ms, elapsed_us};
 
 impl SessionLockHandler for CurtainApp {
     fn locked(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _session_lock: SessionLock) {
-        tracing::info!("session lock confirmed by compositor");
+        self.session_locked_at = Some(std::time::Instant::now());
+        tracing::info!(
+            startup_elapsed_ms = elapsed_ms(self.startup_started_at),
+            startup_elapsed_us = elapsed_us(self.startup_started_at),
+            "session lock confirmed by compositor"
+        );
         self.session_locked = true;
         self.maybe_notify_ready();
     }
