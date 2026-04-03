@@ -10,7 +10,8 @@ use daemon::{
     stop_running_daemon,
 };
 use theme::{
-    print_available_themes, print_theme_source, set_theme_and_reload, unset_theme_and_reload,
+    print_available_themes, print_current_theme, print_theme_source, set_theme_and_reload,
+    unset_theme_and_reload,
 };
 
 pub const fn component_name() -> &'static str {
@@ -38,6 +39,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     }
 
     let control_mode_count = usize::from(options.lock_now)
+        + usize::from(options.current_theme)
         + usize::from(options.print_theme.is_some())
         + usize::from(options.set_theme.is_some())
         + usize::from(options.unset_theme)
@@ -49,11 +51,16 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
         bail!(
-            "use only one of --lock-now, --print-theme, --set-theme, --unset-theme, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
+            "use only one of --lock-now, --current-theme, --print-theme, --set-theme, --unset-theme, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
         );
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
+    if options.current_theme {
+        print_current_theme(options.config_path.as_deref())?;
+        return Ok(());
+    }
+
     if let Some(theme) = options.print_theme.as_deref() {
         print_theme_source(theme, options.config_path.as_deref())?;
         return Ok(());
@@ -145,6 +152,7 @@ Daemon control:
 
 Themes:
       --list-themes          List bundled themes
+      --current-theme        Print the active theme selection
       --print-theme=<name>   Print a theme source file
       --set-theme=<name>     Set the active theme in config.toml
       --unset-theme          Remove the top-level theme key from config.toml

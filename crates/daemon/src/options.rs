@@ -8,6 +8,7 @@ pub struct DaemonOptions {
     pub log_file_path: Option<PathBuf>,
     pub session_id: Option<String>,
     pub help: bool,
+    pub current_theme: bool,
     pub print_theme: Option<String>,
     pub set_theme: Option<String>,
     pub unset_theme: bool,
@@ -42,6 +43,11 @@ impl DaemonOptions {
 
             if let Some(session_id) = arg.strip_prefix("--session-id=") {
                 options.session_id = Some(session_id.to_string());
+                continue;
+            }
+
+            if arg == "--current-theme" {
+                options.current_theme = true;
                 continue;
             }
 
@@ -195,6 +201,15 @@ mod tests {
                 .expect("arguments should parse");
 
         assert_eq!(options.print_theme.as_deref(), Some("beach"));
+    }
+
+    #[test]
+    fn parses_current_theme_argument() {
+        let options =
+            DaemonOptions::parse_args(["veilad".to_string(), "--current-theme".to_string()])
+                .expect("arguments should parse");
+
+        assert!(options.current_theme);
     }
 
     #[test]

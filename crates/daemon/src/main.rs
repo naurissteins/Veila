@@ -33,6 +33,7 @@ async fn main() -> anyhow::Result<()> {
 
     if !options.help
         && !options.stop
+        && !options.current_theme
         && options.print_theme.is_none()
         && options.set_theme.is_none()
         && !options.unset_theme
@@ -109,6 +110,7 @@ fn resolved_log_file_path(
 fn starts_daemon(options: &veila_daemon::DaemonOptions) -> bool {
     !options.help
         && !options.stop
+        && !options.current_theme
         && options.print_theme.is_none()
         && options.set_theme.is_none()
         && !options.unset_theme

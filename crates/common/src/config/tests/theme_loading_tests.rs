@@ -141,6 +141,21 @@ fn resolves_active_user_theme_source_path() {
 }
 
 #[test]
+fn resolves_active_theme_name() {
+    let dir = std::env::temp_dir().join(format!("veila-active-theme-name-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let config_path = dir.join("config.toml");
+    fs::write(&config_path, "theme = \"custom\"\n").expect("config file");
+
+    let resolved = active_theme_name(Some(&config_path)).expect("theme name should resolve");
+
+    assert_eq!(resolved.as_deref(), Some("custom"));
+
+    fs::remove_file(config_path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
 fn errors_for_unknown_theme_preset() {
     let dir = std::env::temp_dir().join(format!("veila-missing-theme-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");

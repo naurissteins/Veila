@@ -136,6 +136,24 @@ pub fn default_config_path() -> Option<PathBuf> {
     default_path()
 }
 
+pub fn active_theme_name(explicit_config_path: Option<&Path>) -> Result<Option<String>> {
+    let path = match explicit_config_path {
+        Some(path) => path.to_path_buf(),
+        None => match default_path() {
+            Some(path) => path,
+            None => return Ok(None),
+        },
+    };
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let raw = fs::read_to_string(&path)?;
+    let value = parse_toml_value(&raw)?;
+    extract_theme_name(&value)
+}
+
 pub fn active_theme_source_path(explicit_config_path: Option<&Path>) -> Result<Option<PathBuf>> {
     let path = match explicit_config_path {
         Some(path) => path.to_path_buf(),
