@@ -5,6 +5,7 @@ use anyhow::{Result, bail};
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DaemonOptions {
     pub config_path: Option<PathBuf>,
+    pub log_file_path: Option<PathBuf>,
     pub session_id: Option<String>,
     pub help: bool,
     pub print_theme: Option<String>,
@@ -31,6 +32,11 @@ impl DaemonOptions {
 
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if let Some(path) = arg.strip_prefix("--log-file=") {
+                options.log_file_path = Some(PathBuf::from(path));
                 continue;
             }
 
@@ -132,6 +138,20 @@ mod tests {
                 .expect("arguments should parse");
 
         assert_eq!(options.session_id.as_deref(), Some("c2"));
+    }
+
+    #[test]
+    fn parses_log_file_argument() {
+        let options = DaemonOptions::parse_args([
+            "veilad".to_string(),
+            "--log-file=/tmp/veilad.log".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert_eq!(
+            options.log_file_path.as_deref(),
+            Some(std::path::Path::new("/tmp/veilad.log"))
+        );
     }
 
     #[test]

@@ -14,6 +14,11 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(config.lock.acquire_timeout_seconds, 5);
     assert!(!config.lock.auto_reload_config);
     assert_eq!(config.lock.auto_reload_debounce_ms, 250);
+    assert!(!config.lock.log_to_file);
+    assert_eq!(
+        config.lock.log_file_path,
+        std::path::PathBuf::from("~/.local/state/veila/veilad.log")
+    );
     assert!(config.lock.show_username);
     assert!(config.lock.username.is_none());
     assert!(config.lock.user_hint.is_none());

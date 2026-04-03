@@ -132,6 +132,24 @@ fn parses_lock_auto_reload_config_flag() {
 }
 
 #[test]
+fn parses_lock_file_logging_settings() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            log_to_file = true
+            log_file_path = "~/.cache/veila/debug.log"
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.lock.log_to_file);
+    assert_eq!(
+        config.lock.log_file_path,
+        std::path::PathBuf::from("~/.cache/veila/debug.log")
+    );
+}
+
+#[test]
 fn infers_file_mode_from_legacy_background_path() {
     let config = AppConfig::from_toml_str(
         r#"

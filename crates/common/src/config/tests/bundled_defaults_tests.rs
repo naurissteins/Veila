@@ -7,6 +7,11 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.lock.acquire_timeout_seconds, 5);
     assert!(!config.lock.auto_reload_config);
     assert_eq!(config.lock.auto_reload_debounce_ms, 250);
+    assert!(!config.lock.log_to_file);
+    assert_eq!(
+        config.lock.log_file_path,
+        std::path::PathBuf::from("~/.local/state/veila/veilad.log")
+    );
     assert!(config.lock.show_username);
     assert!(config.lock.username.is_none());
     assert_eq!(config.lock.user_hint.as_deref(), Some("Password"));

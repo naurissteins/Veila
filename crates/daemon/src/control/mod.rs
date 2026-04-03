@@ -133,6 +133,7 @@ General:
   -h, --help                 Show this help text
       --version              Print local and running daemon version info
       --config=<path>        Use a specific config file
+      --log-file=<path>      Append daemon logs to a file when starting the daemon
       --session-id=<id>      Override the logind session id
 
 Daemon control:
@@ -151,6 +152,7 @@ Themes:
 Notes:
   Only one control action can be used at a time.
   If no control action is given, {name} starts the daemon.
+  --log-file only affects that daemon-start path.
   --set-theme creates config.toml automatically if it does not exist.
 ",
         name = component_name()
