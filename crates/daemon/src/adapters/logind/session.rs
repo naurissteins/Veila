@@ -2,7 +2,7 @@ use anyhow::{Context, anyhow};
 use nix::unistd::getuid;
 use zbus::zvariant::OwnedObjectPath;
 
-use super::proxy::ManagerProxy;
+use super::proxy::{ManagerProxy, session_proxy};
 
 pub(crate) async fn get_session_path(
     conn: &zbus::Connection,
@@ -45,9 +45,12 @@ pub(crate) async fn get_session_path(
                 tracing::debug!(uid, "resolving logind session by listing sessions for uid");
                 match manager.list_sessions().await {
                     Ok(sessions) => {
-                        if let Some((session_id, _, _, _, path)) = sessions
+                        let sessions = sessions
                             .into_iter()
-                            .find(|(_, session_uid, _, _, _)| *session_uid == uid)
+                            .filter(|(_, session_uid, _, _, _)| *session_uid == uid)
+                            .collect::<Vec<_>>();
+                        if let Some((session_id, path)) =
+                            select_session_from_uid_list(conn, sessions).await
                         {
                             tracing::debug!(session = %path, session_id, "resolved logind session via list");
                             return Ok(path);
@@ -112,6 +115,116 @@ pub(super) fn session_lookup_candidates(
 pub(super) fn normalized_session_id(value: Option<&str>) -> Option<String> {
     let value = value?.trim();
     (!value.is_empty()).then(|| value.to_string())
+}
+
+async fn select_session_from_uid_list(
+    conn: &zbus::Connection,
+    sessions: Vec<(String, u32, String, String, OwnedObjectPath)>,
+) -> Option<(String, OwnedObjectPath)> {
+    if sessions.len() == 1 {
+        let selected = sessions
+            .into_iter()
+            .next()
+            .map(|(session_id, _, _, _, path)| (session_id, path));
+        if let Some((session_id, path)) = selected.as_ref() {
+            tracing::debug!(
+                session_id,
+                session = %path,
+                "selected only same-uid logind session candidate"
+            );
+        }
+        return selected;
+    }
+
+    let preferred_type = std::env::var("XDG_SESSION_TYPE")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let mut best: Option<(i32, String, OwnedObjectPath)> = None;
+
+    for (session_id, _, _, seat, path) in sessions {
+        let Ok(proxy) = session_proxy(conn, &path).await else {
+            continue;
+        };
+
+        let snapshot = SessionSelectionSnapshot {
+            active: proxy.active().await.unwrap_or(false),
+            class: proxy.class().await.unwrap_or_default(),
+            remote: proxy.remote().await.unwrap_or(false),
+            state: proxy.state().await.unwrap_or_default(),
+            session_type: proxy.r#type().await.unwrap_or_default(),
+            seat,
+        };
+        let score = session_selection_score(&snapshot, preferred_type.as_deref());
+        tracing::debug!(
+            session_id,
+            session = %path,
+            score,
+            active = snapshot.active,
+            state = snapshot.state,
+            class = snapshot.class,
+            session_type = snapshot.session_type,
+            remote = snapshot.remote,
+            seat = snapshot.seat,
+            preferred_type = preferred_type.as_deref().unwrap_or("unset"),
+            "scored same-uid logind session fallback candidate"
+        );
+        match &best {
+            Some((best_score, ..)) if score <= *best_score => {}
+            _ => best = Some((score, session_id, path)),
+        }
+    }
+
+    if let Some((score, session_id, path)) = best.as_ref() {
+        tracing::debug!(
+            session_id,
+            session = %path,
+            score,
+            "selected same-uid logind session fallback candidate"
+        );
+    }
+
+    best.map(|(_, session_id, path)| (session_id, path))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SessionSelectionSnapshot {
+    pub(super) active: bool,
+    pub(super) class: String,
+    pub(super) remote: bool,
+    pub(super) state: String,
+    pub(super) session_type: String,
+    pub(super) seat: String,
+}
+
+pub(super) fn session_selection_score(
+    snapshot: &SessionSelectionSnapshot,
+    preferred_type: Option<&str>,
+) -> i32 {
+    let mut score = 0;
+
+    if snapshot.active {
+        score += 100;
+    }
+    if snapshot.state == "active" {
+        score += 80;
+    }
+    if snapshot.class == "user" {
+        score += 60;
+    }
+    if !snapshot.seat.trim().is_empty() {
+        score += 20;
+    }
+    if let Some(preferred_type) = preferred_type
+        && snapshot.session_type == preferred_type
+    {
+        score += 120;
+    }
+    if snapshot.remote {
+        score -= 200;
+    }
+
+    score
 }
 
 fn build_resolution_error(

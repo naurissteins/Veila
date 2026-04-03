@@ -23,6 +23,21 @@ pub trait Session {
     #[zbus(signal)]
     fn unlock(&self) -> zbus::Result<()>;
 
+    #[zbus(property)]
+    fn active(&self) -> zbus::Result<bool>;
+
+    #[zbus(property)]
+    fn class(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn remote(&self) -> zbus::Result<bool>;
+
+    #[zbus(property)]
+    fn state(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn r#type(&self) -> zbus::Result<String>;
+
     fn set_locked_hint(&self, locked: bool) -> zbus::Result<()>;
 }
 
