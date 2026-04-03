@@ -17,8 +17,9 @@ fn prefers_cli_session_id_before_pid_lookup() {
             value: "c2".to_string(),
         })
     );
+    assert!(candidates.contains(&SessionLookupCandidate::Pid));
     assert!(matches!(
         candidates.last(),
-        Some(SessionLookupCandidate::Pid)
+        Some(SessionLookupCandidate::ListByUid { .. })
     ));
 }

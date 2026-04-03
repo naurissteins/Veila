@@ -8,6 +8,7 @@ Type=simple
 ExecStart=/usr/bin/veilad
 Restart=on-failure
 RestartSec=2
+PassEnvironment=XDG_SESSION_ID
 
 [Install]
 WantedBy=graphical-session.target

@@ -1,4 +1,5 @@
 use anyhow::{Context, anyhow};
+use nix::unistd::getuid;
 use zbus::zvariant::OwnedObjectPath;
 
 use super::proxy::ManagerProxy;
@@ -40,6 +41,24 @@ pub(crate) async fn get_session_path(
                     }
                 }
             }
+            SessionLookupCandidate::ListByUid { uid } => {
+                tracing::debug!(uid, "resolving logind session by listing sessions for uid");
+                match manager.list_sessions().await {
+                    Ok(sessions) => {
+                        if let Some((session_id, _, _, _, path)) = sessions
+                            .into_iter()
+                            .find(|(_, session_uid, _, _, _)| *session_uid == uid)
+                        {
+                            tracing::debug!(session = %path, session_id, "resolved logind session via list");
+                            return Ok(path);
+                        }
+                        failures.push(format!("list-sessions uid={uid}: no session found"));
+                    }
+                    Err(error) => {
+                        failures.push(format!("list-sessions uid={uid}: {error}"));
+                    }
+                }
+            }
         }
     }
 
@@ -54,6 +73,7 @@ pub(crate) async fn get_session_path(
 pub(super) enum SessionLookupCandidate {
     SessionId { source: &'static str, value: String },
     Pid,
+    ListByUid { uid: u32 },
 }
 
 pub(super) fn session_lookup_candidates(
@@ -83,6 +103,9 @@ pub(super) fn session_lookup_candidates(
     }
 
     candidates.push(SessionLookupCandidate::Pid);
+    candidates.push(SessionLookupCandidate::ListByUid {
+        uid: getuid().as_raw(),
+    });
     candidates
 }
 
