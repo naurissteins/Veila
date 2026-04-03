@@ -1,10 +1,38 @@
-# Veila
+<h1 align=center>Veila</h1>
 
-Veila is a secure, low-latency, Wayland-first screen locker written in Rust.
+<div align=center>
+
+![GitHub last commit](https://img.shields.io/github/last-commit/naurissteins/veila?style=for-the-badge&labelColor=181825&color=a6e3a1)
+![GitHub repo size](https://img.shields.io/github/repo-size/naurissteins/veila?style=for-the-badge&labelColor=181825&color=d3bfe6)
+![AUR Version](https://img.shields.io/aur/version/veila-bin?style=for-the-badge&labelColor=181825&color=b4befe)
+![GitHub Repo stars](https://img.shields.io/github/stars/naurissteins/veila?style=for-the-badge&labelColor=181825&color=f9e2af)
+
+**Veila is a secure, low-latency, Wayland-first screen locker written in Rust**
 
 It is built for wlroots-style compositors like Labwc, Niri, Hyprland, Sway, MangoWC and others, and is designed around a simple rule: the secure lock path must stay small, predictable, and fast. Veila focuses on acquiring real session-lock surfaces immediately, keeping unlock authority in the daemon, and avoiding heavyweight UI stacks that add latency or complexity where it matters most.
+</div>
 
 <img width="2006" height="1166" alt="veila-preview2" src="https://github.com/user-attachments/assets/1cce249d-bf3f-4f0f-8a87-f6448ee21d24" />
+
+<div align=center>
+Veila aims for a modern, polished lockscreen without turning the secure path into a heavy desktop UI. Theming, widgets, and visual effects are built around that constraint instead of competing with it.
+</div>
+
+----
+
+> [!NOTE]
+> Veila is still in active development and is not heavily tested yet. It is currently not recommended for regular use. If you encounter issues, please open an issue and include your distro and Wayland compositor.
+
+## 🔥 Features
+
+- Secure Wayland session locking with `ext-session-lock-v1`
+- Low-latency lock activation with a small secure curtain first and the full UI layered on top
+- PAM-based authentication with unlock authority kept in the daemon
+- Multi-monitor aware rendering with one secure lock surface per output
+- Built-in themes plus support for user themes and small `config.toml` overrides
+- Fine-grained visual customization for clock, input, layers, spacing, colors, fonts, and widget visibility
+- Optional widgets like weather, battery, now playing, keyboard layout, Caps Lock, avatar, and username
+- Preview tooling that renders the lockscreen directly to PNG for theme work and screenshots
 
 ## Why Veila Is Secure
 
@@ -27,3 +55,41 @@ Veila is designed to avoid visible lock activation gaps and unnecessary work on 
 - text layout and icon rasterization are cached
 - optional widgets such as weather, now playing, and battery render from cached daemon-side snapshots
 - the lock path avoids network fetches, heavy toolkit startup, and unnecessary process churn
+
+## Install
+
+On Arch Linux, install Veila from the AUR:
+
+```bash
+# prebuilt release package
+yay -S veila-bin
+
+# or latest git build
+yay -S veila-git
+```
+
+## Start the Daemon
+
+You can start the daemon directly:
+
+```bash
+veilad
+```
+
+Or better run it as a user service with systemd:
+
+```bash
+systemctl --user enable --now veilad.service
+```
+
+For locking directly from the CLI, use:
+
+```bash
+veilad --lock-now
+```
+
+## Docs
+
+For full installation, configuration, theming, and usage docs, visit:
+
+https://veila.dev
