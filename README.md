@@ -21,7 +21,7 @@ Veila aims for a modern, polished lockscreen without turning the secure path int
 ----
 
 > [!NOTE]
-> Veila is still in active development and is not heavily tested yet. It is currently not recommended for regular use. If you encounter issues, please open an issue and include your distro and Wayland compositor.
+> Veila is still in active development and is not heavily tested on all compositors yet. It is currently not recommended for regular use. If you encounter issues, please open an issue and include your distro and Wayland compositor.
 
 ## 🔥 Features
 

@@ -36,6 +36,27 @@ fn edits_and_submits_password_text() {
 }
 
 #[test]
+fn delayed_pending_state_becomes_visible_after_timeout() {
+    let mut shell = ShellState::default();
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('a')),
+        ShellAction::None
+    );
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(String::from("a"))
+    );
+
+    thread::sleep(Duration::from_millis(1_050));
+    assert!(shell.advance_animated_state());
+    assert!(matches!(
+        shell.status,
+        ShellStatus::Pending { shown: true, .. }
+    ));
+}
+
+#[test]
 fn rejection_clears_secret() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('a'));

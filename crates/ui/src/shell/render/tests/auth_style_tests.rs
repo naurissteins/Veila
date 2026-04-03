@@ -452,10 +452,37 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
-    shell.status = ShellStatus::Pending;
+    shell.status = ShellStatus::Pending {
+        visible_after: std::time::Instant::now(),
+        shown: true,
+    };
     let style = shell.status_text_style();
 
     assert_eq!(style.color.alpha, 90);
+}
+
+#[test]
+fn pending_status_text_stays_hidden_until_delay_elapses() {
+    let mut shell = ShellState::default();
+
+    let action = shell.handle_key(ShellKey::Character('a'));
+    assert!(matches!(action, ShellAction::None));
+    let action = shell.handle_key(ShellKey::Enter);
+    assert_eq!(action, ShellAction::Submit(String::from("a")));
+
+    assert_eq!(shell.status_text(), None);
+}
+
+#[test]
+fn pending_status_text_appears_after_delay() {
+    let mut shell = ShellState::default();
+
+    let _ = shell.handle_key(ShellKey::Character('a'));
+    let _ = shell.handle_key(ShellKey::Enter);
+    std::thread::sleep(std::time::Duration::from_millis(1_050));
+
+    assert!(shell.advance_animated_state());
+    assert_eq!(shell.status_text().as_deref(), Some("Checking password"));
 }
 
 #[test]

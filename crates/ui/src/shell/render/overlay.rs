@@ -300,7 +300,7 @@ impl ShellState {
     pub(super) fn status_text(&self) -> Option<String> {
         match &self.status {
             ShellStatus::Idle => None,
-            ShellStatus::Pending => Some(String::from("Checking password")),
+            ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking password")),
             ShellStatus::Rejected {
                 displayed_retry_seconds,
                 ..

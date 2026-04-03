@@ -39,7 +39,10 @@ pub enum ShellKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ShellStatus {
     Idle,
-    Pending,
+    Pending {
+        visible_after: Instant,
+        shown: bool,
+    },
     Rejected {
         retry_until: Option<Instant>,
         displayed_retry_seconds: Option<u64>,

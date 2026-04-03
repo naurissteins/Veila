@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use super::{ShellAction, ShellKey, ShellState, ShellStatus, avatar::current_retry_seconds};
 
 const DEFAULT_NOW_PLAYING_FADE_DURATION_MS: u64 = 450;
+const PENDING_STATUS_DELAY_MS: u64 = 1_000;
 
 impl ShellState {
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
@@ -30,7 +31,11 @@ impl ShellState {
                 if self.secret.is_empty() {
                     ShellAction::None
                 } else {
-                    self.status = ShellStatus::Pending;
+                    self.status = ShellStatus::Pending {
+                        visible_after: Instant::now()
+                            + Duration::from_millis(PENDING_STATUS_DELAY_MS),
+                        shown: false,
+                    };
                     ShellAction::Submit(self.secret.clone())
                 }
             }
@@ -63,6 +68,17 @@ impl ShellState {
             if transition.started_at.elapsed() >= fade_duration {
                 self.now_playing_transition = None;
             }
+        }
+        if let ShellStatus::Pending {
+            visible_after,
+            shown,
+        } = &mut self.status
+        {
+            if !*shown && Instant::now() >= *visible_after {
+                *shown = true;
+                changed = true;
+            }
+            return changed;
         }
         let ShellStatus::Rejected {
             retry_until,
