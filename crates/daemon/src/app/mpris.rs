@@ -102,24 +102,38 @@ async fn fetch_snapshot(config: &NowPlayingConfig) -> Result<Option<NowPlayingSn
 
         let replace = best
             .as_ref()
-            .is_none_or(|(best_rank, _)| candidate.0 > *best_rank);
+            .is_none_or(|best_candidate: &PlayerCandidate| candidate.rank > best_candidate.rank);
         if replace {
             best = Some(candidate);
         }
     }
 
-    Ok(best.map(|(_, snapshot)| snapshot))
+    if let Some(candidate) = best {
+        tracing::debug!(
+            bus_name = candidate.player.bus_name,
+            identity = candidate.player.identity.as_deref().unwrap_or("none"),
+            desktop_entry = candidate.player.desktop_entry.as_deref().unwrap_or("none"),
+            rank = candidate.rank,
+            title = candidate.snapshot.title,
+            artist = candidate.snapshot.artist.as_deref().unwrap_or("none"),
+            "selected mpris player for now playing widget"
+        );
+        return Ok(Some(candidate.snapshot));
+    }
+
+    tracing::debug!("no eligible mpris player selected for now playing widget");
+    Ok(None)
 }
 
 async fn player_snapshot(
     connection: &Connection,
     bus_name: &str,
     config: &NowPlayingConfig,
-) -> Result<Option<(u8, NowPlayingSnapshot)>> {
+) -> Result<Option<PlayerCandidate>> {
     let root_proxy = Proxy::new(connection, bus_name, MPRIS_PATH, "org.mpris.MediaPlayer2").await?;
     let player_proxy = Proxy::new(connection, bus_name, MPRIS_PATH, MPRIS_INTERFACE).await?;
     let player = PlayerDescriptor {
-        bus_name,
+        bus_name: bus_name.to_string(),
         identity: property_string(&root_proxy, "Identity").await?,
         desktop_entry: property_string(&root_proxy, "DesktopEntry").await?,
     };
@@ -160,11 +174,21 @@ async fn player_snapshot(
         fetched_at_unix: OffsetDateTime::now_utc().unix_timestamp(),
     };
 
-    Ok(Some((rank, snapshot)))
+    Ok(Some(PlayerCandidate {
+        rank,
+        player,
+        snapshot,
+    }))
 }
 
-struct PlayerDescriptor<'a> {
-    bus_name: &'a str,
+struct PlayerCandidate {
+    rank: u8,
+    player: PlayerDescriptor,
+    snapshot: NowPlayingSnapshot,
+}
+
+struct PlayerDescriptor {
+    bus_name: String,
     identity: Option<String>,
     desktop_entry: Option<String>,
 }
@@ -198,15 +222,15 @@ fn normalize_string(value: String) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
-fn player_is_included(player: &PlayerDescriptor<'_>, include_players: &[String]) -> bool {
+fn player_is_included(player: &PlayerDescriptor, include_players: &[String]) -> bool {
     include_players.is_empty() || player_matches_any_filter(player, include_players)
 }
 
-fn player_is_excluded(player: &PlayerDescriptor<'_>, exclude_players: &[String]) -> bool {
+fn player_is_excluded(player: &PlayerDescriptor, exclude_players: &[String]) -> bool {
     player_matches_any_filter(player, exclude_players)
 }
 
-fn player_matches_any_filter(player: &PlayerDescriptor<'_>, filters: &[String]) -> bool {
+fn player_matches_any_filter(player: &PlayerDescriptor, filters: &[String]) -> bool {
     let Some(bus_suffix) = player.bus_name.strip_prefix(MPRIS_PREFIX) else {
         return false;
     };
@@ -278,7 +302,7 @@ mod tests {
     #[test]
     fn excludes_players_by_identity_case_insensitively() {
         let player = PlayerDescriptor {
-            bus_name: "org.mpris.MediaPlayer2.firefox",
+            bus_name: String::from("org.mpris.MediaPlayer2.firefox"),
             identity: Some(String::from("Firefox")),
             desktop_entry: Some(String::from("firefox")),
         };
@@ -289,7 +313,7 @@ mod tests {
     #[test]
     fn includes_all_players_when_include_list_is_empty() {
         let player = PlayerDescriptor {
-            bus_name: "org.mpris.MediaPlayer2.firefox",
+            bus_name: String::from("org.mpris.MediaPlayer2.firefox"),
             identity: Some(String::from("Firefox")),
             desktop_entry: Some(String::from("firefox")),
         };
@@ -300,7 +324,7 @@ mod tests {
     #[test]
     fn includes_matching_players_by_identity_case_insensitively() {
         let player = PlayerDescriptor {
-            bus_name: "org.mpris.MediaPlayer2.spotify",
+            bus_name: String::from("org.mpris.MediaPlayer2.spotify"),
             identity: Some(String::from("Spotify")),
             desktop_entry: Some(String::from("spotify")),
         };
@@ -312,7 +336,7 @@ mod tests {
     #[test]
     fn excludes_players_by_bus_name_base_for_instance_suffixes() {
         let player = PlayerDescriptor {
-            bus_name: "org.mpris.MediaPlayer2.chromium.instance458",
+            bus_name: String::from("org.mpris.MediaPlayer2.chromium.instance458"),
             identity: None,
             desktop_entry: None,
         };
@@ -323,7 +347,7 @@ mod tests {
     #[test]
     fn ignores_empty_filter_entries() {
         let player = PlayerDescriptor {
-            bus_name: "org.mpris.MediaPlayer2.spotify",
+            bus_name: String::from("org.mpris.MediaPlayer2.spotify"),
             identity: Some(String::from("Spotify")),
             desktop_entry: Some(String::from("spotify")),
         };
@@ -342,7 +366,7 @@ mod tests {
     #[test]
     fn exclude_filters_override_include_filters() {
         let player = PlayerDescriptor {
-            bus_name: "org.mpris.MediaPlayer2.firefox",
+            bus_name: String::from("org.mpris.MediaPlayer2.firefox"),
             identity: Some(String::from("Firefox")),
             desktop_entry: Some(String::from("firefox")),
         };
