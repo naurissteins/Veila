@@ -14,6 +14,7 @@ use crate::{
 use super::super::{
     battery::BatteryHandle,
     helpers::{activate_and_log, build_daemon_health, build_daemon_status, reload_config_response},
+    mpris::NowPlayingHandle,
     runtime::ActiveRuntime,
     state::RuntimeSlots,
     weather::WeatherHandle,
@@ -33,6 +34,7 @@ pub(crate) async fn handle_control_connection(
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     weather: &WeatherHandle,
     battery: &BatteryHandle,
+    now_playing: &NowPlayingHandle,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
 ) -> Result<bool> {
@@ -117,6 +119,7 @@ pub(crate) async fn handle_control_connection(
                 auth_state,
                 weather,
                 battery,
+                now_playing,
             )
             .await,
             false,

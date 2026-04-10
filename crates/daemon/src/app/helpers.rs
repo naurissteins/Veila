@@ -10,6 +10,7 @@ use veila_common::{AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot,
 
 use super::{
     battery::BatteryHandle,
+    mpris::NowPlayingHandle,
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
     watch::effective_auto_reload_debounce_ms,
@@ -149,6 +150,7 @@ pub(super) async fn apply_loaded_config(
     auth_state: &mut AuthState,
     weather: &WeatherHandle,
     battery: &BatteryHandle,
+    now_playing: &NowPlayingHandle,
 ) -> Result<DaemonReloadStatus, String> {
     *loaded_config = new_loaded_config;
     *auth_policy = AuthPolicy::new(
@@ -161,6 +163,7 @@ pub(super) async fn apply_loaded_config(
     prewarm::spawn_background_prewarm(&loaded_config.config);
     weather.update_config(&loaded_config.config.weather);
     battery.update_config(&loaded_config.config.battery);
+    now_playing.update_config(&loaded_config.config.now_playing);
 
     let live_reload = if !state.is_active() {
         Ok(LiveReloadStatus::NotActive)
@@ -230,6 +233,7 @@ pub(super) async fn reload_config_response(
     auth_state: &mut AuthState,
     weather: &WeatherHandle,
     battery: &BatteryHandle,
+    now_playing: &NowPlayingHandle,
 ) -> DaemonControlResponse {
     match AppConfig::load(options.config_path.as_deref()) {
         Ok(new_loaded_config) => match apply_loaded_config(
@@ -245,6 +249,7 @@ pub(super) async fn reload_config_response(
             auth_state,
             weather,
             battery,
+            now_playing,
         )
         .await
         {

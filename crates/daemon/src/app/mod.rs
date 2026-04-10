@@ -159,6 +159,7 @@ pub async fn run(
             result = accept_control_connection(&mut control_listener) => {
                 let weather = runtime.weather.clone();
                 let battery = runtime.battery.clone();
+                let now_playing = runtime.now_playing.clone();
                 let weather_snapshot = weather.current_snapshot();
                 let battery_snapshot = battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
@@ -176,6 +177,7 @@ pub async fn run(
                     now_playing_snapshot.as_ref(),
                     &weather,
                     &battery,
+                    &now_playing,
                     slots,
                     auth_policy,
                 ).await? {
@@ -205,6 +207,7 @@ pub async fn run(
                                     let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
                                     let weather = runtime.weather.clone();
                                     let battery = runtime.battery.clone();
+                                    let now_playing = runtime.now_playing.clone();
                                     let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                                     match helpers::apply_loaded_config(
                                         slots.state,
@@ -219,6 +222,7 @@ pub async fn run(
                                         slots.auth_state,
                                         &weather,
                                         &battery,
+                                        &now_playing,
                                     ).await {
                                         Ok(_) => {}
                                         Err(reason) => {
@@ -255,6 +259,7 @@ pub async fn run(
                                 let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
+                                let now_playing = runtime.now_playing.clone();
                                 let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
@@ -269,6 +274,7 @@ pub async fn run(
                                     slots.auth_state,
                                     &weather,
                                     &battery,
+                                    &now_playing,
                                 ).await {
                                     Ok(_) => {}
                                     Err(reason) => {
@@ -300,6 +306,7 @@ pub async fn run(
                                 let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
+                                let now_playing = runtime.now_playing.clone();
                                 let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, slots) = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
@@ -314,6 +321,7 @@ pub async fn run(
                                     slots.auth_state,
                                     &weather,
                                     &battery,
+                                    &now_playing,
                                     ).await {
                                         Ok(_) => {}
                                     Err(reason) => {

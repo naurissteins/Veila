@@ -150,6 +150,22 @@ fn parses_lock_file_logging_settings() {
 }
 
 #[test]
+fn parses_now_playing_exclude_players() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [now_playing]
+            exclude_players = ["Firefox", "Chromium"]
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(
+        config.now_playing.exclude_players,
+        vec![String::from("Firefox"), String::from("Chromium")]
+    );
+}
+
+#[test]
 fn infers_file_mode_from_legacy_background_path() {
     let config = AppConfig::from_toml_str(
         r#"

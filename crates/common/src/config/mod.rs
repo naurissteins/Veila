@@ -2,6 +2,7 @@ mod background;
 mod battery;
 mod color;
 mod lock;
+mod now_playing;
 #[cfg(test)]
 mod tests;
 mod visuals;
@@ -22,6 +23,7 @@ pub use background::{BackgroundConfig, BackgroundMode};
 pub use battery::BatteryConfig;
 pub use color::ConfigColor;
 pub use lock::LockConfig;
+pub use now_playing::NowPlayingConfig;
 pub use visuals::{
     AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackOrder,
     CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig,
@@ -49,6 +51,8 @@ pub struct AppConfig {
     pub lock: LockConfig,
     #[serde(default)]
     pub battery: BatteryConfig,
+    #[serde(default)]
+    pub now_playing: NowPlayingConfig,
     #[serde(default)]
     pub weather: WeatherConfig,
     #[serde(default)]

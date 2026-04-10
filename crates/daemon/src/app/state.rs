@@ -43,7 +43,7 @@ impl AppRuntime {
         );
         let weather = WeatherHandle::spawn(&loaded_config.config.weather);
         let battery = BatteryHandle::spawn(&loaded_config.config.battery);
-        let now_playing = NowPlayingHandle::spawn();
+        let now_playing = NowPlayingHandle::spawn(&loaded_config.config.now_playing);
 
         Self {
             loaded_config,
