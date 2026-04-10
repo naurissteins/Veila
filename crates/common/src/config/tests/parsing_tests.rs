@@ -150,15 +150,20 @@ fn parses_lock_file_logging_settings() {
 }
 
 #[test]
-fn parses_now_playing_exclude_players() {
+fn parses_now_playing_player_filters() {
     let config = AppConfig::from_toml_str(
         r#"
             [now_playing]
+            include_players = ["Spotify", "mpv"]
             exclude_players = ["Firefox", "Chromium"]
         "#,
     )
     .expect("config should parse");
 
+    assert_eq!(
+        config.now_playing.include_players,
+        vec![String::from("Spotify"), String::from("mpv")]
+    );
     assert_eq!(
         config.now_playing.exclude_players,
         vec![String::from("Firefox"), String::from("Chromium")]

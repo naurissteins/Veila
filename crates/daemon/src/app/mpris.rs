@@ -124,6 +124,16 @@ async fn player_snapshot(
         desktop_entry: property_string(&root_proxy, "DesktopEntry").await?,
     };
 
+    if !player_is_included(&player, &config.include_players) {
+        tracing::debug!(
+            bus_name = player.bus_name,
+            identity = player.identity.as_deref().unwrap_or("none"),
+            desktop_entry = player.desktop_entry.as_deref().unwrap_or("none"),
+            "skipping mpris player because it is not in the include list"
+        );
+        return Ok(None);
+    }
+
     if player_is_excluded(&player, &config.exclude_players) {
         tracing::debug!(
             bus_name = player.bus_name,
@@ -188,7 +198,15 @@ fn normalize_string(value: String) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
+fn player_is_included(player: &PlayerDescriptor<'_>, include_players: &[String]) -> bool {
+    include_players.is_empty() || player_matches_any_filter(player, include_players)
+}
+
 fn player_is_excluded(player: &PlayerDescriptor<'_>, exclude_players: &[String]) -> bool {
+    player_matches_any_filter(player, exclude_players)
+}
+
+fn player_matches_any_filter(player: &PlayerDescriptor<'_>, filters: &[String]) -> bool {
     let Some(bus_suffix) = player.bus_name.strip_prefix(MPRIS_PREFIX) else {
         return false;
     };
@@ -197,7 +215,7 @@ fn player_is_excluded(player: &PlayerDescriptor<'_>, exclude_players: &[String])
     let identity = player.identity.as_deref().map(normalize_filter_value);
     let desktop_entry = player.desktop_entry.as_deref().map(normalize_filter_value);
 
-    exclude_players
+    filters
         .iter()
         .filter_map(|entry| {
             let normalized = normalize_filter_value(entry);
@@ -255,7 +273,7 @@ fn same_track_snapshot(
 
 #[cfg(test)]
 mod tests {
-    use super::{PlayerDescriptor, normalize_filter_value, player_is_excluded};
+    use super::{PlayerDescriptor, normalize_filter_value, player_is_excluded, player_is_included};
 
     #[test]
     fn excludes_players_by_identity_case_insensitively() {
@@ -266,6 +284,29 @@ mod tests {
         };
 
         assert!(player_is_excluded(&player, &[String::from("firefox")]));
+    }
+
+    #[test]
+    fn includes_all_players_when_include_list_is_empty() {
+        let player = PlayerDescriptor {
+            bus_name: "org.mpris.MediaPlayer2.firefox",
+            identity: Some(String::from("Firefox")),
+            desktop_entry: Some(String::from("firefox")),
+        };
+
+        assert!(player_is_included(&player, &[]));
+    }
+
+    #[test]
+    fn includes_matching_players_by_identity_case_insensitively() {
+        let player = PlayerDescriptor {
+            bus_name: "org.mpris.MediaPlayer2.spotify",
+            identity: Some(String::from("Spotify")),
+            desktop_entry: Some(String::from("spotify")),
+        };
+
+        assert!(player_is_included(&player, &[String::from("spotify")]));
+        assert!(!player_is_included(&player, &[String::from("firefox")]));
     }
 
     #[test]
@@ -291,6 +332,22 @@ mod tests {
             &player,
             &[String::from(" "), String::from("")],
         ));
+        assert!(!player_is_included(
+            &player,
+            &[String::from(" "), String::from("")],
+        ));
         assert_eq!(normalize_filter_value(" Firefox "), "firefox");
+    }
+
+    #[test]
+    fn exclude_filters_override_include_filters() {
+        let player = PlayerDescriptor {
+            bus_name: "org.mpris.MediaPlayer2.firefox",
+            identity: Some(String::from("Firefox")),
+            desktop_entry: Some(String::from("firefox")),
+        };
+
+        assert!(player_is_included(&player, &[String::from("Firefox")]));
+        assert!(player_is_excluded(&player, &[String::from("Firefox")]));
     }
 }

@@ -16,6 +16,8 @@ It is built for wlroots-style compositors like Labwc, Niri, Hyprland, Sway, Mang
 
 <div align=center>
 Veila aims for a modern, polished lockscreen without turning the secure path into a heavy desktop UI. Theming, widgets, and visual effects are built around that constraint instead of competing with it.
+
+[Documentation](https://naurissteins.com/veila)
 </div>
 
 ----
@@ -92,4 +94,4 @@ veilad --lock-now
 
 For full installation, configuration, theming, and usage docs, visit:
 
-https://veila.dev
+https://naurissteins.com/veila
