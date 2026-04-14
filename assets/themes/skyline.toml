@@ -1,3 +1,4 @@
+# https://wallhaven.cc/w/48y7wy
 [background]
 mode = "file"
 path = "/usr/share/veila/bg/skyline.jpg"
@@ -32,6 +33,8 @@ radius = 50
 
 [battery]
 enabled = true
+mock_percent = 84
+mock_charging = false
 
 [weather]
 enabled = true
@@ -70,7 +73,7 @@ vertical_padding = 0
 offset_x = 0
 offset_y = 120
 background_color = "#FFFFFF"
-background_opacity = 2
+background_opacity = 10
 border_color = "#FFFFFF"
 border_width = 0
 border_opacity = 0

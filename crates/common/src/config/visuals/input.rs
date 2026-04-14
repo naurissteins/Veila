@@ -16,44 +16,26 @@ impl Default for InputVisualEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
 pub struct InputVisualConfig {
-    #[serde(default)]
     pub alignment: Option<InputAlignment>,
-    #[serde(default)]
     pub center_in_layer: Option<bool>,
-    #[serde(default)]
     pub horizontal_padding: Option<u16>,
-    #[serde(default)]
     pub vertical_padding: Option<u16>,
-    #[serde(default)]
     pub offset_x: Option<i16>,
-    #[serde(default)]
     pub offset_y: Option<i16>,
-    #[serde(default)]
     pub font_family: Option<String>,
-    #[serde(default)]
     pub font_weight: Option<u16>,
-    #[serde(default)]
     pub font_style: Option<FontStyle>,
-    #[serde(default)]
     pub font_size: Option<u16>,
-    #[serde(default)]
     pub background_color: Option<RgbColor>,
-    #[serde(default)]
     pub background_opacity: Option<u8>,
-    #[serde(default)]
     pub border_color: Option<RgbColor>,
-    #[serde(default)]
     pub border_opacity: Option<u8>,
-    #[serde(default)]
     pub width: Option<u16>,
-    #[serde(default)]
     pub height: Option<u16>,
-    #[serde(default)]
     pub radius: Option<u16>,
-    #[serde(default)]
     pub border_width: Option<u16>,
-    #[serde(default)]
     pub mask_color: Option<RgbColor>,
 }
 

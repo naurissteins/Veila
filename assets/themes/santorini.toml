@@ -17,7 +17,8 @@ username = "Billy Ocean"
 [visuals.layer]
 enabled = true
 style = "panel"
-mode = "solid"
+mode = "blur"
+blur_radius = 5
 alignment = "left"
 width = 540
 offset_x = 100
@@ -29,6 +30,8 @@ radius = 50
 
 [battery]
 enabled = true
+mock_percent = 84
+mock_charging = false
 
 [weather]
 enabled = true
@@ -84,7 +87,7 @@ color = "#ffffff"
 opacity = 60
 
 [visuals.avatar]
-size = 160
+size = 192
 gap = 24
 background_color = "#ffffff"
 background_opacity = 6

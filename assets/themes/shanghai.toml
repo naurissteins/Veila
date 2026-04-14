@@ -1,11 +1,12 @@
 # Wallpaper source: https://unsplash.com/photos/a-city-skyline-at-night-with-lights-reflecting-off-the-water-Q1u2Lbc8qn8
+# https://wallhaven.cc/w/21dq26
 [background]
 mode = "file"
 path = "/usr/share/veila/bg/shanghai.jpg"
 color = "#000000"
 blur_radius = 12
-dim_strength = 64
-tint = "rgba(255, 255, 255, 0.1)"
+dim_strength = 34
+tint = "rgba(0, 0, 0, 0.1)"
 tint_opacity = 0
 
 [lock]
@@ -14,6 +15,8 @@ show_username = false
 
 [battery]
 enabled = true
+mock_percent = 84
+mock_charging = false
 
 [weather]
 enabled = true
@@ -46,7 +49,7 @@ alignment = "center-center"
 horizontal_padding = 0
 vertical_padding = 0
 offset_x = 0
-offset_y = 0
+offset_y = 20
 background_color = "#FFFFFF"
 background_opacity = 8
 border_color = "#FFFFFF"
@@ -66,7 +69,7 @@ opacity = 60
 
 [visuals.avatar]
 enabled = false
-size = 160
+size = 192
 gap = 24
 background_color = "#ffffff"
 background_opacity = 6

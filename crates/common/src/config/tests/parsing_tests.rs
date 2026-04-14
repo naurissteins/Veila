@@ -171,6 +171,29 @@ fn parses_now_playing_player_filters() {
 }
 
 #[test]
+fn partial_input_table_keeps_default_translucent_background_and_disabled_border() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [visuals.input]
+            background_color = "#FFFFFF"
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(
+        config.visuals.input_background_color(),
+        RgbColor::rgb(255, 255, 255)
+    );
+    assert_eq!(config.visuals.input_background_opacity(), Some(5));
+    assert_eq!(
+        config.visuals.input_border_color(),
+        RgbColor::rgb(255, 255, 255)
+    );
+    assert_eq!(config.visuals.input_border_opacity(), Some(0));
+    assert_eq!(config.visuals.input_border_width(), Some(0));
+}
+
+#[test]
 fn infers_file_mode_from_legacy_background_path() {
     let config = AppConfig::from_toml_str(
         r#"

@@ -1,4 +1,4 @@
-use tiny_skia::{FillRule, Paint, PathBuilder, Stroke, Transform};
+use tiny_skia::{FillRule, Paint, Path, PathBuilder, Stroke, Transform};
 
 use crate::{ClearColor, SoftwareBuffer};
 
@@ -48,37 +48,23 @@ pub fn draw_pill(buffer: &mut SoftwareBuffer, rect: Rect, style: PillStyle) {
                 );
             }
 
+            fill_rounded_rect_path(
+                overlay,
+                rect.width,
+                rect.height,
+                radius,
+                style.fill,
+                offset_x,
+                offset_y,
+            );
+
             if let Some(border) = style.border {
-                fill_rounded_rect_path(
+                stroke_rounded_rect_path(
                     overlay,
-                    rect.width,
-                    rect.height,
+                    rect,
                     radius,
+                    border.thickness.max(1),
                     border.color,
-                    offset_x,
-                    offset_y,
-                );
-                let inset = border.thickness.max(1);
-                let inner_width = rect.width - inset * 2;
-                let inner_height = rect.height - inset * 2;
-                if inner_width > 0 && inner_height > 0 {
-                    fill_rounded_rect_path(
-                        overlay,
-                        inner_width,
-                        inner_height,
-                        (radius - inset).max(0),
-                        style.fill,
-                        offset_x + inset as f32,
-                        offset_y + inset as f32,
-                    );
-                }
-            } else {
-                fill_rounded_rect_path(
-                    overlay,
-                    rect.width,
-                    rect.height,
-                    radius,
-                    style.fill,
                     offset_x,
                     offset_y,
                 );
@@ -177,9 +163,77 @@ fn fill_rounded_rect_path(
         return;
     }
 
-    let right = offset_x + width as f32;
-    let bottom = offset_y + height as f32;
-    let radius = radius.max(0) as f32;
+    let Some(path) = rounded_rect_path(
+        width as f32,
+        height as f32,
+        radius as f32,
+        offset_x,
+        offset_y,
+    ) else {
+        return;
+    };
+
+    let mut paint = Paint::default();
+    paint.set_color(skia_color(color));
+    paint.anti_alias = true;
+    overlay.fill_path(
+        &path,
+        &paint,
+        FillRule::Winding,
+        Transform::identity(),
+        None,
+    );
+}
+
+fn stroke_rounded_rect_path(
+    overlay: &mut tiny_skia::Pixmap,
+    rect: Rect,
+    radius: i32,
+    stroke_width: i32,
+    color: ClearColor,
+    offset_x: f32,
+    offset_y: f32,
+) {
+    if rect.is_empty() || stroke_width <= 0 {
+        return;
+    }
+
+    let inset = stroke_width as f32 / 2.0;
+    let Some(path) = rounded_rect_path(
+        rect.width as f32 - stroke_width as f32,
+        rect.height as f32 - stroke_width as f32,
+        radius as f32 - inset,
+        offset_x + inset,
+        offset_y + inset,
+    ) else {
+        return;
+    };
+
+    let mut paint = Paint::default();
+    paint.set_color(skia_color(color));
+    paint.anti_alias = true;
+
+    let stroke = Stroke {
+        width: stroke_width as f32,
+        ..Stroke::default()
+    };
+    overlay.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+}
+
+fn rounded_rect_path(
+    width: f32,
+    height: f32,
+    radius: f32,
+    offset_x: f32,
+    offset_y: f32,
+) -> Option<Path> {
+    if width <= 0.0 || height <= 0.0 {
+        return None;
+    }
+
+    let right = offset_x + width;
+    let bottom = offset_y + height;
+    let radius = radius.max(0.0).min(width.min(height) / 2.0);
     let mut builder = PathBuilder::new();
 
     if radius <= 0.0 {
@@ -200,20 +254,7 @@ fn fill_rounded_rect_path(
     }
 
     builder.close();
-    let Some(path) = builder.finish() else {
-        return;
-    };
-
-    let mut paint = Paint::default();
-    paint.set_color(skia_color(color));
-    paint.anti_alias = true;
-    overlay.fill_path(
-        &path,
-        &paint,
-        FillRule::Winding,
-        Transform::identity(),
-        None,
-    );
+    builder.finish()
 }
 
 fn fill_circle_path(

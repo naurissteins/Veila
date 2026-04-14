@@ -1,54 +1,64 @@
-# Wallpaper: https://www.vecteezy.com/vector-art/39886274-sunset-beach-wallpaper-background-illustration
+# Wallpaper source: https://wallhaven.cc/w/k81oj1
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
-color = "#ffffff"
-blur_radius = 0
-dim_strength = 0
-tint = "rgba(0, 0, 0, 0.1)"
-tint_opacity = 0
+color = "#201E2E"
 
 [lock]
 user_hint = "Password"
 show_username = false
+
+[visuals.layer]
+enabled = true
+style = "panel"
+alignment = "right"
+vertical_alignment = "center"
+width = 540
+height = 600
+opacity = 0
+right_margin = 100
 
 [battery]
 enabled = true
 
 [weather]
 enabled = true
-location = "Boracay"
+location = "Los Angeles"
 refresh_minutes = 15
-unit = "celsius"
+unit = "fahrenheit"
 
 [visuals.clock]
-format = "24h"
-style = "stacked"
+alignment = "center-center"
+center_in_layer = true
+offset_x = 0
+offset_y = -110
+format = "12h"
+style = "standard"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
-font_family = "Nunito"
-font_weight = 800
-font_style = "italic"
-color = "#ffffff"
+font_family = "Geom"
+font_weight = 600
+color = "#A6AECD"
 opacity = 40
-size = 24
+size = 20
 gap = 20
 
 [visuals.date]
 font_family = "Google Sans Flex"
 font_weight = 400
-color = "#C8D8F2"
+color = "#A6AECD"
+size = 3
 opacity = 72
 
 [visuals.input]
-alignment = "bottom-center"
+center_in_layer = true
 horizontal_padding = 0
 vertical_padding = 0
 offset_x = 0
-offset_y = 0
-background_color = "#FFFFFF"
-background_opacity = 8
+offset_y = 50
+background_color = "#A6AECD"
+background_opacity = 6
 border_color = "#FFFFFF"
 border_width = 0
 border_opacity = 0
@@ -61,41 +71,26 @@ font_weight = 400
 font_size = 2
 
 [visuals.placeholder]
-color = "#ffffff"
+color = "#A6AECD"
 opacity = 60
 
 [visuals.avatar]
 enabled = false
-size = 192
-gap = 24
-background_color = "#ffffff"
-background_opacity = 6
-placeholder_padding = 28
-ring_color = "#94B2FF"
-ring_width = 0
-icon_color = "#ffffff"
 
 [visuals.username]
-font_family = "Google Sans Flex"
-font_weight = 400
-color = "#ffffff"
-opacity = 84
-size = 4
-gap = 28
+enabled = false
 
 [visuals.keyboard]
 background_size = 46
-background_color = "rgba(255, 255, 255, 0.05)"
-color = "#ffffff"
+background_color = "rgba(166, 174, 205, 0.05)"
 opacity = 68
 size = 2
 top_offset = -44
 right_offset = 8
 
 [visuals.battery]
-background_color = "rgba(255, 255, 255, 0.05)"
+background_color = "rgba(166, 174, 205, 0.05)"
 background_size = 46
-color = "#ffffff"
 opacity = 68
 size = 20
 top_offset = -44
@@ -103,31 +98,31 @@ right_offset = 8
 gap = 8
 
 [visuals.weather]
-alignment = "left"
-size = 2
-temperature_color = "#FFFFFF"
+enabled = false
+temperature_color = "#A6AECD"
 location_color = "#D6E3FF"
 temperature_size = 6
 location_size = 3
 icon_size = 40
-temperature_font_family = "Nunito"
-temperature_font_style = "italic"
-temperature_font_weight = 800
+temperature_font_family = "Geom"
+temperature_font_weight = 600
 temperature_letter_spacing = 0
 location_font_family = "Google Sans Flex"
 location_font_weight = 400
-icon_gap = 6
+icon_gap = 1
 location_gap = 1
-opacity = 80
-left_offset = 0
-bottom_offset = 0
+opacity = 50
+left_offset = 12
+bottom_offset = -6
 left_padding = 48
 bottom_padding = 48
+alignment = "left"
 
 [visuals.now_playing]
+enabled = false
 content_gap = 18
 fade_duration_ms = 320
-title_color = "#ffffff"
+title_color = "#A6AECD"
 artist_color = "#ffffff"
 title_size = 2
 artist_size = 2
@@ -139,7 +134,7 @@ right_offset = 0
 bottom_offset = 0
 opacity = 72
 title_opacity = 74
-artist_opacity = 54
+artist_opacity = 84
 artwork_opacity = 90
 title_font_family = "Google Sans Flex"
 title_font_weight = 400

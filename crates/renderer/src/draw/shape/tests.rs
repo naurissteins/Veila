@@ -110,6 +110,37 @@ fn blends_translucent_pill_fill_without_overdarkening() {
 }
 
 #[test]
+fn keeps_translucent_pill_fill_free_from_border_tint() {
+    let mut without_border =
+        SoftwareBuffer::solid(FrameSize::new(64, 40), ClearColor::opaque(200, 100, 0))
+            .expect("buffer");
+    let mut with_border =
+        SoftwareBuffer::solid(FrameSize::new(64, 40), ClearColor::opaque(200, 100, 0))
+            .expect("buffer");
+
+    let rect = Rect::new(8, 8, 48, 24);
+    let fill = ClearColor::rgba(255, 255, 255, 13);
+    draw_pill(
+        &mut without_border,
+        rect,
+        PillStyle::new(fill).with_radius(10),
+    );
+    draw_pill(
+        &mut with_border,
+        rect,
+        PillStyle::new(fill)
+            .with_border(BorderStyle::new(ClearColor::rgba(255, 255, 255, 153), 3))
+            .with_radius(10),
+    );
+
+    let center = (20 * 64 + 32) * 4;
+    assert_eq!(
+        &with_border.pixels()[center..center + 4],
+        &without_border.pixels()[center..center + 4]
+    );
+}
+
+#[test]
 fn draws_circle_surface() {
     let mut buffer = SoftwareBuffer::new(FrameSize::new(80, 80)).expect("buffer");
     draw_circle(
