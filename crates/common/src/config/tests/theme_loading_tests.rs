@@ -10,6 +10,53 @@ fn lists_bundled_theme_names() {
 }
 
 #[test]
+fn loads_bundled_default_theme_as_default_layer() {
+    let config = AppConfig::from_default_layers().expect("default config should load");
+
+    assert_eq!(config.background.blur_radius, 0);
+    assert_eq!(config.background.dim_strength, 30);
+    assert!(config.weather.enabled);
+    assert!(config.battery.enabled);
+    assert!(config.battery.mock_percent.is_none());
+    assert!(config.battery.mock_charging.is_none());
+    assert_eq!(config.visuals.avatar_size(), Some(160));
+    assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.date_opacity(), Some(40));
+}
+
+#[test]
+fn flat_visual_overrides_win_over_bundled_default_theme_layer() {
+    let dir = std::env::temp_dir().join(format!("veila-flat-default-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r##"
+            [visuals]
+            avatar_background_color = "rgba(24, 30, 42, 0.82)"
+            clock_font_family = "Bebas Neue"
+            clock_opacity = 96
+        "##,
+    )
+    .expect("config file");
+
+    let loaded = AppConfig::load(Some(&path)).expect("config should load");
+
+    assert_eq!(
+        loaded.config.visuals.avatar_background_color(),
+        Some(RgbColor::rgba(24, 30, 42, 209))
+    );
+    assert_eq!(
+        loaded.config.visuals.clock_font_family(),
+        Some("Bebas Neue")
+    );
+    assert_eq!(loaded.config.visuals.clock_opacity(), Some(96));
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
 fn loads_bundled_theme_before_user_overrides() {
     let dir = std::env::temp_dir().join(format!("veila-theme-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");

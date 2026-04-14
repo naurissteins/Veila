@@ -12,7 +12,7 @@ fn parses_partial_config_with_defaults() {
     .expect("config should parse");
 
     assert_eq!(config.lock.acquire_timeout_seconds, 5);
-    assert!(!config.lock.auto_reload_config);
+    assert!(config.lock.auto_reload_config);
     assert_eq!(config.lock.auto_reload_debounce_ms, 250);
     assert!(!config.lock.log_to_file);
     assert_eq!(
@@ -26,12 +26,9 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(config.background.effective_mode(), BackgroundMode::Bundled);
     assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));
     assert!(config.background.path.is_none());
-    assert!(
-        config
-            .background
-            .resolved_path()
-            .is_some_and(|path| path.ends_with("assets/bg/abstract-blur-blue.jpg"))
-    );
+    assert!(config.background.resolved_path().is_some_and(|path| {
+        path.ends_with("assets/bg/default.jpg") || path.ends_with("assets/bg/bg.jpg")
+    }));
     assert_eq!(config.background.blur_radius, 0);
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());

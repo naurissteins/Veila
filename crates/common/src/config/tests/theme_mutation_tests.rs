@@ -91,7 +91,7 @@ fn unset_theme_in_config_removes_only_theme_key() {
     let loaded = AppConfig::load(Some(&path)).expect("config should load");
     assert!(!loaded.config.lock.show_username);
     assert_eq!(loaded.config.visuals.input_width(), Some(420));
-    assert!(loaded.config.visuals.clock_font_family().is_none());
+    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Geom"));
 
     fs::remove_file(written_path).ok();
     fs::remove_dir(dir).ok();

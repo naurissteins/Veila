@@ -55,7 +55,7 @@ const fn default_auth_backoff_base_ms() -> u64 {
 }
 
 const fn default_lock_auto_reload_config() -> bool {
-    false
+    true
 }
 
 const fn default_lock_auto_reload_debounce_ms() -> u64 {

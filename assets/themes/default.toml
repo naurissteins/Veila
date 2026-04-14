@@ -1,21 +1,26 @@
+# Background source: https://www.vecteezy.com/vector-art/13151035-light-blue-and-purple-gradient-background
 [background]
 mode = "bundled"
 color = "#202833"
 blur_radius = 0
-dim_strength = 0
-tint = "rgba(8, 10, 14, 0.4)"
+dim_strength = 30
+tint = "rgba(0, 0, 0, 0.1)"
 tint_opacity = 0
 
 [lock]
 user_hint = "Password"
 show_username = true
-username = "Billy Ocean"
-#avatar_path = ""
 
 [battery]
 enabled = true
+mock_percent = 84
+mock_charging = false
+
+[weather]
+enabled = false
 
 [visuals.now_playing]
+enabled = false
 content_gap = 18
 fade_duration_ms = 320
 title_color = "#ffffff"
@@ -38,12 +43,6 @@ artist_font_family = "Google Sans Flex"
 artist_font_weight = 400
 width = 380
 text_gap = 10
-
-[weather]
-enabled = true
-location = "Riga"
-refresh_minutes = 15
-unit = "celsius"
 
 [visuals.keyboard]
 background_size = 46
@@ -78,7 +77,7 @@ location_font_family = "Google Sans Flex"
 location_font_weight = 400
 icon_gap = 1
 location_gap = 1
-opacity = 50
+opacity = 80
 left_offset = 12
 bottom_offset = -6
 left_padding = 48
@@ -87,10 +86,8 @@ alignment = "left"
 
 [visuals.input]
 background_color = "#FFFFFF"
-background_opacity = 5
+background_opacity = 8
 border_color = "#FFFFFF"
-border_width = 0
-border_opacity = 0
 width = 310
 height = 54
 radius = 10
@@ -103,11 +100,8 @@ font_size = 2
 size = 160
 gap = 24
 background_color = "#ffffff"
-background_opacity = 6
+background_opacity = 8
 placeholder_padding = 28
-ring_color = "#94B2FF"
-ring_width = 0
-icon_color = "#ffffff"
 
 [visuals.username]
 font_family = "Google Sans Flex"
@@ -132,13 +126,13 @@ gap = 20
 [visuals.date]
 color = "#ffffff"
 font_family = "Geom"
-opacity = 50
+opacity = 40
 font_weight = 600
 size = 2
 
 [visuals.placeholder]
 color = "#ffffff"
-opacity = 60
+opacity = 90
 
 [visuals.status]
 color = "#FFE0A0"
