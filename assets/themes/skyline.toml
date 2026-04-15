@@ -1,8 +1,8 @@
 # https://wallhaven.cc/w/48y7wy
 [background]
 mode = "file"
-path = "/usr/share/veila/bg/skyline.jpg"
-color = "#ffffff"
+path = "/path/to/wallpaper.jpg"
+color = "#403249"
 blur_radius = 0
 dim_strength = 44
 tint = "rgba(0, 0, 0, 0.1)"
@@ -11,8 +11,6 @@ tint_opacity = 0
 [lock]
 user_hint = "Password"
 show_username = true
-username = "Billy Ocean"
-# avatar_path = ""
 
 [visuals.layer]
 enabled = true
@@ -23,24 +21,15 @@ alignment = "center"
 vertical_alignment = "center"
 width = 540
 height = 600
-offset_y = 0
-offset_x = 0
 color = "#ffffff"
 opacity = 5
-top_margin = 0
-bottom_margin = 0
 radius = 50
 
 [battery]
 enabled = true
-mock_percent = 84
-mock_charging = false
 
 [weather]
-enabled = true
-location = "Kathmandu"
-refresh_minutes = 15
-unit = "celsius"
+enabled = false
 
 [visuals.clock]
 alignment = "center-center"
@@ -73,10 +62,10 @@ vertical_padding = 0
 offset_x = 0
 offset_y = 120
 background_color = "#FFFFFF"
-background_opacity = 10
+background_opacity = 3
 border_color = "#FFFFFF"
-border_width = 0
-border_opacity = 0
+border_width = 3
+border_opacity = 4
 width = 310
 height = 54
 radius = 50
@@ -115,7 +104,7 @@ background_color = "rgba(255, 255, 255, 0.05)"
 color = "#ffffff"
 opacity = 68
 size = 2
-top_offset = -24
+top_offset = -28
 right_offset = 8
 
 [visuals.battery]
@@ -124,7 +113,7 @@ background_size = 46
 color = "#ffffff"
 opacity = 68
 size = 20
-top_offset = -24
+top_offset = -28
 right_offset = 8
 gap = 8
 
@@ -143,10 +132,8 @@ location_font_weight = 400
 icon_gap = 6
 location_gap = 1
 opacity = 80
-left_offset = 0
-bottom_offset = 0
-left_padding = 48
-bottom_padding = 48
+left_padding = 30
+bottom_padding = 30
 alignment = "left"
 
 [visuals.now_playing]

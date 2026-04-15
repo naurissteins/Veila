@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn formats_shanghai_as_12_am() {
+    fn formats_normandy_as_12_am() {
         let datetime = PrimitiveDateTime::new(
             Date::from_calendar_date(2026, Month::March, 24).expect("date"),
             Time::from_hms(0, 5, 0).expect("time"),

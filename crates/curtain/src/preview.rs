@@ -326,12 +326,12 @@ mod tests {
             r#"
                 [weather]
                 enabled = true
-                location = "Tokyo"
+                location = "Seceda"
             "#,
         )
         .expect("config");
 
-        let location_cache = preview_weather_location_cache_path(&weather_root, "Tokyo");
+        let location_cache = preview_weather_location_cache_path(&weather_root, "Seceda");
         fs::write(
             &location_cache,
             serde_json::to_vec(&PreviewGeocodedLocationCache {

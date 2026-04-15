@@ -117,13 +117,13 @@ fn loads_bundled_theme_before_user_overrides() {
 
 #[test]
 fn loads_second_bundled_theme() {
-    let dir = std::env::temp_dir().join(format!("veila-theme-shanghai-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("veila-theme-normandy-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
     fs::write(
         &path,
         r#"
-            theme = "shanghai"
+            theme = "normandy"
         "#,
     )
     .expect("write config");

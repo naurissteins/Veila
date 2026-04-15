@@ -2,7 +2,7 @@
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
-color = "#141837"
+color = "#494732"
 blur_radius = 0
 dim_strength = 0
 
@@ -14,10 +14,7 @@ show_username = false
 enabled = true
 
 [weather]
-enabled = true
-location = "Boracay"
-refresh_minutes = 15
-unit = "celsius"
+enabled = false
 
 [visuals.clock]
 format = "24h"
@@ -81,7 +78,7 @@ background_color = "rgba(255, 255, 255, 0.05)"
 color = "#ffffff"
 opacity = 68
 size = 2
-top_offset = -44
+top_offset = -24
 right_offset = 8
 
 [visuals.battery]
@@ -90,7 +87,7 @@ background_size = 46
 color = "#ffffff"
 opacity = 68
 size = 20
-top_offset = -44
+top_offset = -24
 right_offset = 8
 gap = 8
 
@@ -111,10 +108,11 @@ location_font_weight = 400
 icon_gap = 6
 location_gap = 1
 opacity = 80
-left_padding = 48
-bottom_padding = 48
+left_padding = 30
+bottom_padding = 30
 
 [visuals.now_playing]
+enabled = false
 content_gap = 18
 fade_duration_ms = 320
 title_color = "#ffffff"

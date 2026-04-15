@@ -40,10 +40,10 @@ fn set_theme_in_config_preserves_existing_overrides() {
     )
     .expect("config file");
 
-    set_theme_in_config(Some(&path), "shanghai").expect("theme should set");
+    set_theme_in_config(Some(&path), "normandy").expect("theme should set");
 
     let raw = fs::read_to_string(&path).expect("written config");
-    assert!(raw.contains("theme = \"shanghai\""));
+    assert!(raw.contains("theme = \"normandy\""));
     assert!(raw.contains("show_username = false"));
     assert!(raw.contains("width = 420"));
 
@@ -67,7 +67,7 @@ fn unset_theme_in_config_removes_only_theme_key() {
     fs::write(
         &path,
         r#"
-            theme = "shanghai"
+            theme = "normandy"
 
             [lock]
             show_username = false

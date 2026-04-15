@@ -2,7 +2,9 @@
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
-color = "#201E2E"
+color = "#333249"
+blur_radius = 0
+dim_strength = 0
 
 [lock]
 user_hint = "Password"
@@ -16,22 +18,20 @@ vertical_alignment = "center"
 width = 540
 height = 600
 opacity = 0
+blur_radius = 0
 right_margin = 100
 
 [battery]
 enabled = true
 
 [weather]
-enabled = true
-location = "Los Angeles"
-refresh_minutes = 15
-unit = "fahrenheit"
+enabled = false
 
 [visuals.clock]
 alignment = "center-center"
 center_in_layer = true
 offset_x = 0
-offset_y = -110
+offset_y = -30
 format = "12h"
 style = "standard"
 meridiem_size = 3
@@ -56,12 +56,12 @@ center_in_layer = true
 horizontal_padding = 0
 vertical_padding = 0
 offset_x = 0
-offset_y = 50
+offset_y = 30
 background_color = "#A6AECD"
 background_opacity = 6
 border_color = "#FFFFFF"
-border_width = 0
-border_opacity = 0
+border_width = 3
+border_opacity = 4
 width = 310
 height = 54
 radius = 50
@@ -85,7 +85,7 @@ background_size = 46
 background_color = "rgba(166, 174, 205, 0.05)"
 opacity = 68
 size = 2
-top_offset = -44
+top_offset = -28
 right_offset = 8
 
 [visuals.battery]
@@ -93,12 +93,11 @@ background_color = "rgba(166, 174, 205, 0.05)"
 background_size = 46
 opacity = 68
 size = 20
-top_offset = -44
+top_offset = -28
 right_offset = 8
 gap = 8
 
 [visuals.weather]
-enabled = false
 temperature_color = "#A6AECD"
 location_color = "#D6E3FF"
 temperature_size = 6
@@ -112,10 +111,8 @@ location_font_weight = 400
 icon_gap = 1
 location_gap = 1
 opacity = 50
-left_offset = 12
-bottom_offset = -6
-left_padding = 48
-bottom_padding = 48
+left_padding = 30
+bottom_padding = 30
 alignment = "left"
 
 [visuals.now_playing]

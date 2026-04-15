@@ -1,7 +1,7 @@
 # Background source: https://www.vecteezy.com/vector-art/13151035-light-blue-and-purple-gradient-background
 [background]
 mode = "bundled"
-color = "#202833"
+color = "#413249"
 blur_radius = 0
 dim_strength = 30
 tint = "rgba(0, 0, 0, 0.1)"
@@ -13,8 +13,6 @@ show_username = true
 
 [battery]
 enabled = true
-mock_percent = 84
-mock_charging = false
 
 [weather]
 enabled = false
@@ -31,8 +29,6 @@ artwork_size = 44
 artwork_radius = 8
 right_padding = 52
 bottom_padding = 56
-right_offset = 0
-bottom_offset = 0
 opacity = 72
 title_opacity = 74
 artist_opacity = 54
@@ -50,7 +46,7 @@ background_color = "rgba(255, 255, 255, 0.05)"
 color = "#ffffff"
 opacity = 68
 size = 2
-top_offset = -24
+top_offset = -28
 right_offset = 8
 
 [visuals.battery]
@@ -59,7 +55,7 @@ background_size = 46
 color = "#ffffff"
 opacity = 68
 size = 20
-top_offset = -24
+top_offset = -28
 right_offset = 8
 gap = 8
 
@@ -78,10 +74,8 @@ location_font_weight = 400
 icon_gap = 1
 location_gap = 1
 opacity = 80
-left_offset = 12
-bottom_offset = -6
-left_padding = 48
-bottom_padding = 48
+left_padding = 30
+bottom_padding = 30
 alignment = "left"
 
 [visuals.input]
