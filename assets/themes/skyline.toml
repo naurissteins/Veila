@@ -4,7 +4,7 @@ mode = "file"
 path = "/path/to/wallpaper.jpg"
 color = "#403249"
 blur_radius = 0
-dim_strength = 44
+dim_strength = 24
 tint = "rgba(0, 0, 0, 0.1)"
 tint_opacity = 0
 
@@ -62,10 +62,10 @@ vertical_padding = 0
 offset_x = 0
 offset_y = 120
 background_color = "#FFFFFF"
-background_opacity = 3
+background_opacity = 10
 border_color = "#FFFFFF"
 border_width = 3
-border_opacity = 4
+border_opacity = 8
 width = 310
 height = 54
 radius = 50
@@ -76,7 +76,7 @@ font_size = 2
 
 [visuals.placeholder]
 color = "#ffffff"
-opacity = 60
+opacity = 90
 
 [visuals.avatar]
 size = 160
@@ -85,9 +85,9 @@ offset_y = -40
 background_color = "#ffffff"
 background_opacity = 6
 placeholder_padding = 28
-ring_color = "#94B2FF"
-ring_width = 0
-icon_color = "#ffffff"
+# ring_color = "#ffffff"
+# ring_width = 3
+# icon_color = "#ffffff"
 
 [visuals.username]
 font_family = "Google Sans Flex"
@@ -137,6 +137,7 @@ bottom_padding = 30
 alignment = "left"
 
 [visuals.now_playing]
+enabled = false
 content_gap = 18
 fade_duration_ms = 320
 title_color = "#ffffff"

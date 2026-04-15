@@ -62,6 +62,9 @@ mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
 font_size = 2
+border_color = "#FFFFFF"
+border_width = 3
+border_opacity = 8
 
 [visuals.placeholder]
 color = "#ffffff"
@@ -73,6 +76,9 @@ gap = 24
 background_color = "#ffffff"
 background_opacity = 6
 placeholder_padding = 28
+ring_color = "rgba(255, 255, 255, 0.15)"
+ring_width = 3
+icon_color = "#ffffff"
 
 [visuals.username]
 font_family = "Google Sans Flex"
