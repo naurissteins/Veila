@@ -120,6 +120,8 @@ fn loads_second_bundled_theme() {
     let dir = std::env::temp_dir().join(format!("veila-theme-normandy-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
+    let (_theme_path, raw_theme) = read_theme_source(None, "normandy").expect("theme source");
+    let theme_config = AppConfig::from_toml_str(&raw_theme).expect("theme should parse");
     fs::write(
         &path,
         r#"
@@ -130,20 +132,38 @@ fn loads_second_bundled_theme() {
 
     let config = AppConfig::load_from_file(&path).expect("config should load");
 
-    assert_eq!(config.background.color, RgbColor::rgb(0, 0, 0));
-    assert_eq!(config.background.blur_radius, 12);
-    assert_eq!(config.visuals.clock_font_family(), Some("Google Sans Flex"));
-    assert_eq!(config.visuals.clock_font_weight(), Some(400));
+    assert_eq!(config.background.color, theme_config.background.color);
+    assert_eq!(
+        config.background.blur_radius,
+        theme_config.background.blur_radius
+    );
+    assert_eq!(
+        config.visuals.clock_font_family(),
+        theme_config.visuals.clock_font_family()
+    );
+    assert_eq!(
+        config.visuals.clock_font_weight(),
+        theme_config.visuals.clock_font_weight()
+    );
     assert_eq!(
         config.visuals.date_color(),
-        Some(RgbColor::rgb(200, 216, 242))
+        theme_config.visuals.date_color()
     );
     assert_eq!(
         config.visuals.keyboard_background_color(),
-        Some(RgbColor::rgba(255, 255, 255, 13))
+        theme_config.visuals.keyboard_background_color()
     );
-    assert_eq!(config.visuals.weather_alignment(), WeatherAlignment::Left);
-    assert_eq!(config.visuals.now_playing_opacity(), Some(72));
+    assert_eq!(
+        config.visuals.weather_alignment(),
+        theme_config.visuals.weather_alignment()
+    );
+    assert_eq!(
+        config.visuals.now_playing_opacity(),
+        theme_config.visuals.now_playing_opacity()
+    );
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
 }
 
 #[test]
