@@ -1,3 +1,4 @@
+mod assets;
 mod background;
 mod battery;
 mod color;
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use toml::Value;
 
 use crate::error::{Result, VeilaError};
+use assets::bundled_theme_dir;
 
 const DEFAULT_THEME_NAME: &str = "default";
 
@@ -295,24 +297,6 @@ fn default_path() -> Option<PathBuf> {
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
 
     Some(config_root.join("veila").join("config.toml"))
-}
-
-fn bundled_theme_dir() -> PathBuf {
-    bundled_asset_dir().join("themes")
-}
-
-fn bundled_asset_dir() -> PathBuf {
-    let local_assets = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
-    if local_assets.exists() {
-        return local_assets;
-    }
-
-    let system_assets = PathBuf::from("/usr/share/veila");
-    if system_assets.exists() {
-        return system_assets;
-    }
-
-    local_assets
 }
 
 fn config_dir_for_theme_lookup(explicit_config_path: Option<&Path>) -> Option<PathBuf> {

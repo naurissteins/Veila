@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -72,19 +72,16 @@ impl BackgroundConfig {
 }
 
 pub fn bundled_background_path() -> PathBuf {
-    let local_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/bg");
-    let system_dir = PathBuf::from("/usr/share/veila/bg");
+    let background_dir = super::assets::bundled_background_dir();
 
-    for directory in [&local_dir, &system_dir] {
-        for file_name in ["default.jpg", "bg.jpg"] {
-            let path = directory.join(file_name);
-            if path.exists() {
-                return path;
-            }
+    for file_name in ["default.jpg", "bg.jpg"] {
+        let path = background_dir.join(file_name);
+        if path.exists() {
+            return path;
         }
     }
 
-    local_dir.join("default.jpg")
+    background_dir.join("default.jpg")
 }
 
 const fn default_background_color() -> RgbColor {
