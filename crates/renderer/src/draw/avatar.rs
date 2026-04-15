@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use image::RgbaImage;
+use image::{RgbaImage, imageops::FilterType};
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
 use crate::{ClearColor, FrameSize, RendererError, Result, ShadowStyle, SoftwareBuffer};
@@ -10,6 +10,8 @@ use super::{
     shape::{BorderStyle, CircleStyle, draw_circle},
     skia::draw_overlay,
 };
+
+const MAX_PREPARED_AVATAR_SIZE: u32 = 1024;
 
 #[derive(Debug, Clone)]
 pub enum AvatarAsset {
@@ -71,6 +73,7 @@ impl AvatarStyle {
 impl AvatarAsset {
     pub fn load(path: &Path) -> Result<Self> {
         let image = image::open(path)?.to_rgba8();
+        let image = prepare_avatar_image(image);
         let pixmap = rgba_to_pixmap(image)?;
         Ok(Self::Image(pixmap))
     }
@@ -123,6 +126,27 @@ impl AvatarAsset {
                 style.placeholder_padding,
             ),
         }
+    }
+}
+
+fn prepare_avatar_image(image: RgbaImage) -> RgbaImage {
+    let width = image.width();
+    let height = image.height();
+    if width == 0 || height == 0 {
+        return image;
+    }
+
+    let crop_size = width.min(height);
+    let crop_x = (width - crop_size) / 2;
+    let crop_y = (height - crop_size) / 2;
+    let cropped =
+        image::imageops::crop_imm(&image, crop_x, crop_y, crop_size, crop_size).to_image();
+    let target_size = crop_size.min(MAX_PREPARED_AVATAR_SIZE);
+
+    if target_size == crop_size {
+        cropped
+    } else {
+        image::imageops::resize(&cropped, target_size, target_size, FilterType::Lanczos3)
     }
 }
 
@@ -202,7 +226,10 @@ fn premultiply(channel: u8, alpha: u8) -> u8 {
 mod tests {
     use image::{Rgba, RgbaImage};
 
-    use super::{AvatarAsset, AvatarStyle, rgba_to_pixmap, style_placeholder_padding};
+    use super::{
+        AvatarAsset, AvatarStyle, MAX_PREPARED_AVATAR_SIZE, prepare_avatar_image, rgba_to_pixmap,
+        style_placeholder_padding,
+    };
     use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::BorderStyle};
 
     #[test]
@@ -212,6 +239,24 @@ mod tests {
         let pixmap = rgba_to_pixmap(image).expect("pixmap");
 
         assert_eq!(pixmap.data(), &[120, 80, 40, 255]);
+    }
+
+    #[test]
+    fn prepares_avatar_images_as_bounded_square_sources() {
+        let image = RgbaImage::from_pixel(1600, 1200, Rgba([120, 80, 40, 255]));
+        let prepared = prepare_avatar_image(image);
+
+        assert_eq!(prepared.width(), MAX_PREPARED_AVATAR_SIZE);
+        assert_eq!(prepared.height(), MAX_PREPARED_AVATAR_SIZE);
+    }
+
+    #[test]
+    fn prepares_small_avatar_images_without_upscaling() {
+        let image = RgbaImage::from_pixel(320, 240, Rgba([120, 80, 40, 255]));
+        let prepared = prepare_avatar_image(image);
+
+        assert_eq!(prepared.width(), 240);
+        assert_eq!(prepared.height(), 240);
     }
 
     #[test]

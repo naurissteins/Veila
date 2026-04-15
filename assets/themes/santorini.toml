@@ -11,8 +11,6 @@ tint_opacity = 0
 [lock]
 user_hint = "Password"
 show_username = true
-username = "Billy Ocean"
-# avatar_path = ""
 
 [visuals.layer]
 enabled = true
@@ -30,8 +28,6 @@ radius = 50
 
 [battery]
 enabled = true
-mock_percent = 84
-mock_charging = false
 
 [weather]
 enabled = false
@@ -71,6 +67,9 @@ mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
 font_size = 2
+border_color = "#FFFFFF"
+border_width = 3
+border_opacity = 20
 
 [visuals.placeholder]
 color = "#ffffff"
@@ -82,8 +81,8 @@ gap = 24
 background_color = "#ffffff"
 background_opacity = 8
 placeholder_padding = 28
-ring_color = "#94B2FF"
-ring_width = 0
+ring_color = "#ffffff"
+ring_width = 3
 icon_color = "#ffffff"
 
 [visuals.username]
@@ -96,7 +95,7 @@ gap = 28
 
 [visuals.keyboard]
 background_size = 46
-background_color = "rgba(255, 255, 255, 0.05)"
+background_color = "rgba(255, 255, 255, 0.1)"
 color = "#ffffff"
 opacity = 68
 size = 2
@@ -104,7 +103,7 @@ top_offset = -28
 right_offset = 8
 
 [visuals.battery]
-background_color = "rgba(255, 255, 255, 0.05)"
+background_color = "rgba(255, 255, 255, 0.1)"
 background_size = 46
 color = "#ffffff"
 opacity = 68
@@ -128,11 +127,12 @@ location_font_weight = 400
 icon_gap = 6
 location_gap = 1
 opacity = 80
-left_offset = 140
-bottom_offset = -140
+left_offset = 120
+bottom_offset = -120
 alignment = "left"
 
 [visuals.now_playing]
+enabled = false
 content_gap = 18
 fade_duration_ms = 320
 title_color = "#ffffff"
