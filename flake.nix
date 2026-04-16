@@ -49,8 +49,17 @@
             installPhase = ''
               runHook preInstall
 
-              install -Dm755 target/release/veilad "$out/bin/veilad"
-              install -Dm755 target/release/veila-curtain "$out/bin/veila-curtain"
+              veilad_bin="$(find target -type f -path '*/release/veilad' -print -quit)"
+              curtain_bin="$(find target -type f -path '*/release/veila-curtain' -print -quit)"
+
+              if [ -z "$veilad_bin" ] || [ -z "$curtain_bin" ]; then
+                echo "failed to find release binaries under target/"
+                find target -maxdepth 4 -type f -perm -0100 -print
+                exit 1
+              fi
+
+              install -Dm755 "$veilad_bin" "$out/bin/veilad"
+              install -Dm755 "$curtain_bin" "$out/bin/veila-curtain"
 
               mkdir -p "$out/share/veila"
               cp -R assets/bg "$out/share/veila/"
