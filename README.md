@@ -70,6 +70,26 @@ yay -S veila-bin
 yay -S veila-git
 ```
 
+On NixOS, Veila can currently be built from the flake:
+
+```bash
+nix profile install github:naurissteins/Veila#veila
+```
+
+NixOS also needs a PAM service entry so Veila can unlock with your user password:
+
+```nix
+{
+  security.pam.services.veila = {};
+}
+```
+
+Apply that system config with:
+
+```bash
+sudo nixos-rebuild switch
+```
+
 ## Start the Daemon
 
 You can start the daemon directly:
