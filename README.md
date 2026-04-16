@@ -59,7 +59,7 @@ Veila is designed to avoid visible lock activation gaps and unnecessary work on 
 - the lock path avoids network fetches, heavy toolkit startup, and unnecessary process churn
 
 ## Install
-
+### Arch Linux
 On Arch Linux, install Veila from the AUR:
 
 ```bash
@@ -68,26 +68,6 @@ yay -S veila-bin
 
 # or latest git build
 yay -S veila-git
-```
-
-On NixOS, Veila can currently be built from the flake:
-
-```bash
-nix profile install github:naurissteins/Veila#veila
-```
-
-NixOS also needs a PAM service entry so Veila can unlock with your user password:
-
-```nix
-{
-  security.pam.services.veila = {};
-}
-```
-
-Apply that system config with:
-
-```bash
-sudo nixos-rebuild switch
 ```
 
 ## Start the Daemon
@@ -109,6 +89,29 @@ For locking directly from the CLI, use:
 ```bash
 veilad --lock-now
 ```
+
+### NixOS
+On NixOS, Veila can currently be built from the flake:
+
+```bash
+nix profile install github:naurissteins/Veila#veila
+```
+
+NixOS also needs a PAM service entry so Veila can unlock with your user password:
+
+```nix
+{
+  security.pam.services.veila = {};
+}
+```
+
+Apply that system config with:
+
+```bash
+sudo nixos-rebuild switch
+```
+
+
 
 ## Docs
 
