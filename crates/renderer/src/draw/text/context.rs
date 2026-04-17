@@ -33,15 +33,17 @@ pub(super) struct FontContext {
 
 thread_local! {
     pub(super) static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(FontContext {
-        font_system: {
-            let mut font_system = FontSystem::new();
-            for font in BUNDLED_FONTS {
-                font_system.db_mut().load_font_data(font.to_vec());
-            }
-            font_system
-        },
+        font_system: font_system_with_system_and_bundled_fonts(),
         swash_cache: SwashCache::new(),
     });
+}
+
+fn font_system_with_system_and_bundled_fonts() -> FontSystem {
+    let mut font_system = FontSystem::new();
+    for font in BUNDLED_FONTS {
+        font_system.db_mut().load_font_data(font.to_vec());
+    }
+    font_system
 }
 
 pub fn bundled_clock_font_family() -> Option<String> {

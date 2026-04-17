@@ -1,0 +1,142 @@
+# Wallpaper source: https://wallhaven.cc/w/96wp7x
+[background]
+mode = "file"
+path = "/path/to/wallpaper.jpg"
+color = "#49323E"
+dim_strength = 0
+
+[lock]
+user_hint = "Password"
+show_username = false
+
+[visuals.layer]
+enabled = true
+style = "panel"
+alignment = "right"
+offset_x = -300
+vertical_alignment = "center"
+width = 540
+height = 600
+opacity = 0
+blur_radius = 0
+
+[battery]
+enabled = true
+
+[weather]
+enabled = false
+
+[visuals.clock]
+alignment = "center-center"
+center_in_layer = true
+offset_x = 0
+offset_y = 0
+format = "12h"
+style = "standard"
+meridiem_size = 3
+meridiem_offset_x = 6
+meridiem_offset_y = 7
+font_family = "Japanola"
+#font_family = "Geom"
+font_weight = 700
+color = "#000000"
+opacity = 70
+size = 24
+gap = 20
+
+[visuals.date]
+font_family = "Japanola"
+#font_family = "Geom"
+font_weight = 700
+color = "#000000"
+size = 5
+opacity = 70
+
+[visuals.input]
+center_in_layer = true
+horizontal_padding = 0
+vertical_padding = 0
+offset_x = 0
+offset_y = 20
+background_color = "#000000"
+background_opacity = 70
+border_color = "#000000"
+border_width = 3
+border_opacity = 20
+width = 310
+height = 54
+radius = 50
+mask_color = "#ffffff"
+font_family = "Google Sans Flex"
+font_weight = 400
+font_size = 2
+
+[visuals.placeholder]
+color = "#ffffff"
+opacity = 95
+
+[visuals.avatar]
+enabled = false
+
+[visuals.username]
+enabled = false
+
+[visuals.keyboard]
+background_size = 46
+background_color = "rgba(0, 0, 0, 0.1)"
+color = "rgba(0, 0, 0, 0.01)"
+opacity = 90
+size = 2
+top_offset = -28
+right_offset = 8
+
+[visuals.battery]
+background_color = "rgba(255, 255, 255, 0.1)"
+background_size = 46
+opacity = 90
+size = 20
+top_offset = -28
+right_offset = 8
+gap = 8
+
+[visuals.weather]
+temperature_color = "#ffffff"
+location_color = "#D6E3FF"
+temperature_size = 6
+location_size = 3
+icon_size = 40
+temperature_font_family = "Geom"
+temperature_font_weight = 600
+temperature_letter_spacing = 0
+location_font_family = "Google Sans Flex"
+location_font_weight = 400
+icon_gap = 1
+location_gap = 1
+opacity = 80
+left_padding = 30
+bottom_padding = 30
+alignment = "left"
+
+[visuals.now_playing]
+enabled = false
+content_gap = 18
+fade_duration_ms = 320
+title_color = "#A6AECD"
+artist_color = "#ffffff"
+title_size = 2
+artist_size = 2
+artwork_size = 44
+artwork_radius = 8
+right_padding = 48
+bottom_padding = 48
+right_offset = 0
+bottom_offset = 0
+opacity = 72
+title_opacity = 74
+artist_opacity = 84
+artwork_opacity = 90
+title_font_family = "Google Sans Flex"
+title_font_weight = 400
+artist_font_family = "Google Sans Flex"
+artist_font_weight = 400
+width = 380
