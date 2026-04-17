@@ -14,10 +14,10 @@ use smithay_client_toolkit::{
     reexports::client::{
         Connection, QueueHandle,
         globals::GlobalList,
-        protocol::{wl_keyboard, wl_output, wl_pointer, wl_surface},
+        protocol::{wl_keyboard, wl_output, wl_surface},
     },
     registry::RegistryState,
-    seat::SeatState,
+    seat::{SeatState, pointer::ThemedPointer},
     session_lock::{SessionLock, SessionLockState, SessionLockSurface},
     shm::Shm,
 };
@@ -60,7 +60,7 @@ pub(crate) struct CurtainApp {
     pub(crate) session_lock: Option<SessionLock>,
     pub(crate) shm: Shm,
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
-    pub(crate) pointer: Option<wl_pointer::WlPointer>,
+    pub(crate) pointer: Option<ThemedPointer>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,

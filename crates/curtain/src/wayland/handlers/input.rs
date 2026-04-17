@@ -6,7 +6,7 @@ use smithay_client_toolkit::{
     seat::{
         Capability, SeatHandler,
         keyboard::{KeyEvent, KeyboardHandler, Keymap, Keysym, Modifiers, RawModifiers},
-        pointer::{PointerEvent, PointerEventKind, PointerHandler},
+        pointer::{CursorIcon, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec},
     },
 };
 use veila_ui::ShellKey;
@@ -43,7 +43,14 @@ impl SeatHandler for CurtainApp {
         }
 
         if capability == Capability::Pointer && self.pointer.is_none() {
-            match self.seat_state.get_pointer(queue_handle, &seat) {
+            let cursor_surface = self.compositor_state.create_surface(queue_handle);
+            match self.seat_state.get_pointer_with_theme(
+                queue_handle,
+                &seat,
+                self.shm.wl_shm(),
+                cursor_surface,
+                ThemeSpec::default(),
+            ) {
                 Ok(pointer) => {
                     tracing::info!("pointer capability acquired");
                     self.pointer = Some(pointer);
@@ -71,11 +78,8 @@ impl SeatHandler for CurtainApp {
             keyboard.release();
         }
 
-        if capability == Capability::Pointer
-            && let Some(pointer) = self.pointer.take()
-        {
+        if capability == Capability::Pointer && self.pointer.take().is_some() {
             tracing::warn!("pointer capability removed");
-            pointer.release();
         }
     }
 
@@ -185,7 +189,11 @@ impl PointerHandler for CurtainApp {
             }
 
             match event.kind {
-                PointerEventKind::Enter { .. } | PointerEventKind::Motion { .. } => {
+                PointerEventKind::Enter { .. } => {
+                    self.set_default_pointer_cursor(_conn);
+                    self.handle_shell_pointer_motion(&event.surface, event.position, queue_handle);
+                }
+                PointerEventKind::Motion { .. } => {
                     self.handle_shell_pointer_motion(&event.surface, event.position, queue_handle);
                 }
                 PointerEventKind::Leave { .. } => {
@@ -199,6 +207,18 @@ impl PointerHandler for CurtainApp {
                 }
                 _ => {}
             }
+        }
+    }
+}
+
+impl CurtainApp {
+    fn set_default_pointer_cursor(&mut self, connection: &Connection) {
+        let Some(pointer) = self.pointer.as_ref() else {
+            return;
+        };
+
+        if let Err(error) = pointer.set_cursor(connection, CursorIcon::Default) {
+            tracing::debug!(%error, "failed to set default pointer cursor");
         }
     }
 }
