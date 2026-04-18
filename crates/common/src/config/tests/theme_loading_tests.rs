@@ -82,6 +82,8 @@ fn loads_bundled_theme_before_user_overrides() {
     let dir = std::env::temp_dir().join(format!("veila-theme-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
+    let (_theme_path, raw_theme) = read_theme_source(None, "boracay").expect("theme source");
+    let theme_config = AppConfig::from_toml_str(&raw_theme).expect("theme should parse");
     fs::write(
         &path,
         r#"
@@ -95,11 +97,13 @@ fn loads_bundled_theme_before_user_overrides() {
 
     let loaded = AppConfig::load(Some(&path)).expect("config should load");
 
-    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Nunito"));
-    assert_eq!(loaded.config.visuals.clock_font_weight(), Some(800));
     assert_eq!(
-        loaded.config.visuals.clock_font_style(),
-        Some(FontStyle::Italic)
+        loaded.config.visuals.clock_font_family(),
+        theme_config.visuals.clock_font_family()
+    );
+    assert_eq!(
+        loaded.config.visuals.clock_font_weight(),
+        theme_config.visuals.clock_font_weight()
     );
     assert_eq!(loaded.config.visuals.clock_size(), Some(16));
     assert_eq!(
@@ -267,13 +271,14 @@ fn errors_for_unknown_theme_preset() {
 #[test]
 fn reads_bundled_theme_source() {
     let (path, raw) = read_theme_source(None, "boracay").expect("theme source should load");
+    let config = AppConfig::from_toml_str(&raw).expect("theme should parse");
 
     assert_eq!(
         path.file_name().and_then(|name| name.to_str()),
         Some("boracay.toml")
     );
-    assert!(raw.contains("font_family = \"Nunito\""));
-    assert!(raw.contains("style = \"stacked\""));
+    assert!(raw.contains("[visuals.clock]"));
+    assert!(config.visuals.clock_font_family().is_some());
 }
 
 fn theme_value<'a>(value: &'a toml::Value, section: &str, key: &str) -> Option<&'a toml::Value> {

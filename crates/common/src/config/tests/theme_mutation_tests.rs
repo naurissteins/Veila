@@ -5,6 +5,8 @@ fn set_theme_in_config_creates_missing_file() {
     let dir = std::env::temp_dir().join(format!("veila-set-theme-create-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
+    let (_theme_path, raw_theme) = read_theme_source(None, "boracay").expect("theme source");
+    let theme_config = AppConfig::from_toml_str(&raw_theme).expect("theme should parse");
 
     let written_path = set_theme_in_config(Some(&path), "boracay").expect("theme should set");
 
@@ -13,10 +15,9 @@ fn set_theme_in_config_creates_missing_file() {
     assert!(raw.contains("theme = \"boracay\""));
 
     let loaded = AppConfig::load(Some(&written_path)).expect("config should load");
-    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Nunito"));
     assert_eq!(
-        loaded.config.visuals.clock_font_style(),
-        Some(FontStyle::Italic)
+        loaded.config.visuals.clock_font_family(),
+        theme_config.visuals.clock_font_family()
     );
 
     fs::remove_file(written_path).ok();

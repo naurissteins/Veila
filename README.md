@@ -12,7 +12,12 @@
 It is built for wlroots-style compositors like Labwc, Niri, Hyprland, Sway, MangoWC and others, and is designed around a simple rule: the secure lock path must stay small, predictable, and fast. Veila focuses on acquiring real session-lock surfaces immediately, keeping unlock authority in the daemon, and avoiding heavyweight UI stacks that add latency or complexity where it matters most.
 </div>
 
-<img width="2006" height="1166" alt="Veila Lockscreen Preview" src="https://github.com/user-attachments/assets/3b523594-dc4e-428e-8564-a619148973ee" />
+<a href="https://github.com/user-attachments/assets/3b523594-dc4e-428e-8564-a619148973ee" target="_blank">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/3b523594-dc4e-428e-8564-a619148973ee" />
+    <img alt="veila-preview2" src="https://github.com/user-attachments/assets/3b523594-dc4e-428e-8564-a619148973ee" />
+  </picture>
+</a>
 
 <div align=center>
 Veila aims for a modern, polished lockscreen without turning the secure path into a heavy desktop UI. Theming, widgets, and visual effects are built around that constraint instead of competing with it.
@@ -21,9 +26,6 @@ Veila aims for a modern, polished lockscreen without turning the secure path int
 </div>
 
 ----
-
-> [!NOTE]
-> Veila is still in active development and is not heavily tested on all compositors yet. It is currently not recommended for regular use. If you encounter issues, please open an issue and include your distro and Wayland compositor.
 
 ## 🔥 Features
 
