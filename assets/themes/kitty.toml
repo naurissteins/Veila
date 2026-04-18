@@ -1,4 +1,5 @@
 # Wallpaper source: https://wallhaven.cc/w/96wp7x
+# Font: https://www.1001fonts.com/yoruka-font.html
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
@@ -36,15 +37,15 @@ style = "standard"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
-font_family = "Geom"
-font_weight = 600
+font_family = "Yoruka"
+font_weight = 400
 color = "#ffffff"
 opacity = 80
 size = 20
 gap = 20
 
 [visuals.date]
-font_family = "Google Sans Flex"
+font_family = "Yoruka"
 font_weight = 400
 color = "#ffffff"
 size = 3
