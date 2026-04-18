@@ -172,6 +172,15 @@ pub struct ShellTheme {
     pub now_playing_bottom_padding: Option<i32>,
     pub now_playing_right_offset: Option<i32>,
     pub now_playing_bottom_offset: Option<i32>,
+    pub now_playing_background_enabled: bool,
+    pub now_playing_background_mode: LayerMode,
+    pub now_playing_background_color: ClearColor,
+    pub now_playing_background_blur_radius: Option<u8>,
+    pub now_playing_background_radius: Option<i32>,
+    pub now_playing_background_padding_x: Option<i32>,
+    pub now_playing_background_padding_y: Option<i32>,
+    pub now_playing_background_border_color: Option<ClearColor>,
+    pub now_playing_background_border_width: Option<i32>,
     pub status_enabled: bool,
     pub status_color: Option<ClearColor>,
     pub status_opacity: Option<u8>,
@@ -389,6 +398,41 @@ impl ShellTheme {
             now_playing_bottom_padding: config.visuals.now_playing_bottom_padding().map(i32::from),
             now_playing_right_offset: config.visuals.now_playing_right_offset().map(i32::from),
             now_playing_bottom_offset: config.visuals.now_playing_bottom_offset().map(i32::from),
+            now_playing_background_enabled: config.visuals.now_playing_background_enabled(),
+            now_playing_background_mode: config.visuals.now_playing_background_mode(),
+            now_playing_background_color: to_color_with_opacity(
+                config
+                    .visuals
+                    .now_playing_background_color()
+                    .unwrap_or_else(|| veila_common::RgbColor::rgb(0, 0, 0)),
+                config.visuals.now_playing_background_opacity(),
+            ),
+            now_playing_background_blur_radius: config.visuals.now_playing_background_blur_radius(),
+            now_playing_background_radius: config
+                .visuals
+                .now_playing_background_radius()
+                .map(i32::from),
+            now_playing_background_padding_x: config
+                .visuals
+                .now_playing_background_padding_x()
+                .map(i32::from),
+            now_playing_background_padding_y: config
+                .visuals
+                .now_playing_background_padding_y()
+                .map(i32::from),
+            now_playing_background_border_color: config
+                .visuals
+                .now_playing_background_border_color()
+                .map(|color| {
+                    to_color_with_opacity(
+                        color,
+                        config.visuals.now_playing_background_border_opacity(),
+                    )
+                }),
+            now_playing_background_border_width: config
+                .visuals
+                .now_playing_background_border_width()
+                .map(i32::from),
             status_enabled: config.visuals.status_enabled(),
             status_color: config.visuals.status_color().map(to_color),
             status_opacity: config.visuals.status_opacity(),

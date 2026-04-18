@@ -4,6 +4,7 @@ use veila_renderer::{
     avatar::{AvatarAsset, AvatarStyle},
     cover::CoverArtAsset,
     icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon, icon_visible_bounds},
+    layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::TextBlock,
@@ -41,6 +42,7 @@ pub(super) struct NowPlayingWidget<'a> {
     pub artwork: Option<&'a CoverArtAsset>,
     pub title: &'a TextBlock,
     pub artist: Option<&'a TextBlock>,
+    pub background: Option<NowPlayingBackgroundStyle>,
     pub artwork_opacity: Option<u8>,
     pub artwork_size: i32,
     pub artwork_radius: i32,
@@ -51,6 +53,18 @@ pub(super) struct NowPlayingWidget<'a> {
     pub bottom_padding: i32,
     pub right_offset: i32,
     pub bottom_offset: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct NowPlayingBackgroundStyle {
+    pub mode: BackdropLayerMode,
+    pub color: ClearColor,
+    pub blur_radius: u8,
+    pub radius: i32,
+    pub padding_x: i32,
+    pub padding_y: i32,
+    pub border_color: Option<ClearColor>,
+    pub border_width: i32,
 }
 
 pub(super) fn draw_centered_block(
@@ -338,6 +352,14 @@ pub(super) fn draw_now_playing_widget(buffer: &mut SoftwareBuffer, widget: NowPl
     let text_x = content_x + artwork_width + content_gap;
     let text_y = origin_y + (widget_height - text_height) / 2;
 
+    if let Some(background) = widget.background {
+        draw_now_playing_background(
+            buffer,
+            Rect::new(content_x, origin_y, content_width, widget_height),
+            background,
+        );
+    }
+
     if let Some(artwork) = widget.artwork {
         artwork.draw(
             buffer,
@@ -358,6 +380,35 @@ pub(super) fn draw_now_playing_widget(buffer: &mut SoftwareBuffer, widget: NowPl
     } else {
         widget.title.draw(buffer, text_x, text_y);
     }
+}
+
+fn draw_now_playing_background(
+    buffer: &mut SoftwareBuffer,
+    content_rect: Rect,
+    background: NowPlayingBackgroundStyle,
+) {
+    let padding_x = background.padding_x.max(0);
+    let padding_y = background.padding_y.max(0);
+    let rect = Rect::new(
+        content_rect.x - padding_x,
+        content_rect.y - padding_y,
+        content_rect.width + padding_x * 2,
+        content_rect.height + padding_y * 2,
+    );
+
+    draw_backdrop_layer(
+        buffer,
+        rect,
+        BackdropLayerStyle::new(
+            background.mode,
+            BackdropLayerShape::Panel,
+            background.color,
+            background.blur_radius,
+            background.radius,
+            background.border_color,
+            background.border_width,
+        ),
+    );
 }
 
 fn align_weather_line_x(

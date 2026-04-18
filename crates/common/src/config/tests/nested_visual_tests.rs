@@ -253,6 +253,35 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
     assert_eq!(config.visuals.now_playing_bottom_padding(), Some(56));
     assert_eq!(config.visuals.now_playing_right_offset(), Some(-6));
     assert_eq!(config.visuals.now_playing_bottom_offset(), Some(10));
+    assert!(config.visuals.now_playing_background_enabled());
+    assert_eq!(
+        config.visuals.now_playing_background_mode(),
+        LayerMode::Blur
+    );
+    assert_eq!(
+        config.visuals.now_playing_background_color(),
+        Some(RgbColor::rgb(0, 0, 0))
+    );
+    assert_eq!(config.visuals.now_playing_background_opacity(), Some(24));
+    assert_eq!(
+        config.visuals.now_playing_background_blur_radius(),
+        Some(12)
+    );
+    assert_eq!(config.visuals.now_playing_background_radius(), Some(18));
+    assert_eq!(config.visuals.now_playing_background_padding_x(), Some(20));
+    assert_eq!(config.visuals.now_playing_background_padding_y(), Some(14));
+    assert_eq!(
+        config.visuals.now_playing_background_border_color(),
+        Some(RgbColor::rgb(255, 255, 255))
+    );
+    assert_eq!(
+        config.visuals.now_playing_background_border_opacity(),
+        Some(10)
+    );
+    assert_eq!(
+        config.visuals.now_playing_background_border_width(),
+        Some(1)
+    );
     assert_eq!(
         config.visuals.foreground_color(),
         RgbColor::rgba(255, 255, 255, 26)

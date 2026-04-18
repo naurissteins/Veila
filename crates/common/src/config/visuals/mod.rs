@@ -23,7 +23,7 @@ pub use layer::{
     LayerVisualConfig, LayerWidth, LayerWidthKeyword,
 };
 pub use layout::{CenterStackOrder, CenterStackStyle, LayoutVisualConfig, PaletteVisualConfig};
-pub use now_playing::NowPlayingVisualConfig;
+pub use now_playing::{NowPlayingBackgroundConfig, NowPlayingVisualConfig};
 pub use weather::{WeatherAlignment, WeatherVisualConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

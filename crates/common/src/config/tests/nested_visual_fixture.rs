@@ -183,6 +183,19 @@ border_color = "#DDDDDD"
             right_offset = -6
             bottom_offset = 10
 
+            [visuals.now_playing.background]
+            enabled = true
+            mode = "blur"
+            color = "#000000"
+            opacity = 24
+            blur_radius = 12
+            radius = 18
+            padding_x = 20
+            padding_y = 14
+            border_color = "#FFFFFF"
+            border_opacity = 10
+            border_width = 1
+
             [visuals.layout]
             header_top_offset = -12
             auth_stack_offset = 0

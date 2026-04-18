@@ -34,8 +34,9 @@ pub use visuals::{
     EyeVisualConfig, FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry,
     KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle,
     LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayerWidthKeyword, LayoutVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig,
-    UsernameVisualConfig, VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, VisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

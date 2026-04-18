@@ -19,13 +19,11 @@ enabled = false
 
 [visuals.clock]
 format = "24h"
-#style = "stacked"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Mail Ray Stuff"
 font_weight = 400
-#font_style = "italic"
 color = "#ffffff"
 opacity = 40
 size = 24

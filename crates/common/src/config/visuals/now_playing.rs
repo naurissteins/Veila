@@ -1,6 +1,50 @@
 use serde::{Deserialize, Serialize};
 
-use super::{RgbColor, input::FontStyle};
+use super::{RgbColor, input::FontStyle, layer::LayerMode};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct NowPlayingBackgroundConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub mode: Option<LayerMode>,
+    #[serde(default)]
+    pub color: Option<RgbColor>,
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub blur_radius: Option<u8>,
+    #[serde(default)]
+    pub radius: Option<u16>,
+    #[serde(default)]
+    pub padding_x: Option<u16>,
+    #[serde(default)]
+    pub padding_y: Option<u16>,
+    #[serde(default)]
+    pub border_color: Option<RgbColor>,
+    #[serde(default)]
+    pub border_opacity: Option<u8>,
+    #[serde(default)]
+    pub border_width: Option<u16>,
+}
+
+impl Default for NowPlayingBackgroundConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Some(false),
+            mode: Some(LayerMode::Solid),
+            color: Some(RgbColor::rgb(0, 0, 0)),
+            opacity: Some(24),
+            blur_radius: Some(12),
+            radius: Some(18),
+            padding_x: Some(18),
+            padding_y: Some(12),
+            border_color: Some(RgbColor::rgb(255, 255, 255)),
+            border_opacity: Some(0),
+            border_width: Some(0),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NowPlayingVisualConfig {
@@ -54,6 +98,8 @@ pub struct NowPlayingVisualConfig {
     pub right_offset: Option<i16>,
     #[serde(default)]
     pub bottom_offset: Option<i16>,
+    #[serde(default)]
+    pub background: Option<NowPlayingBackgroundConfig>,
 }
 
 impl Default for NowPlayingVisualConfig {
@@ -84,6 +130,7 @@ impl Default for NowPlayingVisualConfig {
             bottom_padding: Some(56),
             right_offset: Some(0),
             bottom_offset: Some(0),
+            background: Some(NowPlayingBackgroundConfig::default()),
         }
     }
 }
@@ -241,5 +288,93 @@ impl super::VisualConfig {
         self.now_playing
             .as_ref()
             .and_then(|now_playing| now_playing.bottom_offset)
+    }
+
+    pub fn now_playing_background_enabled(&self) -> bool {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.enabled)
+            .unwrap_or(false)
+    }
+
+    pub fn now_playing_background_mode(&self) -> LayerMode {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.mode)
+            .unwrap_or(LayerMode::Solid)
+    }
+
+    pub fn now_playing_background_color(&self) -> Option<RgbColor> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.color)
+            .or(Some(RgbColor::rgb(0, 0, 0)))
+    }
+
+    pub fn now_playing_background_opacity(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.opacity)
+            .or(Some(24))
+    }
+
+    pub fn now_playing_background_blur_radius(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.blur_radius)
+            .or(Some(12))
+    }
+
+    pub fn now_playing_background_radius(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.radius)
+            .or(Some(18))
+    }
+
+    pub fn now_playing_background_padding_x(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.padding_x)
+            .or(Some(18))
+    }
+
+    pub fn now_playing_background_padding_y(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.padding_y)
+            .or(Some(12))
+    }
+
+    pub fn now_playing_background_border_color(&self) -> Option<RgbColor> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.border_color)
+            .or(Some(RgbColor::rgb(255, 255, 255)))
+    }
+
+    pub fn now_playing_background_border_opacity(&self) -> Option<u8> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.border_opacity)
+            .or(Some(0))
+    }
+
+    pub fn now_playing_background_border_width(&self) -> Option<u16> {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.background.as_ref())
+            .and_then(|background| background.border_width)
+            .or(Some(0))
     }
 }

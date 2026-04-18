@@ -104,8 +104,8 @@ color = "#000000"
 opacity = 80
 
 [visuals.weather]
-temperature_color = "#ffffff"
-location_color = "#D6E3FF"
+temperature_color = "#000000"
+location_color = "#000000"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -125,8 +125,8 @@ alignment = "left"
 enabled = false
 content_gap = 18
 fade_duration_ms = 320
-title_color = "#A6AECD"
-artist_color = "#ffffff"
+title_color = "#000000"
+artist_color = "rgba(0, 0, 0, 0.7)"
 title_size = 2
 artist_size = 2
 artwork_size = 44

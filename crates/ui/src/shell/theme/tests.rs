@@ -3,9 +3,9 @@ use veila_common::{
     ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,
     LayerAlignment, LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig,
-    LayerWidth, LayoutVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
-    WeatherVisualConfig,
+    LayerWidth, LayoutVisualConfig, NowPlayingBackgroundConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -196,6 +196,19 @@ fn input_opacity_overrides_embedded_alpha() {
         bottom_padding: Some(56),
         right_offset: Some(-6),
         bottom_offset: Some(10),
+        background: Some(NowPlayingBackgroundConfig {
+            enabled: Some(true),
+            mode: Some(LayerMode::Blur),
+            color: Some(ConfigColor::rgb(0, 0, 0)),
+            opacity: Some(24),
+            blur_radius: Some(12),
+            radius: Some(18),
+            padding_x: Some(20),
+            padding_y: Some(14),
+            border_color: Some(ConfigColor::rgb(255, 255, 255)),
+            border_opacity: Some(10),
+            border_width: Some(1),
+        }),
     });
     config.visuals.status = Some(StatusVisualConfig {
         enabled: Some(true),
@@ -416,6 +429,21 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.now_playing_bottom_padding, Some(56));
     assert_eq!(theme.now_playing_right_offset, Some(-6));
     assert_eq!(theme.now_playing_bottom_offset, Some(10));
+    assert!(theme.now_playing_background_enabled);
+    assert_eq!(theme.now_playing_background_mode, LayerMode::Blur);
+    assert_eq!(
+        theme.now_playing_background_color,
+        ClearColor::rgba(0, 0, 0, 61)
+    );
+    assert_eq!(theme.now_playing_background_blur_radius, Some(12));
+    assert_eq!(theme.now_playing_background_radius, Some(18));
+    assert_eq!(theme.now_playing_background_padding_x, Some(20));
+    assert_eq!(theme.now_playing_background_padding_y, Some(14));
+    assert_eq!(
+        theme.now_playing_background_border_color,
+        Some(ClearColor::rgba(255, 255, 255, 26))
+    );
+    assert_eq!(theme.now_playing_background_border_width, Some(1));
     assert_eq!(theme.status_color, Some(ClearColor::opaque(255, 224, 160)));
     assert_eq!(theme.status_opacity, Some(88));
     assert_eq!(
