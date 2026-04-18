@@ -1,4 +1,5 @@
 # Wallpaper: https://www.vecteezy.com/vector-art/39886274-sunset-beach-wallpaper-background-illustration
+# Font: https://www.1001fonts.com/mail-ray-stuff-font.html
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
@@ -18,28 +19,29 @@ enabled = false
 
 [visuals.clock]
 format = "24h"
-style = "stacked"
+#style = "stacked"
 meridiem_size = 3
 meridiem_offset_x = 6
 meridiem_offset_y = 7
-font_family = "Nunito"
-font_weight = 800
-font_style = "italic"
+font_family = "Mail Ray Stuff"
+font_weight = 400
+#font_style = "italic"
 color = "#ffffff"
 opacity = 40
 size = 24
 gap = 20
 
 [visuals.date]
-font_family = "Google Sans Flex"
+font_family = "Mail Ray Stuff"
 font_weight = 400
-color = "#C8D8F2"
-opacity = 72
+color = "#ffffff"
+opacity = 40
+size = 7
 
 [visuals.input]
 alignment = "bottom-center"
 background_color = "#FFFFFF"
-background_opacity = 8
+background_opacity = 2
 border_color = "#FFFFFF"
 border_width = 3
 border_opacity = 8
