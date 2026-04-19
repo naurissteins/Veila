@@ -94,8 +94,20 @@ pub(crate) async fn wait_for_curtain_exit(curtain: &mut Option<Child>) -> Result
 
 pub(crate) async fn update_locked_hint(session_proxy: &logind::SessionProxy<'_>, locked: bool) {
     if let Err(error) = session_proxy.set_locked_hint(locked).await {
-        tracing::warn!(locked, "failed to update logind LockedHint: {error}");
+        if is_locked_hint_not_supported(&error) {
+            tracing::debug!(locked, "logind LockedHint is not supported: {error}");
+        } else {
+            tracing::warn!(locked, "failed to update logind LockedHint: {error}");
+        }
     }
+}
+
+fn is_locked_hint_not_supported(error: &zbus::Error) -> bool {
+    matches!(
+        error,
+        zbus::Error::MethodError(name, _, _)
+            if name.as_str() == "org.freedesktop.DBus.Error.NotSupported"
+    )
 }
 
 pub(crate) async fn accept_auth_connection(
