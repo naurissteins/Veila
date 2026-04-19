@@ -4,7 +4,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use veila_common::{LoadedConfig, active_theme_source_path, default_config_path};
+use veila_common::{
+    LoadedConfig, active_include_source_paths, active_theme_source_path, default_config_path,
+};
 
 const MIN_AUTO_RELOAD_DEBOUNCE_MS: u64 = 250;
 const MAX_AUTO_RELOAD_DEBOUNCE_MS: u64 = 5_000;
@@ -12,6 +14,7 @@ const MAX_AUTO_RELOAD_DEBOUNCE_MS: u64 = 5_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AutoReloadTrigger {
     Config,
+    Include,
     Theme,
     Wallpaper,
 }
@@ -48,6 +51,7 @@ pub(super) struct AutoReloadWatcher {
     wallpaper_stamp: Option<FileStamp>,
     theme_path: Option<PathBuf>,
     theme_stamp: Option<FileStamp>,
+    include_files: Vec<WatchedFile>,
     pending: Option<AutoReloadTrigger>,
     debounce_until: Option<std::time::Instant>,
 }
@@ -61,6 +65,7 @@ impl AutoReloadWatcher {
             wallpaper_stamp: None,
             theme_path: None,
             theme_stamp: None,
+            include_files: Vec::new(),
             pending: None,
             debounce_until: None,
         };
@@ -101,6 +106,16 @@ impl AutoReloadWatcher {
             if self.theme_stamp != Some(stamp) {
                 self.theme_stamp = Some(stamp);
                 changed = Some(AutoReloadTrigger::Theme);
+            }
+        }
+
+        if loaded_config.config.lock.auto_reload_config {
+            for include_file in &mut self.include_files {
+                let stamp = FileStamp::read(&include_file.path);
+                if include_file.stamp != stamp {
+                    include_file.stamp = stamp;
+                    changed = Some(AutoReloadTrigger::Include);
+                }
             }
         }
 
@@ -148,6 +163,10 @@ impl AutoReloadWatcher {
             &mut self.theme_stamp,
             next_theme_path.as_deref(),
         );
+
+        let next_include_paths =
+            active_include_source_paths(next_config_path.as_deref()).unwrap_or_default();
+        sync_paths(&mut self.include_files, next_include_paths);
     }
 }
 
@@ -171,6 +190,31 @@ fn sync_path(
 
     *current_path = next.clone();
     *current_stamp = next.as_deref().map(FileStamp::read);
+}
+
+fn sync_paths(current_files: &mut Vec<WatchedFile>, next_paths: Vec<PathBuf>) {
+    if current_files.len() == next_paths.len()
+        && current_files
+            .iter()
+            .map(|file| file.path.as_path())
+            .eq(next_paths.iter().map(PathBuf::as_path))
+    {
+        return;
+    }
+
+    *current_files = next_paths
+        .into_iter()
+        .map(|path| {
+            let stamp = FileStamp::read(&path);
+            WatchedFile { path, stamp }
+        })
+        .collect();
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WatchedFile {
+    path: PathBuf,
+    stamp: FileStamp,
 }
 
 #[cfg(test)]
@@ -270,6 +314,42 @@ mod tests {
 
         let _ = fs::remove_file(theme_path);
         let _ = fs::remove_dir(themes_dir);
+        let _ = fs::remove_file(config_path);
+        let _ = fs::remove_dir(root);
+    }
+
+    #[test]
+    fn triggers_on_include_change_after_debounce() {
+        let unique = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("veila-auto-reload-include-{unique}"));
+        fs::create_dir_all(&root).expect("dir");
+        let config_path = root.join("config.toml");
+        let include_path = root.join("matugen.toml");
+        fs::write(&include_path, b"[visuals.clock]\nsize = 14\n").expect("include");
+        fs::write(
+            &config_path,
+            b"include = [\"matugen.toml\"]\n\n[lock]\nauto_reload_config = true\n",
+        )
+        .expect("config");
+
+        let loaded = veila_common::LoadedConfig {
+            path: Some(config_path.clone()),
+            config: AppConfig::load_from_file(&config_path).expect("load"),
+        };
+        let mut watcher = AutoReloadWatcher::new(Some(&config_path), &loaded);
+
+        fs::write(&include_path, b"[visuals.clock]\nsize = 15\n").expect("include");
+        assert_eq!(watcher.poll(Some(&config_path), &loaded), None);
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert_eq!(
+            watcher.poll(Some(&config_path), &loaded),
+            Some(AutoReloadTrigger::Include)
+        );
+
+        let _ = fs::remove_file(include_path);
         let _ = fs::remove_file(config_path);
         let _ = fs::remove_dir(root);
     }

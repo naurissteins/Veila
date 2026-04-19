@@ -251,3 +251,89 @@ fn loads_config_from_file() {
     fs::remove_file(path).ok();
     fs::remove_dir(dir).ok();
 }
+
+#[test]
+fn loads_include_files_before_main_config_overrides() {
+    let dir = std::env::temp_dir().join(format!("veila-include-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let include_path = dir.join("matugen.toml");
+    let config_path = dir.join("config.toml");
+
+    fs::write(
+        &include_path,
+        r##"
+            theme = "ignored"
+            include = "ignored.toml"
+
+            [visuals.palette]
+            foreground = "#F1E8D9"
+            muted = "#B8AFA3"
+            panel = "#17130F"
+
+            [visuals.clock]
+            color = "#F1E8D9"
+            size = 42
+
+            [visuals.input]
+            background_color = "#17130F"
+            border_color = "#D69F72"
+        "##,
+    )
+    .expect("include file");
+    fs::write(
+        &config_path,
+        r##"
+            include = ["matugen.toml", "missing.toml"]
+
+            [visuals.clock]
+            size = 52
+        "##,
+    )
+    .expect("config file");
+
+    let loaded = AppConfig::load(Some(&config_path)).expect("config should load");
+
+    assert_eq!(
+        loaded.config.visuals.foreground_color(),
+        RgbColor::rgb(241, 232, 217)
+    );
+    assert_eq!(
+        loaded.config.visuals.clock_color(),
+        Some(RgbColor::rgb(241, 232, 217))
+    );
+    assert_eq!(loaded.config.visuals.clock_size(), Some(52));
+    assert_eq!(
+        loaded.config.visuals.input_background_color(),
+        RgbColor::rgb(23, 19, 15)
+    );
+    assert_eq!(
+        loaded.config.visuals.input_border_color(),
+        RgbColor::rgb(214, 159, 114)
+    );
+
+    let include_paths =
+        active_include_source_paths(Some(&config_path)).expect("include paths should resolve");
+    assert_eq!(include_paths, vec![include_path, dir.join("missing.toml")]);
+
+    fs::remove_file(config_path).ok();
+    fs::remove_file(dir.join("matugen.toml")).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn existing_invalid_include_file_fails_config_load() {
+    let dir = std::env::temp_dir().join(format!("veila-invalid-include-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let include_path = dir.join("broken.toml");
+    let config_path = dir.join("config.toml");
+
+    fs::write(&include_path, b"[visuals.clock\nsize = 42\n").expect("include file");
+    fs::write(&config_path, b"include = [\"broken.toml\"]\n").expect("config file");
+
+    let error = AppConfig::load(Some(&config_path)).expect_err("config should fail");
+    assert!(matches!(error, VeilaError::Config(_)));
+
+    fs::remove_file(config_path).ok();
+    fs::remove_file(include_path).ok();
+    fs::remove_dir(dir).ok();
+}

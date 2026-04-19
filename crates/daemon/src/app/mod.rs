@@ -253,7 +253,12 @@ pub async fn run(
                             }
                         }
                     }
-                    Some(AutoReloadTrigger::Theme) => {
+                    Some(trigger @ (AutoReloadTrigger::Theme | AutoReloadTrigger::Include)) => {
+                        let (source, file_kind) = match trigger {
+                            AutoReloadTrigger::Theme => ("theme-change", "theme"),
+                            AutoReloadTrigger::Include => ("include-change", "include"),
+                            _ => unreachable!(),
+                        };
                         match AppConfig::load(options.config_path.as_deref()) {
                             Ok(new_loaded_config) => {
                                 let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
@@ -268,7 +273,7 @@ pub async fn run(
                                     new_loaded_config,
                                     last_reload_result,
                                     last_reload_unix_ms,
-                                    "theme-change",
+                                    source,
                                     Some(debounce_ms),
                                     auth_policy,
                                     slots.auth_state,
@@ -279,7 +284,7 @@ pub async fn run(
                                     Ok(_) => {}
                                     Err(reason) => {
                                         *last_reload_result =
-                                            Some(format!("error:theme-change:{reason}"));
+                                            Some(format!("error:{source}:{reason}"));
                                         *last_reload_unix_ms = std::time::SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
                                             .ok()
@@ -290,13 +295,15 @@ pub async fn run(
                             }
                             Err(error) => {
                                 runtime.last_reload_result = Some(format!(
-                                    "error:theme-change:failed to auto reload daemon config after theme file change: {error:#}"
+                                    "error:{source}:failed to auto reload daemon config after {file_kind} file change: {error:#}"
                                 ));
                                 runtime.last_reload_unix_ms = std::time::SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .ok()
                                     .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                tracing::warn!("failed to auto reload daemon config after theme file change: {error:#}");
+                                tracing::warn!(
+                                    "failed to auto reload daemon config after {file_kind} file change: {error:#}"
+                                );
                             }
                         }
                     }

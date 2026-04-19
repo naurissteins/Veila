@@ -2,6 +2,7 @@ mod assets;
 mod background;
 mod battery;
 mod color;
+mod include;
 mod lock;
 mod now_playing;
 #[cfg(test)]
@@ -107,15 +108,14 @@ impl AppConfig {
 
     fn from_default_layers() -> Result<Self> {
         let mut config_value = default_config_value()?;
-        if let Some(table) = config_value.as_table_mut() {
-            table.remove("theme");
-        }
+        remove_config_metadata(&mut config_value);
         deserialize_toml_value(config_value)
     }
 
     fn from_toml_str_with_theme_support(input: &str, config_dir: Option<&Path>) -> Result<Self> {
-        let user_value = parse_toml_value(input)?;
+        let mut user_value = parse_toml_value(input)?;
         let theme_name = extract_theme_name(&user_value)?;
+        let include_paths = include::extract_paths(&user_value, config_dir)?;
         let mut config_value = default_config_value()?;
 
         if let Some(theme_name) = theme_name {
@@ -123,11 +123,16 @@ impl AppConfig {
             merge_config_layer(&mut config_value, preset_value);
         }
 
+        for include_path in include_paths {
+            if let Some(include_value) = include::load_value(&include_path)? {
+                merge_config_layer(&mut config_value, include_value);
+            }
+        }
+
+        remove_config_metadata(&mut user_value);
         merge_config_layer(&mut config_value, user_value);
 
-        if let Some(table) = config_value.as_table_mut() {
-            table.remove("theme");
-        }
+        remove_config_metadata(&mut config_value);
 
         deserialize_toml_value(config_value)
     }
@@ -300,6 +305,24 @@ fn default_path() -> Option<PathBuf> {
     Some(config_root.join("veila").join("config.toml"))
 }
 
+pub fn active_include_source_paths(explicit_config_path: Option<&Path>) -> Result<Vec<PathBuf>> {
+    let path = match explicit_config_path {
+        Some(path) => path.to_path_buf(),
+        None => match default_path() {
+            Some(path) => path,
+            None => return Ok(Vec::new()),
+        },
+    };
+
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let raw = fs::read_to_string(&path)?;
+    let value = parse_toml_value(&raw)?;
+    include::extract_paths(&value, path.parent())
+}
+
 fn config_dir_for_theme_lookup(explicit_config_path: Option<&Path>) -> Option<PathBuf> {
     explicit_config_path
         .and_then(Path::parent)
@@ -397,6 +420,14 @@ fn resolve_bundled_theme_path(theme: &str) -> Result<PathBuf> {
 fn merge_config_layer(base: &mut Value, override_value: Value) {
     apply_legacy_visual_override_precedence(base, &override_value);
     merge_toml_values(base, override_value);
+}
+
+pub(super) fn remove_config_metadata(value: &mut Value) {
+    let Some(table) = value.as_table_mut() else {
+        return;
+    };
+    table.remove("theme");
+    table.remove("include");
 }
 
 fn apply_legacy_visual_override_precedence(base: &mut Value, override_value: &Value) {
