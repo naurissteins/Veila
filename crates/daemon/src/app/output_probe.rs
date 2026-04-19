@@ -9,7 +9,7 @@ use smithay_client_toolkit::{
 };
 use veila_renderer::FrameSize;
 
-pub(super) fn current_output_sizes() -> Result<Vec<FrameSize>> {
+pub(super) fn current_outputs() -> Result<Vec<ProbedOutput>> {
     let connection =
         Connection::connect_to_env().context("failed to connect to Wayland for output probe")?;
     let (globals, mut event_queue) = registry_queue_init(&connection)
@@ -27,16 +27,25 @@ pub(super) fn current_output_sizes() -> Result<Vec<FrameSize>> {
         .roundtrip(&mut probe)
         .context("failed to complete output probe metadata roundtrip")?;
 
-    let mut sizes = Vec::new();
+    let mut outputs = Vec::new();
     for output in probe.output_state.outputs() {
         if let Some(info) = probe.output_state.info(&output)
             && let Some(size) = logical_size(&info)
         {
-            sizes.push(size);
+            outputs.push(ProbedOutput {
+                name: info.name.clone(),
+                size,
+            });
         }
     }
 
-    Ok(sizes)
+    Ok(outputs)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ProbedOutput {
+    pub(super) name: Option<String>,
+    pub(super) size: FrameSize,
 }
 
 struct OutputProbe {

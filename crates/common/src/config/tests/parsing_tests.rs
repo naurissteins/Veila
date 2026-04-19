@@ -211,6 +211,53 @@ fn infers_file_mode_from_legacy_background_path() {
 }
 
 #[test]
+fn parses_per_output_background_overrides_with_default_fallback() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [background]
+            mode = "file"
+            path = "/tmp/default.jpg"
+
+            [[background.outputs]]
+            name = "DP-1"
+            path = "/tmp/left.jpg"
+
+            [[background.outputs]]
+            name = "HDMI-A-1"
+            path = "/tmp/right.jpg"
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.outputs.len(), 2);
+    assert_eq!(
+        config
+            .background
+            .resolved_path_for_output(Some("DP-1"))
+            .as_deref(),
+        Some(std::path::Path::new("/tmp/left.jpg"))
+    );
+    assert_eq!(
+        config
+            .background
+            .resolved_path_for_output(Some("HDMI-A-1"))
+            .as_deref(),
+        Some(std::path::Path::new("/tmp/right.jpg"))
+    );
+    assert_eq!(
+        config
+            .background
+            .resolved_path_for_output(Some("eDP-1"))
+            .as_deref(),
+        Some(std::path::Path::new("/tmp/default.jpg"))
+    );
+    assert_eq!(
+        config.background.resolved_path_for_output(None).as_deref(),
+        Some(std::path::Path::new("/tmp/default.jpg"))
+    );
+}
+
+#[test]
 fn solid_mode_disables_background_image_resolution() {
     let config = AppConfig::from_toml_str(
         r#"

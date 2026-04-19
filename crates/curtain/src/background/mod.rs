@@ -13,6 +13,7 @@ impl CurtainApp {
         while let Ok(event) = self.background_events.try_recv() {
             match event {
                 BackgroundEvent::BuffersReady {
+                    path,
                     buffers,
                     elapsed_ms,
                     cache_hit,
@@ -23,23 +24,45 @@ impl CurtainApp {
                         cache_hit,
                         "loaded deferred curtain background image"
                     );
-                    for surface in &mut self.lock_surfaces {
+                    for index in 0..self.lock_surfaces.len() {
+                        if self
+                            .background_path_for_surface(index)
+                            .is_none_or(|selected_path| selected_path != path.as_path())
+                        {
+                            continue;
+                        }
+
+                        let surface = &mut self.lock_surfaces[index];
                         let Some((width, height)) = surface.size else {
                             surface.background = None;
                             continue;
                         };
 
                         let size = FrameSize::new(width, height);
-                        surface.background = buffers
+                        let Some(buffer) = buffers
                             .iter()
                             .find(|(candidate, _)| *candidate == size)
-                            .map(|(_, buffer)| buffer.clone());
+                            .map(|(_, buffer)| buffer.clone())
+                        else {
+                            continue;
+                        };
+
+                        surface.background = Some(buffer);
+                        surface.background_path = Some(path.clone());
+                        surface.scene_base = None;
+                        surface.scene_base_revision = 0;
                     }
                     self.render_all_surfaces(queue_handle);
                 }
-                BackgroundEvent::AssetReady { asset, elapsed_ms } => {
+                BackgroundEvent::AssetReady {
+                    path,
+                    asset,
+                    elapsed_ms,
+                } => {
                     tracing::debug!(elapsed_ms, "loaded deferred curtain background asset");
-                    self.background_asset = asset;
+                    if self.background_path.as_deref() == Some(path.as_path()) {
+                        self.background_asset = asset;
+                    }
                 }
                 BackgroundEvent::Failed { error, elapsed_ms } => {
                     tracing::warn!(
@@ -56,32 +79,57 @@ impl CurtainApp {
             return;
         }
 
-        let Some(path) = self.background_path.clone() else {
+        let Some(specs) = self.background_render_specs() else {
             return;
         };
 
-        let Some(sizes) = self.background_sizes() else {
+        if specs.is_empty() {
             return;
-        };
-
-        self.background_render_started = true;
-        spawn_loader(
-            path,
-            self.background_color,
-            self.background_treatment,
-            sizes,
-            self.background_sender.clone(),
-        );
-    }
-
-    fn background_sizes(&self) -> Option<Vec<FrameSize>> {
-        let mut sizes = Vec::with_capacity(self.lock_surfaces.len());
-
-        for surface in &self.lock_surfaces {
-            let (width, height) = surface.size?;
-            sizes.push(FrameSize::new(width, height));
         }
 
-        Some(sizes)
+        self.background_render_started = true;
+        for spec in specs {
+            spawn_loader(
+                spec.path,
+                self.background_color,
+                self.background_treatment,
+                spec.sizes,
+                self.background_sender.clone(),
+            );
+        }
     }
+
+    fn background_render_specs(&self) -> Option<Vec<BackgroundRenderSpec>> {
+        let mut specs: Vec<BackgroundRenderSpec> = Vec::new();
+
+        for (index, surface) in self.lock_surfaces.iter().enumerate() {
+            let Some(path) = self
+                .background_path_for_surface(index)
+                .map(ToOwned::to_owned)
+            else {
+                continue;
+            };
+            let (width, height) = surface.size?;
+            let size = FrameSize::new(width, height);
+
+            if let Some(spec) = specs.iter_mut().find(|spec| spec.path == path) {
+                if !spec.sizes.contains(&size) {
+                    spec.sizes.push(size);
+                }
+                continue;
+            }
+
+            specs.push(BackgroundRenderSpec {
+                path,
+                sizes: vec![size],
+            });
+        }
+
+        Some(specs)
+    }
+}
+
+struct BackgroundRenderSpec {
+    path: std::path::PathBuf,
+    sizes: Vec<FrameSize>,
 }

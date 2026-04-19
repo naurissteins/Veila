@@ -13,11 +13,13 @@ use veila_renderer::{
 #[derive(Debug, Clone)]
 pub(crate) enum BackgroundEvent {
     BuffersReady {
+        path: PathBuf,
         buffers: Vec<(FrameSize, SoftwareBuffer)>,
         elapsed_ms: u128,
         cache_hit: bool,
     },
     AssetReady {
+        path: PathBuf,
         asset: BackgroundAsset,
         elapsed_ms: u128,
     },
@@ -42,6 +44,7 @@ pub(crate) fn spawn_loader(
 
         if !cached_buffers.is_empty() {
             let _ = sender.send(BackgroundEvent::BuffersReady {
+                path: path.clone(),
                 buffers: cached_buffers,
                 elapsed_ms: cached_started_at.elapsed().as_millis(),
                 cache_hit: true,
@@ -53,6 +56,7 @@ pub(crate) fn spawn_loader(
             Ok((asset, rendered_buffers)) => {
                 let asset_elapsed_ms = render_started_at.elapsed().as_millis();
                 let _ = sender.send(BackgroundEvent::AssetReady {
+                    path: path.clone(),
                     asset,
                     elapsed_ms: asset_elapsed_ms,
                 });
@@ -61,6 +65,7 @@ pub(crate) fn spawn_loader(
                 }
 
                 let _ = sender.send(BackgroundEvent::BuffersReady {
+                    path: path.clone(),
                     buffers: rendered_buffers.clone(),
                     elapsed_ms: asset_elapsed_ms,
                     cache_hit: false,

@@ -9,17 +9,21 @@ use crate::state::CurtainApp;
 impl CurtainApp {
     pub(super) fn prepare_background(&mut self, index: usize, size: (u32, u32)) -> Result<bool> {
         let frame_size = FrameSize::new(size.0, size.1);
+        let selected_path = self
+            .background_path_for_surface(index)
+            .map(ToOwned::to_owned);
         let needs_refresh = self.lock_surfaces[index]
             .background
             .as_ref()
             .map(|buffer| buffer.size() != frame_size)
             .unwrap_or(true);
+        let source_changed = self.lock_surfaces[index].background_path != selected_path;
 
-        if !needs_refresh {
+        if !needs_refresh && !source_changed {
             return Ok(false);
         }
 
-        if let Some(path) = self.background_path.as_deref() {
+        if let Some(path) = selected_path.as_deref() {
             match load_cached_render(path, frame_size, self.background_treatment) {
                 Ok(Some(buffer)) => {
                     tracing::debug!(
@@ -29,6 +33,7 @@ impl CurtainApp {
                         "using cached rendered background for initial lock frame"
                     );
                     self.lock_surfaces[index].background = Some(buffer);
+                    self.lock_surfaces[index].background_path = selected_path;
                     return Ok(true);
                 }
                 Ok(None) => {}
@@ -48,6 +53,7 @@ impl CurtainApp {
                 .render(frame_size)
                 .map_err(|error| anyhow!("failed to render background asset: {error}"))?,
         );
+        self.lock_surfaces[index].background_path = selected_path;
 
         Ok(true)
     }
@@ -123,12 +129,16 @@ impl CurtainApp {
         frame_size: FrameSize,
         revision: u64,
     ) -> Result<Option<bool>> {
+        let selected_path = self
+            .background_path_for_surface(index)
+            .map(ToOwned::to_owned);
         let needs_refresh = self.lock_surfaces[index]
             .scene_base
             .as_ref()
             .map(|buffer| buffer.size() != frame_size)
             .unwrap_or(true)
-            || self.lock_surfaces[index].scene_base_revision != revision;
+            || self.lock_surfaces[index].scene_base_revision != revision
+            || self.lock_surfaces[index].background_path != selected_path;
 
         if !needs_refresh {
             return Ok(Some(false));
@@ -141,6 +151,7 @@ impl CurtainApp {
             .find(|(candidate_index, surface)| {
                 *candidate_index != index
                     && surface.scene_base_revision == revision
+                    && surface.background_path == selected_path
                     && surface
                         .scene_base
                         .as_ref()
@@ -150,17 +161,21 @@ impl CurtainApp {
         {
             self.lock_surfaces[index].scene_base = Some(buffer);
             self.lock_surfaces[index].scene_base_revision = revision;
+            self.lock_surfaces[index].background = None;
+            self.lock_surfaces[index].background_path = selected_path;
             return Ok(Some(true));
         }
 
         if let (Some(path), Some(variant)) = (
-            self.background_path.as_deref(),
+            selected_path.as_deref(),
             self.ui_shell.layer_cache_variant(),
         ) && let Ok(Some(buffer)) =
             load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
         {
             self.lock_surfaces[index].scene_base = Some(buffer);
             self.lock_surfaces[index].scene_base_revision = revision;
+            self.lock_surfaces[index].background = None;
+            self.lock_surfaces[index].background_path = selected_path;
             return Ok(Some(true));
         }
 

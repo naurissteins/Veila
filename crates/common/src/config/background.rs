@@ -27,6 +27,8 @@ pub struct BackgroundConfig {
     #[serde(default)]
     pub mode: Option<BackgroundMode>,
     pub path: Option<PathBuf>,
+    #[serde(default)]
+    pub outputs: Vec<BackgroundOutputConfig>,
     #[serde(default = "default_background_color")]
     pub color: RgbColor,
     #[serde(default = "default_background_blur_radius")]
@@ -44,6 +46,7 @@ impl Default for BackgroundConfig {
         Self {
             mode: Some(BackgroundMode::Bundled),
             path: None,
+            outputs: Vec::new(),
             color: default_background_color(),
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
@@ -69,6 +72,19 @@ impl BackgroundConfig {
             BackgroundMode::Solid => None,
         }
     }
+
+    pub fn resolved_path_for_output(&self, output_name: Option<&str>) -> Option<PathBuf> {
+        output_name
+            .and_then(|name| self.outputs.iter().find(|output| output.name == name))
+            .map(|output| output.path.clone())
+            .or_else(|| self.resolved_path())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BackgroundOutputConfig {
+    pub name: String,
+    pub path: PathBuf,
 }
 
 pub fn bundled_background_path() -> PathBuf {

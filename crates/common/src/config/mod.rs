@@ -23,7 +23,7 @@ use assets::bundled_theme_dir;
 
 const DEFAULT_THEME_NAME: &str = "default";
 
-pub use background::{BackgroundConfig, BackgroundMode};
+pub use background::{BackgroundConfig, BackgroundMode, BackgroundOutputConfig};
 pub use battery::BatteryConfig;
 pub use color::ConfigColor;
 pub use lock::LockConfig;

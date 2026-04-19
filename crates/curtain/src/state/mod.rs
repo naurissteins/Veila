@@ -2,7 +2,7 @@ mod interaction;
 mod profiler;
 
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::mpsc::{Receiver, Sender, channel},
     time::{Duration, Instant},
 };
@@ -21,7 +21,9 @@ use smithay_client_toolkit::{
     session_lock::{SessionLock, SessionLockState, SessionLockSurface},
     shm::Shm,
 };
-use veila_common::{AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{
+    AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, config::BackgroundOutputConfig,
+};
 use veila_renderer::{
     ClearColor,
     background::{BackgroundAsset, BackgroundTreatment},
@@ -42,6 +44,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
     pub(crate) surface: SessionLockSurface,
     pub(crate) size: Option<(u32, u32)>,
+    pub(crate) background_path: Option<PathBuf>,
     pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) scene_base: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) scene_base_revision: u64,
@@ -67,6 +70,7 @@ pub(crate) struct CurtainApp {
     control_socket: Option<PathBuf>,
     pub(crate) config_path: Option<PathBuf>,
     pub(crate) background_path: Option<PathBuf>,
+    pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
     pub(crate) background_sender: Sender<BackgroundEvent>,
@@ -149,6 +153,7 @@ impl CurtainApp {
                 .resolved_path()
                 .as_deref()
                 .map(|path| path.display().to_string()),
+            background_output_overrides = config.background.outputs.len(),
             "loaded curtain config"
         );
 
@@ -176,6 +181,7 @@ impl CurtainApp {
             control_socket: options.control_socket,
             config_path: options.config_path,
             background_path: config.background.resolved_path(),
+            background_outputs: config.background.outputs.clone(),
             auth_events,
             auth_sender,
             background_sender,
@@ -255,6 +261,7 @@ impl CurtainApp {
             output,
             surface,
             size: None,
+            background_path: None,
             background: None,
             scene_base: None,
             scene_base_revision: 0,
@@ -262,6 +269,7 @@ impl CurtainApp {
             static_overlay_revision: 0,
             shm_pool: None,
         });
+        self.background_render_started = false;
 
         Ok(())
     }
@@ -324,6 +332,23 @@ impl CurtainApp {
         self.lock_surfaces
             .iter()
             .any(|entry| entry.surface.wl_surface() == surface)
+    }
+
+    pub(crate) fn background_path_for_surface(&self, index: usize) -> Option<&Path> {
+        let output_name = self
+            .output_state
+            .info(&self.lock_surfaces[index].output)
+            .and_then(|info| info.name.clone());
+
+        output_name
+            .as_deref()
+            .and_then(|name| {
+                self.background_outputs
+                    .iter()
+                    .find(|output| output.name == name)
+            })
+            .map(|output| output.path.as_path())
+            .or(self.background_path.as_deref())
     }
 }
 

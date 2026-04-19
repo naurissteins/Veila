@@ -5,7 +5,7 @@ use std::{
 
 use veila_common::{AppConfig, LayerAlignment, LayerMode, LayerStyle, RgbColor};
 use veila_renderer::{
-    ClearColor,
+    ClearColor, FrameSize,
     background::{
         BackgroundAsset, BackgroundTreatment, RenderCacheSummary, SourceCacheStatus,
         load_cached_render_variant, prewarm_rendered, prewarm_source, store_cached_render_variant,
@@ -20,9 +20,7 @@ use veila_renderer::{
 use crate::app::output_probe;
 
 pub(super) fn spawn_background_prewarm(config: &AppConfig) {
-    let Some(path) = config.background.resolved_path() else {
-        return;
-    };
+    let background = config.background.clone();
     let fallback = to_clear_color(config.background.color);
     let treatment = background_treatment(&config.background);
     let layer = layer_prewarm_spec(config);
@@ -30,50 +28,24 @@ pub(super) fn spawn_background_prewarm(config: &AppConfig) {
     tokio::spawn(async move {
         let started_at = Instant::now();
         let join_result = tokio::task::spawn_blocking(move || {
-            prewarm_wallpaper(path, fallback, treatment, layer)
+            prewarm_wallpapers(background, fallback, treatment, layer)
         })
         .await;
 
         match join_result {
-            Ok(Ok(report)) => {
-                tracing::info!(
-                    path = %report.path.display(),
-                    elapsed_ms = report.source_elapsed_ms,
-                    cache_status = match report.source_status {
-                        SourceCacheStatus::Hit => "hit",
-                        SourceCacheStatus::Warmed => "warmed",
-                    },
-                    "background source prewarm finished"
-                );
-
-                if let Some(rendered) = report.rendered {
-                    tracing::info!(
-                        path = %report.path.display(),
-                        elapsed_ms = rendered.elapsed_ms,
-                        probed_outputs = rendered.probed_outputs,
-                        cache_hits = rendered.summary.cache_hits,
-                        warmed_sizes = rendered.summary.warmed_sizes,
-                        "background render prewarm finished"
-                    );
+            Ok(reports) => {
+                for report in reports {
+                    match report {
+                        Ok(report) => log_prewarm_report(report),
+                        Err((path, error)) => {
+                            tracing::warn!(
+                                path = %path.display(),
+                                elapsed_ms = elapsed_ms(started_at),
+                                "background source prewarm failed: {error:#}"
+                            );
+                        }
+                    }
                 }
-
-                if let Some(layered) = report.layered {
-                    tracing::info!(
-                        path = %report.path.display(),
-                        elapsed_ms = layered.elapsed_ms,
-                        probed_outputs = layered.probed_outputs,
-                        cache_hits = layered.cache_hits,
-                        warmed_sizes = layered.warmed_sizes,
-                        "layered background prewarm finished"
-                    );
-                }
-            }
-            Ok(Err((path, error))) => {
-                tracing::warn!(
-                    path = %path.display(),
-                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-                    "background source prewarm failed: {error:#}"
-                );
             }
             Err(error) => {
                 tracing::warn!("background source prewarm task failed: {error:#}");
@@ -82,30 +54,75 @@ pub(super) fn spawn_background_prewarm(config: &AppConfig) {
     });
 }
 
-fn prewarm_wallpaper(
-    path: PathBuf,
+fn log_prewarm_report(report: PrewarmReport) {
+    tracing::info!(
+        path = %report.path.display(),
+        elapsed_ms = report.source_elapsed_ms,
+        cache_status = match report.source_status {
+            SourceCacheStatus::Hit => "hit",
+            SourceCacheStatus::Warmed => "warmed",
+        },
+        "background source prewarm finished"
+    );
+
+    if let Some(rendered) = report.rendered {
+        tracing::info!(
+            path = %report.path.display(),
+            elapsed_ms = rendered.elapsed_ms,
+            probed_outputs = rendered.probed_outputs,
+            cache_hits = rendered.summary.cache_hits,
+            warmed_sizes = rendered.summary.warmed_sizes,
+            "background render prewarm finished"
+        );
+    }
+
+    if let Some(layered) = report.layered {
+        tracing::info!(
+            path = %report.path.display(),
+            elapsed_ms = layered.elapsed_ms,
+            probed_outputs = layered.probed_outputs,
+            cache_hits = layered.cache_hits,
+            warmed_sizes = layered.warmed_sizes,
+            "layered background prewarm finished"
+        );
+    }
+}
+
+fn prewarm_wallpapers(
+    background: veila_common::config::BackgroundConfig,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     layer: Option<LayerPrewarmSpec>,
+) -> Vec<Result<PrewarmReport, (PathBuf, anyhow::Error)>> {
+    let outputs = output_probe::current_outputs().unwrap_or_default();
+    prewarm_jobs(&background, &outputs)
+        .into_iter()
+        .map(|job| prewarm_wallpaper(job, fallback, treatment, layer.as_ref()))
+        .collect()
+}
+
+fn prewarm_wallpaper(
+    job: PrewarmJob,
+    fallback: ClearColor,
+    treatment: BackgroundTreatment,
+    layer: Option<&LayerPrewarmSpec>,
 ) -> Result<PrewarmReport, (PathBuf, anyhow::Error)> {
     let source_started_at = Instant::now();
-    match prewarm_source(&path) {
+    match prewarm_source(&job.path) {
         Ok(status) => {
-            let source_elapsed_ms = source_started_at
-                .elapsed()
-                .as_millis()
-                .min(u128::from(u64::MAX)) as u64;
-            let rendered = prewarm_rendered_backgrounds(&path, fallback, treatment);
-            let layered = prewarm_layered_backgrounds(&path, fallback, treatment, layer.as_ref());
+            let source_elapsed_ms = elapsed_ms(source_started_at);
+            let rendered = prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.sizes);
+            let layered =
+                prewarm_layered_backgrounds(&job.path, fallback, treatment, layer, &job.sizes);
             Ok(PrewarmReport {
-                path,
+                path: job.path,
                 source_status: status,
                 source_elapsed_ms,
                 rendered,
                 layered,
             })
         }
-        Err(error) => Err((path, anyhow::Error::from(error))),
+        Err(error) => Err((job.path, anyhow::Error::from(error))),
     }
 }
 
@@ -113,16 +130,16 @@ fn prewarm_rendered_backgrounds(
     path: &Path,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
+    sizes: &[FrameSize],
 ) -> Option<RenderedPrewarmReport> {
-    let sizes = output_probe::current_output_sizes().ok()?;
     if sizes.is_empty() {
         return None;
     }
 
     let started_at = Instant::now();
-    let summary = prewarm_rendered(path, fallback, treatment, &sizes).ok()?;
+    let summary = prewarm_rendered(path, fallback, treatment, sizes).ok()?;
     Some(RenderedPrewarmReport {
-        elapsed_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        elapsed_ms: elapsed_ms(started_at),
         probed_outputs: sizes.len(),
         summary,
     })
@@ -133,10 +150,10 @@ fn prewarm_layered_backgrounds(
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     layer: Option<&LayerPrewarmSpec>,
+    sizes: &[FrameSize],
 ) -> Option<LayeredPrewarmReport> {
     let layer = layer?;
     let variant = &layer.variant;
-    let sizes = output_probe::current_output_sizes().ok()?;
     if sizes.is_empty() {
         return None;
     }
@@ -145,9 +162,8 @@ fn prewarm_layered_backgrounds(
     let asset = BackgroundAsset::load(Some(path), fallback, treatment).ok()?;
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
-    let probed_outputs = sizes.len();
 
-    for size in sizes {
+    for size in sizes.iter().copied() {
         if load_cached_render_variant(path, size, treatment, variant)
             .ok()
             .flatten()
@@ -164,11 +180,50 @@ fn prewarm_layered_backgrounds(
     }
 
     Some(LayeredPrewarmReport {
-        elapsed_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-        probed_outputs,
+        elapsed_ms: elapsed_ms(started_at),
+        probed_outputs: sizes.len(),
         cache_hits,
         warmed_sizes,
     })
+}
+
+fn prewarm_jobs(
+    background: &veila_common::config::BackgroundConfig,
+    outputs: &[output_probe::ProbedOutput],
+) -> Vec<PrewarmJob> {
+    let mut jobs = Vec::new();
+    let all_sizes: Vec<_> = outputs.iter().map(|output| output.size).collect();
+
+    if let Some(path) = background.resolved_path() {
+        merge_prewarm_job(&mut jobs, path, &all_sizes);
+    }
+
+    for output_config in &background.outputs {
+        let sizes: Vec<_> = outputs
+            .iter()
+            .filter(|output| output.name.as_deref() == Some(output_config.name.as_str()))
+            .map(|output| output.size)
+            .collect();
+        merge_prewarm_job(&mut jobs, output_config.path.clone(), &sizes);
+    }
+
+    jobs
+}
+
+fn merge_prewarm_job(jobs: &mut Vec<PrewarmJob>, path: PathBuf, sizes: &[FrameSize]) {
+    if let Some(job) = jobs.iter_mut().find(|job| job.path == path) {
+        for size in sizes {
+            if !job.sizes.contains(size) {
+                job.sizes.push(*size);
+            }
+        }
+        return;
+    }
+
+    jobs.push(PrewarmJob {
+        path,
+        sizes: sizes.to_vec(),
+    });
 }
 
 fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::SoftwareBuffer) {
@@ -290,11 +345,13 @@ fn background_treatment(config: &veila_common::config::BackgroundConfig) -> Back
     BackgroundTreatment {
         blur_radius: config.blur_radius,
         dim_strength: config.dim_strength,
-        tint: config
-            .tint
-            .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
+        tint: config.tint.map(to_clear_color),
         tint_opacity: config.tint_opacity,
     }
+}
+
+fn elapsed_ms(started_at: Instant) -> u64 {
+    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
 }
 
 struct PrewarmReport {
@@ -303,6 +360,11 @@ struct PrewarmReport {
     source_elapsed_ms: u64,
     rendered: Option<RenderedPrewarmReport>,
     layered: Option<LayeredPrewarmReport>,
+}
+
+struct PrewarmJob {
+    path: PathBuf,
+    sizes: Vec<FrameSize>,
 }
 
 struct RenderedPrewarmReport {

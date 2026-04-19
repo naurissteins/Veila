@@ -36,6 +36,7 @@ impl CurtainApp {
         self.background_asset = background_asset;
         self.background_treatment = background_treatment(&config.background);
         self.background_path = background_path.clone();
+        self.background_outputs = config.background.outputs.clone();
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
         self.ui_shell.apply_theme_with_username_and_weather(
@@ -52,6 +53,7 @@ impl CurtainApp {
         );
         self.background_render_started = false;
         for surface in &mut self.lock_surfaces {
+            surface.background_path = None;
             surface.background = None;
             surface.scene_base = None;
             surface.scene_base_revision = 0;
@@ -69,6 +71,7 @@ impl CurtainApp {
             background_image = background_path
                 .as_deref()
                 .map(|path| path.display().to_string()),
+            background_output_overrides = config.background.outputs.len(),
             "reloaded curtain config"
         );
 
