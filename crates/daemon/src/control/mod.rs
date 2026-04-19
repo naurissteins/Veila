@@ -98,7 +98,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     }
 
     if options.version {
-        print_version_info(&daemon_socket_path).await;
+        print_version_info();
         return Ok(());
     }
 
@@ -138,7 +138,7 @@ Usage:
 
 General:
   -h, --help                 Show this help text
-      --version              Print local and running daemon version info
+      --version              Print the local veilad version
       --config=<path>        Use a specific config file
       --log-file=<path>      Append daemon logs to a file when starting the daemon
       --session-id=<id>      Override the logind session id

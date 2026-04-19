@@ -90,37 +90,9 @@ pub(super) async fn print_running_health(daemon_socket_path: &std::path::Path) -
     Ok(())
 }
 
-pub(super) async fn print_version_info(daemon_socket_path: &std::path::Path) {
+pub(super) fn print_version_info() {
     let local = local_build_info();
-    println!("local_component={}", local.component);
-    println!("local_version={}", local.version);
-    println!("local_build_profile={}", local.build_profile);
-    println!("local_target_os={}", local.target_os);
-    println!("local_target_arch={}", local.target_arch);
-
-    match ipc::send_daemon_control_message(
-        daemon_socket_path,
-        &veila_common::ipc::DaemonControlMessage::Health,
-    )
-    .await
-    {
-        Ok(veila_common::ipc::DaemonControlResponse::Health(daemon)) => {
-            println!("daemon_reachable=true");
-            println!("daemon_component={}", daemon.component);
-            println!("daemon_version={}", daemon.version);
-            println!("daemon_build_profile={}", daemon.build_profile);
-            println!("daemon_target_os={}", daemon.target_os);
-            println!("daemon_target_arch={}", daemon.target_arch);
-        }
-        Ok(_) => {
-            println!("daemon_reachable=false");
-            println!("daemon_error=unexpected-health-response");
-        }
-        Err(error) => {
-            println!("daemon_reachable=false");
-            println!("daemon_error={}", error);
-        }
-    }
+    println!("Veila {}", local.version);
 }
 
 pub(super) async fn reload_running_config(daemon_socket_path: &std::path::Path) -> Result<()> {
