@@ -6,8 +6,8 @@ use anyhow::{Result, bail};
 use crate::{DaemonOptions, adapters::ipc, app};
 
 use daemon::{
-    print_running_health, print_running_status, print_version_info, reload_running_config,
-    stop_running_daemon,
+    lock_running_daemon, print_running_health, print_running_status, print_version_info,
+    reload_running_config, stop_running_daemon,
 };
 use theme::{
     print_available_themes, print_current_theme, print_theme_source, set_theme_and_reload,
@@ -128,22 +128,105 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     }
 }
 
+pub async fn run_control(options: DaemonOptions) -> Result<()> {
+    if options.help {
+        print_control_help();
+        return Ok(());
+    }
+
+    let control_mode_count = usize::from(options.lock_now)
+        + usize::from(options.current_theme)
+        + usize::from(options.print_theme.is_some())
+        + usize::from(options.set_theme.is_some())
+        + usize::from(options.unset_theme)
+        + usize::from(options.stop)
+        + usize::from(options.list_themes)
+        + usize::from(options.status)
+        + usize::from(options.health)
+        + usize::from(options.version)
+        + usize::from(options.reload_config);
+    if control_mode_count > 1 {
+        bail!("use only one veila command at a time");
+    }
+
+    let daemon_socket_path = ipc::daemon_socket_path();
+    if options.version {
+        print_version_info();
+        return Ok(());
+    }
+
+    if options.current_theme {
+        print_current_theme(options.config_path.as_deref())?;
+        return Ok(());
+    }
+
+    if let Some(theme) = options.print_theme.as_deref() {
+        print_theme_source(theme, options.config_path.as_deref())?;
+        return Ok(());
+    }
+
+    if let Some(theme) = options.set_theme.as_deref() {
+        set_theme_and_reload(theme, options.config_path.as_deref(), &daemon_socket_path).await?;
+        return Ok(());
+    }
+
+    if options.unset_theme {
+        unset_theme_and_reload(options.config_path.as_deref(), &daemon_socket_path).await?;
+        return Ok(());
+    }
+
+    if options.list_themes {
+        print_available_themes()?;
+        return Ok(());
+    }
+
+    if options.lock_now {
+        lock_running_daemon(&daemon_socket_path).await?;
+        println!("lock_requested=true");
+        return Ok(());
+    }
+
+    if options.stop {
+        stop_running_daemon(&daemon_socket_path).await?;
+        println!("stopped=true");
+        return Ok(());
+    }
+
+    if options.status {
+        print_running_status(&daemon_socket_path).await?;
+        return Ok(());
+    }
+
+    if options.health {
+        print_running_health(&daemon_socket_path).await?;
+        return Ok(());
+    }
+
+    if options.reload_config {
+        reload_running_config(&daemon_socket_path).await?;
+        return Ok(());
+    }
+
+    print_control_help();
+    Ok(())
+}
+
 fn print_help() {
     println!(
         "\
-Veila daemon and control CLI
+Veila daemon
 
 Usage:
   {name} [options]
 
 General:
   -h, --help                 Show this help text
-      --version              Print the local veilad version
+      --version              Print the local Veila version
       --config=<path>        Use a specific config file
       --log-file=<path>      Append daemon logs to a file when starting the daemon
       --session-id=<id>      Override the logind session id
 
-Daemon control:
+Legacy control:
       --lock-now             Trigger an immediate lock
       --reload-config        Ask a running daemon to reload config from disk
       --status               Print daemon runtime status
@@ -158,11 +241,45 @@ Themes:
       --unset-theme          Remove the top-level theme key from config.toml
 
 Notes:
+  Prefer `veila lock`, `veila status`, `veila reload`, and `veila theme ...` for user-facing control.
   Only one control action can be used at a time.
   If no control action is given, {name} starts the daemon.
   --log-file only affects that daemon-start path.
   --set-theme creates config.toml automatically if it does not exist.
 ",
         name = component_name()
+    );
+}
+
+fn print_control_help() {
+    println!(
+        "\
+Veila control CLI
+
+Usage:
+  veila <command> [options]
+
+General:
+  -h, --help                 Show this help text
+      --version              Print the local Veila version
+      --config=<path>        Use a specific config file for theme/config commands
+
+Commands:
+  lock                       Ask the running daemon to lock now
+  status                     Print daemon runtime status
+  health                     Print daemon build and platform info
+  reload                     Ask the running daemon to reload config from disk
+  stop                       Stop the running daemon
+
+Themes:
+  theme list                 List bundled themes
+  theme current              Print the active theme selection
+  theme print <name>         Print a theme source file
+  theme set <name>           Set the active theme in config.toml
+  theme unset                Remove the top-level theme key from config.toml
+
+Notes:
+  This command never starts the daemon. Start it with `veilad`, a user service, or your compositor config.
+"
     );
 }

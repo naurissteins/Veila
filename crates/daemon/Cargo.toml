@@ -11,6 +11,10 @@ repository.workspace = true
 name = "veilad"
 path = "src/main.rs"
 
+[[bin]]
+name = "veila"
+path = "src/bin/veila.rs"
+
 [dependencies]
 veila-common = { path = "../common" }
 veila-renderer = { path = "../renderer" }

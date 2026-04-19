@@ -49,15 +49,17 @@
             installPhase = ''
               runHook preInstall
 
+              veila_bin="$(find target -type f -path '*/release/veila' -print -quit)"
               veilad_bin="$(find target -type f -path '*/release/veilad' -print -quit)"
               curtain_bin="$(find target -type f -path '*/release/veila-curtain' -print -quit)"
 
-              if [ -z "$veilad_bin" ] || [ -z "$curtain_bin" ]; then
+              if [ -z "$veila_bin" ] || [ -z "$veilad_bin" ] || [ -z "$curtain_bin" ]; then
                 echo "failed to find release binaries under target/"
                 find target -maxdepth 4 -type f -perm -0100 -print
                 exit 1
               fi
 
+              install -Dm755 "$veila_bin" "$out/bin/veila"
               install -Dm755 "$veilad_bin" "$out/bin/veilad"
               install -Dm755 "$curtain_bin" "$out/bin/veila-curtain"
 
@@ -71,6 +73,9 @@
               wrapProgram "$out/bin/veila-curtain" \
                 --set VEILA_ASSET_DIR "$out/share/veila"
 
+              wrapProgram "$out/bin/veila" \
+                --set VEILA_ASSET_DIR "$out/share/veila"
+
               wrapProgram "$out/bin/veilad" \
                 --set VEILA_ASSET_DIR "$out/share/veila" \
                 --set VEILA_CURTAIN_BIN "$out/bin/veila-curtain"
@@ -82,7 +87,7 @@
               description = "Secure, elegant, and fast Wayland screen locker";
               homepage = "https://naurissteins.com/veila";
               license = pkgs.lib.licenses.gpl3Plus;
-              mainProgram = "veilad";
+              mainProgram = "veila";
               platforms = pkgs.lib.platforms.linux;
             };
           };
@@ -97,6 +102,11 @@
           package = self.packages.${system}.veila;
         in
         {
+          veila = {
+            type = "app";
+            program = "${package}/bin/veila";
+          };
+
           veilad = {
             type = "app";
             program = "${package}/bin/veilad";
@@ -107,7 +117,7 @@
             program = "${package}/bin/veila-curtain";
           };
 
-          default = self.apps.${system}.veilad;
+          default = self.apps.${system}.veila;
         }
       );
 

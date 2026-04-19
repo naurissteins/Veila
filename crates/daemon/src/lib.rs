@@ -8,5 +8,5 @@ mod control;
 mod domain;
 mod options;
 
-pub use control::{component_name, local_build_info, run};
+pub use control::{component_name, local_build_info, run, run_control};
 pub use options::DaemonOptions;

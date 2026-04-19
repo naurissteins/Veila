@@ -54,6 +54,7 @@ jobs:
         run: |
           set -euxo pipefail
           ls -lh \
+            target/release/veila \
             target/release/veilad \
             target/release/veila-curtain
 
@@ -73,6 +74,7 @@ jobs:
             "$dist_dir/bin" \
             "$dist_dir/share/veila"
 
+          install -m755 target/release/veila "$dist_dir/bin/veila"
           install -m755 target/release/veilad "$dist_dir/bin/veilad"
           install -m755 target/release/veila-curtain "$dist_dir/bin/veila-curtain"
           cp -R assets/bg "$dist_dir/share/veila/"

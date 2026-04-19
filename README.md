@@ -89,7 +89,7 @@ systemctl --user enable --now veilad.service
 For locking directly from the CLI, use:
 
 ```bash
-veilad --lock-now
+veila lock
 ```
 
 ### NixOS
