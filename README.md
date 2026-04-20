@@ -93,24 +93,44 @@ veila lock
 ```
 
 ### NixOS
-On NixOS, Veila can currently be built from the flake:
+On NixOS, Veila can be installed with the included module:
+
+```nix
+{
+  inputs.veila.url = "github:naurissteins/Veila";
+
+  outputs = { nixpkgs, veila, ... }: {
+    nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        veila.nixosModules.default
+        {
+          programs.veila.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+The module installs `veila`, `veilad`, and `veila-curtain`, and configures the required PAM service. It does not automatically start the daemon.
+
+You can also install the package directly:
 
 ```bash
 nix profile install github:naurissteins/Veila#veila
 ```
 
-NixOS also needs a PAM service entry so Veila can unlock with your user password:
+If you install the package directly into a NixOS system config, also add the PAM service:
 
 ```nix
 {
+  environment.systemPackages = [
+    inputs.veila.packages.${pkgs.system}.default
+  ];
+
   security.pam.services.veila = {};
 }
-```
-
-Apply that system config with:
-
-```bash
-sudo nixos-rebuild switch
 ```
 
 

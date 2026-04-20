@@ -96,6 +96,35 @@
         }
       );
 
+      nixosModules.default =
+        {
+          config,
+          lib,
+          pkgs,
+          ...
+        }:
+        let
+          cfg = config.programs.veila;
+          package = self.packages.${pkgs.system}.default;
+        in
+        {
+          options.programs.veila = {
+            enable = lib.mkEnableOption "Veila screen locker";
+
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = package;
+              defaultText = lib.literalExpression "inputs.veila.packages.${pkgs.system}.default";
+              description = "Veila package to install.";
+            };
+          };
+
+          config = lib.mkIf cfg.enable {
+            environment.systemPackages = [ cfg.package ];
+            security.pam.services.veila = { };
+          };
+        };
+
       apps = forAllSystems (
         system:
         let
