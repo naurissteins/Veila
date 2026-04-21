@@ -26,6 +26,7 @@ pub const fn component_name() -> &'static str {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CurtainOptions {
     pub help: bool,
+    pub lock: bool,
     pub notify_socket: Option<PathBuf>,
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
@@ -61,6 +62,11 @@ impl CurtainOptions {
         while let Some(arg) = args.next() {
             if arg == "--help" || arg == "-h" {
                 options.help = true;
+                continue;
+            }
+
+            if arg == "--lock" {
+                options.lock = true;
                 continue;
             }
 
@@ -219,7 +225,20 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         return Ok(());
     }
 
+    validate_invocation_mode(&options)?;
+
     app::run(options)
+}
+
+fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
+    if options.preview_png.is_some() || options.lock || options.uses_daemon_lock_flow() {
+        return Ok(());
+    }
+
+    print_help();
+    bail!(
+        "refusing to start a real lock session from a plain `veila-curtain` launch; use `veila --lock`, or pass `--lock` if you really want a direct curtain test"
+    );
 }
 
 fn print_help() {
@@ -232,31 +251,34 @@ Usage:
 
 General:
   -h, --help                         Show this help text
+      --lock                         Start a real lock session when running directly
       --config=<path>                Use a specific config file
       --notify-socket=<path>         Notify socket for curtain readiness
       --daemon-socket=<path>         Daemon auth IPC socket
       --control-socket=<path>        Curtain live-control IPC socket
 
 Preview mode:
-      --preview-png=<path>           Render the scene to a PNG instead of locking
-      --preview-size=<width>x<height>  Output size for preview rendering
-      --preview-artwork=<path>       Override now playing artwork for preview
-      --preview-title=<text>         Override now playing title for preview
-      --preview-artist=<text>        Override now playing artist for preview
-      --preview-weather-location=<text>  Override preview weather location label
-      --preview-weather-condition=<name>  Override preview weather icon/condition
+      --preview-png=<path>                     Render the scene to a PNG instead of locking
+      --preview-size=<width>x<height>          Output size for preview rendering
+      --preview-artwork=<path>                 Override now playing artwork for preview
+      --preview-title=<text>                   Override now playing title for preview
+      --preview-artist=<text>                  Override now playing artist for preview
+      --preview-weather-location=<text>        Override preview weather location label
+      --preview-weather-condition=<name>       Override preview weather icon/condition
       --preview-weather-temperature=<celsius>  Override preview weather temperature
-      --preview-battery-percent=<0-100>  Override preview battery percentage
-      --preview-battery-charging=<bool>  Override preview battery charging state
-      --preview-time=<HH:MM>         Override preview clock time using the local date
+      --preview-battery-percent=<0-100>        Override preview battery percentage
+      --preview-battery-charging=<bool>        Override preview battery charging state
+      --preview-time=<HH:MM>                   Override preview clock time using the local date
 
 Daemon snapshot overrides:
-      --weather-snapshot=<payload>   Inject a weather snapshot
-      --battery-snapshot=<payload>   Inject a battery snapshot
+      --weather-snapshot=<payload>      Inject a weather snapshot
+      --battery-snapshot=<payload>      Inject a battery snapshot
       --now-playing-snapshot=<payload>  Inject a now playing snapshot
 
 Notes:
-  If no preview option is given, {name} starts the secure session-lock curtain.
+  Running `{name}` with no arguments exits intentionally to avoid accidental locks.
+  Use `veila --lock` for normal locking, or `veila-curtain --lock` for direct curtain testing.
+  If no preview option is given and daemon sockets are provided, {name} starts the secure session-lock curtain.
   --preview-png renders directly to a PNG without taking a real lock.
   Options accept both --flag=value and --flag value forms.
 ",
@@ -330,6 +352,14 @@ fn parse_preview_clock_time(input: &str) -> Result<PreviewClockTime> {
         bail!("preview time must be a valid 24-hour clock value");
     }
     Ok(PreviewClockTime { hour, minute })
+}
+
+impl CurtainOptions {
+    fn uses_daemon_lock_flow(&self) -> bool {
+        self.notify_socket.is_some()
+            || self.daemon_socket.is_some()
+            || self.control_socket.is_some()
+    }
 }
 
 #[cfg(test)]
@@ -457,6 +487,40 @@ mod tests {
 
         assert!(long.help);
         assert!(short.help);
+    }
+
+    #[test]
+    fn parses_direct_lock_argument() {
+        let options =
+            CurtainOptions::parse_args(["veila-curtain".to_string(), "--lock".to_string()])
+                .expect("arguments should parse");
+
+        assert!(options.lock);
+    }
+
+    #[test]
+    fn accepts_daemon_lock_flow_without_explicit_lock_flag() {
+        let options = CurtainOptions::parse_args([
+            "veila-curtain".to_string(),
+            "--notify-socket=/tmp/veila.sock".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(super::validate_invocation_mode(&options).is_ok());
+    }
+
+    #[test]
+    fn rejects_plain_no_argument_launches() {
+        let options =
+            CurtainOptions::parse_args(["veila-curtain".to_string()]).expect("arguments parse");
+        let error = super::validate_invocation_mode(&options)
+            .expect_err("plain direct launch should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("refusing to start a real lock session")
+        );
     }
 
     #[test]
