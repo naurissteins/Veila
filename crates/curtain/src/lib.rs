@@ -55,68 +55,73 @@ impl CurtainOptions {
     /// Parses curtain options from an iterator of process arguments.
     pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Self> {
         let mut options = Self::default();
+        let mut args = args.into_iter().skip(1);
 
-        for arg in args.into_iter().skip(1) {
+        while let Some(arg) = args.next() {
             if arg == "--help" || arg == "-h" {
                 options.help = true;
                 continue;
             }
 
-            if let Some(path) = arg.strip_prefix("--notify-socket=") {
+            if let Some(path) = parse_option_value(&arg, "--notify-socket", &mut args)? {
                 options.notify_socket = Some(PathBuf::from(path));
                 continue;
             }
 
-            if let Some(path) = arg.strip_prefix("--daemon-socket=") {
+            if let Some(path) = parse_option_value(&arg, "--daemon-socket", &mut args)? {
                 options.daemon_socket = Some(PathBuf::from(path));
                 continue;
             }
 
-            if let Some(path) = arg.strip_prefix("--control-socket=") {
+            if let Some(path) = parse_option_value(&arg, "--control-socket", &mut args)? {
                 options.control_socket = Some(PathBuf::from(path));
                 continue;
             }
 
-            if let Some(path) = arg.strip_prefix("--config=") {
+            if let Some(path) = parse_option_value(&arg, "--config", &mut args)? {
                 options.config_path = Some(PathBuf::from(path));
                 continue;
             }
 
-            if let Some(path) = arg.strip_prefix("--preview-png=") {
+            if let Some(path) = parse_option_value(&arg, "--preview-png", &mut args)? {
                 options.preview_png = Some(PathBuf::from(path));
                 continue;
             }
 
-            if let Some(size) = arg.strip_prefix("--preview-size=") {
+            if let Some(size) = parse_option_value(&arg, "--preview-size", &mut args)? {
                 options.preview_size =
-                    Some(parse_preview_size(size).context("failed to parse preview size")?);
+                    Some(parse_preview_size(&size).context("failed to parse preview size")?);
                 continue;
             }
 
-            if let Some(path) = arg.strip_prefix("--preview-artwork=") {
+            if let Some(path) = parse_option_value(&arg, "--preview-artwork", &mut args)? {
                 options.preview_artwork = Some(PathBuf::from(path));
                 continue;
             }
 
-            if let Some(title) = arg.strip_prefix("--preview-title=") {
-                options.preview_title = Some(title.to_string());
+            if let Some(title) = parse_option_value(&arg, "--preview-title", &mut args)? {
+                options.preview_title = Some(title);
                 continue;
             }
 
-            if let Some(artist) = arg.strip_prefix("--preview-artist=") {
-                options.preview_artist = Some(artist.to_string());
+            if let Some(artist) = parse_option_value(&arg, "--preview-artist", &mut args)? {
+                options.preview_artist = Some(artist);
                 continue;
             }
 
-            if let Some(condition) = arg.strip_prefix("--preview-weather-condition=") {
+            if let Some(condition) =
+                parse_option_value(&arg, "--preview-weather-condition", &mut args)?
+            {
                 options.preview_weather_condition = Some(
-                    parse_preview_weather_condition(condition)
+                    parse_preview_weather_condition(&condition)
                         .context("failed to parse preview weather condition")?,
                 );
                 continue;
             }
 
-            if let Some(temperature) = arg.strip_prefix("--preview-weather-temperature=") {
+            if let Some(temperature) =
+                parse_option_value(&arg, "--preview-weather-temperature", &mut args)?
+            {
                 options.preview_weather_temperature_celsius = Some(
                     temperature
                         .parse::<i16>()
@@ -125,43 +130,46 @@ impl CurtainOptions {
                 continue;
             }
 
-            if let Some(percent) = arg.strip_prefix("--preview-battery-percent=") {
+            if let Some(percent) = parse_option_value(&arg, "--preview-battery-percent", &mut args)?
+            {
                 options.preview_battery_percent = Some(
-                    parse_preview_battery_percent(percent)
+                    parse_preview_battery_percent(&percent)
                         .context("failed to parse preview battery percent")?,
                 );
                 continue;
             }
 
-            if let Some(charging) = arg.strip_prefix("--preview-battery-charging=") {
+            if let Some(charging) =
+                parse_option_value(&arg, "--preview-battery-charging", &mut args)?
+            {
                 options.preview_battery_charging = Some(
-                    parse_preview_bool(charging)
+                    parse_preview_bool(&charging)
                         .context("failed to parse preview battery charging state")?,
                 );
                 continue;
             }
 
-            if let Some(time) = arg.strip_prefix("--preview-time=") {
+            if let Some(time) = parse_option_value(&arg, "--preview-time", &mut args)? {
                 options.preview_time =
-                    Some(parse_preview_clock_time(time).context("failed to parse preview time")?);
+                    Some(parse_preview_clock_time(&time).context("failed to parse preview time")?);
                 continue;
             }
 
-            if let Some(snapshot) = arg.strip_prefix("--weather-snapshot=") {
+            if let Some(snapshot) = parse_option_value(&arg, "--weather-snapshot", &mut args)? {
                 options.weather_snapshot =
-                    Some(decode_message(snapshot).context("failed to decode weather snapshot")?);
+                    Some(decode_message(&snapshot).context("failed to decode weather snapshot")?);
                 continue;
             }
 
-            if let Some(snapshot) = arg.strip_prefix("--battery-snapshot=") {
+            if let Some(snapshot) = parse_option_value(&arg, "--battery-snapshot", &mut args)? {
                 options.battery_snapshot =
-                    Some(decode_message(snapshot).context("failed to decode battery snapshot")?);
+                    Some(decode_message(&snapshot).context("failed to decode battery snapshot")?);
                 continue;
             }
 
-            if let Some(snapshot) = arg.strip_prefix("--now-playing-snapshot=") {
+            if let Some(snapshot) = parse_option_value(&arg, "--now-playing-snapshot", &mut args)? {
                 options.now_playing_snapshot = Some(
-                    decode_message(snapshot).context("failed to decode now playing snapshot")?,
+                    decode_message(&snapshot).context("failed to decode now playing snapshot")?,
                 );
                 continue;
             }
@@ -171,6 +179,29 @@ impl CurtainOptions {
 
         Ok(options)
     }
+}
+
+fn parse_option_value(
+    arg: &str,
+    flag: &str,
+    remaining: &mut impl Iterator<Item = String>,
+) -> Result<Option<String>> {
+    if let Some(value) = arg.strip_prefix(&format!("{flag}=")) {
+        return Ok(Some(value.to_string()));
+    }
+
+    if arg != flag {
+        return Ok(None);
+    }
+
+    let value = remaining
+        .next()
+        .with_context(|| format!("{flag} requires a value"))?;
+    if value.starts_with("--") {
+        bail!("{flag} requires a value");
+    }
+
+    Ok(Some(value))
 }
 
 /// Starts the secure curtain process.
@@ -364,6 +395,42 @@ mod tests {
                 minute: 54
             })
         );
+    }
+
+    #[test]
+    fn parses_space_separated_preview_arguments() {
+        let options = CurtainOptions::parse_args([
+            "veila-curtain".to_string(),
+            "--preview-png".to_string(),
+            "/tmp/veila-preview.png".to_string(),
+            "--preview-size".to_string(),
+            "1920x1080".to_string(),
+            "--preview-title".to_string(),
+            "After Dark".to_string(),
+            "--preview-artist".to_string(),
+            "Mr.Kitty".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert_eq!(
+            options.preview_png.as_deref(),
+            Some(std::path::Path::new("/tmp/veila-preview.png"))
+        );
+        assert_eq!(
+            options.preview_size,
+            Some(veila_renderer::FrameSize::new(1920, 1080))
+        );
+        assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
+        assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+    }
+
+    #[test]
+    fn rejects_missing_space_separated_option_value() {
+        let error =
+            CurtainOptions::parse_args(["veila-curtain".to_string(), "--preview-png".to_string()])
+                .expect_err("missing value should fail");
+
+        assert!(error.to_string().contains("--preview-png requires a value"));
     }
 
     #[test]
