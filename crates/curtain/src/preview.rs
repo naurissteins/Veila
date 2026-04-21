@@ -28,17 +28,37 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let loaded = AppConfig::load(options.config_path.as_deref())
         .context("failed to load config for preview rendering")?;
     let config = loaded.config;
+    let preview_weather_hidden = preview_weather_hidden(&options);
+    let preview_battery_hidden = preview_battery_hidden(&options);
+    let preview_now_playing_hidden = preview_now_playing_hidden(&options);
     let weather_location = preview_weather_location(&options, &config);
     let preview_username = preview_username(&options, &config);
-    let weather_snapshot = preview_weather_snapshot(&options, &config, weather_location.as_deref());
-    let battery_snapshot = preview_battery_snapshot(&options, &config);
-    let now_playing_snapshot = options.now_playing_snapshot.or_else(|| {
-        preview_now_playing_snapshot(
-            options.preview_title.clone(),
-            options.preview_artist.clone(),
-            options.preview_artwork.clone(),
-        )
-    });
+    let weather_snapshot = if preview_weather_hidden {
+        None
+    } else {
+        preview_weather_snapshot(&options, &config, weather_location.as_deref())
+    };
+    let battery_snapshot = if preview_battery_hidden {
+        None
+    } else {
+        preview_battery_snapshot(&options, &config)
+    };
+    let now_playing_snapshot = if preview_now_playing_hidden {
+        None
+    } else {
+        options.now_playing_snapshot.clone().or_else(|| {
+            preview_now_playing_snapshot(
+                options.preview_title.clone(),
+                options.preview_artist.clone(),
+                options.preview_artwork.clone(),
+            )
+        })
+    };
+    let weather_location = if preview_weather_hidden {
+        None
+    } else {
+        weather_location
+    };
 
     let treatment = BackgroundTreatment {
         blur_radius: config.background.blur_radius,
@@ -72,7 +92,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     if let Some(preview_time) = options.preview_time {
         shell.set_preview_time(preview_clock_datetime(preview_time));
     }
-    shell.set_keyboard_layout_label(Some(String::from("EN")));
+    shell.set_keyboard_layout_label(preview_keyboard_layout_label(&options));
     render_shell(&shell, &mut buffer);
     buffer
         .save_png(&output_path)
@@ -138,6 +158,26 @@ fn preview_username(options: &CurtainOptions, config: &AppConfig) -> Option<Stri
         .preview_username
         .clone()
         .or_else(|| config.lock.username.clone())
+}
+
+fn preview_keyboard_layout_label(options: &CurtainOptions) -> Option<String> {
+    if options.preview_hide_widgets || options.preview_hide_keyboard_label {
+        None
+    } else {
+        Some(String::from("EN"))
+    }
+}
+
+fn preview_weather_hidden(options: &CurtainOptions) -> bool {
+    options.preview_hide_widgets || options.preview_hide_weather
+}
+
+fn preview_battery_hidden(options: &CurtainOptions) -> bool {
+    options.preview_hide_widgets || options.preview_hide_battery
+}
+
+fn preview_now_playing_hidden(options: &CurtainOptions) -> bool {
+    options.preview_hide_widgets || options.preview_hide_now_playing
 }
 
 fn preview_weather_override_snapshot(options: &CurtainOptions) -> Option<WeatherSnapshot> {
@@ -306,9 +346,10 @@ fn preview_clock_datetime(time: PreviewClockTime) -> OffsetDateTime {
 mod tests {
     use super::{
         PreviewGeocodedLocationCache, load_cached_preview_weather_snapshot_from,
-        preview_battery_snapshot, preview_clock_datetime, preview_username,
+        preview_battery_hidden, preview_battery_snapshot, preview_clock_datetime,
+        preview_keyboard_layout_label, preview_now_playing_hidden, preview_username,
         preview_weather_cache_path_for_coordinates, preview_weather_condition_for_hour,
-        preview_weather_location, preview_weather_location_cache_path,
+        preview_weather_hidden, preview_weather_location, preview_weather_location_cache_path,
         preview_weather_override_snapshot,
     };
     use std::fs;
@@ -468,6 +509,65 @@ mod tests {
             preview_username(&options, &config),
             Some(String::from("guest"))
         );
+    }
+
+    #[test]
+    fn preview_hide_widgets_removes_keyboard_label() {
+        let options = CurtainOptions {
+            preview_hide_widgets: true,
+            ..CurtainOptions::default()
+        };
+
+        assert_eq!(preview_keyboard_layout_label(&options), None);
+    }
+
+    #[test]
+    fn preview_hide_keyboard_label_removes_only_keyboard_label() {
+        let options = CurtainOptions {
+            preview_hide_keyboard_label: true,
+            ..CurtainOptions::default()
+        };
+
+        assert_eq!(preview_keyboard_layout_label(&options), None);
+        assert!(!preview_weather_hidden(&options));
+        assert!(!preview_battery_hidden(&options));
+        assert!(!preview_now_playing_hidden(&options));
+    }
+
+    #[test]
+    fn preview_hide_weather_hides_only_weather() {
+        let options = CurtainOptions {
+            preview_hide_weather: true,
+            ..CurtainOptions::default()
+        };
+
+        assert!(preview_weather_hidden(&options));
+        assert!(!preview_battery_hidden(&options));
+        assert!(!preview_now_playing_hidden(&options));
+    }
+
+    #[test]
+    fn preview_hide_battery_hides_only_battery() {
+        let options = CurtainOptions {
+            preview_hide_battery: true,
+            ..CurtainOptions::default()
+        };
+
+        assert!(!preview_weather_hidden(&options));
+        assert!(preview_battery_hidden(&options));
+        assert!(!preview_now_playing_hidden(&options));
+    }
+
+    #[test]
+    fn preview_hide_now_playing_hides_only_now_playing() {
+        let options = CurtainOptions {
+            preview_hide_now_playing: true,
+            ..CurtainOptions::default()
+        };
+
+        assert!(!preview_weather_hidden(&options));
+        assert!(!preview_battery_hidden(&options));
+        assert!(preview_now_playing_hidden(&options));
     }
 
     #[test]

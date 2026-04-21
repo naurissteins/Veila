@@ -37,6 +37,11 @@ pub struct CurtainOptions {
     pub preview_title: Option<String>,
     pub preview_artist: Option<String>,
     pub preview_username: Option<String>,
+    pub preview_hide_widgets: bool,
+    pub preview_hide_weather: bool,
+    pub preview_hide_battery: bool,
+    pub preview_hide_now_playing: bool,
+    pub preview_hide_keyboard_label: bool,
     pub preview_weather_location: Option<String>,
     pub preview_weather_condition: Option<WeatherCondition>,
     pub preview_weather_temperature_celsius: Option<i16>,
@@ -119,6 +124,31 @@ impl CurtainOptions {
 
             if let Some(username) = parse_option_value(&arg, "--preview-username", &mut args)? {
                 options.preview_username = Some(username);
+                continue;
+            }
+
+            if arg == "--preview-hide-widgets" {
+                options.preview_hide_widgets = true;
+                continue;
+            }
+
+            if arg == "--preview-hide-weather" {
+                options.preview_hide_weather = true;
+                continue;
+            }
+
+            if arg == "--preview-hide-battery" {
+                options.preview_hide_battery = true;
+                continue;
+            }
+
+            if arg == "--preview-hide-now-playing" {
+                options.preview_hide_now_playing = true;
+                continue;
+            }
+
+            if arg == "--preview-hide-keyboard-label" {
+                options.preview_hide_keyboard_label = true;
                 continue;
             }
 
@@ -270,6 +300,11 @@ Preview mode:
       --preview-title=<text>                   Override now playing title for preview
       --preview-artist=<text>                  Override now playing artist for preview
       --preview-username=<text>                Override preview username label
+      --preview-hide-widgets                   Hide preview widgets and keyboard label
+      --preview-hide-weather                   Hide the preview weather widget
+      --preview-hide-battery                   Hide the preview battery widget
+      --preview-hide-now-playing               Hide the preview now playing widget
+      --preview-hide-keyboard-label            Hide the sample preview keyboard label
       --preview-weather-location=<text>        Override preview weather location label
       --preview-weather-condition=<name>       Override preview weather icon/condition
       --preview-weather-temperature=<celsius>  Override preview weather temperature
@@ -391,6 +426,11 @@ mod tests {
             "--preview-title=After Dark".to_string(),
             "--preview-artist=Mr.Kitty".to_string(),
             "--preview-username=guest".to_string(),
+            "--preview-hide-widgets".to_string(),
+            "--preview-hide-weather".to_string(),
+            "--preview-hide-battery".to_string(),
+            "--preview-hide-now-playing".to_string(),
+            "--preview-hide-keyboard-label".to_string(),
             "--preview-weather-location=Tokyo".to_string(),
             "--preview-weather-condition=rain".to_string(),
             "--preview-weather-temperature=7".to_string(),
@@ -431,6 +471,11 @@ mod tests {
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
         assert_eq!(options.preview_username.as_deref(), Some("guest"));
+        assert!(options.preview_hide_widgets);
+        assert!(options.preview_hide_weather);
+        assert!(options.preview_hide_battery);
+        assert!(options.preview_hide_now_playing);
+        assert!(options.preview_hide_keyboard_label);
         assert_eq!(options.preview_weather_location.as_deref(), Some("Tokyo"));
         assert_eq!(
             options.preview_weather_condition,
@@ -462,6 +507,11 @@ mod tests {
             "Mr.Kitty".to_string(),
             "--preview-username".to_string(),
             "guest".to_string(),
+            "--preview-hide-widgets".to_string(),
+            "--preview-hide-weather".to_string(),
+            "--preview-hide-battery".to_string(),
+            "--preview-hide-now-playing".to_string(),
+            "--preview-hide-keyboard-label".to_string(),
             "--preview-weather-location".to_string(),
             "Tokyo".to_string(),
         ])
@@ -478,6 +528,11 @@ mod tests {
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
         assert_eq!(options.preview_username.as_deref(), Some("guest"));
+        assert!(options.preview_hide_widgets);
+        assert!(options.preview_hide_weather);
+        assert!(options.preview_hide_battery);
+        assert!(options.preview_hide_now_playing);
+        assert!(options.preview_hide_keyboard_label);
         assert_eq!(options.preview_weather_location.as_deref(), Some("Tokyo"));
     }
 
