@@ -35,6 +35,7 @@ pub struct CurtainOptions {
     pub preview_artwork: Option<PathBuf>,
     pub preview_title: Option<String>,
     pub preview_artist: Option<String>,
+    pub preview_weather_location: Option<String>,
     pub preview_weather_condition: Option<WeatherCondition>,
     pub preview_weather_temperature_celsius: Option<i16>,
     pub preview_battery_percent: Option<u8>,
@@ -106,6 +107,13 @@ impl CurtainOptions {
 
             if let Some(artist) = parse_option_value(&arg, "--preview-artist", &mut args)? {
                 options.preview_artist = Some(artist);
+                continue;
+            }
+
+            if let Some(location) =
+                parse_option_value(&arg, "--preview-weather-location", &mut args)?
+            {
+                options.preview_weather_location = Some(location);
                 continue;
             }
 
@@ -235,6 +243,7 @@ Preview mode:
       --preview-artwork=<path>       Override now playing artwork for preview
       --preview-title=<text>         Override now playing title for preview
       --preview-artist=<text>        Override now playing artist for preview
+      --preview-weather-location=<text>  Override preview weather location label
       --preview-weather-condition=<name>  Override preview weather icon/condition
       --preview-weather-temperature=<celsius>  Override preview weather temperature
       --preview-battery-percent=<0-100>  Override preview battery percentage
@@ -249,6 +258,7 @@ Daemon snapshot overrides:
 Notes:
   If no preview option is given, {name} starts the secure session-lock curtain.
   --preview-png renders directly to a PNG without taking a real lock.
+  Options accept both --flag=value and --flag value forms.
 ",
         name = component_name()
     );
@@ -343,6 +353,7 @@ mod tests {
             "--preview-artwork=/tmp/cover.png".to_string(),
             "--preview-title=After Dark".to_string(),
             "--preview-artist=Mr.Kitty".to_string(),
+            "--preview-weather-location=Tokyo".to_string(),
             "--preview-weather-condition=rain".to_string(),
             "--preview-weather-temperature=7".to_string(),
             "--preview-battery-percent=84".to_string(),
@@ -381,6 +392,7 @@ mod tests {
         );
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+        assert_eq!(options.preview_weather_location.as_deref(), Some("Tokyo"));
         assert_eq!(
             options.preview_weather_condition,
             Some(WeatherCondition::Rain)
@@ -409,6 +421,8 @@ mod tests {
             "After Dark".to_string(),
             "--preview-artist".to_string(),
             "Mr.Kitty".to_string(),
+            "--preview-weather-location".to_string(),
+            "Tokyo".to_string(),
         ])
         .expect("arguments should parse");
 
@@ -422,6 +436,7 @@ mod tests {
         );
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+        assert_eq!(options.preview_weather_location.as_deref(), Some("Tokyo"));
     }
 
     #[test]

@@ -23,12 +23,13 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let output_path = options
         .preview_png
         .clone()
-        .context("preview mode requires --preview-png=PATH")?;
+        .context("preview mode requires --preview-png <path> or --preview-png=<path>")?;
     let preview_size = options.preview_size.unwrap_or(DEFAULT_PREVIEW_SIZE);
     let loaded = AppConfig::load(options.config_path.as_deref())
         .context("failed to load config for preview rendering")?;
     let config = loaded.config;
-    let weather_snapshot = preview_weather_snapshot(&options, &config);
+    let weather_location = preview_weather_location(&options, &config);
+    let weather_snapshot = preview_weather_snapshot(&options, &config, weather_location.as_deref());
     let battery_snapshot = preview_battery_snapshot(&options, &config);
     let now_playing_snapshot = options.now_playing_snapshot.or_else(|| {
         preview_now_playing_snapshot(
@@ -60,7 +61,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
         config.lock.username.clone(),
         config.lock.avatar_path.clone(),
         config.lock.show_username,
-        config.weather.location.clone(),
+        weather_location,
         weather_snapshot,
         config.weather.unit,
         battery_snapshot,
@@ -96,6 +97,7 @@ fn to_clear_color(color: ConfigColor) -> ClearColor {
 fn preview_weather_snapshot(
     options: &CurtainOptions,
     config: &AppConfig,
+    location: Option<&str>,
 ) -> Option<WeatherSnapshot> {
     if let Some(snapshot) = options.weather_snapshot.clone() {
         return Some(snapshot);
@@ -105,12 +107,15 @@ fn preview_weather_snapshot(
         return Some(snapshot);
     }
 
-    if !config.weather.enabled {
+    if !config.weather.enabled && location.is_none() {
         return None;
     }
 
-    config.weather.location.as_ref()?;
-    if let Some(snapshot) = load_cached_preview_weather_snapshot(config).ok().flatten() {
+    location?;
+    if let Some(snapshot) = load_cached_preview_weather_snapshot(config, location)
+        .ok()
+        .flatten()
+    {
         return Some(snapshot);
     }
     Some(WeatherSnapshot {
@@ -118,6 +123,13 @@ fn preview_weather_snapshot(
         condition: preview_weather_condition_now(),
         fetched_at_unix: 0,
     })
+}
+
+fn preview_weather_location(options: &CurtainOptions, config: &AppConfig) -> Option<String> {
+    options
+        .preview_weather_location
+        .clone()
+        .or_else(|| config.weather.location.clone())
 }
 
 fn preview_weather_override_snapshot(options: &CurtainOptions) -> Option<WeatherSnapshot> {
@@ -131,16 +143,22 @@ fn preview_weather_override_snapshot(options: &CurtainOptions) -> Option<Weather
     })
 }
 
-fn load_cached_preview_weather_snapshot(config: &AppConfig) -> Result<Option<WeatherSnapshot>> {
+fn load_cached_preview_weather_snapshot(
+    config: &AppConfig,
+    location: Option<&str>,
+) -> Result<Option<WeatherSnapshot>> {
     let cache_root = preview_weather_cache_root()?;
-    load_cached_preview_weather_snapshot_from(config, &cache_root)
+    load_cached_preview_weather_snapshot_from(config, &cache_root, location)
 }
 
 fn load_cached_preview_weather_snapshot_from(
     config: &AppConfig,
     cache_root: &Path,
+    location: Option<&str>,
 ) -> Result<Option<WeatherSnapshot>> {
-    let Some((latitude, longitude)) = cached_preview_coordinates_from(config, cache_root)? else {
+    let Some((latitude, longitude)) =
+        cached_preview_coordinates_from(config, cache_root, location)?
+    else {
         return Ok(None);
     };
     let cache_path = preview_weather_cache_path_for_coordinates(cache_root, latitude, longitude);
@@ -155,15 +173,25 @@ fn load_cached_preview_weather_snapshot_from(
 fn cached_preview_coordinates_from(
     config: &AppConfig,
     cache_root: &Path,
+    location: Option<&str>,
 ) -> Result<Option<(f64, f64)>> {
-    if let Some((latitude, longitude)) = config.weather.clone().coordinates() {
+    if location.is_none()
+        && let Some((latitude, longitude)) = config.weather.clone().coordinates()
+    {
         return Ok(Some((latitude, longitude)));
     }
 
-    let Some(location) = config.weather.normalized_location() else {
+    let Some(location) = location
+        .map(normalize_preview_location)
+        .or_else(|| config.weather.normalized_location())
+    else {
         return Ok(None);
     };
     load_cached_preview_coordinates(cache_root, &location)
+}
+
+fn normalize_preview_location(location: &str) -> String {
+    location.trim().to_string()
 }
 
 fn load_cached_preview_coordinates(
@@ -272,7 +300,8 @@ mod tests {
         PreviewGeocodedLocationCache, load_cached_preview_weather_snapshot_from,
         preview_battery_snapshot, preview_clock_datetime,
         preview_weather_cache_path_for_coordinates, preview_weather_condition_for_hour,
-        preview_weather_location_cache_path, preview_weather_override_snapshot,
+        preview_weather_location, preview_weather_location_cache_path,
+        preview_weather_override_snapshot,
     };
     use std::fs;
     use veila_common::{AppConfig, BatterySnapshot, WeatherCondition, WeatherSnapshot};
@@ -355,7 +384,7 @@ mod tests {
         )
         .expect("write snapshot cache");
 
-        let snapshot = load_cached_preview_weather_snapshot_from(&config, &weather_root)
+        let snapshot = load_cached_preview_weather_snapshot_from(&config, &weather_root, None)
             .expect("load cached preview snapshot");
 
         assert_eq!(
@@ -389,6 +418,27 @@ mod tests {
                 condition: WeatherCondition::Snow,
                 fetched_at_unix: 0,
             })
+        );
+    }
+
+    #[test]
+    fn preview_weather_location_prefers_override() {
+        let options = CurtainOptions {
+            preview_weather_location: Some(String::from("Tokyo")),
+            ..CurtainOptions::default()
+        };
+        let config = AppConfig::from_toml_str(
+            r#"
+                [weather]
+                enabled = true
+                location = "Riga"
+            "#,
+        )
+        .expect("config");
+
+        assert_eq!(
+            preview_weather_location(&options, &config),
+            Some(String::from("Tokyo"))
         );
     }
 
