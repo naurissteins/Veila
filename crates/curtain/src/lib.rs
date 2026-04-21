@@ -36,6 +36,7 @@ pub struct CurtainOptions {
     pub preview_artwork: Option<PathBuf>,
     pub preview_title: Option<String>,
     pub preview_artist: Option<String>,
+    pub preview_username: Option<String>,
     pub preview_weather_location: Option<String>,
     pub preview_weather_condition: Option<WeatherCondition>,
     pub preview_weather_temperature_celsius: Option<i16>,
@@ -113,6 +114,11 @@ impl CurtainOptions {
 
             if let Some(artist) = parse_option_value(&arg, "--preview-artist", &mut args)? {
                 options.preview_artist = Some(artist);
+                continue;
+            }
+
+            if let Some(username) = parse_option_value(&arg, "--preview-username", &mut args)? {
+                options.preview_username = Some(username);
                 continue;
             }
 
@@ -263,6 +269,7 @@ Preview mode:
       --preview-artwork=<path>                 Override now playing artwork for preview
       --preview-title=<text>                   Override now playing title for preview
       --preview-artist=<text>                  Override now playing artist for preview
+      --preview-username=<text>                Override preview username label
       --preview-weather-location=<text>        Override preview weather location label
       --preview-weather-condition=<name>       Override preview weather icon/condition
       --preview-weather-temperature=<celsius>  Override preview weather temperature
@@ -383,6 +390,7 @@ mod tests {
             "--preview-artwork=/tmp/cover.png".to_string(),
             "--preview-title=After Dark".to_string(),
             "--preview-artist=Mr.Kitty".to_string(),
+            "--preview-username=guest".to_string(),
             "--preview-weather-location=Tokyo".to_string(),
             "--preview-weather-condition=rain".to_string(),
             "--preview-weather-temperature=7".to_string(),
@@ -422,6 +430,7 @@ mod tests {
         );
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+        assert_eq!(options.preview_username.as_deref(), Some("guest"));
         assert_eq!(options.preview_weather_location.as_deref(), Some("Tokyo"));
         assert_eq!(
             options.preview_weather_condition,
@@ -451,6 +460,8 @@ mod tests {
             "After Dark".to_string(),
             "--preview-artist".to_string(),
             "Mr.Kitty".to_string(),
+            "--preview-username".to_string(),
+            "guest".to_string(),
             "--preview-weather-location".to_string(),
             "Tokyo".to_string(),
         ])
@@ -466,6 +477,7 @@ mod tests {
         );
         assert_eq!(options.preview_title.as_deref(), Some("After Dark"));
         assert_eq!(options.preview_artist.as_deref(), Some("Mr.Kitty"));
+        assert_eq!(options.preview_username.as_deref(), Some("guest"));
         assert_eq!(options.preview_weather_location.as_deref(), Some("Tokyo"));
     }
 

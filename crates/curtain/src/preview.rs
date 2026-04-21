@@ -29,6 +29,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
         .context("failed to load config for preview rendering")?;
     let config = loaded.config;
     let weather_location = preview_weather_location(&options, &config);
+    let preview_username = preview_username(&options, &config);
     let weather_snapshot = preview_weather_snapshot(&options, &config, weather_location.as_deref());
     let battery_snapshot = preview_battery_snapshot(&options, &config);
     let now_playing_snapshot = options.now_playing_snapshot.or_else(|| {
@@ -58,7 +59,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let shell = ShellState::new_with_username_and_widgets(
         ShellTheme::from_config(&config),
         config.lock.user_hint.clone(),
-        config.lock.username.clone(),
+        preview_username,
         config.lock.avatar_path.clone(),
         config.lock.show_username,
         weather_location,
@@ -130,6 +131,13 @@ fn preview_weather_location(options: &CurtainOptions, config: &AppConfig) -> Opt
         .preview_weather_location
         .clone()
         .or_else(|| config.weather.location.clone())
+}
+
+fn preview_username(options: &CurtainOptions, config: &AppConfig) -> Option<String> {
+    options
+        .preview_username
+        .clone()
+        .or_else(|| config.lock.username.clone())
 }
 
 fn preview_weather_override_snapshot(options: &CurtainOptions) -> Option<WeatherSnapshot> {
@@ -298,7 +306,7 @@ fn preview_clock_datetime(time: PreviewClockTime) -> OffsetDateTime {
 mod tests {
     use super::{
         PreviewGeocodedLocationCache, load_cached_preview_weather_snapshot_from,
-        preview_battery_snapshot, preview_clock_datetime,
+        preview_battery_snapshot, preview_clock_datetime, preview_username,
         preview_weather_cache_path_for_coordinates, preview_weather_condition_for_hour,
         preview_weather_location, preview_weather_location_cache_path,
         preview_weather_override_snapshot,
@@ -439,6 +447,26 @@ mod tests {
         assert_eq!(
             preview_weather_location(&options, &config),
             Some(String::from("Tokyo"))
+        );
+    }
+
+    #[test]
+    fn preview_username_prefers_override() {
+        let options = CurtainOptions {
+            preview_username: Some(String::from("guest")),
+            ..CurtainOptions::default()
+        };
+        let config = AppConfig::from_toml_str(
+            r#"
+                [lock]
+                username = "ns"
+            "#,
+        )
+        .expect("config");
+
+        assert_eq!(
+            preview_username(&options, &config),
+            Some(String::from("guest"))
         );
     }
 
