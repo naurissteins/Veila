@@ -36,6 +36,7 @@ jobs:
             dpkg-dev \
             pkg-config \
             libpam0g-dev \
+            rpm \
             libwayland-dev \
             libxkbcommon-dev
 
@@ -103,6 +104,26 @@ jobs:
           fi
           packaging/deb/build-deb.sh "$version" dist
 
+      - name: Package RPM package
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            artifact_version="${{ github.event.inputs.version }}"
+            package_version="$artifact_version"
+            if [[ ! "$package_version" =~ ^[0-9] ]]; then
+              crate_version="$(awk -F '"' '/^version =/ { print $2; exit }' Cargo.toml)"
+              package_version="${crate_version}~${package_version}"
+            fi
+          else
+            artifact_version="${GITHUB_REF_NAME#v}"
+            package_version="$artifact_version"
+          fi
+          packaging/rpm/build-rpm.sh \
+            "$package_version" \
+            dist \
+            "dist/veila-${artifact_version}-x86_64-linux.tar.gz"
+
       - name: Upload release asset
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
@@ -110,6 +131,7 @@ jobs:
           files: |
             dist/veila-*-x86_64-linux.tar.gz
             dist/veila_*_amd64.deb
+            dist/veila-*.rpm
 
       - name: Upload manual packaging artifact
         if: github.event_name == 'workflow_dispatch'
@@ -119,3 +141,4 @@ jobs:
           path: |
             dist/veila-*-x86_64-linux.tar.gz
             dist/veila_*_amd64.deb
+            dist/veila-*.rpm
