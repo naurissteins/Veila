@@ -102,7 +102,7 @@ jobs:
           else
             version="${GITHUB_REF_NAME#v}"
           fi
-          packaging/deb/build-deb.sh "$version" dist
+          bash packaging/deb/build-deb.sh "$version" dist
 
       - name: Package RPM package
         shell: bash
@@ -119,7 +119,7 @@ jobs:
             artifact_version="${GITHUB_REF_NAME#v}"
             package_version="$artifact_version"
           fi
-          packaging/rpm/build-rpm.sh \
+          bash packaging/rpm/build-rpm.sh \
             "$package_version" \
             dist \
             "dist/veila-${artifact_version}-x86_64-linux.tar.gz"
