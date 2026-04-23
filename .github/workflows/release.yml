@@ -94,6 +94,10 @@ jobs:
           set -euxo pipefail
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             version="${{ github.event.inputs.version }}"
+            if [[ ! "$version" =~ ^[0-9] ]]; then
+              crate_version="$(awk -F '"' '/^version =/ { print $2; exit }' Cargo.toml)"
+              version="${crate_version}~${version}"
+            fi
           else
             version="${GITHUB_REF_NAME#v}"
           fi

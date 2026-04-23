@@ -6,6 +6,13 @@ output_dir="${2:-dist}"
 revision="${DEB_REVISION:-1}"
 architecture="${DEB_ARCHITECTURE:-amd64}"
 package_version="${version}-${revision}"
+
+if [[ ! "$package_version" =~ ^[0-9] ]]; then
+  echo "invalid Debian package version: $package_version" >&2
+  echo "Debian versions must start with a digit, for example 0.1.5-1 or 0.1.5~manual-1." >&2
+  exit 1
+fi
+
 package_root="$(mktemp -d)"
 staging="$package_root/veila_${package_version}_${architecture}"
 deb_path="$output_dir/veila_${package_version}_${architecture}.deb"
