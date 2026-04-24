@@ -1,0 +1,27 @@
+Source: veila
+Section: utils
+Priority: optional
+Maintainer: Nauris Steins <me@naurissteins.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ cargo,
+ rustc,
+ pkg-config,
+ libpam0g-dev,
+ libwayland-dev,
+ libxkbcommon-dev
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://naurissteins.com/veila
+Vcs-Browser: https://github.com/naurissteins/Veila
+Vcs-Git: https://github.com/naurissteins/Veila.git
+
+Package: veila
+Architecture: linux-any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends}
+Recommends: systemd
+Description: Secure, elegant, and fast Wayland screen locker
+ Veila is a native Wayland screen locker focused on a modern look,
+ low lock latency, and a small runtime footprint.

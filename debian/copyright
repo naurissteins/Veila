@@ -1,0 +1,11 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Veila
+Source: https://github.com/naurissteins/Veila
+
+Files: *
+Copyright: 2026 Nauris Steins
+License: GPL-3.0-or-later
+
+License: GPL-3.0-or-later
+ On Debian systems, the full text of the GNU General Public License
+ version 3 or later can be found in /usr/share/common-licenses/GPL-3.

@@ -1,0 +1,3 @@
+# PAM service for Veila screen locker.
+@include common-auth
+@include common-account

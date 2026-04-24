@@ -1,0 +1,41 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+export CARGO_NET_OFFLINE = true
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	mkdir -p $(CARGO_HOME)
+	printf '%s\n' \
+		'[source.crates-io]' \
+		'replace-with = "vendored-sources"' \
+		'[source.vendored-sources]' \
+		'directory = "$(CURDIR)/vendor"' \
+		> $(CARGO_HOME)/config.toml
+
+override_dh_auto_build:
+	cargo build --locked --offline --release --workspace
+
+override_dh_auto_test:
+	:
+
+override_dh_auto_install:
+	install -D -m755 target/release/veila $(CURDIR)/debian/veila/usr/bin/veila
+	install -D -m755 target/release/veilad $(CURDIR)/debian/veila/usr/bin/veilad
+	install -D -m755 target/release/veila-curtain $(CURDIR)/debian/veila/usr/bin/veila-curtain
+
+	mkdir -p $(CURDIR)/debian/veila/usr/share/veila
+	cp -a assets/bg $(CURDIR)/debian/veila/usr/share/veila/
+	cp -a assets/fonts $(CURDIR)/debian/veila/usr/share/veila/
+	cp -a assets/icons $(CURDIR)/debian/veila/usr/share/veila/
+	cp -a assets/systemd $(CURDIR)/debian/veila/usr/share/veila/
+	cp -a assets/themes $(CURDIR)/debian/veila/usr/share/veila/
+
+	install -D -m644 assets/systemd/veilad.service \
+		$(CURDIR)/debian/veila/usr/lib/systemd/user/veilad.service
+	install -D -m644 debian/veila.pam $(CURDIR)/debian/veila/etc/pam.d/veila
+	install -D -m644 README.md $(CURDIR)/debian/veila/usr/share/doc/veila/README.md
+	install -D -m644 LICENSE $(CURDIR)/debian/veila/usr/share/doc/veila/copyright
