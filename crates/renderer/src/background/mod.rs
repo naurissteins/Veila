@@ -13,9 +13,9 @@ use image::RgbaImage;
 use crate::ClearColor;
 
 pub use asset::{
-    load_cached_gradient_render, load_cached_gradient_render_variant, load_cached_render,
-    load_cached_render_variant, prewarm_rendered, prewarm_rendered_gradient, prewarm_source,
-    store_cached_gradient_render, store_cached_gradient_render_variant, store_cached_render,
+    load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
+    load_cached_render_variant, prewarm_rendered, prewarm_rendered_generated, prewarm_source,
+    store_cached_generated_render, store_cached_generated_render_variant, store_cached_render,
     store_cached_render_variant,
 };
 
@@ -47,6 +47,30 @@ pub struct BackgroundGradient {
     pub bottom_right: ClearColor,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BackgroundRadial {
+    pub center: ClearColor,
+    pub edge: ClearColor,
+    pub center_x: u8,
+    pub center_y: u8,
+    pub radius: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GeneratedBackground {
+    Gradient(BackgroundGradient),
+    Radial(BackgroundRadial),
+}
+
+impl GeneratedBackground {
+    pub const fn mode_name(self) -> &'static str {
+        match self {
+            Self::Gradient(_) => "gradient",
+            Self::Radial(_) => "radial",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BackgroundAsset {
     kind: BackgroundKind,
@@ -56,6 +80,6 @@ pub struct BackgroundAsset {
 #[derive(Debug, Clone)]
 enum BackgroundKind {
     Solid(ClearColor),
-    Gradient(BackgroundGradient),
+    Generated(GeneratedBackground),
     Image(Arc<RgbaImage>),
 }

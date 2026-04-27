@@ -1,6 +1,6 @@
 use image::{RgbaImage, imageops::FilterType};
 
-use super::{BackgroundGradient, BackgroundTreatment};
+use super::{BackgroundGradient, BackgroundRadial, BackgroundTreatment, GeneratedBackground};
 use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
 
 pub(super) fn render_image(
@@ -37,10 +37,17 @@ pub(super) fn render_image(
     Ok(buffer)
 }
 
-pub(super) fn render_gradient(
+pub(super) fn render_generated(
     size: FrameSize,
-    gradient: BackgroundGradient,
+    generated: GeneratedBackground,
 ) -> Result<SoftwareBuffer> {
+    match generated {
+        GeneratedBackground::Gradient(gradient) => render_gradient(size, gradient),
+        GeneratedBackground::Radial(radial) => render_radial(size, radial),
+    }
+}
+
+fn render_gradient(size: FrameSize, gradient: BackgroundGradient) -> Result<SoftwareBuffer> {
     let mut buffer = SoftwareBuffer::new(size)?;
 
     let width_span = size.width.saturating_sub(1).max(1);
@@ -58,6 +65,31 @@ pub(super) fn render_gradient(
                 tx,
                 ty,
             );
+            let offset = ((y * size.width + x) * 4) as usize;
+            buffer.pixels_mut()[offset..offset + 4].copy_from_slice(&color.to_argb8888_bytes());
+        }
+    }
+
+    Ok(buffer)
+}
+
+fn render_radial(size: FrameSize, radial: BackgroundRadial) -> Result<SoftwareBuffer> {
+    let mut buffer = SoftwareBuffer::new(size)?;
+    let width_span = size.width.saturating_sub(1).max(1) as f32;
+    let height_span = size.height.saturating_sub(1).max(1) as f32;
+    let center_x = radial.center_x.min(100) as f32 / 100.0;
+    let center_y = radial.center_y.min(100) as f32 / 100.0;
+    let radius_scale = radial.radius.clamp(1, 200) as f32 / 100.0;
+    let max_distance = max_corner_distance(center_x, center_y);
+    let radius = (max_distance * radius_scale).max(f32::EPSILON);
+
+    for y in 0..size.height {
+        let py = y as f32 / height_span;
+        for x in 0..size.width {
+            let px = x as f32 / width_span;
+            let distance = ((px - center_x).powi(2) + (py - center_y).powi(2)).sqrt();
+            let t = smoothstep((distance / radius).clamp(0.0, 1.0));
+            let color = lerp_color(radial.center, radial.edge, t);
             let offset = ((y * size.width + x) * 4) as usize;
             buffer.pixels_mut()[offset..offset + 4].copy_from_slice(&color.to_argb8888_bytes());
         }
@@ -92,6 +124,17 @@ fn lerp_channel(start: u8, end: u8, t: f32) -> u8 {
     let start = start as f32;
     let end = end as f32;
     (start + (end - start) * t).round().clamp(0.0, 255.0) as u8
+}
+
+fn max_corner_distance(center_x: f32, center_y: f32) -> f32 {
+    [(0.0f32, 0.0f32), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+        .into_iter()
+        .map(|(x, y)| ((x - center_x).powi(2) + (y - center_y).powi(2)).sqrt())
+        .fold(0.0, f32::max)
+}
+
+fn smoothstep(t: f32) -> f32 {
+    t * t * (3.0 - 2.0 * t)
 }
 
 pub(super) fn cover_dimensions(

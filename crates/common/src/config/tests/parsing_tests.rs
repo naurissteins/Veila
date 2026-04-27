@@ -302,6 +302,37 @@ fn gradient_mode_uses_configured_corner_colors() {
 }
 
 #[test]
+fn radial_mode_uses_configured_colors_and_position() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [background]
+            mode = "radial"
+
+            [background.radial]
+            center = "#F7F9FF"
+            edge = "#3F2B7A"
+            center_x = 44
+            center_y = 36
+            radius = 92
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Radial);
+    assert!(config.background.resolved_path().is_none());
+
+    let radial = config
+        .background
+        .resolved_radial()
+        .expect("radial config should resolve");
+    assert_eq!(radial.center, RgbColor::rgb(247, 249, 255));
+    assert_eq!(radial.edge, RgbColor::rgb(63, 43, 122));
+    assert_eq!(radial.center_x, 44);
+    assert_eq!(radial.center_y, 36);
+    assert_eq!(radial.radius, 92);
+}
+
+#[test]
 fn legacy_bundled_mode_resolves_as_gradient() {
     let config = AppConfig::from_toml_str(
         r##"

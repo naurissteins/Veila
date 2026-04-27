@@ -11,7 +11,10 @@ use veila_common::{
 };
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
-    background::{BackgroundAsset, BackgroundGradient, BackgroundTreatment},
+    background::{
+        BackgroundAsset, BackgroundGradient, BackgroundRadial, BackgroundTreatment,
+        GeneratedBackground,
+    },
 };
 use veila_ui::{ShellState, ShellTheme};
 
@@ -69,7 +72,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let background = BackgroundAsset::load(
         config.background.resolved_path().as_deref(),
         to_clear_color(config.background.color),
-        background_gradient(&config.background),
+        background_generated(&config.background),
         treatment,
     )
     .context("failed to load preview background")?;
@@ -116,16 +119,26 @@ fn to_clear_color(color: ConfigColor) -> ClearColor {
     ClearColor::rgba(color.0, color.1, color.2, color.3)
 }
 
-fn background_gradient(
+fn background_generated(
     config: &veila_common::config::BackgroundConfig,
-) -> Option<BackgroundGradient> {
-    let gradient = config.resolved_gradient()?;
+) -> Option<GeneratedBackground> {
+    if let Some(gradient) = config.resolved_gradient() {
+        return Some(GeneratedBackground::Gradient(BackgroundGradient {
+            top_left: to_clear_color(gradient.top_left),
+            top_right: to_clear_color(gradient.top_right),
+            bottom_left: to_clear_color(gradient.bottom_left),
+            bottom_right: to_clear_color(gradient.bottom_right),
+        }));
+    }
 
-    Some(BackgroundGradient {
-        top_left: to_clear_color(gradient.top_left),
-        top_right: to_clear_color(gradient.top_right),
-        bottom_left: to_clear_color(gradient.bottom_left),
-        bottom_right: to_clear_color(gradient.bottom_right),
+    config.resolved_radial().map(|radial| {
+        GeneratedBackground::Radial(BackgroundRadial {
+            center: to_clear_color(radial.center),
+            edge: to_clear_color(radial.edge),
+            center_x: radial.center_x,
+            center_y: radial.center_y,
+            radius: radial.radius,
+        })
     })
 }
 

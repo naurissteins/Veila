@@ -3,8 +3,9 @@ use std::sync::Arc;
 use image::{Rgba, RgbaImage};
 
 use super::{
-    BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundTreatment, RenderCacheSummary,
-    SourceCacheStatus, asset::unique_sizes, render::cover_dimensions,
+    BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundRadial, BackgroundTreatment,
+    GeneratedBackground, RenderCacheSummary, SourceCacheStatus, asset::unique_sizes,
+    render::cover_dimensions,
 };
 use crate::{ClearColor, FrameSize};
 
@@ -27,12 +28,12 @@ fn renders_bilinear_gradients() {
     let asset = BackgroundAsset::load(
         None,
         ClearColor::opaque(0, 0, 0),
-        Some(BackgroundGradient {
+        Some(GeneratedBackground::Gradient(BackgroundGradient {
             top_left: ClearColor::opaque(255, 0, 0),
             top_right: ClearColor::opaque(0, 255, 0),
             bottom_left: ClearColor::opaque(0, 0, 255),
             bottom_right: ClearColor::opaque(255, 255, 255),
-        }),
+        })),
         BackgroundTreatment::default(),
     )
     .expect("asset");
@@ -42,6 +43,27 @@ fn renders_bilinear_gradients() {
     assert_eq!(&buffer.pixels()[4..8], &[0, 255, 0, 255]);
     assert_eq!(&buffer.pixels()[8..12], &[255, 0, 0, 255]);
     assert_eq!(&buffer.pixels()[12..16], &[255, 255, 255, 255]);
+}
+
+#[test]
+fn renders_radial_backgrounds() {
+    let asset = BackgroundAsset::load(
+        None,
+        ClearColor::opaque(0, 0, 0),
+        Some(GeneratedBackground::Radial(BackgroundRadial {
+            center: ClearColor::opaque(255, 255, 255),
+            edge: ClearColor::opaque(0, 0, 0),
+            center_x: 50,
+            center_y: 50,
+            radius: 100,
+        })),
+        BackgroundTreatment::default(),
+    )
+    .expect("asset");
+    let buffer = asset.render(FrameSize::new(3, 3)).expect("buffer");
+
+    assert_eq!(&buffer.pixels()[16..20], &[255, 255, 255, 255]);
+    assert_eq!(&buffer.pixels()[0..4], &[0, 0, 0, 255]);
 }
 
 #[test]

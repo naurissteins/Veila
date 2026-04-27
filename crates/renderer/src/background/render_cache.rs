@@ -7,14 +7,14 @@ use std::{
 
 use crate::{FrameSize, RendererError, Result, SoftwareBuffer};
 
-use super::{BackgroundGradient, BackgroundTreatment};
+use super::{BackgroundTreatment, GeneratedBackground};
 
 const CACHE_MAGIC: &[u8; 8] = b"KWYBG001";
 
 #[derive(Debug, Clone, Copy)]
 enum CacheSource<'a> {
     Path(&'a Path),
-    Gradient(BackgroundGradient),
+    Generated(GeneratedBackground),
 }
 
 pub(crate) fn load_cached_buffer(
@@ -25,12 +25,12 @@ pub(crate) fn load_cached_buffer(
     load_cached_buffer_for_source(CacheSource::Path(path), size, treatment, None)
 }
 
-pub(crate) fn load_cached_buffer_for_gradient(
-    gradient: BackgroundGradient,
+pub(crate) fn load_cached_buffer_for_generated(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_for_source(CacheSource::Gradient(gradient), size, treatment, None)
+    load_cached_buffer_for_source(CacheSource::Generated(generated), size, treatment, None)
 }
 
 pub(crate) fn load_cached_buffer_with_variant(
@@ -42,13 +42,13 @@ pub(crate) fn load_cached_buffer_with_variant(
     load_cached_buffer_for_source(CacheSource::Path(path), size, treatment, variant)
 }
 
-pub(crate) fn load_cached_buffer_for_gradient_with_variant(
-    gradient: BackgroundGradient,
+pub(crate) fn load_cached_buffer_for_generated_with_variant(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
     variant: Option<&str>,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_for_source(CacheSource::Gradient(gradient), size, treatment, variant)
+    load_cached_buffer_for_source(CacheSource::Generated(generated), size, treatment, variant)
 }
 
 fn load_cached_buffer_for_source(
@@ -98,14 +98,14 @@ pub(crate) fn store_cached_buffer(
     store_cached_buffer_for_source(CacheSource::Path(path), size, treatment, buffer, None)
 }
 
-pub(crate) fn store_cached_buffer_for_gradient(
-    gradient: BackgroundGradient,
+pub(crate) fn store_cached_buffer_for_generated(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
     store_cached_buffer_for_source(
-        CacheSource::Gradient(gradient),
+        CacheSource::Generated(generated),
         size,
         treatment,
         buffer,
@@ -123,15 +123,15 @@ pub(crate) fn store_cached_buffer_with_variant(
     store_cached_buffer_for_source(CacheSource::Path(path), size, treatment, buffer, variant)
 }
 
-pub(crate) fn store_cached_buffer_for_gradient_with_variant(
-    gradient: BackgroundGradient,
+pub(crate) fn store_cached_buffer_for_generated_with_variant(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
     variant: Option<&str>,
 ) -> Result<()> {
     store_cached_buffer_for_source(
-        CacheSource::Gradient(gradient),
+        CacheSource::Generated(generated),
         size,
         treatment,
         buffer,
@@ -226,27 +226,45 @@ fn cache_source_key(source: CacheSource<'_>, size: FrameSize) -> Result<String> 
                 size.height
             ))
         }
-        CacheSource::Gradient(gradient) => Ok(format!(
-            "gradient:v1:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}x{}",
-            gradient.top_left.red,
-            gradient.top_left.green,
-            gradient.top_left.blue,
-            gradient.top_left.alpha,
-            gradient.top_right.red,
-            gradient.top_right.green,
-            gradient.top_right.blue,
-            gradient.top_right.alpha,
-            gradient.bottom_left.red,
-            gradient.bottom_left.green,
-            gradient.bottom_left.blue,
-            gradient.bottom_left.alpha,
-            gradient.bottom_right.red,
-            gradient.bottom_right.green,
-            gradient.bottom_right.blue,
-            gradient.bottom_right.alpha,
-            size.width,
-            size.height
-        )),
+        CacheSource::Generated(generated) => Ok(match generated {
+            GeneratedBackground::Gradient(gradient) => format!(
+                "gradient:v1:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}x{}",
+                gradient.top_left.red,
+                gradient.top_left.green,
+                gradient.top_left.blue,
+                gradient.top_left.alpha,
+                gradient.top_right.red,
+                gradient.top_right.green,
+                gradient.top_right.blue,
+                gradient.top_right.alpha,
+                gradient.bottom_left.red,
+                gradient.bottom_left.green,
+                gradient.bottom_left.blue,
+                gradient.bottom_left.alpha,
+                gradient.bottom_right.red,
+                gradient.bottom_right.green,
+                gradient.bottom_right.blue,
+                gradient.bottom_right.alpha,
+                size.width,
+                size.height
+            ),
+            GeneratedBackground::Radial(radial) => format!(
+                "radial:v1:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}x{}",
+                radial.center.red,
+                radial.center.green,
+                radial.center.blue,
+                radial.center.alpha,
+                radial.edge.red,
+                radial.edge.green,
+                radial.edge.blue,
+                radial.edge.alpha,
+                radial.center_x,
+                radial.center_y,
+                radial.radius,
+                size.width,
+                size.height
+            ),
+        }),
     }
 }
 
@@ -287,7 +305,8 @@ mod tests {
 
     use crate::{ClearColor, FrameSize, SoftwareBuffer};
 
-    use super::{BackgroundGradient, BackgroundTreatment, CacheSource, cache_path};
+    use super::{BackgroundTreatment, CacheSource, GeneratedBackground, cache_path};
+    use crate::background::BackgroundGradient;
 
     #[test]
     fn round_trips_rendered_background_buffers() {
@@ -386,25 +405,25 @@ mod tests {
     }
 
     #[test]
-    fn separates_gradient_cache_entries() {
+    fn separates_generated_cache_entries() {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("time")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("veila-render-gradient-cache-test-{unique}"));
+        let root = std::env::temp_dir().join(format!("veila-render-generated-cache-test-{unique}"));
         fs::create_dir_all(&root).expect("cache root");
 
-        let gradient = BackgroundGradient {
+        let generated = GeneratedBackground::Gradient(BackgroundGradient {
             top_left: ClearColor::opaque(255, 0, 0),
             top_right: ClearColor::opaque(0, 255, 0),
             bottom_left: ClearColor::opaque(0, 0, 255),
             bottom_right: ClearColor::opaque(255, 255, 255),
-        };
+        });
         let size = FrameSize::new(2, 1);
         let base = SoftwareBuffer::solid(size, ClearColor::opaque(12, 16, 24)).expect("buffer");
         let layered = SoftwareBuffer::solid(size, ClearColor::opaque(40, 50, 60)).expect("buffer");
         store_cached_buffer_at(
-            CacheSource::Gradient(gradient),
+            CacheSource::Generated(generated),
             size,
             BackgroundTreatment::default(),
             &base,
@@ -413,7 +432,7 @@ mod tests {
         )
         .expect("store base");
         store_cached_buffer_at(
-            CacheSource::Gradient(gradient),
+            CacheSource::Generated(generated),
             size,
             BackgroundTreatment::default(),
             &layered,
@@ -423,7 +442,7 @@ mod tests {
         .expect("store layered");
 
         let loaded_base = load_cached_buffer_at(
-            CacheSource::Gradient(gradient),
+            CacheSource::Generated(generated),
             size,
             BackgroundTreatment::default(),
             None,
@@ -432,7 +451,7 @@ mod tests {
         .expect("load")
         .expect("cached buffer");
         let loaded_layered = load_cached_buffer_at(
-            CacheSource::Gradient(gradient),
+            CacheSource::Generated(generated),
             size,
             BackgroundTreatment::default(),
             Some("layer:v1"),

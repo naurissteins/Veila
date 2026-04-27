@@ -4,7 +4,7 @@ use veila_common::AppConfig;
 use veila_renderer::background::BackgroundAsset;
 use veila_ui::ShellTheme;
 
-use crate::state::{CurtainApp, background_gradient, background_treatment};
+use crate::state::{CurtainApp, background_generated, background_treatment};
 
 impl CurtainApp {
     pub(crate) fn reload_config(&mut self, queue_handle: &QueueHandle<Self>) {
@@ -20,7 +20,7 @@ impl CurtainApp {
         let background_asset = match BackgroundAsset::load(
             None,
             theme.background,
-            background_gradient(&config.background),
+            background_generated(&config.background),
             background_treatment(&config.background),
         )
         .context("failed to prepare fallback background")
@@ -31,12 +31,12 @@ impl CurtainApp {
                 return;
             }
         };
-        let background_gradient = background_gradient(&config.background);
+        let background_generated = background_generated(&config.background);
         let background_path = config.background.resolved_path();
 
         self.background_color = theme.background;
         self.background_asset = background_asset;
-        self.background_gradient = background_gradient;
+        self.background_generated = background_generated;
         self.background_treatment = background_treatment(&config.background);
         self.background_path = background_path.clone();
         self.background_outputs = config.background.outputs.clone();

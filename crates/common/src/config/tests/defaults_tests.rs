@@ -35,6 +35,16 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(gradient.top_right, RgbColor::rgb(57, 184, 255));
     assert_eq!(gradient.bottom_left, RgbColor::rgb(111, 226, 255));
     assert_eq!(gradient.bottom_right, RgbColor::rgb(111, 76, 255));
+    let radial = config
+        .background
+        .radial
+        .as_ref()
+        .expect("radial defaults should exist");
+    assert_eq!(radial.center, RgbColor::rgb(111, 226, 255));
+    assert_eq!(radial.edge, RgbColor::rgb(111, 76, 255));
+    assert_eq!(radial.center_x, 50);
+    assert_eq!(radial.center_y, 50);
+    assert_eq!(radial.radius, 100);
     assert_eq!(config.background.blur_radius, 0);
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());

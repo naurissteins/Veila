@@ -3,14 +3,14 @@ use std::{path::Path, sync::Arc};
 use image::RgbaImage;
 
 use super::{
-    BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundTreatment, RenderCacheSummary,
+    BackgroundAsset, BackgroundKind, BackgroundTreatment, GeneratedBackground, RenderCacheSummary,
     SourceCacheStatus,
-    render::{render_gradient, render_image},
+    render::{render_generated, render_image},
     render_cache::{
-        load_cached_buffer, load_cached_buffer_for_gradient,
-        load_cached_buffer_for_gradient_with_variant, load_cached_buffer_with_variant,
-        store_cached_buffer, store_cached_buffer_for_gradient,
-        store_cached_buffer_for_gradient_with_variant, store_cached_buffer_with_variant,
+        load_cached_buffer, load_cached_buffer_for_generated,
+        load_cached_buffer_for_generated_with_variant, load_cached_buffer_with_variant,
+        store_cached_buffer, store_cached_buffer_for_generated,
+        store_cached_buffer_for_generated_with_variant, store_cached_buffer_with_variant,
     },
     source_cache::{load_cached_rgba, store_cached_rgba},
     treatment::apply_treatment,
@@ -21,7 +21,7 @@ impl BackgroundAsset {
     pub fn load(
         path: Option<&Path>,
         fallback: ClearColor,
-        gradient: Option<BackgroundGradient>,
+        generated: Option<GeneratedBackground>,
         treatment: BackgroundTreatment,
     ) -> Result<Self> {
         if let Some(path) = path {
@@ -31,9 +31,9 @@ impl BackgroundAsset {
             });
         }
 
-        if let Some(gradient) = gradient {
+        if let Some(generated) = generated {
             return Ok(Self {
-                kind: BackgroundKind::Gradient(gradient),
+                kind: BackgroundKind::Generated(generated),
                 treatment,
             });
         }
@@ -47,7 +47,7 @@ impl BackgroundAsset {
     pub fn render(&self, size: FrameSize) -> Result<SoftwareBuffer> {
         let mut buffer = match &self.kind {
             BackgroundKind::Solid(color) => SoftwareBuffer::solid(size, *color),
-            BackgroundKind::Gradient(gradient) => render_gradient(size, *gradient),
+            BackgroundKind::Generated(generated) => render_generated(size, *generated),
             BackgroundKind::Image(image) => render_image(image, size, self.treatment),
         }?;
         apply_treatment(&mut buffer, self.treatment);
@@ -73,12 +73,12 @@ pub fn load_cached_render(
     load_cached_buffer(path, size, treatment)
 }
 
-pub fn load_cached_gradient_render(
-    gradient: BackgroundGradient,
+pub fn load_cached_generated_render(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_for_gradient(gradient, size, treatment)
+    load_cached_buffer_for_generated(generated, size, treatment)
 }
 
 pub fn load_cached_render_variant(
@@ -90,13 +90,13 @@ pub fn load_cached_render_variant(
     load_cached_buffer_with_variant(path, size, treatment, Some(variant))
 }
 
-pub fn load_cached_gradient_render_variant(
-    gradient: BackgroundGradient,
+pub fn load_cached_generated_render_variant(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
     variant: &str,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_for_gradient_with_variant(gradient, size, treatment, Some(variant))
+    load_cached_buffer_for_generated_with_variant(generated, size, treatment, Some(variant))
 }
 
 pub fn store_cached_render(
@@ -108,13 +108,13 @@ pub fn store_cached_render(
     store_cached_buffer(path, size, treatment, buffer)
 }
 
-pub fn store_cached_gradient_render(
-    gradient: BackgroundGradient,
+pub fn store_cached_generated_render(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
-    store_cached_buffer_for_gradient(gradient, size, treatment, buffer)
+    store_cached_buffer_for_generated(generated, size, treatment, buffer)
 }
 
 pub fn store_cached_render_variant(
@@ -127,14 +127,20 @@ pub fn store_cached_render_variant(
     store_cached_buffer_with_variant(path, size, treatment, buffer, Some(variant))
 }
 
-pub fn store_cached_gradient_render_variant(
-    gradient: BackgroundGradient,
+pub fn store_cached_generated_render_variant(
+    generated: GeneratedBackground,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
     variant: &str,
 ) -> Result<()> {
-    store_cached_buffer_for_gradient_with_variant(gradient, size, treatment, buffer, Some(variant))
+    store_cached_buffer_for_generated_with_variant(
+        generated,
+        size,
+        treatment,
+        buffer,
+        Some(variant),
+    )
 }
 
 pub fn prewarm_rendered(
@@ -174,8 +180,8 @@ pub fn prewarm_rendered(
     })
 }
 
-pub fn prewarm_rendered_gradient(
-    gradient: BackgroundGradient,
+pub fn prewarm_rendered_generated(
+    generated: GeneratedBackground,
     treatment: BackgroundTreatment,
     sizes: &[FrameSize],
 ) -> Result<RenderCacheSummary> {
@@ -184,7 +190,7 @@ pub fn prewarm_rendered_gradient(
     let mut missing_sizes = Vec::new();
 
     for size in unique_sizes {
-        if load_cached_gradient_render(gradient, size, treatment)?.is_some() {
+        if load_cached_generated_render(generated, size, treatment)?.is_some() {
             cache_hits += 1;
         } else {
             missing_sizes.push(size);
@@ -199,12 +205,12 @@ pub fn prewarm_rendered_gradient(
     }
 
     let asset = BackgroundAsset {
-        kind: BackgroundKind::Gradient(gradient),
+        kind: BackgroundKind::Generated(generated),
         treatment,
     };
     for size in &missing_sizes {
         let buffer = asset.render(*size)?;
-        store_cached_gradient_render(gradient, *size, treatment, &buffer)?;
+        store_cached_generated_render(generated, *size, treatment, &buffer)?;
     }
 
     Ok(RenderCacheSummary {

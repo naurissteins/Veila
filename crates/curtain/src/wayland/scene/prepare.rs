@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     background::{
-        load_cached_gradient_render, load_cached_gradient_render_variant, load_cached_render,
+        load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
         load_cached_render_variant,
     },
 };
@@ -49,13 +49,13 @@ impl CurtainApp {
                     );
                 }
             }
-        } else if let Some(gradient) = self.background_gradient {
-            match load_cached_gradient_render(gradient, frame_size, self.background_treatment) {
+        } else if let Some(generated) = self.background_generated {
+            match load_cached_generated_render(generated, frame_size, self.background_treatment) {
                 Ok(Some(buffer)) => {
                     tracing::debug!(
                         width = frame_size.width,
                         height = frame_size.height,
-                        "using cached rendered gradient background for initial lock frame"
+                        "using cached rendered generated background for initial lock frame"
                     );
                     self.lock_surfaces[index].background = Some(buffer);
                     self.lock_surfaces[index].background_path = None;
@@ -66,7 +66,7 @@ impl CurtainApp {
                     tracing::debug!(
                         width = frame_size.width,
                         height = frame_size.height,
-                        "failed to load cached rendered gradient for initial frame: {error:#}"
+                        "failed to load cached rendered generated background for initial frame: {error:#}"
                     );
                 }
             }
@@ -204,9 +204,9 @@ impl CurtainApp {
                     self.lock_surfaces[index].background_path = selected_path;
                     return Ok(Some(true));
                 }
-            } else if let Some(gradient) = self.background_gradient
-                && let Ok(Some(buffer)) = load_cached_gradient_render_variant(
-                    gradient,
+            } else if let Some(generated) = self.background_generated
+                && let Ok(Some(buffer)) = load_cached_generated_render_variant(
+                    generated,
                     frame_size,
                     self.background_treatment,
                     &variant,

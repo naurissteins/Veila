@@ -10,6 +10,7 @@ pub enum BackgroundMode {
     Bundled,
     File,
     Gradient,
+    Radial,
     Solid,
 }
 
@@ -19,6 +20,7 @@ impl BackgroundMode {
             Self::Bundled => "bundled",
             Self::File => "file",
             Self::Gradient => "gradient",
+            Self::Radial => "radial",
             Self::Solid => "solid",
         }
     }
@@ -48,6 +50,32 @@ impl Default for BackgroundGradientConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BackgroundRadialConfig {
+    #[serde(default = "default_radial_center_color")]
+    pub center: RgbColor,
+    #[serde(default = "default_radial_edge_color")]
+    pub edge: RgbColor,
+    #[serde(default = "default_radial_center_x")]
+    pub center_x: u8,
+    #[serde(default = "default_radial_center_y")]
+    pub center_y: u8,
+    #[serde(default = "default_radial_radius")]
+    pub radius: u8,
+}
+
+impl Default for BackgroundRadialConfig {
+    fn default() -> Self {
+        Self {
+            center: default_radial_center_color(),
+            edge: default_radial_edge_color(),
+            center_x: default_radial_center_x(),
+            center_y: default_radial_center_y(),
+            radius: default_radial_radius(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BackgroundConfig {
     #[serde(default)]
     pub mode: Option<BackgroundMode>,
@@ -58,6 +86,8 @@ pub struct BackgroundConfig {
     pub color: RgbColor,
     #[serde(default)]
     pub gradient: Option<BackgroundGradientConfig>,
+    #[serde(default)]
+    pub radial: Option<BackgroundRadialConfig>,
     #[serde(default = "default_background_blur_radius")]
     pub blur_radius: u8,
     #[serde(default = "default_background_dim_strength")]
@@ -76,6 +106,7 @@ impl Default for BackgroundConfig {
             outputs: Vec::new(),
             color: default_background_color(),
             gradient: Some(BackgroundGradientConfig::default()),
+            radial: Some(BackgroundRadialConfig::default()),
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
             tint: Some(default_background_tint()),
@@ -90,6 +121,7 @@ impl BackgroundConfig {
             Some(BackgroundMode::Bundled) | Some(BackgroundMode::Gradient) => {
                 BackgroundMode::Gradient
             }
+            Some(BackgroundMode::Radial) => BackgroundMode::Radial,
             Some(mode) => mode,
             None if self.path.is_some() => BackgroundMode::File,
             None => BackgroundMode::Gradient,
@@ -100,6 +132,7 @@ impl BackgroundConfig {
         match self.effective_mode() {
             BackgroundMode::File => self.path.clone(),
             BackgroundMode::Gradient => None,
+            BackgroundMode::Radial => None,
             BackgroundMode::Solid => None,
             BackgroundMode::Bundled => None,
         }
@@ -108,6 +141,13 @@ impl BackgroundConfig {
     pub fn resolved_gradient(&self) -> Option<BackgroundGradientConfig> {
         match self.effective_mode() {
             BackgroundMode::Gradient => Some(self.gradient.clone().unwrap_or_default()),
+            _ => None,
+        }
+    }
+
+    pub fn resolved_radial(&self) -> Option<BackgroundRadialConfig> {
+        match self.effective_mode() {
+            BackgroundMode::Radial => Some(self.radial.clone().unwrap_or_default()),
             _ => None,
         }
     }
@@ -160,4 +200,24 @@ const fn default_gradient_bottom_left() -> RgbColor {
 
 const fn default_gradient_bottom_right() -> RgbColor {
     RgbColor::rgb(111, 76, 255)
+}
+
+const fn default_radial_center_color() -> RgbColor {
+    RgbColor::rgb(111, 226, 255)
+}
+
+const fn default_radial_edge_color() -> RgbColor {
+    RgbColor::rgb(111, 76, 255)
+}
+
+const fn default_radial_center_x() -> u8 {
+    50
+}
+
+const fn default_radial_center_y() -> u8 {
+    50
+}
+
+const fn default_radial_radius() -> u8 {
+    100
 }

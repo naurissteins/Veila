@@ -27,7 +27,10 @@ use veila_common::{
 };
 use veila_renderer::{
     ClearColor,
-    background::{BackgroundAsset, BackgroundGradient, BackgroundTreatment},
+    background::{
+        BackgroundAsset, BackgroundGradient, BackgroundRadial, BackgroundTreatment,
+        GeneratedBackground,
+    },
     shm::SurfaceBufferPool,
 };
 use veila_ui::{ShellState, ShellTheme};
@@ -78,7 +81,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_events: Receiver<BackgroundEvent>,
     control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
-    pub(crate) background_gradient: Option<BackgroundGradient>,
+    pub(crate) background_generated: Option<GeneratedBackground>,
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
@@ -125,11 +128,11 @@ impl CurtainApp {
         let background_asset = BackgroundAsset::load(
             None,
             background_color,
-            background_gradient(&config.background),
+            background_generated(&config.background),
             background_treatment(&config.background),
         )
         .context("failed to prepare fallback background")?;
-        let background_gradient = background_gradient(&config.background);
+        let background_generated = background_generated(&config.background);
         let background_treatment = background_treatment(&config.background);
         let ui_shell = ShellState::new_with_username_and_widgets(
             theme,
@@ -192,7 +195,7 @@ impl CurtainApp {
             background_events,
             control_events,
             background_asset,
-            background_gradient,
+            background_generated,
             background_treatment,
             background_color,
             weather_snapshot: options.weather_snapshot,
@@ -378,14 +381,24 @@ pub(crate) fn background_treatment(
     }
 }
 
-pub(crate) fn background_gradient(config: &BackgroundConfig) -> Option<BackgroundGradient> {
-    let gradient = config.resolved_gradient()?;
+pub(crate) fn background_generated(config: &BackgroundConfig) -> Option<GeneratedBackground> {
+    if let Some(gradient) = config.resolved_gradient() {
+        return Some(GeneratedBackground::Gradient(BackgroundGradient {
+            top_left: to_background_color(gradient.top_left),
+            top_right: to_background_color(gradient.top_right),
+            bottom_left: to_background_color(gradient.bottom_left),
+            bottom_right: to_background_color(gradient.bottom_right),
+        }));
+    }
 
-    Some(BackgroundGradient {
-        top_left: to_background_color(gradient.top_left),
-        top_right: to_background_color(gradient.top_right),
-        bottom_left: to_background_color(gradient.bottom_left),
-        bottom_right: to_background_color(gradient.bottom_right),
+    config.resolved_radial().map(|radial| {
+        GeneratedBackground::Radial(BackgroundRadial {
+            center: to_background_color(radial.center),
+            edge: to_background_color(radial.edge),
+            center_x: radial.center_x,
+            center_y: radial.center_y,
+            radius: radial.radius,
+        })
     })
 }
 
