@@ -264,7 +264,76 @@ fn cache_source_key(source: CacheSource<'_>, size: FrameSize) -> Result<String> 
                 size.width,
                 size.height
             ),
+            GeneratedBackground::Layered(layered) => format!(
+                "layered:v1:{}:{}:{}:{}:{}x{}",
+                layered_base_key(layered.base),
+                layered_blob_key(layered.blobs[0]),
+                layered_blob_key(layered.blobs[1]),
+                layered_blob_key(layered.blobs[2]),
+                size.width,
+                size.height
+            ),
         }),
+    }
+}
+
+fn layered_base_key(base: super::BackgroundLayeredBase) -> String {
+    match base {
+        super::BackgroundLayeredBase::Solid(color) => {
+            format!(
+                "solid:{}:{}:{}:{}",
+                color.red, color.green, color.blue, color.alpha
+            )
+        }
+        super::BackgroundLayeredBase::Gradient(gradient) => format!(
+            "gradient:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+            gradient.top_left.red,
+            gradient.top_left.green,
+            gradient.top_left.blue,
+            gradient.top_left.alpha,
+            gradient.top_right.red,
+            gradient.top_right.green,
+            gradient.top_right.blue,
+            gradient.top_right.alpha,
+            gradient.bottom_left.red,
+            gradient.bottom_left.green,
+            gradient.bottom_left.blue,
+            gradient.bottom_left.alpha,
+            gradient.bottom_right.red,
+            gradient.bottom_right.green,
+            gradient.bottom_right.blue,
+            gradient.bottom_right.alpha
+        ),
+        super::BackgroundLayeredBase::Radial(radial) => format!(
+            "radial:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+            radial.center.red,
+            radial.center.green,
+            radial.center.blue,
+            radial.center.alpha,
+            radial.edge.red,
+            radial.edge.green,
+            radial.edge.blue,
+            radial.edge.alpha,
+            radial.center_x,
+            radial.center_y,
+            radial.radius
+        ),
+    }
+}
+
+fn layered_blob_key(blob: Option<super::BackgroundLayeredBlob>) -> String {
+    match blob {
+        Some(blob) => format!(
+            "blob:{}:{}:{}:{}:{}:{}:{}",
+            blob.color.red,
+            blob.color.green,
+            blob.color.blue,
+            blob.color.alpha,
+            blob.x,
+            blob.y,
+            blob.size
+        ),
+        None => String::from("none"),
     }
 }
 

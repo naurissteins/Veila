@@ -25,8 +25,9 @@ use assets::bundled_theme_dir;
 const DEFAULT_THEME_NAME: &str = "default";
 
 pub use background::{
-    BackgroundConfig, BackgroundGradientConfig, BackgroundMode, BackgroundOutputConfig,
-    BackgroundRadialConfig,
+    BackgroundConfig, BackgroundGradientConfig, BackgroundLayeredBaseConfig,
+    BackgroundLayeredBaseMode, BackgroundLayeredBlobConfig, BackgroundLayeredConfig,
+    BackgroundMode, BackgroundOutputConfig, BackgroundRadialConfig,
 };
 pub use battery::BatteryConfig;
 pub use color::ConfigColor;

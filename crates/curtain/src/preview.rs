@@ -8,12 +8,13 @@ use std::{
 use time::{OffsetDateTime, UtcOffset};
 use veila_common::{
     AppConfig, BatterySnapshot, ConfigColor, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot,
+    config::{BackgroundLayeredBaseMode, BackgroundLayeredConfig},
 };
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     background::{
-        BackgroundAsset, BackgroundGradient, BackgroundRadial, BackgroundTreatment,
-        GeneratedBackground,
+        BackgroundAsset, BackgroundGradient, BackgroundLayered, BackgroundLayeredBase,
+        BackgroundLayeredBlob, BackgroundRadial, BackgroundTreatment, GeneratedBackground,
     },
 };
 use veila_ui::{ShellState, ShellTheme};
@@ -131,15 +132,63 @@ fn background_generated(
         }));
     }
 
-    config.resolved_radial().map(|radial| {
-        GeneratedBackground::Radial(BackgroundRadial {
+    if let Some(radial) = config.resolved_radial() {
+        return Some(GeneratedBackground::Radial(BackgroundRadial {
             center: to_clear_color(radial.center),
             edge: to_clear_color(radial.edge),
             center_x: radial.center_x,
             center_y: radial.center_y,
             radius: radial.radius,
-        })
-    })
+        }));
+    }
+
+    config
+        .resolved_layered()
+        .map(|layered| GeneratedBackground::Layered(to_layered_background(&layered)))
+}
+
+fn to_layered_background(config: &BackgroundLayeredConfig) -> BackgroundLayered {
+    let base = match config.base.effective_mode() {
+        BackgroundLayeredBaseMode::Gradient => {
+            let gradient = config.base.gradient.clone().unwrap_or_default();
+            BackgroundLayeredBase::Gradient(BackgroundGradient {
+                top_left: to_clear_color(gradient.top_left),
+                top_right: to_clear_color(gradient.top_right),
+                bottom_left: to_clear_color(gradient.bottom_left),
+                bottom_right: to_clear_color(gradient.bottom_right),
+            })
+        }
+        BackgroundLayeredBaseMode::Radial => {
+            let radial = config.base.radial.clone().unwrap_or_default();
+            BackgroundLayeredBase::Radial(BackgroundRadial {
+                center: to_clear_color(radial.center),
+                edge: to_clear_color(radial.edge),
+                center_x: radial.center_x,
+                center_y: radial.center_y,
+                radius: radial.radius,
+            })
+        }
+        BackgroundLayeredBaseMode::Solid => {
+            BackgroundLayeredBase::Solid(to_clear_color(config.base.color))
+        }
+    };
+
+    let mut blobs = [None; 3];
+    for (slot, blob) in blobs.iter_mut().zip(config.blobs.iter().take(3)) {
+        *slot = Some(BackgroundLayeredBlob {
+            color: blob_color(blob.color, blob.opacity),
+            x: blob.x,
+            y: blob.y,
+            size: blob.size,
+        });
+    }
+
+    BackgroundLayered { base, blobs }
+}
+
+fn blob_color(color: ConfigColor, opacity: u8) -> ClearColor {
+    let alpha = ((u16::from(color.3) * u16::from(opacity.min(100)) + 50) / 100) as u8;
+    ClearColor::rgba(color.0, color.1, color.2, alpha)
 }
 
 fn preview_weather_snapshot(

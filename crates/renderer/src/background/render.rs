@@ -1,6 +1,9 @@
 use image::{RgbaImage, imageops::FilterType};
 
-use super::{BackgroundGradient, BackgroundRadial, BackgroundTreatment, GeneratedBackground};
+use super::{
+    BackgroundGradient, BackgroundLayered, BackgroundLayeredBase, BackgroundLayeredBlob,
+    BackgroundRadial, BackgroundTreatment, GeneratedBackground,
+};
 use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
 
 pub(super) fn render_image(
@@ -43,6 +46,7 @@ pub(super) fn render_generated(
 ) -> Result<SoftwareBuffer> {
     match generated {
         GeneratedBackground::Gradient(gradient) => render_gradient(size, gradient),
+        GeneratedBackground::Layered(layered) => render_layered(size, layered),
         GeneratedBackground::Radial(radial) => render_radial(size, radial),
     }
 }
@@ -98,6 +102,49 @@ fn render_radial(size: FrameSize, radial: BackgroundRadial) -> Result<SoftwareBu
     Ok(buffer)
 }
 
+fn render_layered(size: FrameSize, layered: BackgroundLayered) -> Result<SoftwareBuffer> {
+    let mut buffer = match layered.base {
+        BackgroundLayeredBase::Solid(color) => SoftwareBuffer::solid(size, color)?,
+        BackgroundLayeredBase::Gradient(gradient) => render_gradient(size, gradient)?,
+        BackgroundLayeredBase::Radial(radial) => render_radial(size, radial)?,
+    };
+
+    for blob in layered.blobs.into_iter().flatten() {
+        apply_layered_blob(&mut buffer, blob);
+    }
+
+    Ok(buffer)
+}
+
+fn apply_layered_blob(buffer: &mut SoftwareBuffer, blob: BackgroundLayeredBlob) {
+    let size = buffer.size();
+    let width_span = size.width.saturating_sub(1).max(1) as f32;
+    let height_span = size.height.saturating_sub(1).max(1) as f32;
+    let center_x = blob.x.min(100) as f32 / 100.0;
+    let center_y = blob.y.min(100) as f32 / 100.0;
+    let radius = (blob.size.clamp(1, 100) as f32 / 100.0).max(f32::EPSILON);
+
+    for y in 0..size.height {
+        let py = y as f32 / height_span;
+        for x in 0..size.width {
+            let px = x as f32 / width_span;
+            let distance = ((px - center_x).powi(2) + (py - center_y).powi(2)).sqrt();
+            let t = (distance / radius).clamp(0.0, 1.0);
+            let alpha = 1.0 - smoothstep(t);
+            if alpha <= 0.0 {
+                continue;
+            }
+
+            let src = blob
+                .color
+                .with_alpha(((f32::from(blob.color.alpha) * alpha).round() as u16).min(255) as u8)
+                .to_argb8888_bytes();
+            let offset = ((y * size.width + x) * 4) as usize;
+            blend_argb8888_pixel(&mut buffer.pixels_mut()[offset..offset + 4], &src);
+        }
+    }
+}
+
 fn bilerp_color(
     top_left: ClearColor,
     top_right: ClearColor,
@@ -135,6 +182,24 @@ fn max_corner_distance(center_x: f32, center_y: f32) -> f32 {
 
 fn smoothstep(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
+}
+
+fn blend_argb8888_pixel(dst: &mut [u8], src: &[u8; 4]) {
+    let alpha = u16::from(src[3]);
+    if alpha == 0 {
+        return;
+    }
+
+    let inverse_alpha = 255 - alpha;
+    dst[0] = blend_component(dst[0], src[0], inverse_alpha);
+    dst[1] = blend_component(dst[1], src[1], inverse_alpha);
+    dst[2] = blend_component(dst[2], src[2], inverse_alpha);
+    dst[3] = blend_component(dst[3], src[3], inverse_alpha);
+}
+
+fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
+    blended.min(u16::from(u8::MAX)) as u8
 }
 
 pub(super) fn cover_dimensions(

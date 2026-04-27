@@ -45,6 +45,16 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(radial.center_x, 50);
     assert_eq!(radial.center_y, 50);
     assert_eq!(radial.radius, 100);
+    let layered = config
+        .background
+        .layered
+        .as_ref()
+        .expect("layered defaults should exist");
+    assert_eq!(
+        layered.base.effective_mode(),
+        crate::config::BackgroundLayeredBaseMode::Gradient
+    );
+    assert!(layered.blobs.is_empty());
     assert_eq!(config.background.blur_radius, 0);
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());

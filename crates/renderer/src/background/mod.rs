@@ -57,8 +57,30 @@ pub struct BackgroundRadial {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BackgroundLayeredBlob {
+    pub color: ClearColor,
+    pub x: u8,
+    pub y: u8,
+    pub size: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BackgroundLayeredBase {
+    Solid(ClearColor),
+    Gradient(BackgroundGradient),
+    Radial(BackgroundRadial),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BackgroundLayered {
+    pub base: BackgroundLayeredBase,
+    pub blobs: [Option<BackgroundLayeredBlob>; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GeneratedBackground {
     Gradient(BackgroundGradient),
+    Layered(BackgroundLayered),
     Radial(BackgroundRadial),
 }
 
@@ -66,6 +88,7 @@ impl GeneratedBackground {
     pub const fn mode_name(self) -> &'static str {
         match self {
             Self::Gradient(_) => "gradient",
+            Self::Layered(_) => "layered",
             Self::Radial(_) => "radial",
         }
     }

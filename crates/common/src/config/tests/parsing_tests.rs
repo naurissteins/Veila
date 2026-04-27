@@ -333,6 +333,72 @@ fn radial_mode_uses_configured_colors_and_position() {
 }
 
 #[test]
+fn layered_mode_uses_base_and_blobs() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [background]
+            mode = "layered"
+
+            [background.layered.base]
+            mode = "gradient"
+
+            [background.layered.base.gradient]
+            top_left = "#AA44FF"
+            top_right = "#33BBFF"
+            bottom_left = "#66E2FF"
+            bottom_right = "#7744FF"
+
+            [[background.layered.blobs]]
+            color = "#FFFFFF"
+            opacity = 16
+            x = 18
+            y = 12
+            size = 42
+
+            [[background.layered.blobs]]
+            color = "#7C4DFF"
+            opacity = 22
+            x = 82
+            y = 78
+            size = 50
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Layered);
+    assert!(config.background.resolved_path().is_none());
+
+    let layered = config
+        .background
+        .resolved_layered()
+        .expect("layered config should resolve");
+    assert_eq!(
+        layered.base.effective_mode(),
+        crate::config::BackgroundLayeredBaseMode::Gradient
+    );
+    let base_gradient = layered
+        .base
+        .gradient
+        .as_ref()
+        .expect("layered gradient base should exist");
+    assert_eq!(base_gradient.top_left, RgbColor::rgb(170, 68, 255));
+    assert_eq!(base_gradient.top_right, RgbColor::rgb(51, 187, 255));
+    assert_eq!(base_gradient.bottom_left, RgbColor::rgb(102, 226, 255));
+    assert_eq!(base_gradient.bottom_right, RgbColor::rgb(119, 68, 255));
+    assert_eq!(layered.blobs.len(), 2);
+    assert_eq!(layered.blobs[0].color, RgbColor::rgb(255, 255, 255));
+    assert_eq!(layered.blobs[0].opacity, 16);
+    assert_eq!(layered.blobs[0].x, 18);
+    assert_eq!(layered.blobs[0].y, 12);
+    assert_eq!(layered.blobs[0].size, 42);
+    assert_eq!(layered.blobs[1].color, RgbColor::rgb(124, 77, 255));
+    assert_eq!(layered.blobs[1].opacity, 22);
+    assert_eq!(layered.blobs[1].x, 82);
+    assert_eq!(layered.blobs[1].y, 78);
+    assert_eq!(layered.blobs[1].size, 50);
+}
+
+#[test]
 fn legacy_bundled_mode_resolves_as_gradient() {
     let config = AppConfig::from_toml_str(
         r##"

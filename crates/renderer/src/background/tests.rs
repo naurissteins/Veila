@@ -3,9 +3,9 @@ use std::sync::Arc;
 use image::{Rgba, RgbaImage};
 
 use super::{
-    BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundRadial, BackgroundTreatment,
-    GeneratedBackground, RenderCacheSummary, SourceCacheStatus, asset::unique_sizes,
-    render::cover_dimensions,
+    BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundLayered, BackgroundLayeredBase,
+    BackgroundLayeredBlob, BackgroundRadial, BackgroundTreatment, GeneratedBackground,
+    RenderCacheSummary, SourceCacheStatus, asset::unique_sizes, render::cover_dimensions,
 };
 use crate::{ClearColor, FrameSize};
 
@@ -64,6 +64,35 @@ fn renders_radial_backgrounds() {
 
     assert_eq!(&buffer.pixels()[16..20], &[255, 255, 255, 255]);
     assert_eq!(&buffer.pixels()[0..4], &[0, 0, 0, 255]);
+}
+
+#[test]
+fn renders_layered_backgrounds() {
+    let asset = BackgroundAsset::load(
+        None,
+        ClearColor::opaque(0, 0, 0),
+        Some(GeneratedBackground::Layered(BackgroundLayered {
+            base: BackgroundLayeredBase::Solid(ClearColor::opaque(0, 0, 0)),
+            blobs: [
+                Some(BackgroundLayeredBlob {
+                    color: ClearColor::rgba(255, 0, 0, 128),
+                    x: 50,
+                    y: 50,
+                    size: 40,
+                }),
+                None,
+                None,
+            ],
+        })),
+        BackgroundTreatment::default(),
+    )
+    .expect("asset");
+    let buffer = asset.render(FrameSize::new(5, 5)).expect("buffer");
+
+    assert_eq!(&buffer.pixels()[0..4], &[0, 0, 0, 255]);
+    let center = &buffer.pixels()[48..52];
+    assert!(center[2] > 0);
+    assert_eq!(center[3], 255);
 }
 
 #[test]

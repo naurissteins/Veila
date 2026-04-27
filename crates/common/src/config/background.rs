@@ -10,6 +10,7 @@ pub enum BackgroundMode {
     Bundled,
     File,
     Gradient,
+    Layered,
     Radial,
     Solid,
 }
@@ -20,6 +21,7 @@ impl BackgroundMode {
             Self::Bundled => "bundled",
             Self::File => "file",
             Self::Gradient => "gradient",
+            Self::Layered => "layered",
             Self::Radial => "radial",
             Self::Solid => "solid",
         }
@@ -75,6 +77,77 @@ impl Default for BackgroundRadialConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundLayeredBaseMode {
+    Gradient,
+    Radial,
+    Solid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BackgroundLayeredBaseConfig {
+    #[serde(default)]
+    pub mode: Option<BackgroundLayeredBaseMode>,
+    #[serde(default = "default_background_color")]
+    pub color: RgbColor,
+    #[serde(default)]
+    pub gradient: Option<BackgroundGradientConfig>,
+    #[serde(default)]
+    pub radial: Option<BackgroundRadialConfig>,
+}
+
+impl Default for BackgroundLayeredBaseConfig {
+    fn default() -> Self {
+        Self {
+            mode: Some(BackgroundLayeredBaseMode::Gradient),
+            color: default_background_color(),
+            gradient: Some(BackgroundGradientConfig::default()),
+            radial: Some(BackgroundRadialConfig::default()),
+        }
+    }
+}
+
+impl BackgroundLayeredBaseConfig {
+    pub fn effective_mode(&self) -> BackgroundLayeredBaseMode {
+        self.mode.unwrap_or(BackgroundLayeredBaseMode::Gradient)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BackgroundLayeredBlobConfig {
+    #[serde(default = "default_layered_blob_color")]
+    pub color: RgbColor,
+    #[serde(default = "default_layered_blob_opacity")]
+    pub opacity: u8,
+    #[serde(default = "default_layered_blob_x")]
+    pub x: u8,
+    #[serde(default = "default_layered_blob_y")]
+    pub y: u8,
+    #[serde(default = "default_layered_blob_size")]
+    pub size: u8,
+}
+
+impl Default for BackgroundLayeredBlobConfig {
+    fn default() -> Self {
+        Self {
+            color: default_layered_blob_color(),
+            opacity: default_layered_blob_opacity(),
+            x: default_layered_blob_x(),
+            y: default_layered_blob_y(),
+            size: default_layered_blob_size(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct BackgroundLayeredConfig {
+    #[serde(default)]
+    pub base: BackgroundLayeredBaseConfig,
+    #[serde(default)]
+    pub blobs: Vec<BackgroundLayeredBlobConfig>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BackgroundConfig {
     #[serde(default)]
@@ -86,6 +159,8 @@ pub struct BackgroundConfig {
     pub color: RgbColor,
     #[serde(default)]
     pub gradient: Option<BackgroundGradientConfig>,
+    #[serde(default)]
+    pub layered: Option<BackgroundLayeredConfig>,
     #[serde(default)]
     pub radial: Option<BackgroundRadialConfig>,
     #[serde(default = "default_background_blur_radius")]
@@ -106,6 +181,7 @@ impl Default for BackgroundConfig {
             outputs: Vec::new(),
             color: default_background_color(),
             gradient: Some(BackgroundGradientConfig::default()),
+            layered: Some(BackgroundLayeredConfig::default()),
             radial: Some(BackgroundRadialConfig::default()),
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
@@ -121,6 +197,7 @@ impl BackgroundConfig {
             Some(BackgroundMode::Bundled) | Some(BackgroundMode::Gradient) => {
                 BackgroundMode::Gradient
             }
+            Some(BackgroundMode::Layered) => BackgroundMode::Layered,
             Some(BackgroundMode::Radial) => BackgroundMode::Radial,
             Some(mode) => mode,
             None if self.path.is_some() => BackgroundMode::File,
@@ -132,6 +209,7 @@ impl BackgroundConfig {
         match self.effective_mode() {
             BackgroundMode::File => self.path.clone(),
             BackgroundMode::Gradient => None,
+            BackgroundMode::Layered => None,
             BackgroundMode::Radial => None,
             BackgroundMode::Solid => None,
             BackgroundMode::Bundled => None,
@@ -148,6 +226,13 @@ impl BackgroundConfig {
     pub fn resolved_radial(&self) -> Option<BackgroundRadialConfig> {
         match self.effective_mode() {
             BackgroundMode::Radial => Some(self.radial.clone().unwrap_or_default()),
+            _ => None,
+        }
+    }
+
+    pub fn resolved_layered(&self) -> Option<BackgroundLayeredConfig> {
+        match self.effective_mode() {
+            BackgroundMode::Layered => Some(self.layered.clone().unwrap_or_default()),
             _ => None,
         }
     }
@@ -220,4 +305,24 @@ const fn default_radial_center_y() -> u8 {
 
 const fn default_radial_radius() -> u8 {
     100
+}
+
+const fn default_layered_blob_color() -> RgbColor {
+    RgbColor::rgb(255, 255, 255)
+}
+
+const fn default_layered_blob_opacity() -> u8 {
+    18
+}
+
+const fn default_layered_blob_x() -> u8 {
+    50
+}
+
+const fn default_layered_blob_y() -> u8 {
+    50
+}
+
+const fn default_layered_blob_size() -> u8 {
+    36
 }
