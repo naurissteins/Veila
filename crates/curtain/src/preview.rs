@@ -32,7 +32,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let loaded = AppConfig::load(options.config_path.as_deref())
         .context("failed to load config for preview rendering")?;
     let config = loaded.config;
-    let preview_weather_hidden = preview_weather_hidden(&options);
+    let preview_weather_hidden = preview_weather_hidden(&options, &config);
     let preview_battery_hidden = preview_battery_hidden(&options);
     let preview_now_playing_hidden = preview_now_playing_hidden(&options);
     let weather_location = preview_weather_location(&options, &config);
@@ -244,8 +244,23 @@ fn preview_keyboard_layout_label(options: &CurtainOptions) -> Option<String> {
     }
 }
 
-fn preview_weather_hidden(options: &CurtainOptions) -> bool {
-    options.preview_hide_widgets || options.preview_hide_weather
+fn preview_weather_hidden(options: &CurtainOptions, config: &AppConfig) -> bool {
+    if options.preview_hide_widgets || options.preview_hide_weather {
+        return true;
+    }
+
+    if preview_weather_forced(options) {
+        return false;
+    }
+
+    !config.weather.enabled || !config.visuals.weather_enabled()
+}
+
+fn preview_weather_forced(options: &CurtainOptions) -> bool {
+    options.weather_snapshot.is_some()
+        || options.preview_weather_location.is_some()
+        || options.preview_weather_condition.is_some()
+        || options.preview_weather_temperature_celsius.is_some()
 }
 
 fn preview_battery_hidden(options: &CurtainOptions) -> bool {
@@ -425,8 +440,8 @@ mod tests {
         preview_battery_hidden, preview_battery_snapshot, preview_clock_datetime,
         preview_keyboard_layout_label, preview_now_playing_hidden, preview_username,
         preview_weather_cache_path_for_coordinates, preview_weather_condition_for_hour,
-        preview_weather_hidden, preview_weather_location, preview_weather_location_cache_path,
-        preview_weather_override_snapshot,
+        preview_weather_forced, preview_weather_hidden, preview_weather_location,
+        preview_weather_location_cache_path, preview_weather_override_snapshot,
     };
     use std::fs;
     use veila_common::{AppConfig, BatterySnapshot, WeatherCondition, WeatherSnapshot};
@@ -603,9 +618,10 @@ mod tests {
             preview_hide_keyboard_label: true,
             ..CurtainOptions::default()
         };
+        let config = AppConfig::default();
 
         assert_eq!(preview_keyboard_layout_label(&options), None);
-        assert!(!preview_weather_hidden(&options));
+        assert!(!preview_weather_hidden(&options, &config));
         assert!(!preview_battery_hidden(&options));
         assert!(!preview_now_playing_hidden(&options));
     }
@@ -616,8 +632,9 @@ mod tests {
             preview_hide_weather: true,
             ..CurtainOptions::default()
         };
+        let config = AppConfig::default();
 
-        assert!(preview_weather_hidden(&options));
+        assert!(preview_weather_hidden(&options, &config));
         assert!(!preview_battery_hidden(&options));
         assert!(!preview_now_playing_hidden(&options));
     }
@@ -628,8 +645,9 @@ mod tests {
             preview_hide_battery: true,
             ..CurtainOptions::default()
         };
+        let config = AppConfig::default();
 
-        assert!(!preview_weather_hidden(&options));
+        assert!(!preview_weather_hidden(&options, &config));
         assert!(preview_battery_hidden(&options));
         assert!(!preview_now_playing_hidden(&options));
     }
@@ -640,10 +658,64 @@ mod tests {
             preview_hide_now_playing: true,
             ..CurtainOptions::default()
         };
+        let config = AppConfig::default();
 
-        assert!(!preview_weather_hidden(&options));
+        assert!(!preview_weather_hidden(&options, &config));
         assert!(!preview_battery_hidden(&options));
         assert!(preview_now_playing_hidden(&options));
+    }
+
+    #[test]
+    fn preview_weather_respects_disabled_weather_fetch_without_override() {
+        let options = CurtainOptions::default();
+        let config = AppConfig::from_toml_str(
+            r#"
+                [weather]
+                enabled = false
+                location = "Riga"
+            "#,
+        )
+        .expect("config");
+
+        assert!(preview_weather_hidden(&options, &config));
+        assert!(!preview_weather_forced(&options));
+    }
+
+    #[test]
+    fn preview_weather_respects_disabled_weather_visual_without_override() {
+        let options = CurtainOptions::default();
+        let config = AppConfig::from_toml_str(
+            r#"
+                [weather]
+                enabled = true
+                location = "Riga"
+
+                [visuals.weather]
+                enabled = false
+            "#,
+        )
+        .expect("config");
+
+        assert!(preview_weather_hidden(&options, &config));
+        assert!(!preview_weather_forced(&options));
+    }
+
+    #[test]
+    fn preview_weather_override_can_force_preview_when_weather_is_disabled() {
+        let options = CurtainOptions {
+            preview_weather_location: Some(String::from("Tokyo")),
+            ..CurtainOptions::default()
+        };
+        let config = AppConfig::from_toml_str(
+            r#"
+                [weather]
+                enabled = false
+            "#,
+        )
+        .expect("config");
+
+        assert!(preview_weather_forced(&options));
+        assert!(!preview_weather_hidden(&options, &config));
     }
 
     #[test]

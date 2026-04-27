@@ -157,6 +157,7 @@ fn loads_second_bundled_theme() {
         config.visuals.keyboard_background_color(),
         theme_config.visuals.keyboard_background_color()
     );
+    assert_eq!(config.weather.enabled, theme_config.weather.enabled);
     assert_eq!(
         config.visuals.weather_alignment(),
         theme_config.visuals.weather_alignment()
