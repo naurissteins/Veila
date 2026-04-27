@@ -271,3 +271,32 @@ fn solid_mode_disables_background_image_resolution() {
     assert_eq!(config.background.effective_mode(), BackgroundMode::Solid);
     assert!(config.background.resolved_path().is_none());
 }
+
+#[test]
+fn gradient_mode_uses_configured_corner_colors() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [background]
+            mode = "gradient"
+
+            [background.gradient]
+            top_left = "#AA44FF"
+            top_right = "#33BBFF"
+            bottom_left = "#66E2FF"
+            bottom_right = "#7744FF"
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
+    assert!(config.background.resolved_path().is_none());
+
+    let gradient = config
+        .background
+        .resolved_gradient()
+        .expect("gradient should resolve");
+    assert_eq!(gradient.top_left, RgbColor::rgb(170, 68, 255));
+    assert_eq!(gradient.top_right, RgbColor::rgb(51, 187, 255));
+    assert_eq!(gradient.bottom_left, RgbColor::rgb(102, 226, 255));
+    assert_eq!(gradient.bottom_right, RgbColor::rgb(119, 68, 255));
+}

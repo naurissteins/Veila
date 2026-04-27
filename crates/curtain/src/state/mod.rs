@@ -22,11 +22,12 @@ use smithay_client_toolkit::{
     shm::Shm,
 };
 use veila_common::{
-    AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, config::BackgroundOutputConfig,
+    AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    config::{BackgroundConfig, BackgroundOutputConfig},
 };
 use veila_renderer::{
     ClearColor,
-    background::{BackgroundAsset, BackgroundTreatment},
+    background::{BackgroundAsset, BackgroundGradient, BackgroundTreatment},
     shm::SurfaceBufferPool,
 };
 use veila_ui::{ShellState, ShellTheme};
@@ -77,6 +78,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_events: Receiver<BackgroundEvent>,
     control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
+    pub(crate) background_gradient: Option<BackgroundGradient>,
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
@@ -123,9 +125,11 @@ impl CurtainApp {
         let background_asset = BackgroundAsset::load(
             None,
             background_color,
+            background_gradient(&config.background),
             background_treatment(&config.background),
         )
         .context("failed to prepare fallback background")?;
+        let background_gradient = background_gradient(&config.background);
         let background_treatment = background_treatment(&config.background);
         let ui_shell = ShellState::new_with_username_and_widgets(
             theme,
@@ -188,6 +192,7 @@ impl CurtainApp {
             background_events,
             control_events,
             background_asset,
+            background_gradient,
             background_treatment,
             background_color,
             weather_snapshot: options.weather_snapshot,
@@ -371,4 +376,19 @@ pub(crate) fn background_treatment(
             .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
         tint_opacity: config.tint_opacity,
     }
+}
+
+pub(crate) fn background_gradient(config: &BackgroundConfig) -> Option<BackgroundGradient> {
+    let gradient = config.resolved_gradient()?;
+
+    Some(BackgroundGradient {
+        top_left: to_background_color(gradient.top_left),
+        top_right: to_background_color(gradient.top_right),
+        bottom_left: to_background_color(gradient.bottom_left),
+        bottom_right: to_background_color(gradient.bottom_right),
+    })
+}
+
+fn to_background_color(color: veila_common::RgbColor) -> ClearColor {
+    ClearColor::rgba(color.0, color.1, color.2, color.3)
 }

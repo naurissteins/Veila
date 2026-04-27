@@ -7,8 +7,10 @@ use veila_common::{AppConfig, LayerAlignment, LayerMode, LayerStyle, RgbColor};
 use veila_renderer::{
     ClearColor, FrameSize,
     background::{
-        BackgroundAsset, BackgroundTreatment, RenderCacheSummary, SourceCacheStatus,
-        load_cached_render_variant, prewarm_rendered, prewarm_source, store_cached_render_variant,
+        BackgroundAsset, BackgroundGradient, BackgroundTreatment, RenderCacheSummary,
+        SourceCacheStatus, load_cached_gradient_render_variant, load_cached_render_variant,
+        prewarm_rendered, prewarm_rendered_gradient, prewarm_source,
+        store_cached_gradient_render_variant, store_cached_render_variant,
     },
     draw::layer::{
         BackdropLayerAlignment, BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle,
@@ -22,19 +24,20 @@ use crate::app::output_probe;
 pub(super) fn spawn_background_prewarm(config: &AppConfig) {
     let background = config.background.clone();
     let fallback = to_clear_color(config.background.color);
+    let gradient = background_gradient(&config.background);
     let treatment = background_treatment(&config.background);
     let layer = layer_prewarm_spec(config);
 
     tokio::spawn(async move {
         let started_at = Instant::now();
         let join_result = tokio::task::spawn_blocking(move || {
-            prewarm_wallpapers(background, fallback, treatment, layer)
+            prewarm_backgrounds(background, gradient, fallback, treatment, layer)
         })
         .await;
 
         match join_result {
-            Ok(reports) => {
-                for report in reports {
+            Ok(result) => {
+                for report in result.wallpapers {
                     match report {
                         Ok(report) => log_prewarm_report(report),
                         Err((path, error)) => {
@@ -45,6 +48,9 @@ pub(super) fn spawn_background_prewarm(config: &AppConfig) {
                             );
                         }
                     }
+                }
+                if let Some(report) = result.gradient {
+                    log_gradient_prewarm_report(report, started_at);
                 }
             }
             Err(error) => {
@@ -88,17 +94,52 @@ fn log_prewarm_report(report: PrewarmReport) {
     }
 }
 
-fn prewarm_wallpapers(
+fn log_gradient_prewarm_report(report: GradientPrewarmReport, started_at: Instant) {
+    tracing::info!(
+        elapsed_ms = report.rendered.elapsed_ms,
+        probed_outputs = report.rendered.probed_outputs,
+        cache_hits = report.rendered.summary.cache_hits,
+        warmed_sizes = report.rendered.summary.warmed_sizes,
+        "gradient background render prewarm finished"
+    );
+
+    if let Some(layered) = report.layered {
+        tracing::info!(
+            elapsed_ms = layered.elapsed_ms,
+            probed_outputs = layered.probed_outputs,
+            cache_hits = layered.cache_hits,
+            warmed_sizes = layered.warmed_sizes,
+            "gradient layered background prewarm finished"
+        );
+    }
+
+    tracing::debug!(
+        total_elapsed_ms = elapsed_ms(started_at),
+        "gradient background prewarm completed"
+    );
+}
+
+fn prewarm_backgrounds(
     background: veila_common::config::BackgroundConfig,
+    gradient: Option<BackgroundGradient>,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     layer: Option<LayerPrewarmSpec>,
-) -> Vec<Result<PrewarmReport, (PathBuf, anyhow::Error)>> {
+) -> PrewarmResult {
     let outputs = output_probe::current_outputs().unwrap_or_default();
-    prewarm_jobs(&background, &outputs)
+    let wallpapers = prewarm_jobs(&background, &outputs)
         .into_iter()
         .map(|job| prewarm_wallpaper(job, fallback, treatment, layer.as_ref()))
-        .collect()
+        .collect();
+    let gradient = gradient.and_then(|gradient| {
+        let sizes = gradient_sizes(&background, &outputs);
+        prewarm_gradient_backgrounds(gradient, treatment, layer.as_ref(), &sizes)
+    });
+
+    PrewarmResult {
+        wallpapers,
+        gradient,
+    }
 }
 
 fn prewarm_wallpaper(
@@ -159,7 +200,7 @@ fn prewarm_layered_backgrounds(
     }
 
     let started_at = Instant::now();
-    let asset = BackgroundAsset::load(Some(path), fallback, treatment).ok()?;
+    let asset = BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?;
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
@@ -176,6 +217,70 @@ fn prewarm_layered_backgrounds(
         let mut buffer = asset.render(size).ok()?;
         apply_layer_spec(layer, &mut buffer);
         store_cached_render_variant(path, size, treatment, &buffer, variant).ok()?;
+        warmed_sizes += 1;
+    }
+
+    Some(LayeredPrewarmReport {
+        elapsed_ms: elapsed_ms(started_at),
+        probed_outputs: sizes.len(),
+        cache_hits,
+        warmed_sizes,
+    })
+}
+
+fn prewarm_gradient_backgrounds(
+    gradient: BackgroundGradient,
+    treatment: BackgroundTreatment,
+    layer: Option<&LayerPrewarmSpec>,
+    sizes: &[FrameSize],
+) -> Option<GradientPrewarmReport> {
+    if sizes.is_empty() {
+        return None;
+    }
+
+    let started_at = Instant::now();
+    let summary = prewarm_rendered_gradient(gradient, treatment, sizes).ok()?;
+    let rendered = RenderedPrewarmReport {
+        elapsed_ms: elapsed_ms(started_at),
+        probed_outputs: sizes.len(),
+        summary,
+    };
+    let layered = prewarm_gradient_layered_backgrounds(gradient, treatment, layer, sizes);
+
+    Some(GradientPrewarmReport { rendered, layered })
+}
+
+fn prewarm_gradient_layered_backgrounds(
+    gradient: BackgroundGradient,
+    treatment: BackgroundTreatment,
+    layer: Option<&LayerPrewarmSpec>,
+    sizes: &[FrameSize],
+) -> Option<LayeredPrewarmReport> {
+    let layer = layer?;
+    let variant = &layer.variant;
+    if sizes.is_empty() {
+        return None;
+    }
+
+    let started_at = Instant::now();
+    let asset =
+        BackgroundAsset::load(None, ClearColor::opaque(0, 0, 0), Some(gradient), treatment).ok()?;
+    let mut cache_hits = 0usize;
+    let mut warmed_sizes = 0usize;
+
+    for size in sizes.iter().copied() {
+        if load_cached_gradient_render_variant(gradient, size, treatment, variant)
+            .ok()
+            .flatten()
+            .is_some()
+        {
+            cache_hits += 1;
+            continue;
+        }
+
+        let mut buffer = asset.render(size).ok()?;
+        apply_layer_spec(layer, &mut buffer);
+        store_cached_gradient_render_variant(gradient, size, treatment, &buffer, variant).ok()?;
         warmed_sizes += 1;
     }
 
@@ -224,6 +329,28 @@ fn merge_prewarm_job(jobs: &mut Vec<PrewarmJob>, path: PathBuf, sizes: &[FrameSi
         path,
         sizes: sizes.to_vec(),
     });
+}
+
+fn gradient_sizes(
+    background: &veila_common::config::BackgroundConfig,
+    outputs: &[output_probe::ProbedOutput],
+) -> Vec<FrameSize> {
+    let mut sizes = Vec::with_capacity(outputs.len());
+
+    for output in outputs {
+        let overridden = output.name.as_deref().is_some_and(|name| {
+            background
+                .outputs
+                .iter()
+                .any(|override_config| override_config.name == name)
+        });
+        if overridden || sizes.contains(&output.size) {
+            continue;
+        }
+        sizes.push(output.size);
+    }
+
+    sizes
 }
 
 fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::SoftwareBuffer) {
@@ -350,6 +477,19 @@ fn background_treatment(config: &veila_common::config::BackgroundConfig) -> Back
     }
 }
 
+fn background_gradient(
+    config: &veila_common::config::BackgroundConfig,
+) -> Option<BackgroundGradient> {
+    let gradient = config.resolved_gradient()?;
+
+    Some(BackgroundGradient {
+        top_left: to_clear_color(gradient.top_left),
+        top_right: to_clear_color(gradient.top_right),
+        bottom_left: to_clear_color(gradient.bottom_left),
+        bottom_right: to_clear_color(gradient.bottom_right),
+    })
+}
+
 fn elapsed_ms(started_at: Instant) -> u64 {
     started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
 }
@@ -362,6 +502,11 @@ struct PrewarmReport {
     layered: Option<LayeredPrewarmReport>,
 }
 
+struct PrewarmResult {
+    wallpapers: Vec<Result<PrewarmReport, (PathBuf, anyhow::Error)>>,
+    gradient: Option<GradientPrewarmReport>,
+}
+
 struct PrewarmJob {
     path: PathBuf,
     sizes: Vec<FrameSize>,
@@ -371,6 +516,11 @@ struct RenderedPrewarmReport {
     elapsed_ms: u64,
     probed_outputs: usize,
     summary: RenderCacheSummary,
+}
+
+struct GradientPrewarmReport {
+    rendered: RenderedPrewarmReport,
+    layered: Option<LayeredPrewarmReport>,
 }
 
 struct LayerPrewarmSpec {

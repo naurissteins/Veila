@@ -13,8 +13,10 @@ use image::RgbaImage;
 use crate::ClearColor;
 
 pub use asset::{
-    load_cached_render, load_cached_render_variant, prewarm_rendered, prewarm_source,
-    store_cached_render, store_cached_render_variant,
+    load_cached_gradient_render, load_cached_gradient_render_variant, load_cached_render,
+    load_cached_render_variant, prewarm_rendered, prewarm_rendered_gradient, prewarm_source,
+    store_cached_gradient_render, store_cached_gradient_render_variant, store_cached_render,
+    store_cached_render_variant,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,6 +39,14 @@ pub struct BackgroundTreatment {
     pub tint_opacity: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BackgroundGradient {
+    pub top_left: ClearColor,
+    pub top_right: ClearColor,
+    pub bottom_left: ClearColor,
+    pub bottom_right: ClearColor,
+}
+
 #[derive(Debug, Clone)]
 pub struct BackgroundAsset {
     kind: BackgroundKind,
@@ -46,5 +56,6 @@ pub struct BackgroundAsset {
 #[derive(Debug, Clone)]
 enum BackgroundKind {
     Solid(ClearColor),
+    Gradient(BackgroundGradient),
     Image(Arc<RgbaImage>),
 }

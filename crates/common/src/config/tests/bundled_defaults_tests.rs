@@ -18,6 +18,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(config.lock.avatar_path.is_none());
     assert_eq!(config.background.effective_mode(), BackgroundMode::Bundled);
     assert_eq!(config.background.color, RgbColor::rgb(32, 40, 51));
+    assert!(config.background.resolved_gradient().is_none());
     assert!(config.background.resolved_path().is_some_and(|path| {
         path.ends_with("assets/bg/default.jpg") || path.ends_with("assets/bg/bg.jpg")
     }));

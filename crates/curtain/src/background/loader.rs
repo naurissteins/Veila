@@ -89,7 +89,7 @@ fn load_buffers(
     sizes: Vec<FrameSize>,
     cached_sizes: &[FrameSize],
 ) -> veila_renderer::Result<(BackgroundAsset, Vec<(FrameSize, SoftwareBuffer)>)> {
-    let asset = BackgroundAsset::load(Some(path), fallback, treatment)?;
+    let asset = BackgroundAsset::load(Some(path), fallback, None, treatment)?;
     let mut buffers = Vec::with_capacity(sizes.len());
 
     for size in sizes {

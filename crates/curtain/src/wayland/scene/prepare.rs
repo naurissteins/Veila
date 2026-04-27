@@ -1,7 +1,10 @@
 use anyhow::{Result, anyhow};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
-    background::{load_cached_render, load_cached_render_variant},
+    background::{
+        load_cached_gradient_render, load_cached_gradient_render_variant, load_cached_render,
+        load_cached_render_variant,
+    },
 };
 
 use crate::state::CurtainApp;
@@ -43,6 +46,27 @@ impl CurtainApp {
                         width = frame_size.width,
                         height = frame_size.height,
                         "failed to load cached rendered background for initial frame: {error:#}"
+                    );
+                }
+            }
+        } else if let Some(gradient) = self.background_gradient {
+            match load_cached_gradient_render(gradient, frame_size, self.background_treatment) {
+                Ok(Some(buffer)) => {
+                    tracing::debug!(
+                        width = frame_size.width,
+                        height = frame_size.height,
+                        "using cached rendered gradient background for initial lock frame"
+                    );
+                    self.lock_surfaces[index].background = Some(buffer);
+                    self.lock_surfaces[index].background_path = None;
+                    return Ok(true);
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    tracing::debug!(
+                        width = frame_size.width,
+                        height = frame_size.height,
+                        "failed to load cached rendered gradient for initial frame: {error:#}"
                     );
                 }
             }
@@ -166,17 +190,34 @@ impl CurtainApp {
             return Ok(Some(true));
         }
 
-        if let (Some(path), Some(variant)) = (
-            selected_path.as_deref(),
-            self.ui_shell.layer_cache_variant(),
-        ) && let Ok(Some(buffer)) =
-            load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
-        {
-            self.lock_surfaces[index].scene_base = Some(buffer);
-            self.lock_surfaces[index].scene_base_revision = revision;
-            self.lock_surfaces[index].background = None;
-            self.lock_surfaces[index].background_path = selected_path;
-            return Ok(Some(true));
+        if let Some(variant) = self.ui_shell.layer_cache_variant() {
+            if let Some(path) = selected_path.as_deref() {
+                if let Ok(Some(buffer)) = load_cached_render_variant(
+                    path,
+                    frame_size,
+                    self.background_treatment,
+                    &variant,
+                ) {
+                    self.lock_surfaces[index].scene_base = Some(buffer);
+                    self.lock_surfaces[index].scene_base_revision = revision;
+                    self.lock_surfaces[index].background = None;
+                    self.lock_surfaces[index].background_path = selected_path;
+                    return Ok(Some(true));
+                }
+            } else if let Some(gradient) = self.background_gradient
+                && let Ok(Some(buffer)) = load_cached_gradient_render_variant(
+                    gradient,
+                    frame_size,
+                    self.background_treatment,
+                    &variant,
+                )
+            {
+                self.lock_surfaces[index].scene_base = Some(buffer);
+                self.lock_surfaces[index].scene_base_revision = revision;
+                self.lock_surfaces[index].background = None;
+                self.lock_surfaces[index].background_path = None;
+                return Ok(Some(true));
+            }
         }
 
         Ok(None)

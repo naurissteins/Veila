@@ -11,7 +11,7 @@ use veila_common::{
 };
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
-    background::{BackgroundAsset, BackgroundTreatment},
+    background::{BackgroundAsset, BackgroundGradient, BackgroundTreatment},
 };
 use veila_ui::{ShellState, ShellTheme};
 
@@ -69,6 +69,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     let background = BackgroundAsset::load(
         config.background.resolved_path().as_deref(),
         to_clear_color(config.background.color),
+        background_gradient(&config.background),
         treatment,
     )
     .context("failed to load preview background")?;
@@ -113,6 +114,19 @@ fn render_shell(shell: &ShellState, buffer: &mut SoftwareBuffer) {
 
 fn to_clear_color(color: ConfigColor) -> ClearColor {
     ClearColor::rgba(color.0, color.1, color.2, color.3)
+}
+
+fn background_gradient(
+    config: &veila_common::config::BackgroundConfig,
+) -> Option<BackgroundGradient> {
+    let gradient = config.resolved_gradient()?;
+
+    Some(BackgroundGradient {
+        top_left: to_clear_color(gradient.top_left),
+        top_right: to_clear_color(gradient.top_right),
+        bottom_left: to_clear_color(gradient.bottom_left),
+        bottom_right: to_clear_color(gradient.bottom_right),
+    })
 }
 
 fn preview_weather_snapshot(

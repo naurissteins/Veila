@@ -9,6 +9,7 @@ use super::RgbColor;
 pub enum BackgroundMode {
     Bundled,
     File,
+    Gradient,
     Solid,
 }
 
@@ -17,7 +18,31 @@ impl BackgroundMode {
         match self {
             Self::Bundled => "bundled",
             Self::File => "file",
+            Self::Gradient => "gradient",
             Self::Solid => "solid",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BackgroundGradientConfig {
+    #[serde(default = "default_gradient_top_left")]
+    pub top_left: RgbColor,
+    #[serde(default = "default_gradient_top_right")]
+    pub top_right: RgbColor,
+    #[serde(default = "default_gradient_bottom_left")]
+    pub bottom_left: RgbColor,
+    #[serde(default = "default_gradient_bottom_right")]
+    pub bottom_right: RgbColor,
+}
+
+impl Default for BackgroundGradientConfig {
+    fn default() -> Self {
+        Self {
+            top_left: default_gradient_top_left(),
+            top_right: default_gradient_top_right(),
+            bottom_left: default_gradient_bottom_left(),
+            bottom_right: default_gradient_bottom_right(),
         }
     }
 }
@@ -31,6 +56,8 @@ pub struct BackgroundConfig {
     pub outputs: Vec<BackgroundOutputConfig>,
     #[serde(default = "default_background_color")]
     pub color: RgbColor,
+    #[serde(default)]
+    pub gradient: Option<BackgroundGradientConfig>,
     #[serde(default = "default_background_blur_radius")]
     pub blur_radius: u8,
     #[serde(default = "default_background_dim_strength")]
@@ -48,6 +75,7 @@ impl Default for BackgroundConfig {
             path: None,
             outputs: Vec::new(),
             color: default_background_color(),
+            gradient: None,
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
             tint: Some(default_background_tint()),
@@ -69,7 +97,15 @@ impl BackgroundConfig {
         match self.effective_mode() {
             BackgroundMode::Bundled => Some(bundled_background_path()),
             BackgroundMode::File => self.path.clone(),
+            BackgroundMode::Gradient => None,
             BackgroundMode::Solid => None,
+        }
+    }
+
+    pub fn resolved_gradient(&self) -> Option<BackgroundGradientConfig> {
+        match self.effective_mode() {
+            BackgroundMode::Gradient => Some(self.gradient.clone().unwrap_or_default()),
+            _ => None,
         }
     }
 
@@ -118,4 +154,20 @@ const fn default_background_tint() -> RgbColor {
 
 const fn default_background_tint_opacity() -> u8 {
     0
+}
+
+const fn default_gradient_top_left() -> RgbColor {
+    RgbColor::rgb(171, 92, 255)
+}
+
+const fn default_gradient_top_right() -> RgbColor {
+    RgbColor::rgb(45, 182, 255)
+}
+
+const fn default_gradient_bottom_left() -> RgbColor {
+    RgbColor::rgb(99, 219, 255)
+}
+
+const fn default_gradient_bottom_right() -> RgbColor {
+    RgbColor::rgb(132, 74, 255)
 }

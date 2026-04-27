@@ -3,8 +3,8 @@ use std::sync::Arc;
 use image::{Rgba, RgbaImage};
 
 use super::{
-    BackgroundAsset, BackgroundKind, BackgroundTreatment, RenderCacheSummary, SourceCacheStatus,
-    asset::unique_sizes, render::cover_dimensions,
+    BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundTreatment, RenderCacheSummary,
+    SourceCacheStatus, asset::unique_sizes, render::cover_dimensions,
 };
 use crate::{ClearColor, FrameSize};
 
@@ -13,12 +13,35 @@ fn renders_solid_backgrounds() {
     let asset = BackgroundAsset::load(
         None,
         ClearColor::opaque(12, 16, 24),
+        None,
         BackgroundTreatment::default(),
     )
     .expect("asset");
     let buffer = asset.render(FrameSize::new(2, 1)).expect("buffer");
 
     assert_eq!(buffer.pixels(), &[24, 16, 12, 255, 24, 16, 12, 255]);
+}
+
+#[test]
+fn renders_bilinear_gradients() {
+    let asset = BackgroundAsset::load(
+        None,
+        ClearColor::opaque(0, 0, 0),
+        Some(BackgroundGradient {
+            top_left: ClearColor::opaque(255, 0, 0),
+            top_right: ClearColor::opaque(0, 255, 0),
+            bottom_left: ClearColor::opaque(0, 0, 255),
+            bottom_right: ClearColor::opaque(255, 255, 255),
+        }),
+        BackgroundTreatment::default(),
+    )
+    .expect("asset");
+    let buffer = asset.render(FrameSize::new(2, 2)).expect("buffer");
+
+    assert_eq!(&buffer.pixels()[0..4], &[0, 0, 255, 255]);
+    assert_eq!(&buffer.pixels()[4..8], &[0, 255, 0, 255]);
+    assert_eq!(&buffer.pixels()[8..12], &[255, 0, 0, 255]);
+    assert_eq!(&buffer.pixels()[12..16], &[255, 255, 255, 255]);
 }
 
 #[test]
@@ -77,6 +100,7 @@ fn applies_dim_and_tint_treatment() {
     let asset = BackgroundAsset::load(
         None,
         ClearColor::opaque(100, 120, 140),
+        None,
         BackgroundTreatment {
             blur_radius: 0,
             dim_strength: 20,

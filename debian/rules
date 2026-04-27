@@ -7,6 +7,12 @@ export CARGO_NET_OFFLINE = true
 %:
 	dh $@
 
+override_dh_clean:
+	rm -f debian/debhelper-build-stamp
+	rm -rf debian/.debhelper/
+	rm -f debian/veila.substvars debian/files
+	rm -fr debian/veila/ debian/tmp/ debian/cargo-home/
+
 override_dh_auto_configure:
 	mkdir -p $(CARGO_HOME)
 	printf '%s\n' \
