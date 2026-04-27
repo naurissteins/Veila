@@ -71,11 +71,11 @@ pub struct BackgroundConfig {
 impl Default for BackgroundConfig {
     fn default() -> Self {
         Self {
-            mode: Some(BackgroundMode::Bundled),
+            mode: Some(BackgroundMode::Gradient),
             path: None,
             outputs: Vec::new(),
             color: default_background_color(),
-            gradient: None,
+            gradient: Some(BackgroundGradientConfig::default()),
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
             tint: Some(default_background_tint()),
@@ -87,18 +87,21 @@ impl Default for BackgroundConfig {
 impl BackgroundConfig {
     pub fn effective_mode(&self) -> BackgroundMode {
         match self.mode {
+            Some(BackgroundMode::Bundled) | Some(BackgroundMode::Gradient) => {
+                BackgroundMode::Gradient
+            }
             Some(mode) => mode,
             None if self.path.is_some() => BackgroundMode::File,
-            None => BackgroundMode::Bundled,
+            None => BackgroundMode::Gradient,
         }
     }
 
     pub fn resolved_path(&self) -> Option<PathBuf> {
         match self.effective_mode() {
-            BackgroundMode::Bundled => Some(bundled_background_path()),
             BackgroundMode::File => self.path.clone(),
             BackgroundMode::Gradient => None,
             BackgroundMode::Solid => None,
+            BackgroundMode::Bundled => None,
         }
     }
 
@@ -123,19 +126,6 @@ pub struct BackgroundOutputConfig {
     pub path: PathBuf,
 }
 
-pub fn bundled_background_path() -> PathBuf {
-    let background_dir = super::assets::bundled_background_dir();
-
-    for file_name in ["default.jpg", "bg.jpg"] {
-        let path = background_dir.join(file_name);
-        if path.exists() {
-            return path;
-        }
-    }
-
-    background_dir.join("default.jpg")
-}
-
 const fn default_background_color() -> RgbColor {
     RgbColor::rgb(32, 40, 51)
 }
@@ -157,17 +147,17 @@ const fn default_background_tint_opacity() -> u8 {
 }
 
 const fn default_gradient_top_left() -> RgbColor {
-    RgbColor::rgb(171, 92, 255)
+    RgbColor::rgb(168, 91, 255)
 }
 
 const fn default_gradient_top_right() -> RgbColor {
-    RgbColor::rgb(45, 182, 255)
+    RgbColor::rgb(57, 184, 255)
 }
 
 const fn default_gradient_bottom_left() -> RgbColor {
-    RgbColor::rgb(99, 219, 255)
+    RgbColor::rgb(111, 226, 255)
 }
 
 const fn default_gradient_bottom_right() -> RgbColor {
-    RgbColor::rgb(132, 74, 255)
+    RgbColor::rgb(111, 76, 255)
 }

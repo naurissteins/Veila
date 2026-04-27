@@ -300,3 +300,32 @@ fn gradient_mode_uses_configured_corner_colors() {
     assert_eq!(gradient.bottom_left, RgbColor::rgb(102, 226, 255));
     assert_eq!(gradient.bottom_right, RgbColor::rgb(119, 68, 255));
 }
+
+#[test]
+fn legacy_bundled_mode_resolves_as_gradient() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [background]
+            mode = "bundled"
+
+            [background.gradient]
+            top_left = "#A85BFF"
+            top_right = "#39B8FF"
+            bottom_left = "#6FE2FF"
+            bottom_right = "#6F4CFF"
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
+    assert!(config.background.resolved_path().is_none());
+
+    let gradient = config
+        .background
+        .resolved_gradient()
+        .expect("legacy bundled mode should resolve a gradient");
+    assert_eq!(gradient.top_left, RgbColor::rgb(168, 91, 255));
+    assert_eq!(gradient.top_right, RgbColor::rgb(57, 184, 255));
+    assert_eq!(gradient.bottom_left, RgbColor::rgb(111, 226, 255));
+    assert_eq!(gradient.bottom_right, RgbColor::rgb(111, 76, 255));
+}

@@ -1,11 +1,16 @@
-# Background source: https://www.vecteezy.com/vector-art/13151035-light-blue-and-purple-gradient-background
 [background]
-mode = "bundled"
+mode = "gradient"
 color = "#413249"
 blur_radius = 0
 dim_strength = 30
 tint = "rgba(0, 0, 0, 0.1)"
 tint_opacity = 0
+
+[background.gradient]
+top_left = "#A85BFF"
+top_right = "#39B8FF"
+bottom_left = "#6FE2FF"
+bottom_right = "#6F4CFF"
 
 [lock]
 user_hint = "Password"

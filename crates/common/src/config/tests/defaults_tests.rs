@@ -23,12 +23,18 @@ fn parses_partial_config_with_defaults() {
     assert!(config.lock.username.is_none());
     assert!(config.lock.user_hint.is_none());
     assert!(config.lock.avatar_path.is_none());
-    assert_eq!(config.background.effective_mode(), BackgroundMode::Bundled);
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
     assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));
     assert!(config.background.path.is_none());
-    assert!(config.background.resolved_path().is_some_and(|path| {
-        path.ends_with("assets/bg/default.jpg") || path.ends_with("assets/bg/bg.jpg")
-    }));
+    assert!(config.background.resolved_path().is_none());
+    let gradient = config
+        .background
+        .resolved_gradient()
+        .expect("gradient defaults should resolve");
+    assert_eq!(gradient.top_left, RgbColor::rgb(168, 91, 255));
+    assert_eq!(gradient.top_right, RgbColor::rgb(57, 184, 255));
+    assert_eq!(gradient.bottom_left, RgbColor::rgb(111, 226, 255));
+    assert_eq!(gradient.bottom_right, RgbColor::rgb(111, 76, 255));
     assert_eq!(config.background.blur_radius, 0);
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());

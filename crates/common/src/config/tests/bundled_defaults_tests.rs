@@ -16,12 +16,17 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(config.lock.username.is_none());
     assert_eq!(config.lock.user_hint.as_deref(), Some("Password"));
     assert!(config.lock.avatar_path.is_none());
-    assert_eq!(config.background.effective_mode(), BackgroundMode::Bundled);
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
     assert_eq!(config.background.color, RgbColor::rgb(32, 40, 51));
-    assert!(config.background.resolved_gradient().is_none());
-    assert!(config.background.resolved_path().is_some_and(|path| {
-        path.ends_with("assets/bg/default.jpg") || path.ends_with("assets/bg/bg.jpg")
-    }));
+    let gradient = config
+        .background
+        .resolved_gradient()
+        .expect("gradient defaults should resolve");
+    assert_eq!(gradient.top_left, RgbColor::rgb(168, 91, 255));
+    assert_eq!(gradient.top_right, RgbColor::rgb(57, 184, 255));
+    assert_eq!(gradient.bottom_left, RgbColor::rgb(111, 226, 255));
+    assert_eq!(gradient.bottom_right, RgbColor::rgb(111, 76, 255));
+    assert!(config.background.resolved_path().is_none());
     assert_eq!(config.background.blur_radius, 12);
     assert_eq!(config.background.dim_strength, 54);
     assert_eq!(config.background.tint, Some(RgbColor::rgba(8, 10, 14, 102)));

@@ -15,10 +15,6 @@ pub(super) fn bundled_asset_dir() -> PathBuf {
     local_assets
 }
 
-pub(super) fn bundled_background_dir() -> PathBuf {
-    bundled_asset_dir().join("bg")
-}
-
 pub(super) fn bundled_theme_dir() -> PathBuf {
     bundled_asset_dir().join("themes")
 }
