@@ -13,6 +13,7 @@ pub struct DaemonOptions {
     pub set_theme: Option<String>,
     pub unset_theme: bool,
     pub lock_now: bool,
+    pub wait_ready: bool,
     pub stop: bool,
     pub list_themes: bool,
     pub status: bool,
@@ -71,6 +72,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if arg == "--wait-ready" {
+                options.wait_ready = true;
+                continue;
+            }
+
             if arg == "--stop" {
                 options.stop = true;
                 continue;
@@ -124,6 +130,11 @@ impl DaemonOptions {
 
             if let Some(path) = arg.strip_prefix("--config=") {
                 options.config_path = Some(PathBuf::from(path));
+                continue;
+            }
+
+            if arg == "--wait-ready" {
+                options.wait_ready = true;
                 continue;
             }
 
@@ -261,6 +272,19 @@ mod tests {
     }
 
     #[test]
+    fn parses_wait_ready_argument() {
+        let options = DaemonOptions::parse_args([
+            "veilad".to_string(),
+            "--lock-now".to_string(),
+            "--wait-ready".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.lock_now);
+        assert!(options.wait_ready);
+    }
+
+    #[test]
     fn parses_stop_argument() {
         let options = DaemonOptions::parse_args(["veilad".to_string(), "--stop".to_string()])
             .expect("arguments should parse");
@@ -352,6 +376,19 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.lock_now);
+    }
+
+    #[test]
+    fn parses_control_lock_command_with_wait_ready() {
+        let options = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "--wait-ready".to_string(),
+            "lock".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.lock_now);
+        assert!(options.wait_ready);
     }
 
     #[test]

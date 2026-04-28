@@ -54,6 +54,9 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
             "use only one of --lock-now, --current-theme, --print-theme, --set-theme, --unset-theme, --stop, --list-themes, --status, --health, --version, or --reload-config at a time"
         );
     }
+    if options.wait_ready && !options.lock_now {
+        bail!("--wait-ready can only be used with --lock-now");
+    }
 
     let daemon_socket_path = ipc::daemon_socket_path();
     if options.current_theme {
@@ -113,11 +116,17 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
             if options.lock_now && daemon_socket_path.exists() {
                 let response = ipc::send_daemon_control_message(
                     &daemon_socket_path,
-                    &veila_common::ipc::DaemonControlMessage::LockNow,
+                    &veila_common::ipc::DaemonControlMessage::LockNow {
+                        wait_ready: options.wait_ready,
+                    },
                 )
                 .await?;
-                if response != veila_common::ipc::DaemonControlResponse::Accepted {
-                    bail!("daemon did not acknowledge forwarded lock request");
+                match response {
+                    veila_common::ipc::DaemonControlResponse::Accepted => {}
+                    veila_common::ipc::DaemonControlResponse::Locked { .. }
+                        if options.wait_ready => {}
+                    veila_common::ipc::DaemonControlResponse::Error { reason } => bail!(reason),
+                    _ => bail!("daemon did not acknowledge forwarded lock request"),
                 }
                 tracing::info!(path = %daemon_socket_path.display(), "forwarded lock request to running daemon");
                 Ok(())
@@ -147,6 +156,9 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         + usize::from(options.reload_config);
     if control_mode_count > 1 {
         bail!("use only one veila command at a time");
+    }
+    if options.wait_ready && !options.lock_now {
+        bail!("--wait-ready can only be used with `veila lock`");
     }
 
     let daemon_socket_path = ipc::daemon_socket_path();
@@ -181,8 +193,13 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
     }
 
     if options.lock_now {
-        lock_running_daemon(&daemon_socket_path).await?;
-        println!("lock_requested=true");
+        let already_active = lock_running_daemon(&daemon_socket_path, options.wait_ready).await?;
+        if options.wait_ready {
+            println!("lock_ready=true");
+            println!("already_active={}", already_active.unwrap_or(false));
+        } else {
+            println!("lock_requested=true");
+        }
         return Ok(());
     }
 
@@ -228,6 +245,7 @@ General:
 
 Legacy control:
       --lock-now             Trigger an immediate lock
+      --wait-ready           Return only after the secure lock is active
       --reload-config        Ask a running daemon to reload config from disk
       --status               Print daemon runtime status
       --health               Print daemon build and platform info
@@ -265,7 +283,7 @@ General:
       --config=<path>        Use a specific config file for theme/config commands
 
 Commands:
-  lock                       Ask the running daemon to lock now
+  lock [--wait-ready]        Ask the running daemon to lock now
   status                     Print daemon runtime status
   health                     Print daemon build and platform info
   reload                     Ask the running daemon to reload config from disk
@@ -280,6 +298,7 @@ Themes:
 
 Notes:
   This command never starts the daemon. Start it with `veilad`, a user service, or your compositor config.
+  `--wait-ready` can be combined with `veila lock` to block until the secure lock is active.
 "
     );
 }

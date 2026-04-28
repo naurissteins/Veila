@@ -54,9 +54,9 @@ pub(crate) async fn handle_control_connection(
     };
 
     let (response, stop_requested) = match message {
-        DaemonControlMessage::LockNow => {
+        DaemonControlMessage::LockNow { wait_ready } => {
             if !state.is_active() {
-                if let Err(error) = activate_and_log(
+                match activate_and_log(
                     "forwarded",
                     session_proxy,
                     state,
@@ -77,16 +77,48 @@ pub(crate) async fn handle_control_connection(
                 )
                 .await
                 {
-                    tracing::error!("failed to activate forwarded lock request: {error:#}");
+                    Ok(()) => (
+                        if wait_ready {
+                            DaemonControlResponse::Locked {
+                                already_active: false,
+                            }
+                        } else {
+                            DaemonControlResponse::Accepted
+                        },
+                        false,
+                    ),
+                    Err(error) => {
+                        tracing::error!("failed to activate forwarded lock request: {error:#}");
+                        (
+                            if wait_ready {
+                                DaemonControlResponse::Error {
+                                    reason: format!(
+                                        "failed to activate forwarded lock request: {error:#}"
+                                    ),
+                                }
+                            } else {
+                                DaemonControlResponse::Accepted
+                            },
+                            false,
+                        )
+                    }
                 }
             } else {
                 tracing::debug!(
                     state = %state,
                     "ignoring forwarded lock request while already active"
                 );
+                (
+                    if wait_ready {
+                        DaemonControlResponse::Locked {
+                            already_active: true,
+                        }
+                    } else {
+                        DaemonControlResponse::Accepted
+                    },
+                    false,
+                )
             }
-
-            (DaemonControlResponse::Accepted, false)
         }
         DaemonControlMessage::Stop => {
             tracing::info!("received daemon stop request over control socket");

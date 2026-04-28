@@ -40,7 +40,7 @@ pub enum CurtainControlMessage {
 /// Messages sent to the long-running daemon control socket.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonControlMessage {
-    LockNow,
+    LockNow { wait_ready: bool },
     Stop,
     Status,
     Health,
@@ -88,6 +88,7 @@ pub enum LiveReloadStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonControlResponse {
     Accepted,
+    Locked { already_active: bool },
     Status(DaemonStatus),
     Health(DaemonHealth),
     Reloaded(DaemonReloadStatus),
@@ -114,8 +115,7 @@ where
 mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
-        DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus, decode_message,
-        encode_message,
+        DaemonReloadStatus, DaemonStatus, LiveReloadStatus, decode_message, encode_message,
     };
 
     #[test]
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn round_trips_daemon_control_messages() {
-        let message = DaemonControlMessage::Stop;
+        let message = DaemonControlMessage::LockNow { wait_ready: true };
         let encoded = encode_message(&message).expect("daemon control message should encode");
         let decoded = decode_message::<DaemonControlMessage>(&encoded)
             .expect("daemon control message should decode");
@@ -168,13 +168,9 @@ mod tests {
 
     #[test]
     fn round_trips_daemon_control_responses() {
-        let message = DaemonControlResponse::Health(DaemonHealth {
-            component: "veilad".to_string(),
-            version: "0.1.0".to_string(),
-            build_profile: "debug".to_string(),
-            target_os: "linux".to_string(),
-            target_arch: "x86_64".to_string(),
-        });
+        let message = DaemonControlResponse::Locked {
+            already_active: false,
+        };
         let encoded = encode_message(&message).expect("daemon control response should encode");
         let decoded = decode_message::<DaemonControlResponse>(&encoded)
             .expect("daemon control response should decode");

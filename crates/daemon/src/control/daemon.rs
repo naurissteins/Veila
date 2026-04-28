@@ -21,20 +21,26 @@ pub(super) async fn stop_running_daemon(daemon_socket_path: &std::path::Path) ->
     Ok(())
 }
 
-pub(super) async fn lock_running_daemon(daemon_socket_path: &std::path::Path) -> Result<()> {
+pub(super) async fn lock_running_daemon(
+    daemon_socket_path: &std::path::Path,
+    wait_ready: bool,
+) -> Result<Option<bool>> {
     ensure_running_daemon(daemon_socket_path)?;
 
     let response = ipc::send_daemon_control_message(
         daemon_socket_path,
-        &veila_common::ipc::DaemonControlMessage::LockNow,
+        &veila_common::ipc::DaemonControlMessage::LockNow { wait_ready },
     )
     .await?;
 
-    if response != veila_common::ipc::DaemonControlResponse::Accepted {
-        bail!("daemon returned an unexpected response to lock");
+    match response {
+        veila_common::ipc::DaemonControlResponse::Accepted if !wait_ready => Ok(None),
+        veila_common::ipc::DaemonControlResponse::Locked { already_active } if wait_ready => {
+            Ok(Some(already_active))
+        }
+        veila_common::ipc::DaemonControlResponse::Error { reason } => bail!(reason),
+        _ => bail!("daemon returned an unexpected response to lock"),
     }
-
-    Ok(())
 }
 
 pub(super) async fn print_running_status(daemon_socket_path: &std::path::Path) -> Result<()> {
