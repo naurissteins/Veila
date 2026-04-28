@@ -28,16 +28,20 @@ impl ShellState {
                 ShellAction::None
             }
             ShellKey::Enter => {
-                if self.secret.is_empty() {
-                    ShellAction::None
-                } else {
-                    self.status = ShellStatus::Pending {
-                        visible_after: Instant::now()
-                            + Duration::from_millis(PENDING_STATUS_DELAY_MS),
-                        shown: false,
-                    };
-                    ShellAction::Submit(self.secret.clone())
+                if let ShellStatus::Rejected {
+                    retry_until: Some(retry_until),
+                    ..
+                } = &self.status
+                    && Instant::now() < *retry_until
+                {
+                    return ShellAction::None;
                 }
+
+                self.status = ShellStatus::Pending {
+                    visible_after: Instant::now() + Duration::from_millis(PENDING_STATUS_DELAY_MS),
+                    shown: false,
+                };
+                ShellAction::Submit(self.secret.clone())
             }
         }
     }

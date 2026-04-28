@@ -482,7 +482,10 @@ fn pending_status_text_appears_after_delay() {
     std::thread::sleep(std::time::Duration::from_millis(1_050));
 
     assert!(shell.advance_animated_state());
-    assert_eq!(shell.status_text().as_deref(), Some("Checking password"));
+    assert_eq!(
+        shell.status_text().as_deref(),
+        Some("Checking authentication")
+    );
 }
 
 #[test]

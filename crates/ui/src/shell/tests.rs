@@ -36,6 +36,20 @@ fn edits_and_submits_password_text() {
 }
 
 #[test]
+fn empty_enter_submits_authentication() {
+    let mut shell = ShellState::default();
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(String::new())
+    );
+    assert!(matches!(
+        shell.status,
+        ShellStatus::Pending { shown: false, .. }
+    ));
+}
+
+#[test]
 fn delayed_pending_state_becomes_visible_after_timeout() {
     let mut shell = ShellState::default();
 
