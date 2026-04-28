@@ -13,13 +13,14 @@ const MAX_CLOCK_MERIDIEM_SCALE: u32 = 8;
 const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
 const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
+const DEFAULT_KEYBOARD_FONT_FAMILY: &str = "Geom";
 const MAX_INPUT_TEXT_SCALE: u32 = 6;
 const MAX_NOW_PLAYING_TITLE_SCALE: u32 = 4;
 const MAX_NOW_PLAYING_ARTIST_SCALE: u32 = 3;
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
-        TextStyle::new(
+        let style = TextStyle::new(
             secondary_text_color(
                 self.theme.keyboard_color.unwrap_or(self.theme.foreground),
                 self.theme.keyboard_opacity,
@@ -28,7 +29,14 @@ impl ShellState {
             self.theme.keyboard_size.unwrap_or(2).clamp(1, 6),
         )
         .with_font_weight(600)
-        .with_line_spacing(0)
+        .with_line_spacing(0);
+
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(Some(DEFAULT_KEYBOARD_FONT_FAMILY)),
+            Some(600),
+            None,
+        )
     }
 
     pub(crate) fn clock_text_style(&self, metrics: SceneMetrics) -> TextStyle {

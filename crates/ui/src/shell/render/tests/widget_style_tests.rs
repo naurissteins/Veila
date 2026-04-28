@@ -31,6 +31,21 @@ fn keyboard_layout_style_uses_configured_color_and_opacity() {
 }
 
 #[test]
+fn keyboard_layout_style_defaults_to_geom() {
+    let shell = ShellState::new(ShellTheme::default(), None, None, true);
+    let style = shell.keyboard_layout_text_style();
+
+    assert!(
+        style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+    assert_eq!(style.font_weight, Some(600));
+}
+
+#[test]
 fn weather_styles_use_configured_widget_size() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
