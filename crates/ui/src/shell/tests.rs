@@ -63,6 +63,10 @@ fn input_reveal_on_interaction_starts_hidden() {
 
     assert!(shell.identity_visible());
     assert!(!shell.input_visible());
+    assert_eq!(
+        shell.hidden_reveal_hint(),
+        Some("Press any key or click to continue")
+    );
 }
 
 #[test]
@@ -80,6 +84,10 @@ fn full_reveal_mode_starts_with_entire_auth_stack_hidden() {
 
     assert!(!shell.identity_visible());
     assert!(!shell.input_visible());
+    assert_eq!(
+        shell.hidden_reveal_hint(),
+        Some("Press any key or click to continue")
+    );
 }
 
 #[test]
@@ -102,6 +110,7 @@ fn first_character_reveals_hidden_auth_stack() {
 
     assert!(shell.identity_visible());
     assert!(shell.input_visible());
+    assert_eq!(shell.hidden_reveal_hint(), None);
     assert!(shell.static_scene_revision() > original);
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
@@ -165,6 +174,10 @@ fn escape_rehides_auth_stack_when_enabled() {
     assert_eq!(shell.handle_key(ShellKey::Escape), ShellAction::None);
     assert!(shell.identity_visible());
     assert!(!shell.input_visible());
+    assert_eq!(
+        shell.hidden_reveal_hint(),
+        Some("Press any key or click to continue")
+    );
     assert!(shell.secret.is_empty());
 }
 

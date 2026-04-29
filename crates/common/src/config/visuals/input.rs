@@ -22,6 +22,7 @@ pub struct InputVisualConfig {
     pub center_in_layer: Option<bool>,
     pub reveal_on_interaction: Option<bool>,
     pub reveal_mode: Option<InputRevealMode>,
+    pub reveal_hint: Option<String>,
     pub horizontal_padding: Option<u16>,
     pub vertical_padding: Option<u16>,
     pub offset_x: Option<i16>,
@@ -48,6 +49,7 @@ impl Default for InputVisualConfig {
             center_in_layer: Some(false),
             reveal_on_interaction: Some(false),
             reveal_mode: Some(InputRevealMode::Input),
+            reveal_hint: Some(String::from(DEFAULT_REVEAL_HINT)),
             horizontal_padding: None,
             vertical_padding: None,
             offset_x: Some(0),
@@ -112,6 +114,18 @@ pub enum InputRevealMode {
 
 const fn default_input_color() -> RgbColor {
     RgbColor::rgb(13, 18, 28)
+}
+
+const DEFAULT_REVEAL_HINT: &str = "Press any key or click to continue";
+const MAX_REVEAL_HINT_CHARS: usize = 160;
+
+fn sanitized_reveal_hint(hint: Option<&str>) -> String {
+    let trimmed = hint.map(str::trim).filter(|value| !value.is_empty());
+    trimmed
+        .unwrap_or(DEFAULT_REVEAL_HINT)
+        .chars()
+        .take(MAX_REVEAL_HINT_CHARS)
+        .collect()
 }
 
 impl super::VisualConfig {
@@ -199,6 +213,15 @@ impl super::VisualConfig {
         match &self.input {
             InputVisualEntry::Color(_) => InputRevealMode::Input,
             InputVisualEntry::Section(config) => config.reveal_mode.unwrap_or_default(),
+        }
+    }
+
+    pub fn input_reveal_hint(&self) -> String {
+        match &self.input {
+            InputVisualEntry::Color(_) => sanitized_reveal_hint(None),
+            InputVisualEntry::Section(config) => {
+                sanitized_reveal_hint(config.reveal_hint.as_deref())
+            }
         }
     }
 

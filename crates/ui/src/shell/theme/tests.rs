@@ -20,6 +20,7 @@ fn input_opacity_overrides_embedded_alpha() {
         center_in_layer: Some(true),
         reveal_on_interaction: Some(true),
         reveal_mode: Some(InputRevealMode::Full),
+        reveal_hint: Some(String::from("Press any key or click to unlock")),
         horizontal_padding: Some(56),
         vertical_padding: Some(44),
         offset_x: Some(18),
@@ -238,6 +239,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert!(theme.input_center_in_layer);
     assert!(theme.input_reveal_on_interaction);
     assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
+    assert_eq!(theme.input_reveal_hint, "Press any key or click to unlock");
     assert_eq!(theme.input_horizontal_padding, Some(56));
     assert_eq!(theme.input_vertical_padding, Some(44));
     assert_eq!(theme.input_offset_x, Some(18));

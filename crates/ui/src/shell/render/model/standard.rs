@@ -104,6 +104,12 @@ impl SceneModel {
                     0,
                 ));
             }
+        } else if let Some(status) = status {
+            sections.push(SceneSection::new(
+                LayoutRole::Auth,
+                SceneWidget::Status(status),
+                0,
+            ));
         }
 
         if let Some(weather) = weather {

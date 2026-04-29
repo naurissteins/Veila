@@ -161,6 +161,7 @@ impl ShellState {
         battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) -> Self {
+        let reveal_hint_text = theme.input_reveal_hint.clone();
         Self {
             secret: String::new(),
             caps_lock_active: false,
@@ -178,6 +179,7 @@ impl ShellState {
             hint_text: user_hint
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
+            reveal_hint_text,
             username_text: username_text(show_username, username_override),
             weather: widget_data(weather_location, weather_snapshot, weather_unit),
             now_playing: now_playing_widget_data(now_playing_snapshot),
@@ -277,6 +279,7 @@ impl ShellState {
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
+        self.reveal_hint_text = self.theme.input_reveal_hint.clone();
         if !reveal_on_interaction {
             self.auth_revealed = true;
         }
@@ -306,6 +309,11 @@ impl ShellState {
 
     pub(super) fn input_visible(&self) -> bool {
         self.auth_revealed || !self.theme.input_reveal_on_interaction
+    }
+
+    pub(super) fn hidden_reveal_hint(&self) -> Option<&str> {
+        (!self.input_visible() && matches!(self.status, super::ShellStatus::Idle))
+            .then_some(self.reveal_hint_text.as_str())
     }
 
     pub(super) fn reveal_auth(&mut self) -> bool {

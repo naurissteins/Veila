@@ -382,13 +382,14 @@ fn keeps_identity_sections_when_only_input_group_is_hidden() {
         .sections_for_role(LayoutRole::Auth)
         .collect::<Vec<_>>();
 
-    assert_eq!(auth_sections.len(), 2);
+    assert_eq!(auth_sections.len(), 3);
     assert!(matches!(auth_sections[0].widget, SceneWidget::Avatar));
     assert!(matches!(auth_sections[1].widget, SceneWidget::Username(_)));
+    assert!(matches!(auth_sections[2].widget, SceneWidget::Status(_)));
 }
 
 #[test]
-fn omits_auth_role_when_full_auth_is_hidden() {
+fn renders_hidden_hint_when_full_auth_stack_is_hidden() {
     let model = SceneModel::standard(
         SceneTextBlocks {
             clock: Some(clock_blocks("09:05")),
@@ -406,7 +407,41 @@ fn omits_auth_role_when_full_auth_is_hidden() {
     );
 
     assert_eq!(model.sections_for_role(LayoutRole::Hero).count(), 2);
-    assert_eq!(model.sections_for_role(LayoutRole::Auth).count(), 0);
+    let auth_sections = model
+        .sections_for_role(LayoutRole::Auth)
+        .collect::<Vec<_>>();
+    assert_eq!(auth_sections.len(), 1);
+    assert!(matches!(auth_sections[0].widget, SceneWidget::Status(_)));
+}
+
+#[test]
+fn hidden_hint_contributes_to_auth_anchor_height_when_it_is_the_only_auth_widget() {
+    let model = SceneModel::standard(
+        SceneTextBlocks {
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
+            username: Some(block("ramces")),
+            placeholder: Some(block("Type your password to unlock")),
+            status: Some(block("Press any key or click to continue")),
+            weather: None,
+        },
+        StandardSceneConfig {
+            identity_visible: false,
+            input_visible: false,
+            ..standard_scene_config()
+        },
+    );
+    let metrics =
+        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+
+    assert_eq!(
+        model.anchor_height_for_role(LayoutRole::Auth, metrics, &ShellStatus::Idle),
+        24
+    );
+    assert_eq!(
+        model.anchor_height_for_auth_group(AuthGroup::Input, metrics, &ShellStatus::Idle),
+        24
+    );
 }
 
 fn block(text: &str) -> TextBlock {

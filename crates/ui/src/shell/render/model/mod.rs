@@ -128,6 +128,16 @@ impl SceneModel {
     ) -> i32 {
         let sections = self.sections_for_role(role).collect::<Vec<_>>();
 
+        if sections
+            .iter()
+            .all(|section| matches!(section.widget, SceneWidget::Status(_)))
+        {
+            return sections
+                .iter()
+                .map(|section| section.height(metrics, status) + section.gap_after)
+                .sum();
+        }
+
         sections
             .iter()
             .enumerate()
@@ -168,6 +178,16 @@ impl SceneModel {
         status: &ShellStatus,
     ) -> i32 {
         let sections = self.sections_for_auth_group(group).collect::<Vec<_>>();
+
+        if sections
+            .iter()
+            .all(|section| matches!(section.widget, SceneWidget::Status(_)))
+        {
+            return sections
+                .iter()
+                .map(|section| section.height(metrics, status) + section.gap_after)
+                .sum();
+        }
 
         sections
             .iter()

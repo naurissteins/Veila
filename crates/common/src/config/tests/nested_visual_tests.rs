@@ -17,6 +17,10 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert!(config.visuals.input_center_in_layer());
     assert!(config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Full);
+    assert_eq!(
+        config.visuals.input_reveal_hint(),
+        "Press any key or click to unlock"
+    );
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));
@@ -106,6 +110,26 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(
         config.visuals.center_stack_style(),
         CenterStackStyle::IdentityHeroInput
+    );
+}
+
+#[test]
+fn trims_and_clamps_reveal_hint_text() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.input]
+            reveal_on_interaction = true
+            reveal_hint = "                                                                 Custom reveal hint that should be preserved, but only up to the configured maximum length because anything longer just becomes layout abuse on smaller outputs.                                                                 "
+        "#,
+    )
+    .expect("reveal hint config should parse");
+
+    assert!(config.visuals.input_reveal_hint().chars().count() <= 160);
+    assert!(
+        config
+            .visuals
+            .input_reveal_hint()
+            .starts_with("Custom reveal hint")
     );
 }
 

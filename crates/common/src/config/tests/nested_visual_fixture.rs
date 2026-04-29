@@ -14,6 +14,7 @@ alignment = "bottom-left"
 center_in_layer = true
 reveal_on_interaction = true
 reveal_mode = "full"
+reveal_hint = "Press any key or click to unlock"
 horizontal_padding = 64
 vertical_padding = 56
 offset_x = 14

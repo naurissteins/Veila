@@ -255,7 +255,12 @@ impl ShellState {
         let username_style = self.username_text_style();
         let placeholder_style = self.placeholder_text_style();
         let status_text = self.status_text();
-        let status_style = self.status_text_style();
+        let hidden_reveal_hint = self.hidden_reveal_hint();
+        let status_style = if hidden_reveal_hint.is_some() && status_text.is_none() {
+            placeholder_style.clone()
+        } else {
+            self.status_text_style()
+        };
         let weather = self.weather.as_ref();
         let weather_temperature_style = self.weather_temperature_text_style();
         let weather_location_style = self.weather_location_text_style();
@@ -292,10 +297,14 @@ impl ShellState {
                         .then_some(self.hint_text.as_str()),
                 ),
                 placeholder_style,
-                status_text: input_visible
-                    .then_some(())
-                    .and(self.theme.status_enabled.then_some(()))
-                    .and(status_text.as_deref()),
+                status_text: if input_visible {
+                    self.theme
+                        .status_enabled
+                        .then_some(())
+                        .and(status_text.as_deref())
+                } else {
+                    hidden_reveal_hint
+                },
                 status_style,
                 weather_temperature_text: if self.theme.weather_enabled {
                     weather.map(|weather| weather.temperature_text.as_str())

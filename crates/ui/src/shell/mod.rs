@@ -71,6 +71,7 @@ pub struct ShellState {
     clock: ClockState,
     theme: ShellTheme,
     hint_text: String,
+    reveal_hint_text: String,
     username_text: Option<String>,
     weather: Option<WeatherWidgetData>,
     now_playing: Option<NowPlayingWidgetData>,
