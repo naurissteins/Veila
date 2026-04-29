@@ -24,6 +24,8 @@ impl CurtainApp {
                         cache_hit,
                         "loaded deferred curtain background image"
                     );
+                    let revision = self.ui_shell.static_scene_revision();
+                    let mut changed = false;
                     for index in 0..self.lock_surfaces.len() {
                         if self
                             .background_path_for_surface(index)
@@ -47,12 +49,33 @@ impl CurtainApp {
                             continue;
                         };
 
+                        if cache_hit
+                            && surface.background_path.as_deref() == Some(path.as_path())
+                            && surface.scene_base_revision == revision
+                            && surface
+                                .scene_base
+                                .as_ref()
+                                .is_some_and(|scene_base| scene_base.size() == size)
+                        {
+                            tracing::debug!(
+                                path = %path.display(),
+                                width,
+                                height,
+                                output_cached = true,
+                                "skipping redundant deferred background rerender"
+                            );
+                            continue;
+                        }
+
                         surface.background = Some(buffer);
                         surface.background_path = Some(path.clone());
                         surface.scene_base = None;
                         surface.scene_base_revision = 0;
+                        changed = true;
                     }
-                    self.render_all_surfaces(queue_handle);
+                    if changed {
+                        self.render_all_surfaces(queue_handle);
+                    }
                 }
                 BackgroundEvent::AssetReady {
                     path,
