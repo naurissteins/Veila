@@ -24,7 +24,7 @@
         rec {
           veila = pkgs.rustPlatform.buildRustPackage {
             pname = "veila";
-            version = "0.1.6";
+            version = "0.1.7";
 
             src = self;
 
