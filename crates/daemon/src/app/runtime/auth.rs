@@ -43,11 +43,13 @@ pub(crate) async fn handle_client_message(
                     let Some(sender) = auth_sender.clone() else {
                         return Err(anyhow!("authentication channel is unavailable"));
                     };
+                    let failed_attempts = auth_state.next_failed_attempts();
 
                     auth_state.start_attempt();
                     tokio::spawn(run_auth_attempt(
                         attempt_id,
                         started_at,
+                        failed_attempts,
                         username.to_string(),
                         secret,
                         stream,
@@ -68,6 +70,7 @@ pub(crate) async fn handle_client_message(
                         &DaemonMessage::AuthenticationRejected {
                             attempt_id,
                             retry_after_ms: Some(retry_after_ms),
+                            failed_attempts: Some(auth_state.failed_attempts()),
                         },
                     )
                     .await?;
@@ -83,6 +86,7 @@ pub(crate) async fn handle_client_message(
 async fn run_auth_attempt(
     attempt_id: u64,
     started_at: Instant,
+    failed_attempts: u8,
     username: String,
     secret: String,
     mut stream: UnixStream,
@@ -119,6 +123,7 @@ async fn run_auth_attempt(
                 &DaemonMessage::AuthenticationRejected {
                     attempt_id,
                     retry_after_ms: None,
+                    failed_attempts: Some(failed_attempts),
                 },
             )
             .await
@@ -142,6 +147,7 @@ async fn run_auth_attempt(
                 &DaemonMessage::AuthenticationRejected {
                     attempt_id,
                     retry_after_ms: None,
+                    failed_attempts: Some(failed_attempts),
                 },
             )
             .await

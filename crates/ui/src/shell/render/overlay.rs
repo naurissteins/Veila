@@ -297,7 +297,7 @@ impl ShellState {
         veila_renderer::shape::Rect::new(0, 0, 0, 0)
     }
 
-    pub(super) fn status_text(&self) -> Option<String> {
+    pub(crate) fn status_text(&self) -> Option<String> {
         match &self.status {
             ShellStatus::Idle => None,
             ShellStatus::Pending { shown, .. } => {
@@ -305,13 +305,32 @@ impl ShellState {
             }
             ShellStatus::Rejected {
                 displayed_retry_seconds,
+                failed_attempts,
                 ..
-            } => match displayed_retry_seconds {
-                Some(retry_seconds) if *retry_seconds > 0 => {
-                    Some(format!("Authentication failed, retry in {retry_seconds}s"))
-                }
-                Some(_) | None => Some(String::from("Authentication failed")),
-            },
+            } => Some(rejected_status_text(
+                *failed_attempts,
+                *displayed_retry_seconds,
+            )),
         }
+    }
+}
+
+fn rejected_status_text(failed_attempts: Option<u8>, retry_seconds: Option<u64>) -> String {
+    let count_text = failed_attempts.map(|failed_attempts| {
+        let suffix = if failed_attempts == 1 { "" } else { "s" };
+        format!("{failed_attempts} failed attempt{suffix}")
+    });
+
+    match (count_text, retry_seconds) {
+        (Some(count_text), Some(retry_seconds)) if retry_seconds > 0 => {
+            format!("Authentication failed ({count_text}), retry in {retry_seconds}s")
+        }
+        (Some(count_text), Some(_)) | (Some(count_text), None) => {
+            format!("Authentication failed ({count_text})")
+        }
+        (None, Some(retry_seconds)) if retry_seconds > 0 => {
+            format!("Authentication failed, retry in {retry_seconds}s")
+        }
+        (None, Some(_)) | (None, None) => String::from("Authentication failed"),
     }
 }

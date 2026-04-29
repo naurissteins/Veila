@@ -17,6 +17,7 @@ pub(crate) enum AuthEvent {
     Rejected {
         attempt_id: u64,
         retry_after_ms: Option<u64>,
+        failed_attempts: Option<u8>,
     },
     Busy {
         attempt_id: u64,
@@ -77,6 +78,7 @@ fn run_attempt(
         DaemonMessage::AuthenticationRejected {
             attempt_id,
             retry_after_ms,
+            failed_attempts,
         } => {
             tracing::info!(
                 elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
@@ -86,6 +88,7 @@ fn run_attempt(
             let _ = sender.send(AuthEvent::Rejected {
                 attempt_id,
                 retry_after_ms,
+                failed_attempts,
             });
         }
         DaemonMessage::AuthenticationBusy { attempt_id } => {

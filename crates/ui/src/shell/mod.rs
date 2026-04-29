@@ -46,6 +46,7 @@ enum ShellStatus {
     Rejected {
         retry_until: Option<Instant>,
         displayed_retry_seconds: Option<u64>,
+        failed_attempts: Option<u8>,
     },
 }
 

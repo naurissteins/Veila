@@ -19,6 +19,7 @@ pub enum DaemonMessage {
     AuthenticationRejected {
         attempt_id: u64,
         retry_after_ms: Option<u64>,
+        failed_attempts: Option<u8>,
     },
     AuthenticationBusy {
         attempt_id: u64,
@@ -115,6 +116,7 @@ where
 mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
+        DaemonMessage,
         DaemonReloadStatus, DaemonStatus, LiveReloadStatus, decode_message, encode_message,
     };
 
@@ -123,6 +125,20 @@ mod tests {
         let message = ClientMessage::CancelAuthentication;
         let encoded = encode_message(&message).expect("ipc message should encode");
         let decoded = decode_message::<ClientMessage>(&encoded).expect("ipc message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_auth_rejected_messages_with_failed_attempts() {
+        let message = DaemonMessage::AuthenticationRejected {
+            attempt_id: 7,
+            retry_after_ms: Some(1_500),
+            failed_attempts: Some(2),
+        };
+        let encoded = encode_message(&message).expect("daemon message should encode");
+        let decoded =
+            decode_message::<DaemonMessage>(&encoded).expect("daemon message should decode");
 
         assert_eq!(decoded, message);
     }

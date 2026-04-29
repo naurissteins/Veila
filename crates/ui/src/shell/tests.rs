@@ -222,7 +222,7 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
 fn rejection_clears_secret() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('a'));
-    shell.authentication_rejected(Some(1_000));
+    shell.authentication_rejected(Some(1_000), Some(1));
 
     assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
 }
@@ -233,12 +233,37 @@ fn countdown_state_advances_after_timeout() {
         status: ShellStatus::Rejected {
             retry_until: Some(Instant::now() + Duration::from_millis(1_100)),
             displayed_retry_seconds: Some(2),
+            failed_attempts: Some(2),
         },
         ..ShellState::default()
     };
     thread::sleep(Duration::from_millis(250));
 
     assert!(shell.advance_animated_state());
+}
+
+#[test]
+fn rejected_status_text_includes_failed_attempt_count() {
+    let mut shell = ShellState::default();
+
+    shell.authentication_rejected(None, Some(2));
+
+    assert_eq!(
+        shell.status_text().as_deref(),
+        Some("Authentication failed (2 failed attempts)")
+    );
+}
+
+#[test]
+fn rejected_status_text_includes_retry_and_failed_attempt_count() {
+    let mut shell = ShellState::default();
+
+    shell.authentication_rejected(Some(1_000), Some(1));
+
+    assert_eq!(
+        shell.status_text().as_deref(),
+        Some("Authentication failed (1 failed attempt), retry in 1s")
+    );
 }
 
 #[test]

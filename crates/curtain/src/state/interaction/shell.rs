@@ -25,7 +25,7 @@ impl CurtainApp {
         if let ShellAction::Submit(secret) = action {
             let Some(socket_path) = self.daemon_socket.clone() else {
                 tracing::warn!("password submitted without a daemon auth socket");
-                self.ui_shell.authentication_rejected(None);
+                self.ui_shell.authentication_rejected(None, None);
                 self.render_all_surfaces(queue_handle);
                 return;
             };

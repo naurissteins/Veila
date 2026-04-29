@@ -58,6 +58,14 @@ impl AuthState {
 }
 
 impl AuthState {
+    pub fn failed_attempts(&self) -> u8 {
+        self.failed_attempts
+    }
+
+    pub fn next_failed_attempts(&self) -> u8 {
+        self.failed_attempts.saturating_add(1)
+    }
+
     pub fn admit(&self, now: Instant) -> AuthAdmission {
         if self.in_flight {
             return AuthAdmission::Busy;

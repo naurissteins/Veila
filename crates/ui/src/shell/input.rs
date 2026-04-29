@@ -55,7 +55,11 @@ impl ShellState {
         self.status = ShellStatus::Idle;
     }
 
-    pub fn authentication_rejected(&mut self, retry_after_ms: Option<u64>) {
+    pub fn authentication_rejected(
+        &mut self,
+        retry_after_ms: Option<u64>,
+        failed_attempts: Option<u8>,
+    ) {
         self.secret.clear();
         self.reveal_secret = false;
         self.reveal_toggle_pressed = false;
@@ -66,6 +70,7 @@ impl ShellState {
         self.status = ShellStatus::Rejected {
             retry_until,
             displayed_retry_seconds,
+            failed_attempts,
         };
     }
 
@@ -92,6 +97,7 @@ impl ShellState {
         let ShellStatus::Rejected {
             retry_until,
             displayed_retry_seconds,
+            ..
         } = &mut self.status
         else {
             return changed;
