@@ -91,6 +91,22 @@ fn full_reveal_mode_starts_with_entire_auth_stack_hidden() {
 }
 
 #[test]
+fn disabled_reveal_hint_stays_hidden_even_when_auth_input_is_hidden() {
+    let shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            reveal_enabled: false,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+
+    assert_eq!(shell.hidden_reveal_hint(), None);
+}
+
+#[test]
 fn first_character_reveals_hidden_auth_stack() {
     let mut shell = ShellState::new(
         ShellTheme {

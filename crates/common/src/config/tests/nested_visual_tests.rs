@@ -18,9 +18,19 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert!(config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Full);
     assert_eq!(
-        config.visuals.input_reveal_hint(),
+        config.visuals.reveal_text(),
         "Press any key or click to unlock"
     );
+    assert!(config.visuals.reveal_enabled());
+    assert_eq!(
+        config.visuals.reveal_color(),
+        Some(RgbColor::rgb(214, 227, 255))
+    );
+    assert_eq!(config.visuals.reveal_opacity(), Some(66));
+    assert_eq!(config.visuals.reveal_font_family(), Some("Geom"));
+    assert_eq!(config.visuals.reveal_font_weight(), Some(500));
+    assert_eq!(config.visuals.reveal_font_style(), Some(FontStyle::Italic));
+    assert_eq!(config.visuals.reveal_font_size(), Some(2));
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));
@@ -117,20 +127,33 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
 fn trims_and_clamps_reveal_hint_text() {
     let config = AppConfig::from_toml_str(
         r#"
-            [visuals.input]
-            reveal_on_interaction = true
-            reveal_hint = "                                                                 Custom reveal hint that should be preserved, but only up to the configured maximum length because anything longer just becomes layout abuse on smaller outputs.                                                                 "
+            [visuals.reveal]
+            text = "                                                                 Custom reveal hint that should be preserved, but only up to the configured maximum length because anything longer just becomes layout abuse on smaller outputs.                                                                 "
         "#,
     )
     .expect("reveal hint config should parse");
 
-    assert!(config.visuals.input_reveal_hint().chars().count() <= 160);
+    assert!(config.visuals.reveal_text().chars().count() <= 160);
     assert!(
         config
             .visuals
-            .input_reveal_hint()
+            .reveal_text()
             .starts_with("Custom reveal hint")
     );
+}
+
+#[test]
+fn reveal_text_falls_back_to_legacy_input_reveal_hint() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.input]
+            reveal_on_interaction = true
+            reveal_hint = "Legacy reveal hint"
+        "#,
+    )
+    .expect("legacy reveal hint config should parse");
+
+    assert_eq!(config.visuals.reveal_text(), "Legacy reveal hint");
 }
 
 #[test]

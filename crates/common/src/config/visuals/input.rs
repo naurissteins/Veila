@@ -119,7 +119,7 @@ const fn default_input_color() -> RgbColor {
 const DEFAULT_REVEAL_HINT: &str = "Press any key or click to continue";
 const MAX_REVEAL_HINT_CHARS: usize = 160;
 
-fn sanitized_reveal_hint(hint: Option<&str>) -> String {
+pub(crate) fn sanitized_reveal_hint(hint: Option<&str>) -> String {
     let trimmed = hint.map(str::trim).filter(|value| !value.is_empty());
     trimmed
         .unwrap_or(DEFAULT_REVEAL_HINT)

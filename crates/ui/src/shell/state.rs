@@ -312,8 +312,10 @@ impl ShellState {
     }
 
     pub(super) fn hidden_reveal_hint(&self) -> Option<&str> {
-        (!self.input_visible() && matches!(self.status, super::ShellStatus::Idle))
-            .then_some(self.reveal_hint_text.as_str())
+        (self.theme.reveal_enabled
+            && !self.input_visible()
+            && matches!(self.status, super::ShellStatus::Idle))
+        .then_some(self.reveal_hint_text.as_str())
     }
 
     pub(super) fn reveal_auth(&mut self) -> bool {

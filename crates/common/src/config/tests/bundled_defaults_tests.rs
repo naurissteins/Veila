@@ -56,6 +56,11 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.input_reveal_hint(),
         "Press any key or click to continue"
     );
+    assert!(config.visuals.reveal_enabled());
+    assert_eq!(
+        config.visuals.reveal_text(),
+        "Press any key or click to continue"
+    );
     assert!(config.visuals.input_horizontal_padding().is_none());
     assert!(config.visuals.input_vertical_padding().is_none());
     assert_eq!(config.visuals.input_offset_x(), Some(0));

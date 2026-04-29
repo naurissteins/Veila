@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::RgbColor;
+use super::{FontStyle, RgbColor};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlaceholderVisualConfig {
@@ -18,6 +18,41 @@ impl Default for PlaceholderVisualConfig {
             enabled: Some(true),
             color: Some(RgbColor::rgb(255, 255, 255)),
             opacity: Some(60),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RevealVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub color: Option<RgbColor>,
+    #[serde(default)]
+    pub opacity: Option<u8>,
+    #[serde(default)]
+    pub font_family: Option<String>,
+    #[serde(default)]
+    pub font_weight: Option<u16>,
+    #[serde(default)]
+    pub font_style: Option<FontStyle>,
+    #[serde(default)]
+    pub font_size: Option<u16>,
+}
+
+impl Default for RevealVisualConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Some(true),
+            text: Some(String::from("Press any key or click to continue")),
+            color: None,
+            opacity: None,
+            font_family: None,
+            font_weight: None,
+            font_style: None,
+            font_size: None,
         }
     }
 }
@@ -153,6 +188,47 @@ impl Default for BatteryVisualConfig {
 }
 
 impl super::VisualConfig {
+    pub fn reveal_enabled(&self) -> bool {
+        self.reveal
+            .as_ref()
+            .and_then(|reveal| reveal.enabled)
+            .unwrap_or(true)
+    }
+
+    pub fn reveal_text(&self) -> String {
+        self.reveal
+            .as_ref()
+            .and_then(|reveal| reveal.text.as_deref())
+            .map(|text| super::input::sanitized_reveal_hint(Some(text)))
+            .unwrap_or_else(|| self.input_reveal_hint())
+    }
+
+    pub fn reveal_color(&self) -> Option<RgbColor> {
+        self.reveal.as_ref().and_then(|reveal| reveal.color)
+    }
+
+    pub fn reveal_opacity(&self) -> Option<u8> {
+        self.reveal.as_ref().and_then(|reveal| reveal.opacity)
+    }
+
+    pub fn reveal_font_family(&self) -> Option<&str> {
+        self.reveal
+            .as_ref()
+            .and_then(|reveal| reveal.font_family.as_deref())
+    }
+
+    pub fn reveal_font_weight(&self) -> Option<u16> {
+        self.reveal.as_ref().and_then(|reveal| reveal.font_weight)
+    }
+
+    pub fn reveal_font_style(&self) -> Option<FontStyle> {
+        self.reveal.as_ref().and_then(|reveal| reveal.font_style)
+    }
+
+    pub fn reveal_font_size(&self) -> Option<u16> {
+        self.reveal.as_ref().and_then(|reveal| reveal.font_size)
+    }
+
     pub fn placeholder_color(&self) -> Option<RgbColor> {
         self.placeholder
             .as_ref()

@@ -84,6 +84,17 @@ fn parses_partial_config_with_defaults() {
         config.visuals.input_reveal_hint(),
         "Press any key or click to continue"
     );
+    assert!(config.visuals.reveal_enabled());
+    assert_eq!(
+        config.visuals.reveal_text(),
+        "Press any key or click to continue"
+    );
+    assert!(config.visuals.reveal_color().is_none());
+    assert!(config.visuals.reveal_opacity().is_none());
+    assert!(config.visuals.reveal_font_family().is_none());
+    assert!(config.visuals.reveal_font_weight().is_none());
+    assert!(config.visuals.reveal_font_style().is_none());
+    assert!(config.visuals.reveal_font_size().is_none());
     assert!(config.visuals.input_horizontal_padding().is_none());
     assert!(config.visuals.input_vertical_padding().is_none());
     assert!(config.visuals.input_offset_x().is_none());

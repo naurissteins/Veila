@@ -14,7 +14,6 @@ alignment = "bottom-left"
 center_in_layer = true
 reveal_on_interaction = true
 reveal_mode = "full"
-reveal_hint = "Press any key or click to unlock"
 horizontal_padding = 64
 vertical_padding = 56
 offset_x = 14
@@ -83,6 +82,16 @@ border_color = "#DDDDDD"
             [visuals.placeholder]
             color = "#ffffff"
             opacity = 60
+
+            [visuals.reveal]
+            enabled = true
+            text = "Press any key or click to unlock"
+            color = "#D6E3FF"
+            opacity = 66
+            font_family = "Geom"
+            font_weight = 500
+            font_style = "italic"
+            font_size = 2
 
             [visuals.status]
             color = "#FFE0A0"

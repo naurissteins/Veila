@@ -5,8 +5,8 @@ use veila_common::{
     KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
     LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
     NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
-    WeatherVisualConfig,
+    PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    WeatherAlignment, WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -20,7 +20,7 @@ fn input_opacity_overrides_embedded_alpha() {
         center_in_layer: Some(true),
         reveal_on_interaction: Some(true),
         reveal_mode: Some(InputRevealMode::Full),
-        reveal_hint: Some(String::from("Press any key or click to unlock")),
+        reveal_hint: None,
         horizontal_padding: Some(56),
         vertical_padding: Some(44),
         offset_x: Some(18),
@@ -94,6 +94,16 @@ fn input_opacity_overrides_embedded_alpha() {
         enabled: Some(true),
         color: Some(ConfigColor::rgb(134, 148, 180)),
         opacity: Some(60),
+    });
+    config.visuals.reveal = Some(RevealVisualConfig {
+        enabled: Some(true),
+        text: Some(String::from("Press any key or click to unlock")),
+        color: Some(ConfigColor::rgb(214, 227, 255)),
+        opacity: Some(66),
+        font_family: Some(String::from("Geom")),
+        font_weight: Some(500),
+        font_style: Some(FontStyle::Italic),
+        font_size: Some(2),
     });
     config.visuals.eye = Some(EyeVisualConfig {
         enabled: Some(true),
@@ -240,6 +250,13 @@ fn input_opacity_overrides_embedded_alpha() {
     assert!(theme.input_reveal_on_interaction);
     assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
     assert_eq!(theme.input_reveal_hint, "Press any key or click to unlock");
+    assert!(theme.reveal_enabled);
+    assert_eq!(theme.reveal_color, Some(ClearColor::opaque(214, 227, 255)));
+    assert_eq!(theme.reveal_opacity, Some(66));
+    assert_eq!(theme.reveal_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.reveal_font_weight, Some(500));
+    assert_eq!(theme.reveal_font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.reveal_font_size, Some(2));
     assert_eq!(theme.input_horizontal_padding, Some(56));
     assert_eq!(theme.input_vertical_padding, Some(44));
     assert_eq!(theme.input_offset_x, Some(18));

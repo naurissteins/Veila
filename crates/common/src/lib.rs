@@ -17,10 +17,10 @@ pub use config::{
     InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment,
     LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
     LayoutVisualConfig, LoadedConfig, NowPlayingBackgroundConfig, NowPlayingConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, RgbColor,
-    StatusVisualConfig, UsernameVisualConfig, WeatherAlignment, WeatherConfig, WeatherUnit,
-    WeatherVisualConfig, active_include_source_paths, active_theme_name, active_theme_source_path,
-    default_config_path,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, RevealVisualConfig,
+    RgbColor, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment, WeatherConfig,
+    WeatherUnit, WeatherVisualConfig, active_include_source_paths, active_theme_name,
+    active_theme_source_path, default_config_path,
 };
 pub use error::{Result, VeilaError};
 pub use now_playing::NowPlayingSnapshot;

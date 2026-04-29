@@ -444,6 +444,46 @@ fn placeholder_style_preserves_explicit_muted_alpha_when_unset() {
 }
 
 #[test]
+fn reveal_style_uses_configured_color_opacity_and_font() {
+    let theme = ShellTheme {
+        reveal_color: Some(ClearColor::opaque(214, 227, 255)),
+        reveal_opacity: Some(66),
+        reveal_font_family: Some(String::from("Geom")),
+        reveal_font_weight: Some(500),
+        reveal_font_style: Some(veila_common::FontStyle::Italic),
+        reveal_font_size: Some(2),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.reveal_text_style();
+
+    assert_eq!(style.color.red, 214);
+    assert_eq!(style.color.green, 227);
+    assert_eq!(style.color.blue, 255);
+    assert_eq!(style.color.alpha, 168);
+    assert_eq!(style.scale, 2);
+    assert_eq!(style.font_weight, Some(500));
+    assert_eq!(
+        style.font_style,
+        Some(veila_renderer::text::FontStyle::Italic)
+    );
+    assert!(
+        style
+            .font_family
+            .as_ref()
+            .map(|family| format!("{family:?}"))
+            .is_some_and(|debug| debug.contains("Geom"))
+    );
+}
+
+#[test]
+fn reveal_style_falls_back_to_placeholder_style_defaults() {
+    let shell = ShellState::default();
+
+    assert_eq!(shell.reveal_text_style(), shell.placeholder_text_style());
+}
+
+#[test]
 fn status_style_preserves_explicit_pending_alpha_when_unset() {
     let theme = ShellTheme {
         pending: ClearColor::rgba(255, 194, 92, 90),

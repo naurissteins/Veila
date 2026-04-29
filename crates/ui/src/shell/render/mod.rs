@@ -257,7 +257,7 @@ impl ShellState {
         let status_text = self.status_text();
         let hidden_reveal_hint = self.hidden_reveal_hint();
         let status_style = if hidden_reveal_hint.is_some() && status_text.is_none() {
-            placeholder_style.clone()
+            self.reveal_text_style()
         } else {
             self.status_text_style()
         };

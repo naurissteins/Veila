@@ -15,7 +15,7 @@ pub use clock::{ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, Date
 pub use identity::{AvatarVisualConfig, UsernameVisualConfig};
 pub use indicators::{
     BatteryVisualConfig, CapsLockVisualConfig, EyeVisualConfig, KeyboardVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig,
+    PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig,
 };
 pub use input::{FontStyle, InputAlignment, InputRevealMode, InputVisualConfig, InputVisualEntry};
 pub use layer::{
@@ -197,6 +197,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub placeholder: Option<PlaceholderVisualConfig>,
     #[serde(default)]
+    pub reveal: Option<RevealVisualConfig>,
+    #[serde(default)]
     pub status: Option<StatusVisualConfig>,
     #[serde(default)]
     pub eye: Option<EyeVisualConfig>,
@@ -305,6 +307,7 @@ impl Default for VisualConfig {
             clock: Some(ClockVisualConfig::default()),
             date: Some(DateVisualConfig::default()),
             placeholder: Some(PlaceholderVisualConfig::default()),
+            reveal: Some(RevealVisualConfig::default()),
             status: Some(StatusVisualConfig::default()),
             eye: Some(EyeVisualConfig::default()),
             caps_lock: Some(CapsLockVisualConfig::default()),

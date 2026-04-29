@@ -158,6 +158,31 @@ impl ShellState {
         self.apply_input_font(style)
     }
 
+    pub(crate) fn reveal_text_style(&self) -> TextStyle {
+        let style = TextStyle::new(
+            secondary_text_color(
+                self.theme
+                    .reveal_color
+                    .unwrap_or(self.theme.placeholder_color.unwrap_or(self.theme.muted)),
+                self.theme.reveal_opacity.or(self.theme.placeholder_opacity),
+                154,
+            ),
+            self.theme
+                .reveal_font_size
+                .unwrap_or_else(|| self.input_text_scale())
+                .clamp(1, MAX_INPUT_TEXT_SCALE),
+        );
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(self.theme.reveal_font_family.as_deref())
+                .or_else(|| self.resolved_font_family(self.theme.input_font_family.as_deref())),
+            self.theme
+                .reveal_font_weight
+                .or(self.theme.input_font_weight),
+            self.theme.reveal_font_style.or(self.theme.input_font_style),
+        )
+    }
+
     pub(crate) fn revealed_secret_text_style(&self) -> TextStyle {
         self.apply_input_font(TextStyle::new(
             self.theme.foreground.with_alpha(236),
