@@ -1,6 +1,6 @@
-use image::{RgbaImage, imageops};
+use image::RgbaImage;
 
-use crate::{SoftwareBuffer, shape::Rect};
+use crate::{SoftwareBuffer, blur::blur_rgba, shape::Rect};
 
 use super::shapes::layer_mask;
 use super::{BackdropLayerShape, BackdropLayerStyle};
@@ -12,29 +12,25 @@ pub fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayer
         return;
     }
 
-    let rgba = extract_rgba_region(buffer, rect);
+    let (rgba, fully_opaque) = extract_rgba_region(buffer, rect);
     let Some(region) = RgbaImage::from_raw(width, height, rgba) else {
         return;
     };
-    let original = region.clone();
-    let blurred = if style.blur_radius == 0 {
-        region
-    } else {
-        imageops::blur(&region, f32::from(style.blur_radius.min(24)))
-    };
+    let blurred = blur_rgba(&region, style.blur_radius, 24);
 
     if matches!(style.shape, BackdropLayerShape::Panel) && style.radius <= 0 {
-        write_rgba_region(buffer, rect, &blurred);
+        write_rgba_region(buffer, rect, &blurred, fully_opaque);
         return;
     }
 
-    let rgba = apply_shape_mask(original, blurred, style, rect.width, rect.height);
-    write_rgba_region(buffer, rect, &rgba);
+    let rgba = apply_shape_mask(region, blurred, style, rect.width, rect.height);
+    write_rgba_region(buffer, rect, &rgba, false);
 }
 
-fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> Vec<u8> {
+fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> (Vec<u8>, bool) {
     let stride = buffer.size().width as usize * 4;
     let mut rgba = Vec::with_capacity(rect.width as usize * rect.height as usize * 4);
+    let mut fully_opaque = true;
 
     for y in rect.y as usize..(rect.y + rect.height) as usize {
         let row_start = y * stride;
@@ -46,6 +42,12 @@ fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> Vec<u8> {
             let red = pixel[2];
             let alpha = pixel[3];
 
+            if alpha == u8::MAX {
+                rgba.extend_from_slice(&[red, green, blue, alpha]);
+                continue;
+            }
+
+            fully_opaque = false;
             if alpha == 0 {
                 rgba.extend_from_slice(&[0, 0, 0, 0]);
             } else {
@@ -59,10 +61,15 @@ fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> Vec<u8> {
         }
     }
 
-    rgba
+    (rgba, fully_opaque)
 }
 
-fn write_rgba_region(buffer: &mut SoftwareBuffer, rect: Rect, image: &RgbaImage) {
+fn write_rgba_region(
+    buffer: &mut SoftwareBuffer,
+    rect: Rect,
+    image: &RgbaImage,
+    fully_opaque: bool,
+) {
     let stride = buffer.size().width as usize * 4;
     let pixels = buffer.pixels_mut();
 
@@ -72,6 +79,14 @@ fn write_rgba_region(buffer: &mut SoftwareBuffer, rect: Rect, image: &RgbaImage)
             let dst = row_start + x * 4;
             let src = image.get_pixel(column_index as u32, row_index as u32).0;
             let alpha = src[3];
+
+            if fully_opaque || alpha == u8::MAX {
+                pixels[dst] = src[2];
+                pixels[dst + 1] = src[1];
+                pixels[dst + 2] = src[0];
+                pixels[dst + 3] = alpha;
+                continue;
+            }
 
             pixels[dst] = premultiply_channel(src[2], alpha);
             pixels[dst + 1] = premultiply_channel(src[1], alpha);

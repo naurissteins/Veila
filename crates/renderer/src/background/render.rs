@@ -4,7 +4,7 @@ use super::{
     BackgroundGradient, BackgroundLayered, BackgroundLayeredBase, BackgroundLayeredBlob,
     BackgroundRadial, BackgroundTreatment, GeneratedBackground,
 };
-use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
+use crate::{ClearColor, FrameSize, Result, SoftwareBuffer, blur::blur_rgba};
 
 pub(super) fn render_image(
     image: &RgbaImage,
@@ -22,11 +22,7 @@ pub(super) fn render_image(
     let crop_y = (scaled_height.saturating_sub(size.height)) / 2;
     let cropped =
         image::imageops::crop_imm(&resized, crop_x, crop_y, size.width, size.height).to_image();
-    let cropped = if treatment.blur_radius > 0 {
-        image::imageops::blur(&cropped, f32::from(treatment.blur_radius.min(12)))
-    } else {
-        cropped
-    };
+    let cropped = blur_rgba(&cropped, treatment.blur_radius, 12);
     let mut buffer = SoftwareBuffer::new(size)?;
 
     for (target, pixel) in buffer
