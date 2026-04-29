@@ -28,7 +28,7 @@ use self::{
         RoleAnchorInput, RoleAnchors, SceneMetrics, layer_center_x, layer_rect,
         role_anchors_with_groups,
     },
-    model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, SceneWidget},
+    model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, SceneWidget, StandardSceneConfig},
 };
 use super::ShellState;
 
@@ -78,12 +78,16 @@ impl ShellState {
         );
         let model = SceneModel::standard(
             self.scene_text_blocks(metrics),
-            self.theme.input_alignment,
-            self.theme.avatar_enabled,
-            self.theme.clock_gap,
-            self.theme.avatar_gap,
-            self.theme.username_gap,
-            self.theme.status_gap,
+            StandardSceneConfig {
+                identity_visible: self.identity_visible(),
+                input_visible: self.input_visible(),
+                input_alignment: self.theme.input_alignment,
+                avatar_enabled: self.theme.avatar_enabled,
+                clock_gap: self.theme.clock_gap,
+                avatar_gap: self.theme.avatar_gap,
+                username_gap: self.theme.username_gap,
+                status_gap: self.theme.status_gap,
+            },
         );
         let footer_render_height =
             model.total_height_for_role(LayoutRole::Footer, metrics, &self.status);
@@ -236,6 +240,8 @@ impl ShellState {
     }
 
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
+        let identity_visible = self.identity_visible();
+        let input_visible = self.input_visible();
         let clock_text = self.clock.primary_text(self.theme.clock_style);
         let clock_secondary_text = self.clock.secondary_text(self.theme.clock_style);
         let clock_style = self.clock_text_style(metrics);
@@ -275,17 +281,20 @@ impl ShellState {
                 clock_meridiem_offset_y,
                 date_text: self.theme.date_enabled.then_some(date_text),
                 date_style,
-                username_text: self.theme.username_enabled.then_some(()).and(username_text),
-                username_style,
-                placeholder_text: self
-                    .theme
-                    .placeholder_enabled
-                    .then_some(self.hint_text.as_str()),
-                placeholder_style,
-                status_text: self
-                    .theme
-                    .status_enabled
+                username_text: identity_visible
                     .then_some(())
+                    .and(self.theme.username_enabled.then_some(()))
+                    .and(username_text),
+                username_style,
+                placeholder_text: input_visible.then_some(()).and(
+                    self.theme
+                        .placeholder_enabled
+                        .then_some(self.hint_text.as_str()),
+                ),
+                placeholder_style,
+                status_text: input_visible
+                    .then_some(())
+                    .and(self.theme.status_enabled.then_some(()))
                     .and(status_text.as_deref()),
                 status_style,
                 weather_temperature_text: if self.theme.weather_enabled {

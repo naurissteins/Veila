@@ -36,12 +36,12 @@ pub use now_playing::NowPlayingConfig;
 pub use visuals::{
     AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackOrder,
     CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig,
-    EyeVisualConfig, FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle,
-    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayerWidthKeyword, LayoutVisualConfig,
-    NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, VisualConfig,
-    WeatherAlignment, WeatherVisualConfig,
+    EyeVisualConfig, FontStyle, InputAlignment, InputRevealMode, InputVisualConfig,
+    InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerHeightKeyword,
+    LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
+    LayerWidthKeyword, LayoutVisualConfig, NowPlayingBackgroundConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
+    VisualConfig, WeatherAlignment, WeatherVisualConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

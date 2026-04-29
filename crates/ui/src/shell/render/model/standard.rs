@@ -1,17 +1,11 @@
 use veila_common::InputAlignment;
 
-use super::{LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget};
+use super::{
+    LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget, StandardSceneConfig,
+};
 
 impl SceneModel {
-    pub(crate) fn standard(
-        blocks: SceneTextBlocks,
-        input_alignment: InputAlignment,
-        avatar_enabled: bool,
-        clock_gap: Option<i32>,
-        avatar_gap: Option<i32>,
-        username_gap: Option<i32>,
-        status_gap: Option<i32>,
-    ) -> Self {
+    pub(crate) fn standard(blocks: SceneTextBlocks, config: StandardSceneConfig) -> Self {
         let SceneTextBlocks {
             clock,
             date,
@@ -20,6 +14,16 @@ impl SceneModel {
             status,
             weather,
         } = blocks;
+        let StandardSceneConfig {
+            identity_visible,
+            input_visible,
+            input_alignment,
+            avatar_enabled,
+            clock_gap,
+            avatar_gap,
+            username_gap,
+            status_gap,
+        } = config;
         let clock_gap = clock_gap.unwrap_or(4).clamp(0, 48);
         let avatar_gap = avatar_gap.unwrap_or(10).clamp(0, 96);
         let username_gap = username_gap.unwrap_or(34).clamp(0, 96);
@@ -43,57 +47,63 @@ impl SceneModel {
             ));
         }
 
-        if avatar_enabled {
-            sections.push(SceneSection::new(
-                LayoutRole::Auth,
-                SceneWidget::Avatar,
-                avatar_gap,
-            ));
-        }
-
-        if let Some(username) = username {
-            sections.push(SceneSection::new(
-                LayoutRole::Auth,
-                SceneWidget::Username(username),
-                username_gap,
-            ));
-        }
-
-        let status_before_input = matches!(
-            input_alignment,
-            InputAlignment::BottomCenter | InputAlignment::BottomRight | InputAlignment::BottomLeft
-        );
-
-        if let Some(status) = status {
-            if status_before_input {
+        if identity_visible {
+            if avatar_enabled {
                 sections.push(SceneSection::new(
                     LayoutRole::Auth,
-                    SceneWidget::Status(status),
-                    status_gap,
+                    SceneWidget::Avatar,
+                    avatar_gap,
                 ));
+            }
+
+            if let Some(username) = username {
                 sections.push(SceneSection::new(
                     LayoutRole::Auth,
-                    SceneWidget::Input(placeholder),
-                    0,
+                    SceneWidget::Username(username),
+                    username_gap,
                 ));
+            }
+        }
+
+        if input_visible {
+            let status_before_input = matches!(
+                input_alignment,
+                InputAlignment::BottomCenter
+                    | InputAlignment::BottomRight
+                    | InputAlignment::BottomLeft
+            );
+
+            if let Some(status) = status {
+                if status_before_input {
+                    sections.push(SceneSection::new(
+                        LayoutRole::Auth,
+                        SceneWidget::Status(status),
+                        status_gap,
+                    ));
+                    sections.push(SceneSection::new(
+                        LayoutRole::Auth,
+                        SceneWidget::Input(placeholder),
+                        0,
+                    ));
+                } else {
+                    sections.push(SceneSection::new(
+                        LayoutRole::Auth,
+                        SceneWidget::Input(placeholder),
+                        status_gap,
+                    ));
+                    sections.push(SceneSection::new(
+                        LayoutRole::Auth,
+                        SceneWidget::Status(status),
+                        0,
+                    ));
+                }
             } else {
                 sections.push(SceneSection::new(
                     LayoutRole::Auth,
                     SceneWidget::Input(placeholder),
-                    status_gap,
-                ));
-                sections.push(SceneSection::new(
-                    LayoutRole::Auth,
-                    SceneWidget::Status(status),
                     0,
                 ));
             }
-        } else {
-            sections.push(SceneSection::new(
-                LayoutRole::Auth,
-                SceneWidget::Input(placeholder),
-                0,
-            ));
         }
 
         if let Some(weather) = weather {

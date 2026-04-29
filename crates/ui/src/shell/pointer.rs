@@ -8,6 +8,10 @@ impl ShellState {
         x: f64,
         y: f64,
     ) -> bool {
+        if !self.input_visible() {
+            return false;
+        }
+
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
@@ -23,6 +27,10 @@ impl ShellState {
     }
 
     pub fn handle_pointer_leave(&mut self) -> bool {
+        if !self.input_visible() {
+            return false;
+        }
+
         let changed = self.reveal_toggle_hovered || self.reveal_toggle_pressed;
         self.reveal_toggle_hovered = false;
         self.reveal_toggle_pressed = false;
@@ -36,6 +44,10 @@ impl ShellState {
         x: f64,
         y: f64,
     ) -> bool {
+        if self.reveal_auth() {
+            return true;
+        }
+
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
@@ -54,6 +66,10 @@ impl ShellState {
         x: f64,
         y: f64,
     ) -> bool {
+        if self.reveal_auth() {
+            return true;
+        }
+
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);

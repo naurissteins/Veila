@@ -17,7 +17,7 @@ pub use indicators::{
     BatteryVisualConfig, CapsLockVisualConfig, EyeVisualConfig, KeyboardVisualConfig,
     PlaceholderVisualConfig, StatusVisualConfig,
 };
-pub use input::{FontStyle, InputAlignment, InputVisualConfig, InputVisualEntry};
+pub use input::{FontStyle, InputAlignment, InputRevealMode, InputVisualConfig, InputVisualEntry};
 pub use layer::{
     LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
     LayerVisualConfig, LayerWidth, LayerWidthKeyword,

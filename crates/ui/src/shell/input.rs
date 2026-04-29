@@ -8,7 +8,9 @@ const PENDING_STATUS_DELAY_MS: u64 = 1_000;
 impl ShellState {
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
         match key {
+            ShellKey::Escape if !self.input_visible() => ShellAction::None,
             ShellKey::Character(character) => {
+                self.reveal_auth();
                 if !character.is_control() && self.secret.chars().count() < 128 {
                     self.secret.push(character);
                     self.status = ShellStatus::Idle;
@@ -16,6 +18,7 @@ impl ShellState {
                 ShellAction::None
             }
             ShellKey::Backspace => {
+                self.reveal_auth();
                 self.secret.pop();
                 self.status = ShellStatus::Idle;
                 ShellAction::None
@@ -25,9 +28,11 @@ impl ShellState {
                 self.reveal_secret = false;
                 self.reveal_toggle_pressed = false;
                 self.status = ShellStatus::Idle;
+                self.hide_auth();
                 ShellAction::None
             }
             ShellKey::Enter => {
+                self.reveal_auth();
                 if let ShellStatus::Rejected {
                     retry_until: Some(retry_until),
                     ..

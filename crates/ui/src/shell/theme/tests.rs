@@ -1,11 +1,12 @@
 use veila_common::{
     AppConfig, AvatarVisualConfig, BatteryVisualConfig, CenterStackOrder, CenterStackStyle,
     ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
-    EyeVisualConfig, FontStyle, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,
-    LayerAlignment, LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig,
-    LayerWidth, LayoutVisualConfig, NowPlayingBackgroundConfig, NowPlayingVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    WeatherAlignment, WeatherVisualConfig,
+    EyeVisualConfig, FontStyle, InputRevealMode, InputVisualConfig, InputVisualEntry,
+    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
+    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
+    NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    PlaceholderVisualConfig, StatusVisualConfig, UsernameVisualConfig, WeatherAlignment,
+    WeatherVisualConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -17,6 +18,8 @@ fn input_opacity_overrides_embedded_alpha() {
     config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
         alignment: Some(veila_common::InputAlignment::CenterCenter),
         center_in_layer: Some(true),
+        reveal_on_interaction: Some(true),
+        reveal_mode: Some(InputRevealMode::Full),
         horizontal_padding: Some(56),
         vertical_padding: Some(44),
         offset_x: Some(18),
@@ -233,6 +236,8 @@ fn input_opacity_overrides_embedded_alpha() {
         veila_common::InputAlignment::CenterCenter
     );
     assert!(theme.input_center_in_layer);
+    assert!(theme.input_reveal_on_interaction);
+    assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
     assert_eq!(theme.input_horizontal_padding, Some(56));
     assert_eq!(theme.input_vertical_padding, Some(44));
     assert_eq!(theme.input_offset_x, Some(18));

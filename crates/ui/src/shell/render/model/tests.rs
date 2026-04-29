@@ -5,8 +5,24 @@ use veila_renderer::{
 
 use veila_common::{ClockStyle, InputAlignment};
 
-use super::{AuthGroup, LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget};
+use super::{
+    AuthGroup, LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget,
+    StandardSceneConfig,
+};
 use crate::shell::{ShellStatus, render::layout::SceneMetrics};
+
+fn standard_scene_config() -> StandardSceneConfig {
+    StandardSceneConfig {
+        identity_visible: true,
+        input_visible: true,
+        input_alignment: InputAlignment::CenterCenter,
+        avatar_enabled: true,
+        clock_gap: None,
+        avatar_gap: None,
+        username_gap: None,
+        status_gap: None,
+    }
+}
 
 #[test]
 fn assigns_hero_and_auth_roles() {
@@ -19,12 +35,7 @@ fn assigns_hero_and_auth_roles() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        None,
+        standard_scene_config(),
     );
 
     let hero_sections = model
@@ -54,12 +65,7 @@ fn appends_status_to_auth_role() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        None,
+        standard_scene_config(),
     );
     let without_status = SceneModel::standard(
         SceneTextBlocks {
@@ -70,12 +76,7 @@ fn appends_status_to_auth_role() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        None,
+        standard_scene_config(),
     );
 
     let auth_sections = with_status
@@ -111,12 +112,7 @@ fn footer_role_is_empty_in_default_model() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        None,
+        standard_scene_config(),
     );
 
     assert_eq!(model.sections_for_role(LayoutRole::Footer).count(), 0);
@@ -133,12 +129,7 @@ fn omits_username_widget_when_disabled() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        None,
+        standard_scene_config(),
     );
 
     assert_eq!(model.sections_for_role(LayoutRole::Hero).count(), 2);
@@ -160,12 +151,10 @@ fn uses_configured_username_gap() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        Some(24),
-        None,
+        StandardSceneConfig {
+            username_gap: Some(24),
+            ..standard_scene_config()
+        },
     );
 
     let auth_sections = model
@@ -186,12 +175,10 @@ fn uses_configured_avatar_gap() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        Some(18),
-        None,
-        None,
+        StandardSceneConfig {
+            avatar_gap: Some(18),
+            ..standard_scene_config()
+        },
     );
 
     let auth_sections = model
@@ -212,12 +199,10 @@ fn uses_configured_status_gap() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        Some(20),
+        StandardSceneConfig {
+            status_gap: Some(20),
+            ..standard_scene_config()
+        },
     );
 
     let auth_sections = model
@@ -238,12 +223,11 @@ fn places_status_above_input_for_bottom_aligned_layouts() {
             status: Some(block("Checking authentication")),
             weather: None,
         },
-        InputAlignment::BottomCenter,
-        true,
-        None,
-        None,
-        None,
-        Some(20),
+        StandardSceneConfig {
+            input_alignment: InputAlignment::BottomCenter,
+            status_gap: Some(20),
+            ..standard_scene_config()
+        },
     );
 
     let auth_sections = model
@@ -268,12 +252,10 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        Some(20),
+        StandardSceneConfig {
+            status_gap: Some(20),
+            ..standard_scene_config()
+        },
     );
     let with_status = SceneModel::standard(
         SceneTextBlocks {
@@ -284,12 +266,10 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        Some(20),
+        StandardSceneConfig {
+            status_gap: Some(20),
+            ..standard_scene_config()
+        },
     );
 
     assert_eq!(
@@ -309,12 +289,10 @@ fn splits_auth_sections_into_identity_and_input_groups() {
             status: Some(block("Checking authentication")),
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        None,
-        None,
-        None,
-        Some(20),
+        StandardSceneConfig {
+            status_gap: Some(20),
+            ..standard_scene_config()
+        },
     );
 
     let identity_sections = model
@@ -346,12 +324,10 @@ fn uses_configured_clock_gap() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        true,
-        Some(12),
-        None,
-        None,
-        None,
+        StandardSceneConfig {
+            clock_gap: Some(12),
+            ..standard_scene_config()
+        },
     );
 
     let hero_sections = model
@@ -372,12 +348,10 @@ fn omits_avatar_widget_when_disabled() {
             status: None,
             weather: None,
         },
-        InputAlignment::CenterCenter,
-        false,
-        None,
-        None,
-        None,
-        None,
+        StandardSceneConfig {
+            avatar_enabled: false,
+            ..standard_scene_config()
+        },
     );
 
     assert!(
@@ -385,6 +359,54 @@ fn omits_avatar_widget_when_disabled() {
             .sections_for_role(LayoutRole::Auth)
             .all(|section| !matches!(section.widget, SceneWidget::Avatar))
     );
+}
+
+#[test]
+fn keeps_identity_sections_when_only_input_group_is_hidden() {
+    let model = SceneModel::standard(
+        SceneTextBlocks {
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
+            username: Some(block("ramces")),
+            placeholder: Some(block("Type your password to unlock")),
+            status: Some(block("Checking authentication")),
+            weather: None,
+        },
+        StandardSceneConfig {
+            input_visible: false,
+            ..standard_scene_config()
+        },
+    );
+
+    let auth_sections = model
+        .sections_for_role(LayoutRole::Auth)
+        .collect::<Vec<_>>();
+
+    assert_eq!(auth_sections.len(), 2);
+    assert!(matches!(auth_sections[0].widget, SceneWidget::Avatar));
+    assert!(matches!(auth_sections[1].widget, SceneWidget::Username(_)));
+}
+
+#[test]
+fn omits_auth_role_when_full_auth_is_hidden() {
+    let model = SceneModel::standard(
+        SceneTextBlocks {
+            clock: Some(clock_blocks("09:05")),
+            date: Some(block("Tuesday, March 24")),
+            username: Some(block("ramces")),
+            placeholder: Some(block("Type your password to unlock")),
+            status: Some(block("Checking authentication")),
+            weather: None,
+        },
+        StandardSceneConfig {
+            identity_visible: false,
+            input_visible: false,
+            ..standard_scene_config()
+        },
+    );
+
+    assert_eq!(model.sections_for_role(LayoutRole::Hero).count(), 2);
+    assert_eq!(model.sections_for_role(LayoutRole::Auth).count(), 0);
 }
 
 fn block(text: &str) -> TextBlock {

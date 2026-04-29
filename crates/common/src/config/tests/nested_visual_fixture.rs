@@ -12,6 +12,8 @@ pub(super) fn nested_visual_config() -> AppConfig {
 [visuals.input]
 alignment = "bottom-left"
 center_in_layer = true
+reveal_on_interaction = true
+reveal_mode = "full"
 horizontal_padding = 64
 vertical_padding = 56
 offset_x = 14

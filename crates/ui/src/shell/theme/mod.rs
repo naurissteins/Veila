@@ -4,7 +4,7 @@ mod tests;
 
 use veila_common::{
     AppConfig, CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
-    InputAlignment, LayerAlignment, LayerMode, LayerStyle, LayerVerticalAlignment,
+    InputAlignment, InputRevealMode, LayerAlignment, LayerMode, LayerStyle, LayerVerticalAlignment,
     WeatherAlignment,
 };
 use veila_renderer::ClearColor;
@@ -24,6 +24,8 @@ pub struct ShellTheme {
     pub input_font_size: Option<u32>,
     pub input_alignment: InputAlignment,
     pub input_center_in_layer: bool,
+    pub input_reveal_on_interaction: bool,
+    pub input_reveal_mode: InputRevealMode,
     pub input_horizontal_padding: Option<i32>,
     pub input_vertical_padding: Option<i32>,
     pub input_offset_x: Option<i32>,
@@ -221,6 +223,8 @@ impl ShellTheme {
             input_font_size: config.visuals.input_font_size().map(u32::from),
             input_alignment: config.visuals.input_alignment(),
             input_center_in_layer: config.visuals.input_center_in_layer(),
+            input_reveal_on_interaction: config.visuals.input_reveal_on_interaction(),
+            input_reveal_mode: config.visuals.input_reveal_mode(),
             input_horizontal_padding: config.visuals.input_horizontal_padding().map(i32::from),
             input_vertical_padding: config.visuals.input_vertical_padding().map(i32::from),
             input_offset_x: config.visuals.input_offset_x().map(i32::from),

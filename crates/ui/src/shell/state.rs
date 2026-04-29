@@ -1,6 +1,8 @@
 use std::{cell::RefCell, path::PathBuf};
 
-use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, WeatherUnit};
+use veila_common::{
+    BatterySnapshot, InputRevealMode, NowPlayingSnapshot, WeatherSnapshot, WeatherUnit,
+};
 use veila_renderer::ClearColor;
 
 use super::{
@@ -165,6 +167,7 @@ impl ShellState {
             keyboard_layout_label: None,
             battery: battery_widget_data(battery_snapshot),
             reveal_secret: false,
+            auth_revealed: !theme.input_reveal_on_interaction,
             reveal_toggle_hovered: false,
             reveal_toggle_pressed: false,
             static_scene_revision: 1,
@@ -268,11 +271,15 @@ impl ShellState {
         battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) {
+        let reveal_on_interaction = theme.input_reveal_on_interaction;
         self.theme = theme;
         self.clock = ClockState::current(self.theme.clock_format);
         self.hint_text = user_hint
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
+        if !reveal_on_interaction {
+            self.auth_revealed = true;
+        }
         if !self.theme.eye_enabled {
             self.reveal_secret = false;
             self.reveal_toggle_hovered = false;
@@ -289,5 +296,35 @@ impl ShellState {
 
     pub fn static_scene_revision(&self) -> u64 {
         self.static_scene_revision
+    }
+
+    pub(super) fn identity_visible(&self) -> bool {
+        self.auth_revealed
+            || !self.theme.input_reveal_on_interaction
+            || self.theme.input_reveal_mode == InputRevealMode::Input
+    }
+
+    pub(super) fn input_visible(&self) -> bool {
+        self.auth_revealed || !self.theme.input_reveal_on_interaction
+    }
+
+    pub(super) fn reveal_auth(&mut self) -> bool {
+        if self.auth_revealed || !self.theme.input_reveal_on_interaction {
+            return false;
+        }
+
+        self.auth_revealed = true;
+        self.bump_static_scene_revision();
+        true
+    }
+
+    pub(super) fn hide_auth(&mut self) -> bool {
+        if !self.auth_revealed || !self.theme.input_reveal_on_interaction {
+            return false;
+        }
+
+        self.auth_revealed = false;
+        self.bump_static_scene_revision();
+        true
     }
 }

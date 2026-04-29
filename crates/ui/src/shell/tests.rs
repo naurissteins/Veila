@@ -3,10 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use veila_common::ClockFormat;
 use veila_common::{
     BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, WeatherUnit,
 };
+use veila_common::{ClockFormat, InputRevealMode};
 use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
@@ -47,6 +47,125 @@ fn empty_enter_submits_authentication() {
         shell.status,
         ShellStatus::Pending { shown: false, .. }
     ));
+}
+
+#[test]
+fn input_reveal_on_interaction_starts_hidden() {
+    let shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+
+    assert!(shell.identity_visible());
+    assert!(!shell.input_visible());
+}
+
+#[test]
+fn full_reveal_mode_starts_with_entire_auth_stack_hidden() {
+    let shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            input_reveal_mode: InputRevealMode::Full,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+
+    assert!(!shell.identity_visible());
+    assert!(!shell.input_visible());
+}
+
+#[test]
+fn first_character_reveals_hidden_auth_stack() {
+    let mut shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let original = shell.static_scene_revision();
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('a')),
+        ShellAction::None
+    );
+
+    assert!(shell.identity_visible());
+    assert!(shell.input_visible());
+    assert!(shell.static_scene_revision() > original);
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(String::from("a"))
+    );
+}
+
+#[test]
+fn pointer_motion_does_not_reveal_hidden_auth_stack() {
+    let mut shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let original = shell.static_scene_revision();
+
+    assert!(!shell.handle_pointer_motion(1280, 720, 40.0, 40.0));
+
+    assert!(shell.identity_visible());
+    assert!(!shell.input_visible());
+    assert_eq!(shell.static_scene_revision(), original);
+}
+
+#[test]
+fn pointer_press_reveals_hidden_auth_stack() {
+    let mut shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let original = shell.static_scene_revision();
+
+    assert!(shell.handle_pointer_press(1280, 720, 40.0, 40.0));
+
+    assert!(shell.identity_visible());
+    assert!(shell.input_visible());
+    assert!(shell.static_scene_revision() > original);
+}
+
+#[test]
+fn escape_rehides_auth_stack_when_enabled() {
+    let mut shell = ShellState::new(
+        ShellTheme {
+            input_reveal_on_interaction: true,
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    shell.handle_key(ShellKey::Character('a'));
+
+    assert_eq!(shell.handle_key(ShellKey::Escape), ShellAction::None);
+    assert!(shell.identity_visible());
+    assert!(!shell.input_visible());
+    assert!(shell.secret.is_empty());
 }
 
 #[test]

@@ -62,6 +62,7 @@ pub struct ShellState {
     keyboard_layout_label: Option<String>,
     battery: Option<BatteryWidgetData>,
     reveal_secret: bool,
+    auth_revealed: bool,
     reveal_toggle_hovered: bool,
     reveal_toggle_pressed: bool,
     static_scene_revision: u64,

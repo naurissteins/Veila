@@ -15,6 +15,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.input_font_size(), Some(3));
     assert_eq!(config.visuals.input_alignment(), InputAlignment::BottomLeft);
     assert!(config.visuals.input_center_in_layer());
+    assert!(config.visuals.input_reveal_on_interaction());
+    assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Full);
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));

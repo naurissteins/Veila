@@ -20,6 +20,8 @@ impl Default for InputVisualEntry {
 pub struct InputVisualConfig {
     pub alignment: Option<InputAlignment>,
     pub center_in_layer: Option<bool>,
+    pub reveal_on_interaction: Option<bool>,
+    pub reveal_mode: Option<InputRevealMode>,
     pub horizontal_padding: Option<u16>,
     pub vertical_padding: Option<u16>,
     pub offset_x: Option<i16>,
@@ -44,6 +46,8 @@ impl Default for InputVisualConfig {
         Self {
             alignment: Some(InputAlignment::CenterCenter),
             center_in_layer: Some(false),
+            reveal_on_interaction: Some(false),
+            reveal_mode: Some(InputRevealMode::Input),
             horizontal_padding: None,
             vertical_padding: None,
             offset_x: Some(0),
@@ -95,6 +99,15 @@ pub enum FontStyle {
     Normal,
     #[serde(rename = "italic")]
     Italic,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum InputRevealMode {
+    #[default]
+    #[serde(rename = "input")]
+    Input,
+    #[serde(rename = "full")]
+    Full,
 }
 
 const fn default_input_color() -> RgbColor {
@@ -172,6 +185,20 @@ impl super::VisualConfig {
                 .center_in_layer
                 .or(self.input_center_in_layer)
                 .unwrap_or(false),
+        }
+    }
+
+    pub fn input_reveal_on_interaction(&self) -> bool {
+        match &self.input {
+            InputVisualEntry::Color(_) => false,
+            InputVisualEntry::Section(config) => config.reveal_on_interaction.unwrap_or(false),
+        }
+    }
+
+    pub fn input_reveal_mode(&self) -> InputRevealMode {
+        match &self.input {
+            InputVisualEntry::Color(_) => InputRevealMode::Input,
+            InputVisualEntry::Section(config) => config.reveal_mode.unwrap_or_default(),
         }
     }
 
