@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
 };
 
-use crate::state::{CurtainApp, elapsed_ms, elapsed_us};
+use crate::state::{CurtainApp, duration_ms_between, elapsed_ms, elapsed_us};
 
 impl CurtainApp {
     pub(crate) fn configure_surface(
@@ -30,6 +30,7 @@ impl CurtainApp {
         self.lock_surfaces[index].size = Some(size);
         if was_unconfigured && !self.first_surface_configured_logged {
             self.first_surface_configured_logged = true;
+            self.first_surface_configured_at = Some(std::time::Instant::now());
             tracing::info!(
                 startup_elapsed_ms = elapsed_ms(self.startup_started_at),
                 startup_elapsed_us = elapsed_us(self.startup_started_at),
@@ -41,10 +42,16 @@ impl CurtainApp {
             && self.lock_surfaces.iter().all(|entry| entry.size.is_some())
         {
             self.all_surfaces_configured_logged = true;
+            let all_surfaces_configured_at = std::time::Instant::now();
+            self.all_surfaces_configured_at = Some(all_surfaces_configured_at);
             tracing::info!(
                 surfaces = self.lock_surfaces.len(),
                 startup_elapsed_ms = elapsed_ms(self.startup_started_at),
                 startup_elapsed_us = elapsed_us(self.startup_started_at),
+                first_to_all_surfaces_ms = duration_ms_between(
+                    self.first_surface_configured_at,
+                    all_surfaces_configured_at,
+                ),
                 "all lock surfaces configured"
             );
         }
@@ -90,12 +97,17 @@ impl CurtainApp {
             if let Err(error) = notify_ready(path) {
                 tracing::warn!(?path, "failed to notify ready state: {error:#}");
             } else {
+                let ready_notified_at = std::time::Instant::now();
                 tracing::info!(
                     ?path,
                     startup_elapsed_ms = elapsed_ms(self.startup_started_at),
                     startup_elapsed_us = elapsed_us(self.startup_started_at),
                     session_locked_elapsed_ms = self.session_locked_at.map(elapsed_ms),
                     session_locked_elapsed_us = self.session_locked_at.map(elapsed_us),
+                    first_surface_to_ready_ms =
+                        duration_ms_between(self.first_surface_configured_at, ready_notified_at,),
+                    all_surfaces_to_ready_ms =
+                        duration_ms_between(self.all_surfaces_configured_at, ready_notified_at,),
                     "curtain reported readiness"
                 );
             }

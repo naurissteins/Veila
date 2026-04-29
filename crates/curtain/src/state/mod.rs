@@ -101,7 +101,9 @@ pub(crate) struct CurtainApp {
     pub(crate) exit_requested: bool,
     pub(crate) ready_notified: bool,
     pub(crate) first_surface_configured_logged: bool,
+    pub(crate) first_surface_configured_at: Option<Instant>,
     pub(crate) all_surfaces_configured_logged: bool,
+    pub(crate) all_surfaces_configured_at: Option<Instant>,
     pub(crate) background_render_started: bool,
     auth_in_flight: bool,
     next_auth_attempt_id: u64,
@@ -214,7 +216,9 @@ impl CurtainApp {
             exit_requested: false,
             ready_notified: false,
             first_surface_configured_logged: false,
+            first_surface_configured_at: None,
             all_surfaces_configured_logged: false,
+            all_surfaces_configured_at: None,
             background_render_started: false,
             auth_in_flight: false,
             next_auth_attempt_id: 1,
@@ -369,6 +373,15 @@ pub(crate) fn elapsed_ms(started_at: Instant) -> u64 {
 
 pub(crate) fn elapsed_us(started_at: Instant) -> u64 {
     started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
+}
+
+pub(crate) fn duration_ms_between(started_at: Option<Instant>, ended_at: Instant) -> Option<u64> {
+    started_at.map(|started_at| {
+        ended_at
+            .saturating_duration_since(started_at)
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64
+    })
 }
 
 pub(crate) fn background_treatment(

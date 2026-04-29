@@ -1,9 +1,13 @@
+use std::time::Instant;
+
 use image::RgbaImage;
 
 use crate::{SoftwareBuffer, blur::blur_rgba, shape::Rect};
 
 use super::shapes::layer_mask;
 use super::{BackdropLayerShape, BackdropLayerStyle};
+
+const SLOW_LAYER_BLUR_MS: u64 = 4;
 
 pub fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
     let width = rect.width.max(0) as u32;
@@ -12,6 +16,8 @@ pub fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayer
         return;
     }
 
+    let timing_enabled = tracing::enabled!(tracing::Level::DEBUG);
+    let started_at = timing_enabled.then(Instant::now);
     let (rgba, fully_opaque) = extract_rgba_region(buffer, rect);
     let Some(region) = RgbaImage::from_raw(width, height, rgba) else {
         return;
@@ -20,11 +26,13 @@ pub fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayer
 
     if matches!(style.shape, BackdropLayerShape::Panel) && style.radius <= 0 {
         write_rgba_region(buffer, rect, &blurred, fully_opaque);
+        log_blur_timing(started_at, width, height, style, fully_opaque);
         return;
     }
 
     let rgba = apply_shape_mask(region, blurred, style, rect.width, rect.height);
     write_rgba_region(buffer, rect, &rgba, false);
+    log_blur_timing(started_at, width, height, style, false);
 }
 
 fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> (Vec<u8>, bool) {
@@ -141,4 +149,33 @@ const fn premultiply_channel(channel: u8, alpha: u8) -> u8 {
 
 fn unpremultiply_channel(channel: u8, alpha: u8) -> u8 {
     (((u16::from(channel) * 255) + (u16::from(alpha) / 2)) / u16::from(alpha)) as u8
+}
+
+fn log_blur_timing(
+    started_at: Option<Instant>,
+    width: u32,
+    height: u32,
+    style: BackdropLayerStyle,
+    fully_opaque: bool,
+) {
+    let Some(started_at) = started_at else {
+        return;
+    };
+
+    let elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+    if elapsed_ms < SLOW_LAYER_BLUR_MS {
+        return;
+    }
+
+    tracing::debug!(
+        width,
+        height,
+        pixels = u64::from(width) * u64::from(height),
+        blur_radius = style.blur_radius,
+        shape = ?style.shape,
+        radius = style.radius,
+        fully_opaque,
+        elapsed_ms,
+        "layer blur timing"
+    );
 }

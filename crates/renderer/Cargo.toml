@@ -14,3 +14,4 @@ resvg = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 thiserror = { workspace = true }
 tiny-skia = { workspace = true }
+tracing = { workspace = true }

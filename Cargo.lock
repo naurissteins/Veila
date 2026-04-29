@@ -2029,6 +2029,7 @@ dependencies = [
  "smithay-client-toolkit",
  "thiserror",
  "tiny-skia",
+ "tracing",
 ]
 
 [[package]]
