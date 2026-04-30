@@ -40,6 +40,7 @@ pub enum ShellKey {
 enum ShellStatus {
     Idle,
     Pending {
+        started_at: Instant,
         visible_after: Instant,
         shown: bool,
     },

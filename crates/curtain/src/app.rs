@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
 use calloop::signals::{Signal, Signals};
@@ -83,7 +83,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
 
     while !app.can_stop() {
         event_loop
-            .dispatch(Duration::from_millis(250), &mut app)
+            .dispatch(app.animation_poll_interval(), &mut app)
             .context("curtain event loop failed")?;
         app.drain_control_events(&queue_handle);
         app.drain_background_events(&queue_handle);

@@ -6,8 +6,9 @@ use super::{
     layout::{LayerPlacement, SceneMetrics, hero_block_x, layer_center_x},
     model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
-        InputWidget, draw_avatar_widget, draw_block, draw_centered_block, draw_clock_widget,
-        draw_input_content, draw_input_shell, draw_weather_widget, input_toggle_hitbox,
+        InputRightAdornment, InputWidget, draw_avatar_widget, draw_block, draw_centered_block,
+        draw_clock_widget, draw_input_content, draw_input_shell, draw_weather_widget,
+        input_toggle_hitbox,
     },
 };
 
@@ -234,6 +235,23 @@ impl ShellState {
                 } else {
                     None
                 };
+                let right_adornment = if self.theme.eye_enabled {
+                    if let Some(phase) = self.pending_spinner_phase() {
+                        InputRightAdornment::Spinner {
+                            phase,
+                            style: self.toggle_style(),
+                        }
+                    } else {
+                        InputRightAdornment::Toggle {
+                            hovered: self.reveal_toggle_hovered,
+                            pressed: self.reveal_toggle_pressed,
+                            reveal_secret: self.reveal_secret,
+                            style: self.toggle_style(),
+                        }
+                    }
+                } else {
+                    InputRightAdornment::None
+                };
                 let widget = InputWidget {
                     rect: metrics.input_rect(y),
                     secret_len: self.secret.chars().count(),
@@ -242,11 +260,7 @@ impl ShellState {
                     mask_style: self.mask_style(),
                     placeholder: placeholder.clone(),
                     revealed_secret,
-                    reveal_secret: self.reveal_secret,
-                    toggle_hovered: self.reveal_toggle_hovered,
-                    toggle_pressed: self.reveal_toggle_pressed,
-                    show_toggle: self.theme.eye_enabled,
-                    toggle_style: self.toggle_style(),
+                    right_adornment,
                     caps_lock_indicator,
                 };
                 if dynamic {

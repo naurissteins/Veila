@@ -219,6 +219,37 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
 }
 
 #[test]
+fn pending_state_requests_active_animation_polling() {
+    let mut shell = ShellState::default();
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(String::new())
+    );
+
+    assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
+    assert!(shell.pending_spinner_phase().is_some());
+}
+
+#[test]
+fn pending_state_disables_reveal_toggle_interaction() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('s'));
+    let toggle = shell.reveal_toggle_rect_for_frame(1280, 720);
+
+    assert!(shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64));
+    assert!(shell.reveal_toggle_hovered);
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(String::from("s"))
+    );
+    assert!(shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64));
+    assert!(!shell.reveal_toggle_hovered);
+    assert!(!shell.reveal_toggle_pressed);
+}
+
+#[test]
 fn rejection_clears_secret() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('a'));
@@ -585,4 +616,17 @@ fn now_playing_transition_uses_configured_fade_duration() {
 
     assert!(shell.advance_animated_state());
     assert!(shell.now_playing_transition.is_none());
+}
+
+#[test]
+fn now_playing_transition_requests_active_animation_polling() {
+    let mut shell = ShellState::default();
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: Some(String::from("Artist")),
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+
+    assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
 }

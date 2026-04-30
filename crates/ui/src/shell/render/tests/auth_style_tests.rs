@@ -493,6 +493,7 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
     };
     let mut shell = ShellState::new(theme, None, None, true);
     shell.status = ShellStatus::Pending {
+        started_at: std::time::Instant::now(),
         visible_after: std::time::Instant::now(),
         shown: true,
     };
@@ -512,6 +513,7 @@ fn pending_status_style_prefers_state_specific_status_override() {
     };
     let mut shell = ShellState::new(theme, None, None, true);
     shell.status = ShellStatus::Pending {
+        started_at: std::time::Instant::now(),
         visible_after: std::time::Instant::now(),
         shown: true,
     };

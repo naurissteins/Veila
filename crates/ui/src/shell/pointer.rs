@@ -12,6 +12,13 @@ impl ShellState {
             return false;
         }
 
+        if matches!(self.status, super::ShellStatus::Pending { .. }) {
+            let changed = self.reveal_toggle_hovered || self.reveal_toggle_pressed;
+            self.reveal_toggle_hovered = false;
+            self.reveal_toggle_pressed = false;
+            return changed;
+        }
+
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
@@ -48,6 +55,13 @@ impl ShellState {
             return true;
         }
 
+        if matches!(self.status, super::ShellStatus::Pending { .. }) {
+            let changed = self.reveal_toggle_hovered || self.reveal_toggle_pressed;
+            self.reveal_toggle_hovered = false;
+            self.reveal_toggle_pressed = false;
+            return changed;
+        }
+
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
@@ -68,6 +82,13 @@ impl ShellState {
     ) -> bool {
         if self.reveal_auth() {
             return true;
+        }
+
+        if matches!(self.status, super::ShellStatus::Pending { .. }) {
+            let changed = self.reveal_toggle_hovered || self.reveal_toggle_pressed;
+            self.reveal_toggle_hovered = false;
+            self.reveal_toggle_pressed = false;
+            return changed;
         }
 
         let x = x.floor() as i32;

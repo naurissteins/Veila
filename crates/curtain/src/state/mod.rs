@@ -303,6 +303,10 @@ impl CurtainApp {
             || (self.exit_requested && (self.session_locked || self.session_finished))
     }
 
+    pub(crate) fn animation_poll_interval(&self) -> Duration {
+        self.ui_shell.animation_poll_interval()
+    }
+
     pub(crate) fn failure_reason(&self) -> Option<&str> {
         self.failure_reason.as_deref()
     }

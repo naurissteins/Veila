@@ -4,6 +4,8 @@ use super::{ShellAction, ShellKey, ShellState, ShellStatus, avatar::current_retr
 
 const DEFAULT_NOW_PLAYING_FADE_DURATION_MS: u64 = 450;
 const PENDING_STATUS_DELAY_MS: u64 = 1_000;
+const ACTIVE_ANIMATION_POLL_INTERVAL_MS: u64 = 80;
+const IDLE_ANIMATION_POLL_INTERVAL_MS: u64 = 250;
 
 impl ShellState {
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
@@ -42,8 +44,10 @@ impl ShellState {
                     return ShellAction::None;
                 }
 
+                let started_at = Instant::now();
                 self.status = ShellStatus::Pending {
-                    visible_after: Instant::now() + Duration::from_millis(PENDING_STATUS_DELAY_MS),
+                    started_at,
+                    visible_after: started_at + Duration::from_millis(PENDING_STATUS_DELAY_MS),
                     shown: false,
                 };
                 ShellAction::Submit(self.secret.clone())
@@ -86,13 +90,13 @@ impl ShellState {
         if let ShellStatus::Pending {
             visible_after,
             shown,
+            ..
         } = &mut self.status
         {
             if !*shown && Instant::now() >= *visible_after {
                 *shown = true;
-                changed = true;
             }
-            return changed;
+            return true;
         }
         let ShellStatus::Rejected {
             retry_until,
@@ -114,6 +118,27 @@ impl ShellState {
         }
 
         true
+    }
+
+    pub(super) fn pending_spinner_phase(&self) -> Option<u8> {
+        let ShellStatus::Pending { started_at, .. } = &self.status else {
+            return None;
+        };
+
+        Some(
+            ((started_at.elapsed().as_millis() / u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS)) % 8)
+                as u8,
+        )
+    }
+
+    pub fn animation_poll_interval(&self) -> Duration {
+        if matches!(self.status, ShellStatus::Pending { .. })
+            || self.now_playing_transition.is_some()
+        {
+            return Duration::from_millis(ACTIVE_ANIMATION_POLL_INTERVAL_MS);
+        }
+
+        Duration::from_millis(IDLE_ANIMATION_POLL_INTERVAL_MS)
     }
 
     pub(super) fn now_playing_fade_progress(&self) -> Option<u8> {

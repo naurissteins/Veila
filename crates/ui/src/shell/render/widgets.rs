@@ -1,3 +1,5 @@
+use std::f32::consts::{FRAC_PI_2, TAU};
+
 use veila_common::{ClockStyle, WeatherAlignment};
 use veila_renderer::{
     ClearColor, SoftwareBuffer,
@@ -30,12 +32,22 @@ pub(super) struct InputWidget {
     pub mask_style: MaskedInputStyle,
     pub placeholder: Option<TextBlock>,
     pub revealed_secret: Option<TextBlock>,
-    pub reveal_secret: bool,
-    pub toggle_hovered: bool,
-    pub toggle_pressed: bool,
-    pub show_toggle: bool,
-    pub toggle_style: IconStyle,
+    pub right_adornment: InputRightAdornment,
     pub caps_lock_indicator: Option<TextBlock>,
+}
+
+pub(super) enum InputRightAdornment {
+    None,
+    Toggle {
+        hovered: bool,
+        pressed: bool,
+        reveal_secret: bool,
+        style: IconStyle,
+    },
+    Spinner {
+        phase: u8,
+        style: IconStyle,
+    },
 }
 
 pub(super) struct NowPlayingWidget<'a> {
@@ -217,8 +229,9 @@ pub(super) fn draw_input_shell(buffer: &mut SoftwareBuffer, rect: Rect, style: P
 }
 
 pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidget) {
-    let toggle_rect = widget.show_toggle.then(|| input_toggle_hitbox(widget.rect));
-    let content_rect = input_content_rect(widget.rect, toggle_rect);
+    let adornment_rect = (!matches!(widget.right_adornment, InputRightAdornment::None))
+        .then(|| input_toggle_hitbox(widget.rect));
+    let content_rect = input_content_rect(widget.rect, adornment_rect);
 
     if widget.secret_len == 0
         && let Some(placeholder) = widget.placeholder.as_ref()
@@ -242,15 +255,8 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
         );
     }
 
-    if let Some(toggle_rect) = toggle_rect {
-        draw_toggle_icon(
-            buffer,
-            toggle_rect,
-            widget.reveal_secret,
-            widget.toggle_hovered,
-            widget.toggle_pressed,
-            widget.toggle_style,
-        );
+    if let Some(adornment_rect) = adornment_rect {
+        draw_input_right_adornment(buffer, adornment_rect, &widget.right_adornment);
     }
 
     if let Some(caps_lock_indicator) = widget.caps_lock_indicator.as_ref() {
@@ -468,4 +474,59 @@ fn draw_toggle_icon(
         AssetIcon::Eye
     };
     draw_icon(buffer, hitbox, icon, style);
+}
+
+fn draw_input_right_adornment(
+    buffer: &mut SoftwareBuffer,
+    hitbox: Rect,
+    adornment: &InputRightAdornment,
+) {
+    match adornment {
+        InputRightAdornment::None => {}
+        InputRightAdornment::Toggle {
+            hovered,
+            pressed,
+            reveal_secret,
+            style,
+        } => draw_toggle_icon(buffer, hitbox, *reveal_secret, *hovered, *pressed, *style),
+        InputRightAdornment::Spinner { phase, style } => {
+            draw_spinner_icon(buffer, hitbox, *phase, *style)
+        }
+    }
+}
+
+fn draw_spinner_icon(buffer: &mut SoftwareBuffer, hitbox: Rect, phase: u8, style: IconStyle) {
+    const SEGMENT_ALPHAS: [u8; 8] = [255, 212, 176, 144, 112, 82, 56, 34];
+
+    let size = hitbox.width.min(hitbox.height).max(12) as f32;
+    let center_x = hitbox.x as f32 + hitbox.width as f32 / 2.0;
+    let center_y = hitbox.y as f32 + hitbox.height as f32 / 2.0;
+    let orbit_radius = (size * 0.3).max(4.0);
+    let dot_diameter = ((size * 0.18).round() as i32).clamp(2, 5);
+    let dot_radius = dot_diameter / 2;
+
+    for position in 0..8 {
+        let angle = (position as f32 / 8.0) * TAU - FRAC_PI_2;
+        let x = center_x + orbit_radius * angle.cos();
+        let y = center_y + orbit_radius * angle.sin();
+        let alpha = scaled_alpha(
+            style.color.alpha,
+            SEGMENT_ALPHAS[(position + 8 - usize::from(phase % 8)) % 8],
+        );
+        let color = style.color.with_alpha(alpha);
+        draw_pill(
+            buffer,
+            Rect::new(
+                x.round() as i32 - dot_radius,
+                y.round() as i32 - dot_radius,
+                dot_diameter,
+                dot_diameter,
+            ),
+            PillStyle::new(color).with_radius(dot_radius.max(1)),
+        );
+    }
+}
+
+fn scaled_alpha(base_alpha: u8, multiplier: u8) -> u8 {
+    ((u16::from(base_alpha) * u16::from(multiplier) + 127) / 255) as u8
 }
