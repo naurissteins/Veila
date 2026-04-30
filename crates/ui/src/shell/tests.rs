@@ -274,6 +274,28 @@ fn rejection_clears_secret() {
 }
 
 #[test]
+fn rejected_state_changes_static_scene_revision() {
+    let mut shell = ShellState::default();
+    let original = shell.static_scene_revision();
+
+    shell.authentication_rejected(Some(1_000), Some(1));
+
+    assert!(shell.static_scene_revision() > original);
+}
+
+#[test]
+fn leaving_rejected_state_changes_static_scene_revision() {
+    let mut shell = ShellState::default();
+
+    shell.authentication_rejected(Some(1_000), Some(1));
+    let rejected_revision = shell.static_scene_revision();
+    std::thread::sleep(std::time::Duration::from_millis(1_100));
+
+    assert!(shell.advance_animated_state());
+    assert!(shell.static_scene_revision() > rejected_revision);
+}
+
+#[test]
 fn countdown_state_advances_after_timeout() {
     let mut shell = ShellState {
         status: ShellStatus::Rejected {

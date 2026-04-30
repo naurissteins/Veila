@@ -16,6 +16,7 @@ impl ShellState {
                 if !character.is_control() && self.secret.chars().count() < 128 {
                     self.secret.push(character);
                     if !self.retry_cooldown_active() {
+                        self.clear_rejected_state();
                         self.status = ShellStatus::Idle;
                     }
                 }
@@ -25,6 +26,7 @@ impl ShellState {
                 self.reveal_auth();
                 self.secret.pop();
                 if !self.retry_cooldown_active() {
+                    self.clear_rejected_state();
                     self.status = ShellStatus::Idle;
                 }
                 ShellAction::None
@@ -68,6 +70,9 @@ impl ShellState {
         retry_after_ms: Option<u64>,
         failed_attempts: Option<u8>,
     ) {
+        if !matches!(self.status, ShellStatus::Rejected { .. }) {
+            self.bump_static_scene_revision();
+        }
         self.secret.clear();
         self.reveal_secret = false;
         self.reveal_toggle_pressed = false;
@@ -118,6 +123,7 @@ impl ShellState {
 
         *displayed_retry_seconds = next_display;
         if next_display.is_none() {
+            self.clear_rejected_state();
             self.status = ShellStatus::Idle;
         }
 
@@ -173,5 +179,11 @@ impl ShellState {
                 ..
             } if Instant::now() < retry_until
         )
+    }
+
+    fn clear_rejected_state(&mut self) {
+        if matches!(self.status, ShellStatus::Rejected { .. }) {
+            self.bump_static_scene_revision();
+        }
     }
 }
