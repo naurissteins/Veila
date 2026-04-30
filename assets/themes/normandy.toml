@@ -54,6 +54,10 @@ font_family = "Google Sans Flex"
 font_weight = 400
 font_size = 2
 
+[visuals.status]
+rejected_color = "#FFD5D5"
+pending_color = "#ECECEC"
+
 [visuals.placeholder]
 color = "#ffffff"
 opacity = 60

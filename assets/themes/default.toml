@@ -134,7 +134,9 @@ color = "#ffffff"
 opacity = 90
 
 [visuals.status]
-color = "#FFE0A0"
+rejected_color = "#FFD5D5"
+pending_color = "#ECECEC"
+
 opacity = 88
 gap = 18
 

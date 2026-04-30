@@ -66,6 +66,10 @@ border_color = "#FFFFFF"
 border_width = 3
 border_opacity = 8
 
+[visuals.status]
+rejected_color = "#FFD5D5"
+pending_color = "#ECECEC"
+
 [visuals.placeholder]
 color = "#ffffff"
 opacity = 60
