@@ -190,6 +190,15 @@ impl TextLayoutCache {
         self.caps_lock.resolve("Caps Lock On", style, max_width, 1)
     }
 
+    pub(super) fn input_status_block(
+        &mut self,
+        text: &str,
+        style: TextStyle,
+        max_width: u32,
+    ) -> TextBlock {
+        self.status.resolve_single_line(text, style, max_width)
+    }
+
     pub(super) fn keyboard_layout_block(
         &mut self,
         label: &str,

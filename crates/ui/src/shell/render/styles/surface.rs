@@ -1,3 +1,4 @@
+use crate::shell::ShellStatus;
 use veila_renderer::{
     avatar::AvatarStyle,
     icon::IconStyle,
@@ -12,14 +13,18 @@ use super::{
 
 impl ShellState {
     pub(crate) fn input_style(&self) -> PillStyle {
-        let border = if self.focused {
+        let base_border = if matches!(self.status, ShellStatus::Rejected { .. }) {
             self.theme
-                .input_border
-                .with_alpha(styled_alpha(self.theme.input_border.alpha, 240))
+                .status_rejected_color
+                .or(self.theme.status_color)
+                .unwrap_or(self.theme.rejected)
         } else {
-            self.theme
-                .input_border
-                .with_alpha(styled_alpha(self.theme.input_border.alpha, 210))
+            self.theme.input_border
+        };
+        let border = if self.focused {
+            base_border.with_alpha(styled_alpha(base_border.alpha, 240))
+        } else {
+            base_border.with_alpha(styled_alpha(base_border.alpha, 210))
         };
         let border_width = self.theme.input_border_width.unwrap_or(2).max(0);
 

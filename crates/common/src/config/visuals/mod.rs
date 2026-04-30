@@ -360,9 +360,9 @@ pub(super) const fn default_muted_color() -> RgbColor {
 }
 
 pub(super) const fn default_pending_color() -> RgbColor {
-    RgbColor::rgb(255, 194, 92)
+    RgbColor::rgb(236, 236, 236)
 }
 
 pub(super) const fn default_rejected_color() -> RgbColor {
-    RgbColor::rgb(220, 96, 96)
+    RgbColor::rgb(255, 83, 83)
 }

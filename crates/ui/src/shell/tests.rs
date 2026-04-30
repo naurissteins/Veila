@@ -250,6 +250,21 @@ fn pending_state_disables_reveal_toggle_interaction() {
 }
 
 #[test]
+fn pending_inline_status_text_uses_short_copy_after_delay() {
+    let mut shell = ShellState::default();
+
+    let _ = shell.handle_key(ShellKey::Character('a'));
+    let _ = shell.handle_key(ShellKey::Enter);
+    thread::sleep(Duration::from_millis(1_050));
+
+    assert!(shell.advance_animated_state());
+    assert_eq!(
+        shell.inline_input_status_text().as_deref(),
+        Some("Checking...")
+    );
+}
+
+#[test]
 fn rejection_clears_secret() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('a'));
@@ -271,6 +286,48 @@ fn countdown_state_advances_after_timeout() {
     thread::sleep(Duration::from_millis(250));
 
     assert!(shell.advance_animated_state());
+}
+
+#[test]
+fn rejected_inline_status_text_uses_retry_copy() {
+    let mut shell = ShellState::default();
+
+    shell.authentication_rejected(Some(3_000), Some(1));
+
+    assert_eq!(
+        shell.inline_input_status_text().as_deref(),
+        Some("Try again in 3s")
+    );
+}
+
+#[test]
+fn typing_during_retry_cooldown_preserves_retry_status() {
+    let mut shell = ShellState::default();
+
+    shell.authentication_rejected(Some(3_000), Some(1));
+    let _ = shell.handle_key(ShellKey::Character('a'));
+
+    assert_eq!(
+        shell.inline_input_status_text().as_deref(),
+        Some("Try again in 3s")
+    );
+    assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
+}
+
+#[test]
+fn retry_cooldown_clears_rejected_state_after_timeout() {
+    let mut shell = ShellState::default();
+
+    shell.authentication_rejected(Some(1_000), Some(1));
+    let _ = shell.handle_key(ShellKey::Character('a'));
+    thread::sleep(Duration::from_millis(1_100));
+
+    assert!(shell.advance_animated_state());
+    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(String::from("a"))
+    );
 }
 
 #[test]

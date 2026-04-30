@@ -219,6 +219,40 @@ impl ShellState {
         TextStyle::new(secondary_text_color(color, opacity, 255), 2)
     }
 
+    pub(crate) fn input_status_text_style(&self) -> TextStyle {
+        let (color, opacity) = match self.status {
+            ShellStatus::Pending { .. } => (
+                self.theme
+                    .status_pending_color
+                    .or(self.theme.status_color)
+                    .unwrap_or(self.theme.pending),
+                self.theme
+                    .status_pending_opacity
+                    .or(self.theme.status_opacity),
+            ),
+            ShellStatus::Rejected { .. } => (
+                self.theme
+                    .status_rejected_color
+                    .or(self.theme.status_color)
+                    .unwrap_or(self.theme.rejected),
+                self.theme
+                    .status_rejected_opacity
+                    .or(self.theme.status_opacity),
+            ),
+            ShellStatus::Idle => (
+                self.theme.status_color.unwrap_or(self.theme.input_border),
+                self.theme.status_opacity,
+            ),
+        };
+        self.apply_input_font(
+            TextStyle::new(
+                secondary_text_color(color, opacity, 255),
+                self.input_text_scale(),
+            )
+            .with_line_spacing(0),
+        )
+    }
+
     pub(crate) fn caps_lock_text_style(&self) -> TextStyle {
         TextStyle::new(
             secondary_text_color(

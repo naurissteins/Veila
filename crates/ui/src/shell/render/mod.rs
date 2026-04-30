@@ -254,7 +254,7 @@ impl ShellState {
         let username_text = self.username_text.as_deref();
         let username_style = self.username_text_style();
         let placeholder_style = self.placeholder_text_style();
-        let status_text = self.status_text();
+        let status_text = (!input_visible).then(|| self.status_text()).flatten();
         let hidden_reveal_hint = self.hidden_reveal_hint();
         let status_style = if hidden_reveal_hint.is_some() && status_text.is_none() {
             self.reveal_text_style()

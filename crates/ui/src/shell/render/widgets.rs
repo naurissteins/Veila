@@ -32,6 +32,7 @@ pub(super) struct InputWidget {
     pub mask_style: MaskedInputStyle,
     pub placeholder: Option<TextBlock>,
     pub revealed_secret: Option<TextBlock>,
+    pub inline_status: Option<TextBlock>,
     pub right_adornment: InputRightAdornment,
     pub caps_lock_indicator: Option<TextBlock>,
 }
@@ -233,19 +234,22 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
         .then(|| input_toggle_hitbox(widget.rect));
     let content_rect = input_content_rect(widget.rect, adornment_rect);
 
-    if widget.secret_len == 0
-        && let Some(placeholder) = widget.placeholder.as_ref()
-    {
+    if let Some(inline_status) = widget.inline_status.as_ref() {
         let x = content_rect.x + widget.mask_style.horizontal_padding.saturating_sub(4);
-        let y = content_rect.y + (content_rect.height - placeholder.height as i32) / 2 - 1;
-        placeholder.draw(buffer, x, y);
-    }
-
-    if let Some(revealed_secret) = widget.revealed_secret.as_ref() {
+        let y = content_rect.y + (content_rect.height - inline_status.height as i32) / 2 - 1;
+        inline_status.draw(buffer, x, y);
+    } else if let Some(revealed_secret) = widget.revealed_secret.as_ref() {
         let x = content_rect.x + widget.mask_style.horizontal_padding.saturating_sub(4);
         let y = content_rect.y + (content_rect.height - revealed_secret.height as i32) / 2 - 1;
         revealed_secret.draw(buffer, x, y);
     } else {
+        if widget.secret_len == 0
+            && let Some(placeholder) = widget.placeholder.as_ref()
+        {
+            let x = content_rect.x + widget.mask_style.horizontal_padding.saturating_sub(4);
+            let y = content_rect.y + (content_rect.height - placeholder.height as i32) / 2 - 1;
+            placeholder.draw(buffer, x, y);
+        }
         draw_masked_input(
             buffer,
             content_rect,

@@ -15,14 +15,18 @@ impl ShellState {
                 self.reveal_auth();
                 if !character.is_control() && self.secret.chars().count() < 128 {
                     self.secret.push(character);
-                    self.status = ShellStatus::Idle;
+                    if !self.retry_cooldown_active() {
+                        self.status = ShellStatus::Idle;
+                    }
                 }
                 ShellAction::None
             }
             ShellKey::Backspace => {
                 self.reveal_auth();
                 self.secret.pop();
-                self.status = ShellStatus::Idle;
+                if !self.retry_cooldown_active() {
+                    self.status = ShellStatus::Idle;
+                }
                 ShellAction::None
             }
             ShellKey::Escape => {
@@ -114,7 +118,7 @@ impl ShellState {
 
         *displayed_retry_seconds = next_display;
         if next_display.is_none() {
-            *retry_until = None;
+            self.status = ShellStatus::Idle;
         }
 
         true
@@ -158,6 +162,16 @@ impl ShellState {
                 .now_playing_fade_duration_ms
                 .unwrap_or(DEFAULT_NOW_PLAYING_FADE_DURATION_MS)
                 .clamp(1, 10_000),
+        )
+    }
+
+    fn retry_cooldown_active(&self) -> bool {
+        matches!(
+            self.status,
+            ShellStatus::Rejected {
+                retry_until: Some(retry_until),
+                ..
+            } if Instant::now() < retry_until
         )
     }
 }

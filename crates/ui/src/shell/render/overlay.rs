@@ -235,6 +235,17 @@ impl ShellState {
                 } else {
                     None
                 };
+                let inline_status = if dynamic {
+                    self.inline_input_status_text().map(|text| {
+                        self.text_layout_cache.borrow_mut().input_status_block(
+                            &text,
+                            self.input_status_text_style(),
+                            metrics.input_width.saturating_sub(92) as u32,
+                        )
+                    })
+                } else {
+                    None
+                };
                 let right_adornment = if self.theme.eye_enabled {
                     if let Some(phase) = self.pending_spinner_phase() {
                         InputRightAdornment::Spinner {
@@ -260,13 +271,19 @@ impl ShellState {
                     mask_style: self.mask_style(),
                     placeholder: placeholder.clone(),
                     revealed_secret,
+                    inline_status,
                     right_adornment,
                     caps_lock_indicator,
                 };
                 if dynamic {
+                    if self.input_shell_is_dynamic() {
+                        draw_input_shell(buffer, widget.rect, widget.shell_style);
+                    }
                     draw_input_content(buffer, &widget);
                 } else {
-                    draw_input_shell(buffer, widget.rect, widget.shell_style);
+                    if !self.input_shell_is_dynamic() {
+                        draw_input_shell(buffer, widget.rect, widget.shell_style);
+                    }
                 }
             }
             _ => {}
@@ -326,6 +343,30 @@ impl ShellState {
                 *displayed_retry_seconds,
             )),
         }
+    }
+
+    pub(crate) fn inline_input_status_text(&self) -> Option<String> {
+        if !self.input_visible() || !self.theme.status_enabled {
+            return None;
+        }
+
+        match &self.status {
+            ShellStatus::Idle => None,
+            ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
+            ShellStatus::Rejected {
+                displayed_retry_seconds,
+                ..
+            } => match displayed_retry_seconds {
+                Some(retry_seconds) if *retry_seconds > 0 => {
+                    Some(format!("Try again in {retry_seconds}s"))
+                }
+                _ => Some(String::from("Authentication failed")),
+            },
+        }
+    }
+
+    fn input_shell_is_dynamic(&self) -> bool {
+        matches!(self.status, ShellStatus::Rejected { .. })
     }
 }
 

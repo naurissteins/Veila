@@ -80,6 +80,28 @@ fn input_style_allows_disabling_border() {
 }
 
 #[test]
+fn rejected_input_style_uses_rejected_status_color_for_border() {
+    let theme = ShellTheme {
+        status_rejected_color: Some(ClearColor::opaque(220, 96, 96)),
+        input_border_width: Some(2),
+        ..ShellTheme::default()
+    };
+    let mut shell = ShellState::new(theme, None, None, true);
+    shell.status = ShellStatus::Rejected {
+        retry_until: None,
+        displayed_retry_seconds: None,
+        failed_attempts: Some(1),
+    };
+
+    let style = shell.input_style();
+
+    assert_eq!(
+        style.border.expect("input border").color,
+        ClearColor::rgba(220, 96, 96, 240)
+    );
+}
+
+#[test]
 fn explicit_input_opacity_is_preserved_without_style_boost() {
     let theme = ShellTheme {
         input: ClearColor::rgba(255, 255, 255, 26),
