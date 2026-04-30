@@ -227,6 +227,21 @@ fn parses_background_file_scaling_mode() {
 }
 
 #[test]
+fn parses_single_output_ui_mode() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.outputs]
+            ui_mode = "single"
+            ui_output = "  DP-2  "
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.visuals.output_ui_mode(), OutputUiMode::Single);
+    assert_eq!(config.visuals.ui_output_name(), Some("DP-2"));
+}
+
+#[test]
 fn parses_per_output_background_overrides_with_default_fallback() {
     let config = AppConfig::from_toml_str(
         r#"

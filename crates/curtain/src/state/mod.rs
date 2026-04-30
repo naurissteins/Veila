@@ -22,7 +22,7 @@ use smithay_client_toolkit::{
     shm::Shm,
 };
 use veila_common::{
-    AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    AppConfig, BatterySnapshot, NowPlayingSnapshot, OutputUiMode, WeatherSnapshot,
     config::{
         BackgroundConfig, BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundOutputConfig, BackgroundScaling as ConfigBackgroundScaling,
@@ -88,6 +88,8 @@ pub(crate) struct CurtainApp {
     pub(crate) background_generated: Option<GeneratedBackground>,
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
+    pub(crate) ui_output_mode: OutputUiMode,
+    pub(crate) ui_output_name: Option<String>,
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
     pub(crate) battery_snapshot: Option<BatterySnapshot>,
     pub(crate) now_playing_snapshot: Option<NowPlayingSnapshot>,
@@ -204,6 +206,8 @@ impl CurtainApp {
             background_generated,
             background_treatment,
             background_color,
+            ui_output_mode: config.visuals.output_ui_mode(),
+            ui_output_name: config.visuals.ui_output_name().map(str::to_owned),
             weather_snapshot: options.weather_snapshot,
             battery_snapshot: options.battery_snapshot,
             now_playing_snapshot: options.now_playing_snapshot,
@@ -365,6 +369,32 @@ impl CurtainApp {
             })
             .map(|output| output.path.as_path())
             .or(self.background_path.as_deref())
+    }
+
+    pub(crate) fn ui_visible_on_surface(&self, index: usize) -> bool {
+        match self.ui_output_mode {
+            OutputUiMode::All => true,
+            OutputUiMode::Single => self.selected_ui_surface_index() == Some(index),
+        }
+    }
+
+    fn selected_ui_surface_index(&self) -> Option<usize> {
+        if let Some(selected_name) = self.ui_output_name.as_deref()
+            && let Some(index) = self.lock_surfaces.iter().position(|surface| {
+                self.output_state
+                    .info(&surface.output)
+                    .and_then(|info| info.name.clone())
+                    .as_deref()
+                    == Some(selected_name)
+            })
+        {
+            return Some(index);
+        }
+
+        self.lock_surfaces
+            .iter()
+            .position(|surface| surface.size.is_some())
+            .or_else(|| (!self.lock_surfaces.is_empty()).then_some(0))
     }
 }
 

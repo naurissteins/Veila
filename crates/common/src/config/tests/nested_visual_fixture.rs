@@ -208,6 +208,10 @@ border_color = "#DDDDDD"
             border_opacity = 10
             border_width = 1
 
+            [visuals.outputs]
+            ui_mode = "single"
+            ui_output = "DP-1"
+
             [visuals.layout]
             header_top_offset = -12
             auth_stack_offset = 0

@@ -4,9 +4,10 @@ use super::{
     AppConfig, BackgroundMode, BackgroundScaling, CenterStackOrder, CenterStackStyle,
     ClockAlignment, ClockFormat, ClockStyle, FontStyle, InputAlignment, InputRevealMode,
     InputVisualEntry, LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle,
-    LayerVerticalAlignment, LayerWidth, LayerWidthKeyword, RgbColor, WeatherAlignment, WeatherUnit,
-    active_include_source_paths, active_theme_name, active_theme_source_path, bundled_theme_names,
-    read_theme_source, set_theme_in_config, unset_theme_in_config,
+    LayerVerticalAlignment, LayerWidth, LayerWidthKeyword, OutputUiMode, RgbColor,
+    WeatherAlignment, WeatherUnit, active_include_source_paths, active_theme_name,
+    active_theme_source_path, bundled_theme_names, read_theme_source, set_theme_in_config,
+    unset_theme_in_config,
 };
 use crate::VeilaError;
 

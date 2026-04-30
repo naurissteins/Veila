@@ -40,6 +40,8 @@ impl CurtainApp {
         self.background_treatment = background_treatment(&config.background);
         self.background_path = background_path.clone();
         self.background_outputs = config.background.outputs.clone();
+        self.ui_output_mode = config.visuals.output_ui_mode();
+        self.ui_output_name = config.visuals.ui_output_name().map(str::to_owned);
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
         self.ui_shell.apply_theme_with_username_and_weather(

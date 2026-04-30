@@ -31,6 +31,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.reveal_font_weight(), Some(500));
     assert_eq!(config.visuals.reveal_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.reveal_font_size(), Some(2));
+    assert_eq!(config.visuals.output_ui_mode(), OutputUiMode::Single);
+    assert_eq!(config.visuals.ui_output_name(), Some("DP-1"));
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));

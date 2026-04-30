@@ -5,6 +5,7 @@ mod input;
 mod layer;
 mod layout;
 mod now_playing;
+mod outputs;
 mod weather;
 
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ pub use layer::{
 };
 pub use layout::{CenterStackOrder, CenterStackStyle, LayoutVisualConfig, PaletteVisualConfig};
 pub use now_playing::{NowPlayingBackgroundConfig, NowPlayingVisualConfig};
+pub use outputs::{OutputUiMode, OutputVisualConfig};
 pub use weather::{WeatherAlignment, WeatherVisualConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -215,6 +217,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub now_playing: Option<NowPlayingVisualConfig>,
     #[serde(default)]
+    pub outputs: Option<OutputVisualConfig>,
+    #[serde(default)]
     pub layout: Option<LayoutVisualConfig>,
     #[serde(default)]
     pub palette: Option<PaletteVisualConfig>,
@@ -316,6 +320,7 @@ impl Default for VisualConfig {
             weather: Some(WeatherVisualConfig::default()),
             layer: Some(LayerVisualConfig::default()),
             now_playing: Some(NowPlayingVisualConfig::default()),
+            outputs: Some(OutputVisualConfig::default()),
             layout: Some(LayoutVisualConfig::default()),
             palette: None,
         }
