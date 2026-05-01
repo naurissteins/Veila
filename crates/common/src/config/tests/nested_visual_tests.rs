@@ -219,17 +219,14 @@ fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
     assert_eq!(config.visuals.battery_right_offset(), Some(0));
     assert_eq!(config.visuals.battery_gap(), Some(8));
     assert_eq!(config.visuals.weather_size(), Some(3));
-    assert_eq!(config.visuals.weather_opacity(), Some(62));
     assert_eq!(config.visuals.weather_icon_opacity(), Some(41));
-    assert_eq!(config.visuals.weather_temperature_opacity(), Some(77));
-    assert_eq!(config.visuals.weather_location_opacity(), Some(53));
     assert_eq!(
         config.visuals.weather_temperature_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 179))
     );
     assert_eq!(
         config.visuals.weather_location_color(),
-        Some(RgbColor::rgb(214, 227, 255))
+        Some(RgbColor::rgba(214, 227, 255, 98))
     );
     assert_eq!(
         config.visuals.weather_temperature_font_family(),

@@ -17,13 +17,7 @@ pub struct WeatherVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub icon_opacity: Option<u8>,
-    #[serde(default)]
-    pub temperature_opacity: Option<u8>,
-    #[serde(default)]
-    pub location_opacity: Option<u8>,
     #[serde(default)]
     pub temperature_color: Option<RgbColor>,
     #[serde(default)]
@@ -71,12 +65,9 @@ impl Default for WeatherVisualConfig {
         Self {
             enabled: Some(true),
             size: Some(2),
-            opacity: Some(50),
-            icon_opacity: None,
-            temperature_opacity: None,
-            location_opacity: None,
-            temperature_color: Some(RgbColor::rgb(255, 255, 255)),
-            location_color: Some(RgbColor::rgb(214, 227, 255)),
+            icon_opacity: Some(50),
+            temperature_color: Some(RgbColor::rgba(255, 255, 255, 116)),
+            location_color: Some(RgbColor::rgba(214, 227, 255, 92)),
             temperature_font_family: Some(super::default_geom_font_family()),
             temperature_font_weight: Some(600),
             temperature_font_style: Some(FontStyle::Normal),
@@ -121,29 +112,10 @@ impl super::VisualConfig {
             .or_else(|| self.weather_size())
     }
 
-    pub fn weather_opacity(&self) -> Option<u8> {
-        self.weather.as_ref().and_then(|weather| weather.opacity)
-    }
-
     pub fn weather_icon_opacity(&self) -> Option<u8> {
         self.weather
             .as_ref()
             .and_then(|weather| weather.icon_opacity)
-            .or_else(|| self.weather_opacity())
-    }
-
-    pub fn weather_temperature_opacity(&self) -> Option<u8> {
-        self.weather
-            .as_ref()
-            .and_then(|weather| weather.temperature_opacity)
-            .or_else(|| self.weather_opacity())
-    }
-
-    pub fn weather_location_opacity(&self) -> Option<u8> {
-        self.weather
-            .as_ref()
-            .and_then(|weather| weather.location_opacity)
-            .or_else(|| self.weather_opacity())
     }
 
     pub fn weather_temperature_color(&self) -> Option<RgbColor> {

@@ -149,12 +149,9 @@ fn input_alpha_uses_rgba_values() {
     config.visuals.weather = Some(WeatherVisualConfig {
         enabled: Some(true),
         size: Some(3),
-        opacity: Some(62),
         icon_opacity: Some(41),
-        temperature_opacity: Some(77),
-        location_opacity: Some(53),
-        temperature_color: Some(ConfigColor::rgb(255, 255, 255)),
-        location_color: Some(ConfigColor::rgb(214, 227, 255)),
+        temperature_color: Some(ConfigColor::rgba(255, 255, 255, 179)),
+        location_color: Some(ConfigColor::rgba(214, 227, 255, 98)),
         temperature_font_family: Some(String::from("Prototype")),
         temperature_font_weight: Some(600),
         temperature_font_style: Some(FontStyle::Italic),
@@ -373,17 +370,14 @@ fn input_alpha_uses_rgba_values() {
     );
     assert_eq!(theme.layer_border_width, 2);
     assert_eq!(theme.weather_size, Some(3));
-    assert_eq!(theme.weather_opacity, Some(62));
     assert_eq!(theme.weather_icon_opacity, Some(41));
-    assert_eq!(theme.weather_temperature_opacity, Some(77));
-    assert_eq!(theme.weather_location_opacity, Some(53));
     assert_eq!(
         theme.weather_temperature_color,
-        Some(ClearColor::opaque(255, 255, 255))
+        Some(ClearColor::rgba(255, 255, 255, 179))
     );
     assert_eq!(
         theme.weather_location_color,
-        Some(ClearColor::opaque(214, 227, 255))
+        Some(ClearColor::rgba(214, 227, 255, 98))
     );
     assert_eq!(
         theme.weather_temperature_font_family.as_deref(),

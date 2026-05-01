@@ -103,8 +103,8 @@ gap = 8
 color = "#000000CC"
 
 [visuals.weather]
-temperature_color = "#000000"
-location_color = "#000000"
+temperature_color = "#000000BA"
+location_color = "#00000093"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -115,7 +115,7 @@ location_font_family = "Google Sans Flex"
 location_font_weight = 400
 icon_gap = 1
 location_gap = 1
-opacity = 80
+icon_opacity = 80
 left_padding = 30
 bottom_padding = 30
 alignment = "left"

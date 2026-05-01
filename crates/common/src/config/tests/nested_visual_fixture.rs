@@ -139,12 +139,9 @@ border_color = "#DDDDDD1F"
 
             [visuals.weather]
             size = 3
-            opacity = 62
             icon_opacity = 41
-            temperature_opacity = 77
-            location_opacity = 53
-            temperature_color = "#FFFFFF"
-            location_color = "#D6E3FF"
+            temperature_color = "#FFFFFFB3"
+            location_color = "#D6E3FF62"
             temperature_font_family = "Prototype"
             temperature_font_weight = 600
             temperature_font_style = "italic"

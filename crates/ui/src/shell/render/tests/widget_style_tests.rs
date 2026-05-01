@@ -49,11 +49,8 @@ fn weather_styles_use_configured_widget_size() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
         muted: ClearColor::rgba(180, 190, 210, 255),
-        weather_opacity: Some(50),
-        weather_temperature_opacity: Some(80),
-        weather_location_opacity: Some(40),
-        weather_temperature_color: Some(ClearColor::opaque(255, 255, 255)),
-        weather_location_color: Some(ClearColor::opaque(214, 227, 255)),
+        weather_temperature_color: Some(ClearColor::rgba(255, 255, 255, 186)),
+        weather_location_color: Some(ClearColor::rgba(214, 227, 255, 74)),
         weather_size: Some(4),
         weather_temperature_font_family: Some(String::from("Prototype")),
         weather_temperature_font_weight: Some(600),

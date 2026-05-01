@@ -250,10 +250,11 @@ impl ShellState {
             .weather_temperature_color
             .unwrap_or(self.theme.foreground);
         let style = TextStyle::new(
-            base_color.with_alpha(scaled_alpha(
-                base_color.alpha.min(232),
-                self.theme.weather_temperature_opacity,
-            )),
+            if base_color.alpha == u8::MAX {
+                base_color.with_alpha(116)
+            } else {
+                base_color
+            },
             self.theme
                 .weather_temperature_size
                 .or(self.theme.weather_size)
@@ -292,10 +293,11 @@ impl ShellState {
             .weather_location_color
             .unwrap_or(self.theme.muted);
         let style = TextStyle::new(
-            base_color.with_alpha(scaled_alpha(
-                base_color.alpha.min(184),
-                self.theme.weather_location_opacity,
-            )),
+            if base_color.alpha == u8::MAX {
+                base_color.with_alpha(92)
+            } else {
+                base_color
+            },
             location_scale,
         )
         .with_line_spacing(0);

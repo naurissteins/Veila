@@ -212,14 +212,14 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(config.visuals.layer_border_width(), Some(0));
     assert_eq!(config.visuals.weather_size(), Some(2));
-    assert_eq!(config.visuals.weather_opacity(), Some(50));
+    assert_eq!(config.visuals.weather_icon_opacity(), Some(50));
     assert_eq!(
         config.visuals.weather_temperature_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 116))
     );
     assert_eq!(
         config.visuals.weather_location_color(),
-        Some(RgbColor::rgb(214, 227, 255))
+        Some(RgbColor::rgba(214, 227, 255, 92))
     );
     assert_eq!(
         config.visuals.weather_temperature_font_family(),

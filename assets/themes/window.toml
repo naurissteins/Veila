@@ -96,8 +96,8 @@ right_offset = 8
 gap = 8
 
 [visuals.weather]
-temperature_color = "#A6AECD"
-location_color = "#D6E3FF"
+temperature_color = "#A6AECD74"
+location_color = "#D6E3FF5C"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -108,7 +108,7 @@ location_font_family = "Google Sans Flex"
 location_font_weight = 400
 icon_gap = 1
 location_gap = 1
-opacity = 50
+icon_opacity = 50
 left_padding = 30
 bottom_padding = 30
 alignment = "left"
