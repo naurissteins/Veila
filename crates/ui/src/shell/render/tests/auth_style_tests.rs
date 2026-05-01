@@ -412,10 +412,9 @@ fn input_text_styles_use_configured_font_family_and_weight() {
 }
 
 #[test]
-fn status_style_uses_configured_opacity() {
+fn status_style_uses_fallback_alpha_for_opaque_colors() {
     let theme = ShellTheme {
         input_border: ClearColor::rgba(255, 255, 255, 255),
-        status_opacity: Some(88),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -428,8 +427,7 @@ fn status_style_uses_configured_opacity() {
 #[test]
 fn status_style_uses_configured_color() {
     let theme = ShellTheme {
-        status_color: Some(ClearColor::opaque(255, 224, 160)),
-        status_opacity: Some(88),
+        status_color: Some(ClearColor::rgba(255, 224, 160, 224)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -499,7 +497,6 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
     let theme = ShellTheme {
         pending: ClearColor::rgba(255, 194, 92, 90),
         status_color: None,
-        status_opacity: None,
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -517,9 +514,7 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
 fn pending_status_style_prefers_state_specific_status_override() {
     let theme = ShellTheme {
         status_color: Some(ClearColor::opaque(255, 255, 255)),
-        status_opacity: Some(88),
-        status_pending_color: Some(ClearColor::opaque(12, 34, 56)),
-        status_pending_opacity: Some(60),
+        status_pending_color: Some(ClearColor::rgba(12, 34, 56, 153)),
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -541,9 +536,7 @@ fn pending_status_style_prefers_state_specific_status_override() {
 fn rejected_status_style_prefers_state_specific_status_override() {
     let theme = ShellTheme {
         status_color: Some(ClearColor::opaque(255, 255, 255)),
-        status_opacity: Some(88),
-        status_rejected_color: Some(ClearColor::opaque(180, 40, 40)),
-        status_rejected_opacity: Some(70),
+        status_rejected_color: Some(ClearColor::rgba(180, 40, 40, 179)),
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -564,8 +557,7 @@ fn rejected_status_style_prefers_state_specific_status_override() {
 #[test]
 fn caps_lock_icon_style_uses_dedicated_override() {
     let theme = ShellTheme {
-        status_color: Some(ClearColor::opaque(255, 224, 160)),
-        status_opacity: Some(88),
+        status_color: Some(ClearColor::rgba(255, 224, 160, 224)),
         caps_lock_color: Some(ClearColor::opaque(255, 211, 122)),
         caps_lock_opacity: Some(64),
         ..ShellTheme::default()

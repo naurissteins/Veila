@@ -35,14 +35,12 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.ui_output_name(), Some("DP-1"));
     assert_eq!(
         config.visuals.status_pending_color(),
-        Some(RgbColor::rgb(255, 194, 92))
+        Some(RgbColor::rgba(255, 194, 92, 186))
     );
-    assert_eq!(config.visuals.status_pending_opacity(), Some(73));
     assert_eq!(
         config.visuals.status_rejected_color(),
-        Some(RgbColor::rgb(220, 96, 96))
+        Some(RgbColor::rgba(220, 96, 96, 235))
     );
-    assert_eq!(config.visuals.status_rejected_opacity(), Some(92));
     assert_eq!(
         config.visuals.caps_lock_color(),
         Some(RgbColor::rgb(255, 211, 122))
@@ -114,9 +112,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     );
     assert_eq!(
         config.visuals.status_color(),
-        Some(RgbColor::rgb(255, 224, 160))
+        Some(RgbColor::rgba(255, 224, 160, 224))
     );
-    assert_eq!(config.visuals.status_opacity(), Some(88));
     assert_eq!(config.visuals.status_gap(), Some(18));
     assert_eq!(
         config.visuals.eye_icon_color(),

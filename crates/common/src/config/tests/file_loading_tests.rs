@@ -83,8 +83,7 @@ fn loads_config_from_file() {
             date_size = 3
             placeholder_color = "#8694B499"
             eye_icon_color = "#F4F8FFB8"
-            status_color = "#FFE0A0"
-            status_opacity = 88
+            status_color = "#FFE0A0E0"
             input_mask_color = "#A9C4FF"
         "##,
     )
@@ -226,9 +225,8 @@ fn loads_config_from_file() {
     );
     assert_eq!(
         loaded.config.visuals.status_color(),
-        Some(RgbColor::rgb(255, 224, 160))
+        Some(RgbColor::rgba(255, 224, 160, 224))
     );
-    assert_eq!(loaded.config.visuals.status_opacity(), Some(88));
     assert_eq!(
         loaded.config.visuals.input_mask_color(),
         Some(RgbColor::rgb(169, 196, 255))

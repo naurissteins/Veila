@@ -165,8 +165,6 @@ pub struct VisualConfig {
     #[serde(default)]
     pub status_color: Option<RgbColor>,
     #[serde(default)]
-    pub status_opacity: Option<u8>,
-    #[serde(default)]
     pub input_mask_color: Option<RgbColor>,
     #[serde(default = "default_foreground_color")]
     pub foreground: RgbColor,
@@ -281,8 +279,7 @@ impl Default for VisualConfig {
             battery_right_offset: Some(8),
             battery_gap: Some(8),
             weather_size: Some(2),
-            status_color: Some(RgbColor::rgb(255, 224, 160)),
-            status_opacity: Some(88),
+            status_color: Some(RgbColor::rgba(255, 224, 160, 224)),
             input_mask_color: Some(RgbColor::rgb(255, 255, 255)),
             foreground: default_foreground_color(),
             muted: default_muted_color(),

@@ -61,15 +61,9 @@ pub struct StatusVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub pending_color: Option<RgbColor>,
     #[serde(default)]
-    pub pending_opacity: Option<u8>,
-    #[serde(default)]
     pub rejected_color: Option<RgbColor>,
-    #[serde(default)]
-    pub rejected_opacity: Option<u8>,
     #[serde(default)]
     pub gap: Option<u16>,
 }
@@ -78,12 +72,9 @@ impl Default for StatusVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            color: Some(RgbColor::rgb(255, 224, 160)),
-            opacity: Some(88),
+            color: Some(RgbColor::rgba(255, 224, 160, 224)),
             pending_color: None,
-            pending_opacity: None,
             rejected_color: None,
-            rejected_opacity: None,
             gap: Some(18),
         }
     }
@@ -269,33 +260,14 @@ impl super::VisualConfig {
             .unwrap_or(true)
     }
 
-    pub fn status_opacity(&self) -> Option<u8> {
-        self.status
-            .as_ref()
-            .and_then(|status| status.opacity)
-            .or(self.status_opacity)
-    }
-
     pub fn status_pending_color(&self) -> Option<RgbColor> {
         self.status.as_ref().and_then(|status| status.pending_color)
-    }
-
-    pub fn status_pending_opacity(&self) -> Option<u8> {
-        self.status
-            .as_ref()
-            .and_then(|status| status.pending_opacity)
     }
 
     pub fn status_rejected_color(&self) -> Option<RgbColor> {
         self.status
             .as_ref()
             .and_then(|status| status.rejected_color)
-    }
-
-    pub fn status_rejected_opacity(&self) -> Option<u8> {
-        self.status
-            .as_ref()
-            .and_then(|status| status.rejected_opacity)
     }
 
     pub fn status_gap(&self) -> Option<u16> {

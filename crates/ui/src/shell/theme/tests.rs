@@ -220,8 +220,7 @@ fn input_alpha_uses_rgba_values() {
     });
     config.visuals.status = Some(StatusVisualConfig {
         enabled: Some(true),
-        color: Some(ConfigColor::rgb(255, 224, 160)),
-        opacity: Some(88),
+        color: Some(ConfigColor::rgba(255, 224, 160, 224)),
         gap: Some(18),
         ..StatusVisualConfig::default()
     });
@@ -459,8 +458,10 @@ fn input_alpha_uses_rgba_values() {
         Some(ClearColor::rgba(255, 255, 255, 26))
     );
     assert_eq!(theme.now_playing_background_border_width, Some(1));
-    assert_eq!(theme.status_color, Some(ClearColor::opaque(255, 224, 160)));
-    assert_eq!(theme.status_opacity, Some(88));
+    assert_eq!(
+        theme.status_color,
+        Some(ClearColor::rgba(255, 224, 160, 224))
+    );
     assert_eq!(
         theme.input_mask_color,
         Some(ClearColor::opaque(169, 196, 255))

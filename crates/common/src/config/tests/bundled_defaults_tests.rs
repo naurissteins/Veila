@@ -155,9 +155,8 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(
         config.visuals.status_color(),
-        Some(RgbColor::rgb(255, 224, 160))
+        Some(RgbColor::rgba(255, 224, 160, 224))
     );
-    assert_eq!(config.visuals.status_opacity(), Some(88));
     assert_eq!(
         config.visuals.eye_icon_color(),
         Some(RgbColor::rgba(255, 255, 255, 184))

@@ -521,7 +521,6 @@ const LEGACY_VISUAL_MAPPINGS: &[(&str, &str, &str)] = &[
     ("battery_gap", "battery", "gap"),
     ("weather_size", "weather", "size"),
     ("status_color", "status", "color"),
-    ("status_opacity", "status", "opacity"),
     ("status_gap", "status", "gap"),
     ("auth_stack_offset", "layout", "auth_stack_offset"),
     ("header_top_offset", "layout", "header_top_offset"),

@@ -127,10 +127,8 @@ size = 2
 color = "#FFFFFFE6"
 
 [visuals.status]
-rejected_color = "#FFD5D5"
-pending_color = "#ECECEC"
-
-opacity = 88
+rejected_color = "#FFD5D5E0"
+pending_color = "#ECECECE0"
 gap = 18
 
 [visuals.eye]

@@ -216,6 +216,5 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.now_playing_right_offset().is_none());
     assert!(config.visuals.now_playing_bottom_offset().is_none());
     assert!(config.visuals.status_color().is_none());
-    assert!(config.visuals.status_opacity().is_none());
     assert!(config.visuals.input_mask_color().is_none());
 }

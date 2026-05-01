@@ -89,12 +89,9 @@ border_color = "#DDDDDD1F"
             font_size = 2
 
             [visuals.status]
-            color = "#FFE0A0"
-            opacity = 88
-            pending_color = "#FFC25C"
-            pending_opacity = 73
-            rejected_color = "#DC6060"
-            rejected_opacity = 92
+            color = "#FFE0A0E0"
+            pending_color = "#FFC25CBA"
+            rejected_color = "#DC6060EB"
             gap = 18
 
             [visuals.eye]
