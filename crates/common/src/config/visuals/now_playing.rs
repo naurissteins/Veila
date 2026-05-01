@@ -11,8 +11,6 @@ pub struct NowPlayingBackgroundConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub blur_radius: Option<u8>,
     #[serde(default)]
     pub radius: Option<u16>,
@@ -23,8 +21,6 @@ pub struct NowPlayingBackgroundConfig {
     #[serde(default)]
     pub border_color: Option<RgbColor>,
     #[serde(default)]
-    pub border_opacity: Option<u8>,
-    #[serde(default)]
     pub border_width: Option<u16>,
 }
 
@@ -33,14 +29,12 @@ impl Default for NowPlayingBackgroundConfig {
         Self {
             enabled: Some(false),
             mode: Some(LayerMode::Solid),
-            color: Some(RgbColor::rgb(0, 0, 0)),
-            opacity: Some(24),
+            color: Some(RgbColor::rgba(0, 0, 0, 61)),
             blur_radius: Some(12),
             radius: Some(18),
             padding_x: Some(18),
             padding_y: Some(12),
-            border_color: Some(RgbColor::rgb(255, 255, 255)),
-            border_opacity: Some(0),
+            border_color: Some(RgbColor::rgba(255, 255, 255, 0)),
             border_width: Some(0),
         }
     }
@@ -281,15 +275,7 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|now_playing| now_playing.background.as_ref())
             .and_then(|background| background.color)
-            .or(Some(RgbColor::rgb(0, 0, 0)))
-    }
-
-    pub fn now_playing_background_opacity(&self) -> Option<u8> {
-        self.now_playing
-            .as_ref()
-            .and_then(|now_playing| now_playing.background.as_ref())
-            .and_then(|background| background.opacity)
-            .or(Some(24))
+            .or(Some(RgbColor::rgba(0, 0, 0, 61)))
     }
 
     pub fn now_playing_background_blur_radius(&self) -> Option<u8> {
@@ -329,15 +315,7 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|now_playing| now_playing.background.as_ref())
             .and_then(|background| background.border_color)
-            .or(Some(RgbColor::rgb(255, 255, 255)))
-    }
-
-    pub fn now_playing_background_border_opacity(&self) -> Option<u8> {
-        self.now_playing
-            .as_ref()
-            .and_then(|now_playing| now_playing.background.as_ref())
-            .and_then(|background| background.border_opacity)
-            .or(Some(0))
+            .or(Some(RgbColor::rgba(255, 255, 255, 0)))
     }
 
     pub fn now_playing_background_border_width(&self) -> Option<u16> {

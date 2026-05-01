@@ -388,12 +388,11 @@ impl ShellTheme {
             now_playing_bottom_offset: config.visuals.now_playing_bottom_offset().map(i32::from),
             now_playing_background_enabled: config.visuals.now_playing_background_enabled(),
             now_playing_background_mode: config.visuals.now_playing_background_mode(),
-            now_playing_background_color: to_color_with_opacity(
+            now_playing_background_color: to_color(
                 config
                     .visuals
                     .now_playing_background_color()
-                    .unwrap_or_else(|| veila_common::RgbColor::rgb(0, 0, 0)),
-                config.visuals.now_playing_background_opacity(),
+                    .unwrap_or_else(|| veila_common::RgbColor::rgba(0, 0, 0, 61)),
             ),
             now_playing_background_blur_radius: config.visuals.now_playing_background_blur_radius(),
             now_playing_background_radius: config
@@ -411,12 +410,7 @@ impl ShellTheme {
             now_playing_background_border_color: config
                 .visuals
                 .now_playing_background_border_color()
-                .map(|color| {
-                    to_color_with_opacity(
-                        color,
-                        config.visuals.now_playing_background_border_opacity(),
-                    )
-                }),
+                .map(to_color),
             now_playing_background_border_width: config
                 .visuals
                 .now_playing_background_border_width()

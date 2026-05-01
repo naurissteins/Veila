@@ -197,14 +197,12 @@ fn input_alpha_uses_rgba_values() {
         background: Some(NowPlayingBackgroundConfig {
             enabled: Some(true),
             mode: Some(LayerMode::Blur),
-            color: Some(ConfigColor::rgb(0, 0, 0)),
-            opacity: Some(24),
+            color: Some(ConfigColor::rgba(0, 0, 0, 61)),
             blur_radius: Some(12),
             radius: Some(18),
             padding_x: Some(20),
             padding_y: Some(14),
-            border_color: Some(ConfigColor::rgb(255, 255, 255)),
-            border_opacity: Some(10),
+            border_color: Some(ConfigColor::rgba(255, 255, 255, 26)),
             border_width: Some(1),
         }),
     });

@@ -187,14 +187,12 @@ border_color = "#DDDDDD1F"
             [visuals.now_playing.background]
             enabled = true
             mode = "blur"
-            color = "#000000"
-            opacity = 24
+            color = "#0000003D"
             blur_radius = 12
             radius = 18
             padding_x = 20
             padding_y = 14
-            border_color = "#FFFFFF"
-            border_opacity = 10
+            border_color = "#FFFFFF1A"
             border_width = 1
 
             [visuals.outputs]

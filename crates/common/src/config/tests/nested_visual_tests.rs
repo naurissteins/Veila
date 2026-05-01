@@ -307,9 +307,8 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
     );
     assert_eq!(
         config.visuals.now_playing_background_color(),
-        Some(RgbColor::rgb(0, 0, 0))
+        Some(RgbColor::rgba(0, 0, 0, 61))
     );
-    assert_eq!(config.visuals.now_playing_background_opacity(), Some(24));
     assert_eq!(
         config.visuals.now_playing_background_blur_radius(),
         Some(12)
@@ -319,11 +318,7 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
     assert_eq!(config.visuals.now_playing_background_padding_y(), Some(14));
     assert_eq!(
         config.visuals.now_playing_background_border_color(),
-        Some(RgbColor::rgb(255, 255, 255))
-    );
-    assert_eq!(
-        config.visuals.now_playing_background_border_opacity(),
-        Some(10)
+        Some(RgbColor::rgba(255, 255, 255, 26))
     );
     assert_eq!(
         config.visuals.now_playing_background_border_width(),

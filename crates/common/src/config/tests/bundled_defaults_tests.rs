@@ -300,9 +300,8 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(
         config.visuals.now_playing_background_color(),
-        Some(RgbColor::rgb(0, 0, 0))
+        Some(RgbColor::rgba(0, 0, 0, 61))
     );
-    assert_eq!(config.visuals.now_playing_background_opacity(), Some(24));
     assert_eq!(
         config.visuals.now_playing_background_blur_radius(),
         Some(12)
@@ -312,11 +311,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.now_playing_background_padding_y(), Some(12));
     assert_eq!(
         config.visuals.now_playing_background_border_color(),
-        Some(RgbColor::rgb(255, 255, 255))
-    );
-    assert_eq!(
-        config.visuals.now_playing_background_border_opacity(),
-        Some(0)
+        Some(RgbColor::rgba(255, 255, 255, 0))
     );
     assert_eq!(
         config.visuals.now_playing_background_border_width(),
