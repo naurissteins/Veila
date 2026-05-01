@@ -148,7 +148,7 @@ impl ShellState {
         let style = TextStyle::new(
             secondary_text_color(
                 self.theme.placeholder_color.unwrap_or(self.theme.muted),
-                self.theme.placeholder_opacity,
+                None,
                 154,
             ),
             self.input_text_scale(),
@@ -162,7 +162,7 @@ impl ShellState {
                 self.theme
                     .reveal_color
                     .unwrap_or(self.theme.placeholder_color.unwrap_or(self.theme.muted)),
-                self.theme.reveal_opacity.or(self.theme.placeholder_opacity),
+                self.theme.reveal_opacity,
                 154,
             ),
             self.theme

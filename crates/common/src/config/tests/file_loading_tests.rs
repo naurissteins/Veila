@@ -81,8 +81,7 @@ fn loads_config_from_file() {
             date_opacity = 74
             clock_size = 4
             date_size = 3
-            placeholder_color = "#8694B4"
-            placeholder_opacity = 60
+            placeholder_color = "#8694B499"
             eye_icon_color = "#F4F8FF"
             eye_icon_opacity = 72
             status_color = "#FFE0A0"
@@ -220,9 +219,8 @@ fn loads_config_from_file() {
     assert_eq!(loaded.config.visuals.date_size(), Some(3));
     assert_eq!(
         loaded.config.visuals.placeholder_color(),
-        Some(RgbColor::rgb(134, 148, 180))
+        Some(RgbColor::rgba(134, 148, 180, 153))
     );
-    assert_eq!(loaded.config.visuals.placeholder_opacity(), Some(60));
     assert_eq!(
         loaded.config.visuals.eye_icon_color(),
         Some(RgbColor::rgb(244, 248, 255))

@@ -146,7 +146,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.clock_size().is_none());
     assert!(config.visuals.date_size().is_none());
     assert!(config.visuals.placeholder_color().is_none());
-    assert!(config.visuals.placeholder_opacity().is_none());
     assert!(config.visuals.eye_icon_color().is_none());
     assert!(config.visuals.eye_icon_opacity().is_none());
     assert!(config.visuals.keyboard_color().is_none());

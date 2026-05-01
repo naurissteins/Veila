@@ -72,8 +72,7 @@ rejected_color = "#FFD5D5"
 pending_color = "#ECECEC"
 
 [visuals.placeholder]
-color = "#A6AECD"
-opacity = 60
+color = "#A6AECD99"
 
 [visuals.avatar]
 enabled = false

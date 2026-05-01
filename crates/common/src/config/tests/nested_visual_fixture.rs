@@ -76,8 +76,7 @@ border_color = "#DDDDDD1F"
             size = 2
 
             [visuals.placeholder]
-            color = "#ffffff"
-            opacity = 60
+            color = "#FFFFFF99"
 
             [visuals.reveal]
             enabled = true

@@ -355,10 +355,9 @@ fn username_style_preserves_explicit_foreground_alpha_when_unset() {
 }
 
 #[test]
-fn placeholder_style_uses_configured_opacity() {
+fn placeholder_style_uses_fallback_alpha_for_opaque_muted_colors() {
     let theme = ShellTheme {
         muted: ClearColor::rgba(72, 82, 108, 255),
-        placeholder_opacity: Some(60),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -371,8 +370,7 @@ fn placeholder_style_uses_configured_opacity() {
 #[test]
 fn placeholder_style_uses_configured_color() {
     let theme = ShellTheme {
-        placeholder_color: Some(ClearColor::opaque(134, 148, 180)),
-        placeholder_opacity: Some(60),
+        placeholder_color: Some(ClearColor::rgba(134, 148, 180, 153)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -451,7 +449,6 @@ fn placeholder_style_preserves_explicit_muted_alpha_when_unset() {
     let theme = ShellTheme {
         muted: ClearColor::rgba(72, 82, 108, 90),
         placeholder_color: None,
-        placeholder_opacity: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

@@ -8,16 +8,13 @@ pub struct PlaceholderVisualConfig {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub color: Option<RgbColor>,
-    #[serde(default)]
-    pub opacity: Option<u8>,
 }
 
 impl Default for PlaceholderVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            color: Some(RgbColor::rgb(255, 255, 255)),
-            opacity: Some(60),
+            color: Some(RgbColor::rgba(255, 255, 255, 153)),
         }
     }
 }
@@ -259,13 +256,6 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|placeholder| placeholder.enabled)
             .unwrap_or(true)
-    }
-
-    pub fn placeholder_opacity(&self) -> Option<u8> {
-        self.placeholder
-            .as_ref()
-            .and_then(|placeholder| placeholder.opacity)
-            .or(self.placeholder_opacity)
     }
 
     pub fn status_color(&self) -> Option<RgbColor> {

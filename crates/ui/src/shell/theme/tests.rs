@@ -88,8 +88,7 @@ fn input_alpha_uses_rgba_values() {
     });
     config.visuals.placeholder = Some(PlaceholderVisualConfig {
         enabled: Some(true),
-        color: Some(ConfigColor::rgb(134, 148, 180)),
-        opacity: Some(60),
+        color: Some(ConfigColor::rgba(134, 148, 180, 153)),
     });
     config.visuals.reveal = Some(RevealVisualConfig {
         enabled: Some(true),
@@ -321,9 +320,8 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.date_size, Some(3));
     assert_eq!(
         theme.placeholder_color,
-        Some(ClearColor::opaque(134, 148, 180))
+        Some(ClearColor::rgba(134, 148, 180, 153))
     );
-    assert_eq!(theme.placeholder_opacity, Some(60));
     assert_eq!(
         theme.eye_icon_color,
         Some(ClearColor::opaque(244, 248, 255))

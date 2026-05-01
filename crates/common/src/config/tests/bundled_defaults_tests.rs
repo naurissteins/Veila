@@ -151,9 +151,8 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.date_size(), Some(2));
     assert_eq!(
         config.visuals.placeholder_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 153))
     );
-    assert_eq!(config.visuals.placeholder_opacity(), Some(60));
     assert_eq!(
         config.visuals.status_color(),
         Some(RgbColor::rgb(255, 224, 160))

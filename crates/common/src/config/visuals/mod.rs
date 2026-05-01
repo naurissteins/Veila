@@ -131,8 +131,6 @@ pub struct VisualConfig {
     #[serde(default)]
     pub placeholder_color: Option<RgbColor>,
     #[serde(default)]
-    pub placeholder_opacity: Option<u8>,
-    #[serde(default)]
     pub eye_icon_color: Option<RgbColor>,
     #[serde(default)]
     pub eye_icon_opacity: Option<u8>,
@@ -268,8 +266,7 @@ impl Default for VisualConfig {
             date_opacity: Some(50),
             clock_size: Some(14),
             date_size: Some(2),
-            placeholder_color: Some(RgbColor::rgb(255, 255, 255)),
-            placeholder_opacity: Some(60),
+            placeholder_color: Some(RgbColor::rgba(255, 255, 255, 153)),
             eye_icon_color: Some(RgbColor::rgb(255, 255, 255)),
             eye_icon_opacity: Some(72),
             keyboard_color: Some(RgbColor::rgb(255, 255, 255)),

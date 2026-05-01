@@ -73,8 +73,7 @@ rejected_color = "#FFD5D5"
 pending_color = "#ECECEC"
 
 [visuals.placeholder]
-color = "#ffffff"
-opacity = 80
+color = "#FFFFFFCC"
 
 [visuals.avatar]
 size = 192

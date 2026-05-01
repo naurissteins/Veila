@@ -124,8 +124,7 @@ font_weight = 600
 size = 2
 
 [visuals.placeholder]
-color = "#ffffff"
-opacity = 90
+color = "#FFFFFFE6"
 
 [visuals.status]
 rejected_color = "#FFD5D5"
