@@ -10,11 +10,21 @@ use veila_renderer::{
 use crate::state::CurtainApp;
 
 impl CurtainApp {
-    pub(super) fn prepare_background(&mut self, index: usize, size: (u32, u32)) -> Result<bool> {
+    pub(super) fn prepare_background(
+        &mut self,
+        index: usize,
+        size: (u32, u32),
+        scene_base_revision: Option<u64>,
+    ) -> Result<bool> {
         let frame_size = FrameSize::new(size.0, size.1);
         let selected_path = self
             .background_path_for_surface(index)
             .map(ToOwned::to_owned);
+        if scene_base_revision.is_some_and(|revision| {
+            self.scene_base_matches(index, frame_size, revision, selected_path.as_deref())
+        }) {
+            return Ok(false);
+        }
         let needs_refresh = self.lock_surfaces[index]
             .background
             .as_ref()
@@ -80,6 +90,22 @@ impl CurtainApp {
         self.lock_surfaces[index].background_path = selected_path;
 
         Ok(true)
+    }
+
+    fn scene_base_matches(
+        &self,
+        index: usize,
+        frame_size: FrameSize,
+        revision: u64,
+        selected_path: Option<&std::path::Path>,
+    ) -> bool {
+        let surface = &self.lock_surfaces[index];
+        surface.scene_base_revision == revision
+            && surface.background_path.as_deref() == selected_path
+            && surface
+                .scene_base
+                .as_ref()
+                .is_some_and(|buffer| buffer.size() == frame_size)
     }
 
     pub(super) fn prepare_static_overlay(
@@ -156,13 +182,8 @@ impl CurtainApp {
         let selected_path = self
             .background_path_for_surface(index)
             .map(ToOwned::to_owned);
-        let needs_refresh = self.lock_surfaces[index]
-            .scene_base
-            .as_ref()
-            .map(|buffer| buffer.size() != frame_size)
-            .unwrap_or(true)
-            || self.lock_surfaces[index].scene_base_revision != revision
-            || self.lock_surfaces[index].background_path != selected_path;
+        let needs_refresh =
+            !self.scene_base_matches(index, frame_size, revision, selected_path.as_deref());
 
         if !needs_refresh {
             return Ok(Some(false));

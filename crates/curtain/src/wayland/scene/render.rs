@@ -28,7 +28,8 @@ impl CurtainApp {
         let revision = self.ui_shell.static_scene_revision();
         let ui_visible = self.ui_visible_on_surface(index);
         let background_started_at = timing_enabled.then(Instant::now);
-        let background_refreshed = self.prepare_background(index, size)?;
+        let background_refreshed =
+            self.prepare_background(index, size, ui_visible.then_some(revision))?;
         let scene_base_cache_ready = if ui_visible {
             self.try_prepare_scene_base_without_background(index, frame_size, revision)?
         } else {
