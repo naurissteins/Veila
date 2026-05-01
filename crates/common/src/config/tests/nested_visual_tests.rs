@@ -184,8 +184,10 @@ fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
     assert_eq!(config.visuals.layer_right_padding(), Some(36));
     assert_eq!(config.visuals.layer_top_padding(), Some(18));
     assert_eq!(config.visuals.layer_bottom_padding(), Some(22));
-    assert_eq!(config.visuals.layer_color(), Some(RgbColor::rgb(8, 10, 14)));
-    assert_eq!(config.visuals.layer_opacity(), Some(44));
+    assert_eq!(
+        config.visuals.layer_color(),
+        Some(RgbColor::rgba(8, 10, 14, 112))
+    );
     assert_eq!(config.visuals.layer_blur_radius(), Some(16));
     assert_eq!(config.visuals.layer_radius(), Some(20));
     assert_eq!(

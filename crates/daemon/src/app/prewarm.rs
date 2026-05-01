@@ -435,7 +435,7 @@ fn layer_prewarm_spec(config: &AppConfig) -> Option<LayerPrewarmSpec> {
     }
 
     let raw_color = config.visuals.layer_color().unwrap_or(config.visuals.panel);
-    let color = to_layer_color(raw_color, config.visuals.layer_opacity());
+    let color = to_clear_color(raw_color);
     let border_color = config.visuals.layer_border_color().map(to_clear_color);
     Some(LayerPrewarmSpec {
         variant: format!(
@@ -475,13 +475,6 @@ fn layer_prewarm_spec(config: &AppConfig) -> Option<LayerPrewarmSpec> {
         border_color,
         border_width: i32::from(config.visuals.layer_border_width().unwrap_or(0)),
     })
-}
-
-fn to_layer_color(color: RgbColor, opacity: Option<u8>) -> ClearColor {
-    let alpha = opacity
-        .map(|percent| ((u16::from(percent.min(100)) * 255 + 50) / 100) as u8)
-        .unwrap_or(color.3);
-    ClearColor::rgba(color.0, color.1, color.2, alpha)
 }
 
 fn to_clear_color(color: veila_common::RgbColor) -> ClearColor {

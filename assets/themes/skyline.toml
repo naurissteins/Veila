@@ -18,8 +18,7 @@ alignment = "center"
 vertical_alignment = "center"
 width = 540
 height = 600
-color = "#ffffff"
-opacity = 5
+color = "#FFFFFF0D"
 radius = 50
 
 [battery]

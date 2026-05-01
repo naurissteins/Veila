@@ -18,7 +18,7 @@ offset_x = -300
 vertical_alignment = "center"
 width = 540
 height = 600
-opacity = 0
+color = "#00000000"
 blur_radius = 0
 
 [battery]

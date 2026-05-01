@@ -18,8 +18,7 @@ style = "diagonal"
 alignment = "right"
 width = "full"
 offset_x = 0
-color = "#080A0E"
-opacity = 42
+color = "#080A0E6B"
 blur_radius = 12
 
 [battery]

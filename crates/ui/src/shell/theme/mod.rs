@@ -9,7 +9,7 @@ use veila_common::{
 };
 use veila_renderer::ClearColor;
 
-use self::color::{to_color, to_color_with_opacity};
+use self::color::to_color;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShellTheme {
@@ -316,10 +316,7 @@ impl ShellTheme {
             layer_right_padding: config.visuals.layer_right_padding().map(i32::from),
             layer_top_padding: config.visuals.layer_top_padding().map(i32::from),
             layer_bottom_padding: config.visuals.layer_bottom_padding().map(i32::from),
-            layer_color: to_color_with_opacity(
-                config.visuals.layer_color().unwrap_or(config.visuals.panel),
-                config.visuals.layer_opacity(),
-            ),
+            layer_color: to_color(config.visuals.layer_color().unwrap_or(config.visuals.panel)),
             layer_blur_radius: config.visuals.layer_blur_radius().unwrap_or(12),
             layer_radius: i32::from(config.visuals.layer_radius().unwrap_or(0)),
             layer_border_color: config.visuals.layer_border_color().map(to_color),

@@ -113,8 +113,6 @@ pub struct LayerVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub blur_radius: Option<u8>,
     #[serde(default)]
     pub radius: Option<u16>,
@@ -144,8 +142,7 @@ impl Default for LayerVisualConfig {
             right_padding: Some(0),
             top_padding: Some(0),
             bottom_padding: Some(0),
-            color: Some(RgbColor::rgb(8, 10, 14)),
-            opacity: Some(42),
+            color: Some(RgbColor::rgba(8, 10, 14, 107)),
             blur_radius: Some(12),
             radius: Some(0),
             border_color: Some(RgbColor::rgb(255, 255, 255)),
@@ -268,10 +265,6 @@ impl super::VisualConfig {
 
     pub fn layer_bottom_padding(&self) -> Option<u16> {
         self.layer_bottom_margin()
-    }
-
-    pub fn layer_opacity(&self) -> Option<u8> {
-        self.layer.as_ref().and_then(|layer| layer.opacity)
     }
 
     pub fn layer_blur_radius(&self) -> Option<u8> {

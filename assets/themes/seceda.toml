@@ -16,8 +16,7 @@ mode = "blur"
 alignment = "left"
 width = 540
 offset_x = 0
-color = "#000000"
-opacity = 10
+color = "#0000001A"
 blur_radius = 12
 
 [battery]

@@ -202,8 +202,10 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.layer_right_padding(), Some(0));
     assert_eq!(config.visuals.layer_top_padding(), Some(0));
     assert_eq!(config.visuals.layer_bottom_padding(), Some(0));
-    assert_eq!(config.visuals.layer_color(), Some(RgbColor::rgb(8, 10, 14)));
-    assert_eq!(config.visuals.layer_opacity(), Some(42));
+    assert_eq!(
+        config.visuals.layer_color(),
+        Some(RgbColor::rgba(8, 10, 14, 107))
+    );
     assert_eq!(config.visuals.layer_blur_radius(), Some(12));
     assert_eq!(config.visuals.layer_radius(), Some(0));
     assert_eq!(
