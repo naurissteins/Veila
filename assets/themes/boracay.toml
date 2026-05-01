@@ -31,8 +31,7 @@ gap = 20
 [visuals.date]
 font_family = "Mail Ray Stuff"
 font_weight = 400
-color = "#ffffff"
-opacity = 40
+color = "#FFFFFF66"
 size = 7
 
 [visuals.input]
@@ -73,8 +72,7 @@ gap = 28
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(255, 255, 255, 0.05)"
-color = "#ffffff"
-opacity = 68
+color = "#FFFFFFAD"
 size = 2
 top_offset = -24
 right_offset = 8
@@ -82,8 +80,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.05)"
 background_size = 46
-color = "#ffffff"
-opacity = 68
+color = "#FFFFFFAD"
 size = 20
 top_offset = -24
 right_offset = 8

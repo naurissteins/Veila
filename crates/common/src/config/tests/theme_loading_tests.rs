@@ -34,8 +34,8 @@ fn loads_bundled_default_theme_as_default_layer() {
         theme_config.visuals.clock_font_family()
     );
     assert_eq!(
-        config.visuals.date_opacity(),
-        theme_config.visuals.date_opacity()
+        config.visuals.date_color(),
+        theme_config.visuals.date_color()
     );
 }
 

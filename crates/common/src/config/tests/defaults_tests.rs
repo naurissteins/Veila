@@ -141,7 +141,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.date_font_family().is_none());
     assert!(config.visuals.date_font_weight().is_none());
     assert!(config.visuals.date_font_style().is_none());
-    assert!(config.visuals.date_opacity().is_none());
     assert!(config.visuals.clock_size().is_none());
     assert!(config.visuals.date_size().is_none());
     assert!(config.visuals.placeholder_color().is_none());
@@ -149,14 +148,12 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.keyboard_color().is_none());
     assert!(config.visuals.keyboard_background_color().is_none());
     assert!(config.visuals.keyboard_background_size().is_none());
-    assert!(config.visuals.keyboard_opacity().is_none());
     assert!(config.visuals.keyboard_size().is_none());
     assert!(config.visuals.keyboard_top_offset().is_none());
     assert!(config.visuals.keyboard_right_offset().is_none());
     assert!(config.visuals.battery_background_color().is_none());
     assert!(config.visuals.battery_color().is_none());
     assert!(config.visuals.battery_background_size().is_none());
-    assert!(config.visuals.battery_opacity().is_none());
     assert!(config.visuals.battery_size().is_none());
     assert!(config.visuals.battery_top_offset().is_none());
     assert!(config.visuals.battery_right_offset().is_none());

@@ -70,8 +70,7 @@ border_color = "#DDDDDD1F"
             font_family = "Geom"
             font_weight = 600
             font_style = "italic"
-            color = "#ffffff"
-            opacity = 40
+            color = "#FFFFFF66"
             size = 2
 
             [visuals.placeholder]
@@ -99,8 +98,7 @@ border_color = "#DDDDDD1F"
             [visuals.keyboard]
             background_color = "rgba(18, 22, 30, 0.32)"
             background_size = 42
-            color = "#E8EEF9"
-            opacity = 68
+            color = "#E8EEF9AD"
             size = 3
             top_offset = -12
             right_offset = 8
@@ -108,8 +106,7 @@ border_color = "#DDDDDD1F"
             [visuals.battery]
             background_color = "rgba(18, 22, 30, 0.32)"
             background_size = 42
-            color = "#FFFFFF"
-            opacity = 72
+            color = "#FFFFFFB8"
             size = 18
             top_offset = -12
             right_offset = 0

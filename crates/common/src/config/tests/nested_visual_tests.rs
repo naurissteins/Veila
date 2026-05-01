@@ -97,12 +97,11 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.clock_gap(), Some(20));
     assert_eq!(
         config.visuals.date_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 102))
     );
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
     assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Italic));
-    assert_eq!(config.visuals.date_opacity(), Some(40));
     assert_eq!(config.visuals.date_size(), Some(2));
     assert_eq!(
         config.visuals.placeholder_color(),
@@ -201,9 +200,8 @@ fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
     assert_eq!(config.visuals.keyboard_background_size(), Some(42));
     assert_eq!(
         config.visuals.keyboard_color(),
-        Some(RgbColor::rgb(232, 238, 249))
+        Some(RgbColor::rgba(232, 238, 249, 173))
     );
-    assert_eq!(config.visuals.keyboard_opacity(), Some(68));
     assert_eq!(config.visuals.keyboard_size(), Some(3));
     assert_eq!(config.visuals.keyboard_top_offset(), Some(-12));
     assert_eq!(config.visuals.keyboard_right_offset(), Some(8));
@@ -213,10 +211,9 @@ fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
     );
     assert_eq!(
         config.visuals.battery_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 184))
     );
     assert_eq!(config.visuals.battery_background_size(), Some(42));
-    assert_eq!(config.visuals.battery_opacity(), Some(72));
     assert_eq!(config.visuals.battery_size(), Some(18));
     assert_eq!(config.visuals.battery_top_offset(), Some(-12));
     assert_eq!(config.visuals.battery_right_offset(), Some(0));

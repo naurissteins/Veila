@@ -58,17 +58,13 @@ impl ShellState {
             let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
                 + self.theme.battery_top_offset.unwrap_or(0))
             .max(8);
-            let icon_style = veila_renderer::icon::IconStyle::new(
-                self.theme
-                    .battery_color
-                    .unwrap_or(self.theme.foreground)
-                    .with_alpha(
-                        self.theme
-                            .battery_opacity
-                            .map(styles::percent_to_alpha)
-                            .unwrap_or(u8::MAX),
-                    ),
-            );
+            let battery_color = self.theme.battery_color.unwrap_or(self.theme.foreground);
+            let icon_style =
+                veila_renderer::icon::IconStyle::new(if battery_color.alpha == u8::MAX {
+                    battery_color.with_alpha(styles::percent_to_alpha(68))
+                } else {
+                    battery_color
+                });
             draw_top_right_icon_chip(
                 buffer,
                 right_padding,

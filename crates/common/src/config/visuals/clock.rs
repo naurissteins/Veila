@@ -105,8 +105,6 @@ pub struct DateVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub size: Option<u16>,
 }
 
@@ -117,8 +115,7 @@ impl Default for DateVisualConfig {
             font_family: Some(super::default_geom_font_family()),
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
-            color: Some(RgbColor::rgb(255, 255, 255)),
-            opacity: Some(50),
+            color: Some(RgbColor::rgba(255, 255, 255, 128)),
             size: Some(2),
         }
     }
@@ -266,13 +263,6 @@ impl super::VisualConfig {
 
     pub fn date_font_style(&self) -> Option<FontStyle> {
         self.date.as_ref().and_then(|date| date.font_style)
-    }
-
-    pub fn date_opacity(&self) -> Option<u8> {
-        self.date
-            .as_ref()
-            .and_then(|date| date.opacity)
-            .or(self.date_opacity)
     }
 
     pub fn date_size(&self) -> Option<u16> {

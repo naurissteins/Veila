@@ -125,8 +125,6 @@ pub struct KeyboardVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
     pub top_offset: Option<i16>,
@@ -140,8 +138,7 @@ impl Default for KeyboardVisualConfig {
             enabled: Some(true),
             background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
             background_size: Some(46),
-            color: Some(RgbColor::rgb(255, 255, 255)),
-            opacity: Some(68),
+            color: Some(RgbColor::rgba(255, 255, 255, 173)),
             size: Some(2),
             top_offset: Some(-24),
             right_offset: Some(8),
@@ -160,8 +157,6 @@ pub struct BatteryVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
     pub top_offset: Option<i16>,
@@ -177,8 +172,7 @@ impl Default for BatteryVisualConfig {
             enabled: Some(true),
             background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
             background_size: Some(46),
-            color: Some(RgbColor::rgb(255, 255, 255)),
-            opacity: Some(68),
+            color: Some(RgbColor::rgba(255, 255, 255, 173)),
             size: Some(20),
             top_offset: Some(-24),
             right_offset: Some(8),
@@ -328,13 +322,6 @@ impl super::VisualConfig {
             .or(self.keyboard_background_size)
     }
 
-    pub fn keyboard_opacity(&self) -> Option<u8> {
-        self.keyboard
-            .as_ref()
-            .and_then(|keyboard| keyboard.opacity)
-            .or(self.keyboard_opacity)
-    }
-
     pub fn keyboard_size(&self) -> Option<u16> {
         self.keyboard
             .as_ref()
@@ -382,13 +369,6 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|battery| battery.background_size)
             .or(self.battery_background_size)
-    }
-
-    pub fn battery_opacity(&self) -> Option<u8> {
-        self.battery
-            .as_ref()
-            .and_then(|battery| battery.opacity)
-            .or(self.battery_opacity)
     }
 
     pub fn battery_size(&self) -> Option<u16> {

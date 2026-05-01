@@ -24,7 +24,7 @@ impl ShellState {
         let style = TextStyle::new(
             secondary_text_color(
                 self.theme.keyboard_color.unwrap_or(self.theme.foreground),
-                self.theme.keyboard_opacity,
+                None,
                 228,
             ),
             self.theme.keyboard_size.unwrap_or(2).clamp(1, 6),
@@ -113,7 +113,7 @@ impl ShellState {
         let style = TextStyle::new(
             header_color(
                 self.theme.date_color.unwrap_or(self.theme.foreground),
-                self.theme.date_opacity,
+                None,
                 188,
             ),
             self.theme

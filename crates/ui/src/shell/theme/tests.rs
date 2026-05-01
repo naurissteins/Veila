@@ -81,8 +81,7 @@ fn input_alpha_uses_rgba_values() {
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         font_style: Some(FontStyle::Italic),
-        color: Some(ConfigColor::rgb(200, 212, 236)),
-        opacity: Some(74),
+        color: Some(ConfigColor::rgba(200, 212, 236, 189)),
         size: Some(3),
     });
     config.visuals.placeholder = Some(PlaceholderVisualConfig {
@@ -107,8 +106,7 @@ fn input_alpha_uses_rgba_values() {
         enabled: Some(true),
         background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
         background_size: Some(42),
-        color: Some(ConfigColor::rgb(232, 238, 249)),
-        opacity: Some(68),
+        color: Some(ConfigColor::rgba(232, 238, 249, 173)),
         size: Some(3),
         top_offset: Some(-12),
         right_offset: Some(8),
@@ -117,8 +115,7 @@ fn input_alpha_uses_rgba_values() {
         enabled: Some(true),
         background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
         background_size: Some(42),
-        color: Some(ConfigColor::rgb(255, 255, 255)),
-        opacity: Some(72),
+        color: Some(ConfigColor::rgba(255, 255, 255, 184)),
         size: Some(18),
         top_offset: Some(-12),
         right_offset: Some(0),
@@ -313,8 +310,7 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.date_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.date_font_weight, Some(600));
     assert_eq!(theme.date_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.date_color, Some(ClearColor::opaque(200, 212, 236)));
-    assert_eq!(theme.date_opacity, Some(74));
+    assert_eq!(theme.date_color, Some(ClearColor::rgba(200, 212, 236, 189)));
     assert_eq!(theme.clock_size, Some(4));
     assert_eq!(theme.date_size, Some(3));
     assert_eq!(
@@ -332,9 +328,8 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.keyboard_background_size, Some(42));
     assert_eq!(
         theme.keyboard_color,
-        Some(ClearColor::opaque(232, 238, 249))
+        Some(ClearColor::rgba(232, 238, 249, 173))
     );
-    assert_eq!(theme.keyboard_opacity, Some(68));
     assert_eq!(theme.keyboard_size, Some(3));
     assert_eq!(theme.keyboard_top_offset, Some(-12));
     assert_eq!(theme.keyboard_right_offset, Some(8));
@@ -342,9 +337,11 @@ fn input_alpha_uses_rgba_values() {
         theme.battery_background_color,
         ClearColor::rgba(18, 22, 30, 82)
     );
-    assert_eq!(theme.battery_color, Some(ClearColor::opaque(255, 255, 255)));
+    assert_eq!(
+        theme.battery_color,
+        Some(ClearColor::rgba(255, 255, 255, 184))
+    );
     assert_eq!(theme.battery_background_size, Some(42));
-    assert_eq!(theme.battery_opacity, Some(72));
     assert_eq!(theme.battery_size, Some(18));
     assert_eq!(theme.battery_top_offset, Some(-12));
     assert_eq!(theme.battery_right_offset, Some(0));

@@ -45,8 +45,7 @@ text_gap = 10
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(255, 255, 255, 0.05)"
-color = "#ffffff"
-opacity = 68
+color = "#FFFFFFAD"
 size = 2
 top_offset = -28
 right_offset = 8
@@ -54,8 +53,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.05)"
 background_size = 46
-color = "#ffffff"
-opacity = 68
+color = "#FFFFFFAD"
 size = 20
 top_offset = -28
 right_offset = 8
@@ -116,9 +114,8 @@ size = 14
 gap = 20
 
 [visuals.date]
-color = "#ffffff"
+color = "#FFFFFF66"
 font_family = "Geom"
-opacity = 40
 font_weight = 600
 size = 2
 

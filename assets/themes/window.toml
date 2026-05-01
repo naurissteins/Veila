@@ -45,9 +45,8 @@ gap = 20
 [visuals.date]
 font_family = "Google Sans Flex"
 font_weight = 400
-color = "#A6AECD"
+color = "#A6AECDB8"
 size = 3
-opacity = 72
 
 [visuals.input]
 center_in_layer = true
@@ -82,7 +81,7 @@ enabled = false
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(166, 174, 205, 0.05)"
-opacity = 68
+color = "#FFFFFFAD"
 size = 2
 top_offset = -28
 right_offset = 8
@@ -90,7 +89,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(166, 174, 205, 0.05)"
 background_size = 46
-opacity = 68
+color = "#FFFFFFAD"
 size = 20
 top_offset = -28
 right_offset = 8

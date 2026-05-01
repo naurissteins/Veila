@@ -141,12 +141,11 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_size(), Some(14));
     assert_eq!(
         config.visuals.date_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 128))
     );
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
     assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Normal));
-    assert_eq!(config.visuals.date_opacity(), Some(50));
     assert_eq!(config.visuals.date_size(), Some(2));
     assert_eq!(
         config.visuals.placeholder_color(),
@@ -166,10 +165,9 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(
         config.visuals.keyboard_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 173))
     );
     assert_eq!(config.visuals.keyboard_background_size(), Some(46));
-    assert_eq!(config.visuals.keyboard_opacity(), Some(68));
     assert_eq!(config.visuals.keyboard_size(), Some(2));
     assert_eq!(config.visuals.keyboard_top_offset(), Some(-24));
     assert_eq!(config.visuals.keyboard_right_offset(), Some(8));
@@ -179,10 +177,9 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(
         config.visuals.battery_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 173))
     );
     assert_eq!(config.visuals.battery_background_size(), Some(46));
-    assert_eq!(config.visuals.battery_opacity(), Some(68));
     assert_eq!(config.visuals.battery_size(), Some(20));
     assert_eq!(config.visuals.battery_top_offset(), Some(-24));
     assert_eq!(config.visuals.battery_right_offset(), Some(8));

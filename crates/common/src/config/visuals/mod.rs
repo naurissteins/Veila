@@ -121,8 +121,6 @@ pub struct VisualConfig {
     #[serde(default)]
     pub date_color: Option<RgbColor>,
     #[serde(default)]
-    pub date_opacity: Option<u8>,
-    #[serde(default)]
     pub clock_size: Option<u16>,
     #[serde(default)]
     pub date_size: Option<u16>,
@@ -140,10 +138,6 @@ pub struct VisualConfig {
     pub keyboard_background_size: Option<u16>,
     #[serde(default)]
     pub battery_background_size: Option<u16>,
-    #[serde(default)]
-    pub keyboard_opacity: Option<u8>,
-    #[serde(default)]
-    pub battery_opacity: Option<u8>,
     #[serde(default)]
     pub keyboard_size: Option<u16>,
     #[serde(default)]
@@ -255,19 +249,16 @@ impl Default for VisualConfig {
             clock_meridiem_offset_x: Some(6),
             clock_meridiem_offset_y: Some(7),
             clock_color: Some(RgbColor::rgba(255, 255, 255, 102)),
-            date_color: Some(RgbColor::rgb(255, 255, 255)),
-            date_opacity: Some(50),
+            date_color: Some(RgbColor::rgba(255, 255, 255, 128)),
             clock_size: Some(14),
             date_size: Some(2),
             placeholder_color: Some(RgbColor::rgba(255, 255, 255, 153)),
             eye_icon_color: Some(RgbColor::rgba(255, 255, 255, 184)),
-            keyboard_color: Some(RgbColor::rgb(255, 255, 255)),
-            battery_color: Some(RgbColor::rgb(255, 255, 255)),
+            keyboard_color: Some(RgbColor::rgba(255, 255, 255, 173)),
+            battery_color: Some(RgbColor::rgba(255, 255, 255, 173)),
             battery_background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
             keyboard_background_size: Some(46),
             battery_background_size: Some(46),
-            keyboard_opacity: Some(68),
-            battery_opacity: Some(68),
             keyboard_size: Some(2),
             battery_size: Some(20),
             keyboard_top_offset: Some(-24),

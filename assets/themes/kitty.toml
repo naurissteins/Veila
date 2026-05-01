@@ -46,9 +46,8 @@ gap = 20
 [visuals.date]
 font_family = "Yoruka"
 font_weight = 400
-color = "#ffffff"
+color = "#FFFFFFE6"
 size = 3
-opacity = 90
 
 [visuals.input]
 center_in_layer = true
@@ -83,7 +82,7 @@ enabled = false
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(255, 255, 255, 0.1)"
-opacity = 90
+color = "#FFFFFFE6"
 size = 2
 top_offset = -28
 right_offset = 8
@@ -91,7 +90,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.1)"
 background_size = 46
-opacity = 90
+color = "#FFFFFFE6"
 size = 20
 top_offset = -28
 right_offset = 8

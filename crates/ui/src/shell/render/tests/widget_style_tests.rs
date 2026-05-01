@@ -15,10 +15,9 @@ fn keyboard_layout_style_uses_configured_size() {
 }
 
 #[test]
-fn keyboard_layout_style_uses_configured_color_and_opacity() {
+fn keyboard_layout_style_uses_configured_color() {
     let theme = ShellTheme {
-        keyboard_color: Some(ClearColor::opaque(232, 238, 249)),
-        keyboard_opacity: Some(68),
+        keyboard_color: Some(ClearColor::rgba(232, 238, 249, 173)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

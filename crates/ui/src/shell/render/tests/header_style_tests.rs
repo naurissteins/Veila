@@ -98,24 +98,23 @@ fn clock_style_defaults_to_bundled_font_family() {
 }
 
 #[test]
-fn date_style_uses_configured_opacity() {
+fn date_style_uses_fallback_alpha_for_opaque_colors() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
-        date_opacity: Some(74),
+        date_color: Some(ClearColor::rgba(240, 244, 250, 255)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.date_text_style();
 
-    assert_eq!(style.color.alpha, 189);
+    assert_eq!(style.color.alpha, 188);
     assert_eq!(style.scale, 2);
 }
 
 #[test]
 fn date_style_uses_configured_color() {
     let theme = ShellTheme {
-        date_color: Some(ClearColor::opaque(200, 212, 236)),
-        date_opacity: Some(74),
+        date_color: Some(ClearColor::rgba(200, 212, 236, 189)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -272,7 +271,6 @@ fn header_styles_preserve_explicit_foreground_alpha_when_unset() {
         foreground: ClearColor::rgba(240, 244, 250, 90),
         clock_color: None,
         date_color: None,
-        date_opacity: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

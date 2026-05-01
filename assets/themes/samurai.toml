@@ -46,9 +46,8 @@ gap = 20
 [visuals.date]
 font_family = "Japanola"
 font_weight = 700
-color = "#000000"
+color = "#000000B3"
 size = 5
-opacity = 70
 
 [visuals.input]
 center_in_layer = true
