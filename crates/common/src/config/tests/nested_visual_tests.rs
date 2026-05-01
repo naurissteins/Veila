@@ -266,11 +266,11 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
 
     assert_eq!(
         config.visuals.now_playing_title_color(),
-        Some(RgbColor::rgb(248, 251, 255))
+        Some(RgbColor::rgba(248, 251, 255, 208))
     );
     assert_eq!(
         config.visuals.now_playing_artist_color(),
-        Some(RgbColor::rgb(200, 212, 236))
+        Some(RgbColor::rgba(200, 212, 236, 99))
     );
     assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
     assert_eq!(config.visuals.now_playing_title_font_family(), Some("Geom"));
@@ -288,9 +288,6 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
         config.visuals.now_playing_artist_font_style(),
         Some(FontStyle::Italic)
     );
-    assert_eq!(config.visuals.now_playing_opacity(), Some(72));
-    assert_eq!(config.visuals.now_playing_title_opacity(), Some(88));
-    assert_eq!(config.visuals.now_playing_artist_opacity(), Some(54));
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(61));
     assert_eq!(config.visuals.now_playing_title_size(), Some(2));
     assert_eq!(config.visuals.now_playing_artist_size(), Some(1));

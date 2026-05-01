@@ -255,17 +255,14 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.weather_left_padding(), Some(48));
     assert_eq!(config.visuals.weather_bottom_padding(), Some(48));
     assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
-    assert_eq!(config.visuals.now_playing_opacity(), Some(72));
-    assert_eq!(config.visuals.now_playing_title_opacity(), Some(74));
-    assert_eq!(config.visuals.now_playing_artist_opacity(), Some(54));
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(90));
     assert_eq!(
         config.visuals.now_playing_title_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 175))
     );
     assert_eq!(
         config.visuals.now_playing_artist_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 99))
     );
     assert_eq!(
         config.visuals.now_playing_title_font_family(),

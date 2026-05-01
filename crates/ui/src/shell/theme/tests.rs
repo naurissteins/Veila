@@ -174,12 +174,9 @@ fn input_alpha_uses_rgba_values() {
     config.visuals.now_playing = Some(NowPlayingVisualConfig {
         enabled: Some(true),
         fade_duration_ms: Some(320),
-        opacity: Some(72),
-        title_opacity: Some(88),
-        artist_opacity: Some(54),
         artwork_opacity: Some(61),
-        title_color: Some(ConfigColor::rgb(248, 251, 255)),
-        artist_color: Some(ConfigColor::rgb(200, 212, 236)),
+        title_color: Some(ConfigColor::rgba(248, 251, 255, 208)),
+        artist_color: Some(ConfigColor::rgba(200, 212, 236, 99)),
         title_font_family: Some("Geom".to_owned()),
         artist_font_family: Some("Prototype".to_owned()),
         title_font_weight: Some(700),
@@ -404,11 +401,11 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.weather_bottom_padding, Some(72));
     assert_eq!(
         theme.now_playing_title_color,
-        Some(ClearColor::opaque(248, 251, 255))
+        Some(ClearColor::rgba(248, 251, 255, 208))
     );
     assert_eq!(
         theme.now_playing_artist_color,
-        Some(ClearColor::opaque(200, 212, 236))
+        Some(ClearColor::rgba(200, 212, 236, 99))
     );
     assert_eq!(theme.now_playing_fade_duration_ms, Some(320));
     assert_eq!(theme.now_playing_title_font_family.as_deref(), Some("Geom"));
@@ -420,9 +417,6 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.now_playing_artist_font_weight, Some(500));
     assert_eq!(theme.now_playing_title_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.now_playing_artist_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.now_playing_opacity, Some(72));
-    assert_eq!(theme.now_playing_title_opacity, Some(88));
-    assert_eq!(theme.now_playing_artist_opacity, Some(54));
     assert_eq!(theme.now_playing_artwork_opacity, Some(61));
     assert_eq!(theme.now_playing_title_size, Some(2));
     assert_eq!(theme.now_playing_artist_size, Some(1));

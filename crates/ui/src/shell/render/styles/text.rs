@@ -6,7 +6,7 @@ use veila_renderer::text::{
 
 use super::{
     super::{ShellState, layout::SceneMetrics},
-    color::{clock_scale, header_color, scaled_alpha, secondary_text_color, username_color},
+    color::{clock_scale, header_color, secondary_text_color, username_color},
 };
 
 const MAX_HEADER_TEXT_SCALE: u32 = 24;
@@ -316,10 +316,11 @@ impl ShellState {
             .now_playing_title_color
             .unwrap_or(self.theme.foreground);
         let style = TextStyle::new(
-            base_color.with_alpha(scaled_alpha(
-                base_color.alpha.min(236),
-                self.theme.now_playing_title_opacity,
-            )),
+            if base_color.alpha == u8::MAX {
+                base_color.with_alpha(175)
+            } else {
+                base_color
+            },
             self.theme
                 .now_playing_title_size
                 .unwrap_or(2)
@@ -344,10 +345,11 @@ impl ShellState {
             .now_playing_artist_color
             .unwrap_or(self.theme.muted);
         let style = TextStyle::new(
-            base_color.with_alpha(scaled_alpha(
-                base_color.alpha.min(184),
-                self.theme.now_playing_artist_opacity,
-            )),
+            if base_color.alpha == u8::MAX {
+                base_color.with_alpha(99)
+            } else {
+                base_color
+            },
             self.theme
                 .now_playing_artist_size
                 .unwrap_or(1)

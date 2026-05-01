@@ -95,14 +95,12 @@ fn weather_styles_use_configured_widget_size() {
 #[test]
 fn now_playing_styles_use_configured_theme_values() {
     let theme = ShellTheme {
-        now_playing_title_color: Some(ClearColor::opaque(248, 251, 255)),
-        now_playing_artist_color: Some(ClearColor::opaque(200, 212, 236)),
+        now_playing_title_color: Some(ClearColor::rgba(248, 251, 255, 208)),
+        now_playing_artist_color: Some(ClearColor::rgba(200, 212, 236, 99)),
         now_playing_title_font_family: Some("Geom".to_owned()),
         now_playing_artist_font_family: Some("Prototype".to_owned()),
         now_playing_title_font_weight: Some(700),
         now_playing_artist_font_weight: Some(500),
-        now_playing_title_opacity: Some(88),
-        now_playing_artist_opacity: Some(54),
         now_playing_title_size: Some(3),
         now_playing_artist_size: Some(2),
         now_playing_content_gap: Some(18),

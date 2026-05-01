@@ -163,12 +163,9 @@ border_color = "#DDDDDD1F"
 
             [visuals.now_playing]
             fade_duration_ms = 320
-            opacity = 72
-            title_opacity = 88
-            artist_opacity = 54
             artwork_opacity = 61
-            title_color = "#F8FBFF"
-            artist_color = "#C8D4EC"
+            title_color = "#F8FBFFD0"
+            artist_color = "#C8D4EC63"
             title_font_family = "Geom"
             artist_font_family = "Prototype"
             title_font_weight = 700

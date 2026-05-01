@@ -53,12 +53,6 @@ pub struct NowPlayingVisualConfig {
     #[serde(default)]
     pub fade_duration_ms: Option<u16>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
-    pub title_opacity: Option<u8>,
-    #[serde(default)]
-    pub artist_opacity: Option<u8>,
-    #[serde(default)]
     pub artwork_opacity: Option<u8>,
     #[serde(default)]
     pub title_color: Option<RgbColor>,
@@ -107,12 +101,9 @@ impl Default for NowPlayingVisualConfig {
         Self {
             enabled: Some(true),
             fade_duration_ms: Some(320),
-            opacity: Some(72),
-            title_opacity: Some(74),
-            artist_opacity: Some(54),
             artwork_opacity: Some(90),
-            title_color: Some(RgbColor::rgb(255, 255, 255)),
-            artist_color: Some(RgbColor::rgb(255, 255, 255)),
+            title_color: Some(RgbColor::rgba(255, 255, 255, 175)),
+            artist_color: Some(RgbColor::rgba(255, 255, 255, 99)),
             title_font_family: Some(super::default_google_sans_flex_font_family()),
             artist_font_family: Some(super::default_google_sans_flex_font_family()),
             title_font_weight: Some(400),
@@ -149,31 +140,10 @@ impl super::VisualConfig {
             .and_then(|now_playing| now_playing.fade_duration_ms)
     }
 
-    pub fn now_playing_opacity(&self) -> Option<u8> {
-        self.now_playing
-            .as_ref()
-            .and_then(|now_playing| now_playing.opacity)
-    }
-
-    pub fn now_playing_title_opacity(&self) -> Option<u8> {
-        self.now_playing
-            .as_ref()
-            .and_then(|now_playing| now_playing.title_opacity)
-            .or_else(|| self.now_playing_opacity())
-    }
-
-    pub fn now_playing_artist_opacity(&self) -> Option<u8> {
-        self.now_playing
-            .as_ref()
-            .and_then(|now_playing| now_playing.artist_opacity)
-            .or_else(|| self.now_playing_opacity())
-    }
-
     pub fn now_playing_artwork_opacity(&self) -> Option<u8> {
         self.now_playing
             .as_ref()
             .and_then(|now_playing| now_playing.artwork_opacity)
-            .or_else(|| self.now_playing_opacity())
     }
 
     pub fn now_playing_title_color(&self) -> Option<RgbColor> {

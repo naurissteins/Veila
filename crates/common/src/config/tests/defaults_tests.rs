@@ -196,9 +196,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.now_playing_artist_font_weight().is_none());
     assert!(config.visuals.now_playing_title_font_style().is_none());
     assert!(config.visuals.now_playing_artist_font_style().is_none());
-    assert!(config.visuals.now_playing_opacity().is_none());
-    assert!(config.visuals.now_playing_title_opacity().is_none());
-    assert!(config.visuals.now_playing_artist_opacity().is_none());
     assert!(config.visuals.now_playing_artwork_opacity().is_none());
     assert!(config.visuals.now_playing_title_size().is_none());
     assert!(config.visuals.now_playing_artist_size().is_none());

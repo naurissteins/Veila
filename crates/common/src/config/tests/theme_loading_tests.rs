@@ -109,7 +109,7 @@ fn loads_bundled_theme_before_user_overrides() {
     );
     assert_eq!(
         loaded.config.visuals.now_playing_title_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 175))
     );
 
     fs::remove_file(path).ok();
@@ -160,8 +160,12 @@ fn loads_second_bundled_theme() {
         theme_config.visuals.weather_alignment()
     );
     assert_eq!(
-        config.visuals.now_playing_opacity(),
-        theme_config.visuals.now_playing_opacity()
+        config.visuals.now_playing_title_color(),
+        theme_config.visuals.now_playing_title_color()
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_color(),
+        theme_config.visuals.now_playing_artist_color()
     );
 
     fs::remove_file(path).ok();
