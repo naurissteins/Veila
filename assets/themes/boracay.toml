@@ -63,8 +63,7 @@ opacity = 60
 enabled = false
 size = 192
 gap = 24
-background_color = "#ffffff"
-background_opacity = 6
+background_color = "#FFFFFF0F"
 placeholder_padding = 28
 icon_color = "#ffffff"
 

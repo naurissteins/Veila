@@ -57,7 +57,6 @@ fn loads_config_from_file() {
             avatar_icon_color = "#E8EEF9"
             avatar_ring_color = "#94B2FF"
             avatar_ring_width = 3
-            avatar_background_opacity = 36
             username_color = "#D7E3FF"
             username_opacity = 72
             username_size = 3
@@ -174,7 +173,6 @@ fn loads_config_from_file() {
         Some(RgbColor::rgb(148, 178, 255))
     );
     assert_eq!(loaded.config.visuals.avatar_ring_width(), Some(3));
-    assert_eq!(loaded.config.visuals.avatar_background_opacity(), Some(36));
     assert_eq!(
         loaded.config.visuals.username_color(),
         Some(RgbColor::rgb(215, 227, 255))

@@ -65,10 +65,7 @@ impl ShellState {
                 54,
             )
         };
-        let background = avatar_background_color(
-            self.theme.avatar_background,
-            self.theme.avatar_background_opacity,
-        );
+        let background = avatar_background_color(self.theme.avatar_background);
 
         let placeholder = self
             .theme

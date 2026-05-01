@@ -78,8 +78,7 @@ opacity = 80
 [visuals.avatar]
 size = 160
 gap = 24
-background_color = "#ffffff"
-background_opacity = 10
+background_color = "rgba(255, 255, 255, 0.08)"
 placeholder_padding = 28
 ring_color = "#ffffff"
 ring_width = 3

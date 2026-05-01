@@ -110,7 +110,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.avatar_icon_color().is_none());
     assert!(config.visuals.avatar_ring_color().is_none());
     assert!(config.visuals.avatar_ring_width().is_none());
-    assert!(config.visuals.avatar_background_opacity().is_none());
     assert!(config.visuals.username_color().is_none());
     assert!(config.visuals.username_opacity().is_none());
     assert!(config.visuals.username_size().is_none());

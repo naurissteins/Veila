@@ -95,8 +95,7 @@ font_size = 2
 [visuals.avatar]
 size = 160
 gap = 24
-background_color = "#ffffff"
-background_opacity = 8
+background_color = "rgba(255, 255, 255, 0.08)"
 placeholder_padding = 28
 
 [visuals.username]

@@ -80,7 +80,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.input_border_width(), Some(0));
     assert_eq!(
         config.visuals.avatar_background_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 15))
     );
     assert_eq!(config.visuals.avatar_size(), Some(192));
     assert_eq!(config.visuals.avatar_offset_y(), Some(0));
@@ -94,7 +94,6 @@ fn first_run_defaults_match_bundled_theme() {
         Some(RgbColor::rgb(148, 178, 255))
     );
     assert_eq!(config.visuals.avatar_ring_width(), Some(0));
-    assert_eq!(config.visuals.avatar_background_opacity(), Some(6));
     assert_eq!(
         config.visuals.username_color(),
         Some(RgbColor::rgb(255, 255, 255))

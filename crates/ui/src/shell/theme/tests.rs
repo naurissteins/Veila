@@ -44,8 +44,7 @@ fn input_opacity_overrides_embedded_alpha() {
         size: Some(92),
         offset_y: Some(18),
         gap: Some(14),
-        background_color: Some(ConfigColor::rgb(24, 30, 42)),
-        background_opacity: Some(36),
+        background_color: Some(ConfigColor::rgba(24, 30, 42, 92)),
         placeholder_padding: Some(14),
         ring_color: Some(ConfigColor::rgb(148, 178, 255)),
         ring_width: Some(3),
@@ -266,7 +265,7 @@ fn input_opacity_overrides_embedded_alpha() {
     assert_eq!(theme.input_font_weight, Some(600));
     assert_eq!(theme.input_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.input_font_size, Some(3));
-    assert_eq!(theme.avatar_background, ClearColor::opaque(24, 30, 42));
+    assert_eq!(theme.avatar_background, ClearColor::rgba(24, 30, 42, 92));
     assert_eq!(theme.input_width, Some(280));
     assert_eq!(theme.input_height, Some(54));
     assert_eq!(theme.input_border_width, Some(3));
@@ -282,7 +281,6 @@ fn input_opacity_overrides_embedded_alpha() {
         Some(ClearColor::opaque(148, 178, 255))
     );
     assert_eq!(theme.avatar_ring_width, Some(3));
-    assert_eq!(theme.avatar_background_opacity, Some(36));
     assert_eq!(
         theme.username_color,
         Some(ClearColor::opaque(215, 227, 255))

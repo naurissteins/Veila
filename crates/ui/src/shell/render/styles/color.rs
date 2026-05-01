@@ -4,11 +4,11 @@ pub(super) fn clock_scale(avatar_size: i32) -> u32 {
     if avatar_size < 100 { 4 } else { 5 }
 }
 
-pub(super) fn avatar_background_color(base: ClearColor, opacity_percent: Option<u8>) -> ClearColor {
-    let alpha = match opacity_percent {
-        Some(percent) => percent_to_alpha(percent),
-        None if base.alpha == u8::MAX => 104,
-        None => base.alpha,
+pub(super) fn avatar_background_color(base: ClearColor) -> ClearColor {
+    let alpha = if base.alpha == u8::MAX {
+        104
+    } else {
+        base.alpha
     };
 
     base.with_alpha(alpha)

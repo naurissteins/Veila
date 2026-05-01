@@ -4,6 +4,7 @@ mode = "file"
 path = "/path/to/wallpaper.jpg"
 color = "#323449"
 dim_strength = 64
+blur_radius = 0
 tint = "rgba(255, 255, 255, 0.1)"
 
 [lock]
@@ -75,8 +76,7 @@ opacity = 60
 [visuals.avatar]
 size = 160
 gap = 24
-background_color = "#ffffff"
-background_opacity = 6
+background_color = "rgba(255, 255, 255, 0.04)"
 placeholder_padding = 28
 ring_color = "rgba(255, 255, 255, 0.15)"
 ring_width = 3

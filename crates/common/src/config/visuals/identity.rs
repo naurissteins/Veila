@@ -15,8 +15,6 @@ pub struct AvatarVisualConfig {
     #[serde(default)]
     pub background_color: Option<RgbColor>,
     #[serde(default)]
-    pub background_opacity: Option<u8>,
-    #[serde(default)]
     pub placeholder_padding: Option<u16>,
     #[serde(default)]
     pub ring_color: Option<RgbColor>,
@@ -33,8 +31,7 @@ impl Default for AvatarVisualConfig {
             size: Some(192),
             offset_y: Some(0),
             gap: Some(24),
-            background_color: Some(RgbColor::rgb(255, 255, 255)),
-            background_opacity: Some(6),
+            background_color: Some(RgbColor::rgba(255, 255, 255, 15)),
             placeholder_padding: Some(28),
             ring_color: Some(RgbColor::rgb(148, 178, 255)),
             ring_width: Some(0),
@@ -115,13 +112,6 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|avatar| avatar.offset_y)
             .or(self.avatar_offset_y)
-    }
-
-    pub fn avatar_background_opacity(&self) -> Option<u8> {
-        self.avatar
-            .as_ref()
-            .and_then(|avatar| avatar.background_opacity)
-            .or(self.avatar_background_opacity)
     }
 
     pub fn avatar_placeholder_padding(&self) -> Option<u16> {

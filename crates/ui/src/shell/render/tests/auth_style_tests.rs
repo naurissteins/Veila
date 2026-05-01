@@ -246,29 +246,27 @@ fn avatar_style_allows_disabling_ring() {
 }
 
 #[test]
-fn avatar_style_uses_configured_background_opacity() {
-    let theme = ShellTheme {
-        avatar_background: ClearColor::rgba(24, 30, 42, 255),
-        avatar_background_opacity: Some(36),
-        ..ShellTheme::default()
-    };
-    let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
-
-    assert_eq!(style.background.alpha, 92);
-}
-
-#[test]
-fn avatar_style_preserves_explicit_panel_alpha_when_unset() {
+fn avatar_style_preserves_explicit_background_alpha() {
     let theme = ShellTheme {
         avatar_background: ClearColor::rgba(24, 30, 42, 80),
-        avatar_background_opacity: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.avatar_style();
 
     assert_eq!(style.background.alpha, 80);
+}
+
+#[test]
+fn avatar_style_uses_fallback_alpha_for_opaque_backgrounds() {
+    let theme = ShellTheme {
+        avatar_background: ClearColor::opaque(24, 30, 42),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.avatar_style();
+
+    assert_eq!(style.background.alpha, 104);
 }
 
 #[test]
