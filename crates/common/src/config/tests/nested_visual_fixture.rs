@@ -118,8 +118,7 @@ border_color = "#DDDDDD1F"
 
             [visuals.caps_lock]
             enabled = true
-            color = "#FFD37A"
-            opacity = 64
+            color = "#FFD37AA3"
 
             [visuals.layer]
             enabled = true

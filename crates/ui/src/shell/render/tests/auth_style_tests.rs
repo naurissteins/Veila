@@ -558,8 +558,7 @@ fn rejected_status_style_prefers_state_specific_status_override() {
 fn caps_lock_icon_style_uses_dedicated_override() {
     let theme = ShellTheme {
         status_color: Some(ClearColor::rgba(255, 224, 160, 224)),
-        caps_lock_color: Some(ClearColor::opaque(255, 211, 122)),
-        caps_lock_opacity: Some(64),
+        caps_lock_color: Some(ClearColor::rgba(255, 211, 122, 163)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

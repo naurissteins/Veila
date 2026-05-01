@@ -43,9 +43,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     );
     assert_eq!(
         config.visuals.caps_lock_color(),
-        Some(RgbColor::rgb(255, 211, 122))
+        Some(RgbColor::rgba(255, 211, 122, 163))
     );
-    assert_eq!(config.visuals.caps_lock_opacity(), Some(64));
     assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));

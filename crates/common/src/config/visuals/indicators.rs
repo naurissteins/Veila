@@ -103,8 +103,6 @@ pub struct CapsLockVisualConfig {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub color: Option<RgbColor>,
-    #[serde(default)]
-    pub opacity: Option<u8>,
 }
 
 impl Default for CapsLockVisualConfig {
@@ -112,7 +110,6 @@ impl Default for CapsLockVisualConfig {
         Self {
             enabled: Some(true),
             color: None,
-            opacity: None,
         }
     }
 }
@@ -302,12 +299,6 @@ impl super::VisualConfig {
         self.caps_lock
             .as_ref()
             .and_then(|caps_lock| caps_lock.color)
-    }
-
-    pub fn caps_lock_opacity(&self) -> Option<u8> {
-        self.caps_lock
-            .as_ref()
-            .and_then(|caps_lock| caps_lock.opacity)
     }
 
     pub fn keyboard_enabled(&self) -> bool {

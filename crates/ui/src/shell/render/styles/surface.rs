@@ -97,10 +97,10 @@ impl ShellState {
 
     pub(crate) fn caps_lock_icon_style(&self) -> IconStyle {
         let base = self.theme.caps_lock_color.unwrap_or(self.theme.foreground);
-        let alpha = match self.theme.caps_lock_opacity {
-            Some(percent) => percent_to_alpha(percent),
-            None if base.alpha == u8::MAX => percent_to_alpha(72),
-            None => base.alpha,
+        let alpha = if base.alpha == u8::MAX {
+            percent_to_alpha(72)
+        } else {
+            base.alpha
         };
         IconStyle::new(base.with_alpha(alpha)).with_padding(4)
     }
