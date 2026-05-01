@@ -46,7 +46,6 @@ pub struct BackgroundTreatment {
     pub blur_radius: u8,
     pub dim_strength: u8,
     pub tint: Option<ClearColor>,
-    pub tint_opacity: u8,
     pub scaling: BackgroundScaling,
 }
 

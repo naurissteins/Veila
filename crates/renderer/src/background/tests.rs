@@ -266,7 +266,6 @@ fn applies_dim_and_tint_treatment() {
             blur_radius: 0,
             dim_strength: 20,
             tint: Some(ClearColor::opaque(10, 20, 40)),
-            tint_opacity: 10,
             scaling: BackgroundScaling::Fill,
         },
     )

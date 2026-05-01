@@ -428,7 +428,6 @@ pub(crate) fn background_treatment(
         tint: config
             .tint
             .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
-        tint_opacity: config.tint_opacity,
         scaling: to_background_scaling(config.scaling),
     }
 }

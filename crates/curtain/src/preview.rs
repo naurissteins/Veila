@@ -72,7 +72,6 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
         blur_radius: config.background.blur_radius,
         dim_strength: config.background.dim_strength,
         tint: config.background.tint.map(to_clear_color),
-        tint_opacity: config.background.tint_opacity,
         scaling: to_background_scaling(config.background.scaling),
     };
     let background = BackgroundAsset::load(

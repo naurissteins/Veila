@@ -4,7 +4,6 @@ mode = "file"
 path = "/path/to/wallpaper.jpg"
 color = "#333249"
 blur_radius = 0
-dim_strength = 0
 
 [lock]
 user_hint = "Password"

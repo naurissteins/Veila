@@ -14,7 +14,6 @@ fn loads_config_from_file() {
             blur_radius = 6
             dim_strength = 40
             tint = "#080A0E99"
-            tint_opacity = 12
 
             [lock]
             acquire_timeout_seconds = 9
@@ -138,7 +137,6 @@ fn loads_config_from_file() {
         loaded.config.background.tint,
         Some(RgbColor::rgba(8, 10, 14, 153))
     );
-    assert_eq!(loaded.config.background.tint_opacity, 12);
     assert_eq!(
         loaded.config.visuals.avatar_background_color(),
         Some(RgbColor::rgba(24, 30, 42, 209))

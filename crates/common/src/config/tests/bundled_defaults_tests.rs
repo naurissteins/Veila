@@ -30,7 +30,6 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.background.blur_radius, 12);
     assert_eq!(config.background.dim_strength, 54);
     assert_eq!(config.background.tint, Some(RgbColor::rgba(8, 10, 14, 102)));
-    assert_eq!(config.background.tint_opacity, 0);
     assert!(config.weather.enabled);
     assert_eq!(config.weather.location.as_deref(), Some("Riga"));
     assert!(config.weather.clone().coordinates().is_none());

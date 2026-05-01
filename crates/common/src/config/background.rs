@@ -182,8 +182,6 @@ pub struct BackgroundConfig {
     pub dim_strength: u8,
     #[serde(default)]
     pub tint: Option<RgbColor>,
-    #[serde(default = "default_background_tint_opacity")]
-    pub tint_opacity: u8,
 }
 
 impl Default for BackgroundConfig {
@@ -200,7 +198,6 @@ impl Default for BackgroundConfig {
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
             tint: Some(default_background_tint()),
-            tint_opacity: default_background_tint_opacity(),
         }
     }
 }
@@ -279,10 +276,6 @@ const fn default_background_dim_strength() -> u8 {
 
 const fn default_background_tint() -> RgbColor {
     RgbColor::rgba(8, 10, 14, 102)
-}
-
-const fn default_background_tint_opacity() -> u8 {
-    0
 }
 
 const fn default_gradient_top_left() -> RgbColor {

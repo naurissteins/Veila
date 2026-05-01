@@ -493,7 +493,6 @@ fn background_treatment(config: &veila_common::config::BackgroundConfig) -> Back
         blur_radius: config.blur_radius,
         dim_strength: config.dim_strength,
         tint: config.tint.map(to_clear_color),
-        tint_opacity: config.tint_opacity,
         scaling: to_background_scaling(config.scaling),
     }
 }

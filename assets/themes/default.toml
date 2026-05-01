@@ -1,10 +1,7 @@
 [background]
 mode = "gradient"
 color = "#413249"
-blur_radius = 0
-dim_strength = 30
-tint = "rgba(0, 0, 0, 0.1)"
-tint_opacity = 0
+dim_strength = 0
 
 [background.gradient]
 top_left = "#A85BFF"

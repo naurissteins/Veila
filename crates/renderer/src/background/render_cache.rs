@@ -197,12 +197,8 @@ fn cache_path(
 ) -> Result<PathBuf> {
     let key = stable_hash(cache_source_key(source, size)?);
     let key = stable_hash(format!(
-        "{key}:{:?}:{:?}:{:?}:{:?}:{:?}",
-        treatment.blur_radius,
-        treatment.dim_strength,
-        treatment.tint,
-        treatment.tint_opacity,
-        treatment.scaling
+        "{key}:{:?}:{:?}:{:?}:{:?}",
+        treatment.blur_radius, treatment.dim_strength, treatment.tint, treatment.scaling
     ));
     let key = stable_hash(format!("{key}:{}", variant.unwrap_or_default()));
 
