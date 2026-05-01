@@ -162,7 +162,7 @@ impl ShellState {
                 self.theme
                     .reveal_color
                     .unwrap_or(self.theme.placeholder_color.unwrap_or(self.theme.muted)),
-                self.theme.reveal_opacity,
+                None,
                 154,
             ),
             self.theme

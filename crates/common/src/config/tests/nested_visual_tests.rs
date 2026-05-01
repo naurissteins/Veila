@@ -24,9 +24,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert!(config.visuals.reveal_enabled());
     assert_eq!(
         config.visuals.reveal_color(),
-        Some(RgbColor::rgb(214, 227, 255))
+        Some(RgbColor::rgba(214, 227, 255, 168))
     );
-    assert_eq!(config.visuals.reveal_opacity(), Some(66));
     assert_eq!(config.visuals.reveal_font_family(), Some("Geom"));
     assert_eq!(config.visuals.reveal_font_weight(), Some(500));
     assert_eq!(config.visuals.reveal_font_style(), Some(FontStyle::Italic));

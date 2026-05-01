@@ -28,8 +28,6 @@ pub struct RevealVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub opacity: Option<u8>,
-    #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
     pub font_weight: Option<u16>,
@@ -45,7 +43,6 @@ impl Default for RevealVisualConfig {
             enabled: Some(true),
             text: Some(String::from("Press any key or click to continue")),
             color: None,
-            opacity: None,
             font_family: None,
             font_weight: None,
             font_style: None,
@@ -199,10 +196,6 @@ impl super::VisualConfig {
 
     pub fn reveal_color(&self) -> Option<RgbColor> {
         self.reveal.as_ref().and_then(|reveal| reveal.color)
-    }
-
-    pub fn reveal_opacity(&self) -> Option<u8> {
-        self.reveal.as_ref().and_then(|reveal| reveal.opacity)
     }
 
     pub fn reveal_font_family(&self) -> Option<&str> {

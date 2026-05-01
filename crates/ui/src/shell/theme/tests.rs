@@ -91,8 +91,7 @@ fn input_alpha_uses_rgba_values() {
     config.visuals.reveal = Some(RevealVisualConfig {
         enabled: Some(true),
         text: Some(String::from("Press any key or click to unlock")),
-        color: Some(ConfigColor::rgb(214, 227, 255)),
-        opacity: Some(66),
+        color: Some(ConfigColor::rgba(214, 227, 255, 168)),
         font_family: Some(String::from("Geom")),
         font_weight: Some(500),
         font_style: Some(FontStyle::Italic),
@@ -232,8 +231,10 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
     assert_eq!(theme.input_reveal_hint, "Press any key or click to unlock");
     assert!(theme.reveal_enabled);
-    assert_eq!(theme.reveal_color, Some(ClearColor::opaque(214, 227, 255)));
-    assert_eq!(theme.reveal_opacity, Some(66));
+    assert_eq!(
+        theme.reveal_color,
+        Some(ClearColor::rgba(214, 227, 255, 168))
+    );
     assert_eq!(theme.reveal_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.reveal_font_weight, Some(500));
     assert_eq!(theme.reveal_font_style, Some(FontStyle::Italic));

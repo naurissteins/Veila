@@ -89,7 +89,6 @@ fn parses_partial_config_with_defaults() {
         "Press any key or click to continue"
     );
     assert!(config.visuals.reveal_color().is_none());
-    assert!(config.visuals.reveal_opacity().is_none());
     assert!(config.visuals.reveal_font_family().is_none());
     assert!(config.visuals.reveal_font_weight().is_none());
     assert!(config.visuals.reveal_font_style().is_none());
