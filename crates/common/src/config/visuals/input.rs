@@ -32,9 +32,7 @@ pub struct InputVisualConfig {
     pub font_style: Option<FontStyle>,
     pub font_size: Option<u16>,
     pub background_color: Option<RgbColor>,
-    pub background_opacity: Option<u8>,
     pub border_color: Option<RgbColor>,
-    pub border_opacity: Option<u8>,
     pub width: Option<u16>,
     pub height: Option<u16>,
     pub radius: Option<u16>,
@@ -58,10 +56,8 @@ impl Default for InputVisualConfig {
             font_weight: Some(400),
             font_style: Some(FontStyle::Normal),
             font_size: Some(2),
-            background_color: Some(RgbColor::rgb(255, 255, 255)),
-            background_opacity: Some(5),
-            border_color: Some(RgbColor::rgb(255, 255, 255)),
-            border_opacity: Some(0),
+            background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            border_color: Some(RgbColor::rgba(255, 255, 255, 0)),
             width: Some(310),
             height: Some(54),
             radius: Some(10),
@@ -138,26 +134,10 @@ impl super::VisualConfig {
         }
     }
 
-    pub fn input_background_opacity(&self) -> Option<u8> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_opacity,
-            InputVisualEntry::Section(config) => config.background_opacity.or(self.input_opacity),
-        }
-    }
-
     pub fn input_border_color(&self) -> RgbColor {
         match &self.input {
             InputVisualEntry::Color(_) => self.input_border,
             InputVisualEntry::Section(config) => config.border_color.unwrap_or(self.input_border),
-        }
-    }
-
-    pub fn input_border_opacity(&self) -> Option<u8> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_border_opacity,
-            InputVisualEntry::Section(config) => {
-                config.border_opacity.or(self.input_border_opacity)
-            }
         }
     }
 

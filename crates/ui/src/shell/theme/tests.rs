@@ -13,7 +13,7 @@ use veila_renderer::ClearColor;
 use super::ShellTheme;
 
 #[test]
-fn input_opacity_overrides_embedded_alpha() {
+fn input_alpha_uses_rgba_values() {
     let mut config = AppConfig::default();
     config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
         alignment: Some(veila_common::InputAlignment::CenterCenter),
@@ -30,9 +30,7 @@ fn input_opacity_overrides_embedded_alpha() {
         font_style: Some(FontStyle::Italic),
         font_size: Some(3),
         background_color: Some(ConfigColor::rgba(255, 255, 255, 200)),
-        background_opacity: Some(10),
         border_color: Some(ConfigColor::rgba(255, 255, 255, 180)),
-        border_opacity: Some(12),
         width: Some(280),
         height: Some(54),
         radius: None,
@@ -239,8 +237,8 @@ fn input_opacity_overrides_embedded_alpha() {
 
     let theme = ShellTheme::from_config(&config);
 
-    assert_eq!(theme.input.alpha, 26);
-    assert_eq!(theme.input_border.alpha, 31);
+    assert_eq!(theme.input.alpha, 200);
+    assert_eq!(theme.input_border.alpha, 180);
     assert_eq!(
         theme.input_alignment,
         veila_common::InputAlignment::CenterCenter

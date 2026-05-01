@@ -39,8 +39,6 @@ pub struct VisualConfig {
     #[serde(default)]
     pub input: InputVisualEntry,
     #[serde(default)]
-    pub input_opacity: Option<u8>,
-    #[serde(default)]
     pub input_font_family: Option<String>,
     #[serde(default)]
     pub input_font_weight: Option<u16>,
@@ -52,8 +50,6 @@ pub struct VisualConfig {
     pub input_center_in_layer: Option<bool>,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
-    #[serde(default)]
-    pub input_border_opacity: Option<u8>,
     #[serde(default)]
     pub input_width: Option<u16>,
     #[serde(default)]
@@ -227,14 +223,12 @@ impl Default for VisualConfig {
             avatar_background_color: None,
             panel_border: default_panel_border_color(),
             input: InputVisualEntry::Section(InputVisualConfig::default()),
-            input_opacity: Some(5),
             input_font_family: Some(default_google_sans_flex_font_family()),
             input_font_weight: Some(400),
             input_font_style: Some(FontStyle::Normal),
             input_font_size: Some(2),
             input_center_in_layer: Some(false),
-            input_border: RgbColor::rgb(255, 255, 255),
-            input_border_opacity: Some(0),
+            input_border: RgbColor::rgba(255, 255, 255, 0),
             input_width: Some(310),
             input_height: Some(54),
             input_radius: 10,

@@ -98,8 +98,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.input_vertical_padding().is_none());
     assert!(config.visuals.input_offset_x().is_none());
     assert!(config.visuals.input_offset_y().is_none());
-    assert!(config.visuals.input_background_opacity().is_none());
-    assert!(config.visuals.input_border_opacity().is_none());
     assert!(config.visuals.input_width().is_none());
     assert!(config.visuals.input_height().is_none());
     assert_eq!(config.visuals.input_radius(), 32);

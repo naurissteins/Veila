@@ -39,10 +39,8 @@ fn loads_config_from_file() {
 
             [visuals]
             avatar_background_color = "rgba(24, 30, 42, 0.82)"
-            input = "#FFFFFF"
-            input_opacity = 10
-            input_border = "#FFFFFF"
-            input_border_opacity = 12
+            input = "#FFFFFF1A"
+            input_border = "#FFFFFF1F"
             input_font_family = "Geom"
             input_font_weight = 600
             input_font_style = "italic"
@@ -141,7 +139,7 @@ fn loads_config_from_file() {
     );
     assert_eq!(
         loaded.config.visuals.input_background_color(),
-        RgbColor::rgb(255, 255, 255)
+        RgbColor::rgba(255, 255, 255, 26)
     );
     assert_eq!(loaded.config.visuals.input_font_family(), Some("Geom"));
     assert_eq!(loaded.config.visuals.input_font_weight(), Some(600));
@@ -150,12 +148,10 @@ fn loads_config_from_file() {
         Some(FontStyle::Italic)
     );
     assert_eq!(loaded.config.visuals.input_font_size(), Some(3));
-    assert_eq!(loaded.config.visuals.input_background_opacity(), Some(10));
     assert_eq!(
         loaded.config.visuals.input_border_color(),
-        RgbColor::rgb(255, 255, 255)
+        RgbColor::rgba(255, 255, 255, 31)
     );
-    assert_eq!(loaded.config.visuals.input_border_opacity(), Some(12));
     assert_eq!(loaded.config.visuals.input_width(), Some(280));
     assert_eq!(loaded.config.visuals.input_height(), Some(54));
     assert_eq!(loaded.config.visuals.input_radius(), 20);

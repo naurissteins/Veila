@@ -7,7 +7,7 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
 
     assert_eq!(
         config.visuals.input_background_color(),
-        RgbColor::rgb(255, 255, 255)
+        RgbColor::rgba(255, 255, 255, 13)
     );
     assert_eq!(config.visuals.input_font_family(), Some("Geom"));
     assert_eq!(config.visuals.input_font_weight(), Some(600));
@@ -52,12 +52,10 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.input_vertical_padding(), Some(56));
     assert_eq!(config.visuals.input_offset_x(), Some(14));
     assert_eq!(config.visuals.input_offset_y(), Some(-18));
-    assert_eq!(config.visuals.input_background_opacity(), Some(5));
     assert_eq!(
         config.visuals.input_border_color(),
-        RgbColor::rgb(221, 221, 221)
+        RgbColor::rgba(221, 221, 221, 31)
     );
-    assert_eq!(config.visuals.input_border_opacity(), Some(12));
     assert_eq!(config.visuals.input_width(), Some(310));
     assert_eq!(config.visuals.input_height(), Some(54));
     assert_eq!(config.visuals.input_radius(), 10);

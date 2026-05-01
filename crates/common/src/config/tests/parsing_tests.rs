@@ -171,7 +171,7 @@ fn parses_now_playing_player_filters() {
 }
 
 #[test]
-fn partial_input_table_keeps_default_translucent_background_and_disabled_border() {
+fn partial_input_table_keeps_explicit_fill_and_default_disabled_border() {
     let config = AppConfig::from_toml_str(
         r##"
             [visuals.input]
@@ -184,12 +184,10 @@ fn partial_input_table_keeps_default_translucent_background_and_disabled_border(
         config.visuals.input_background_color(),
         RgbColor::rgb(255, 255, 255)
     );
-    assert_eq!(config.visuals.input_background_opacity(), Some(5));
     assert_eq!(
         config.visuals.input_border_color(),
-        RgbColor::rgb(255, 255, 255)
+        RgbColor::rgba(255, 255, 255, 0)
     );
-    assert_eq!(config.visuals.input_border_opacity(), Some(0));
     assert_eq!(config.visuals.input_border_width(), Some(0));
 }
 

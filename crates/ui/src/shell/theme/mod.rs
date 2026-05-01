@@ -221,14 +221,8 @@ impl ShellTheme {
                 .avatar_background_color()
                 .map(to_color)
                 .unwrap_or_else(|| to_color(config.visuals.panel)),
-            input: to_color_with_opacity(
-                config.visuals.input_background_color(),
-                config.visuals.input_background_opacity(),
-            ),
-            input_border: to_color_with_opacity(
-                config.visuals.input_border_color(),
-                config.visuals.input_border_opacity(),
-            ),
+            input: to_color(config.visuals.input_background_color()),
+            input_border: to_color(config.visuals.input_border_color()),
             input_font_family: config.visuals.input_font_family().map(str::to_owned),
             input_font_weight: config.visuals.input_font_weight(),
             input_font_style: config.visuals.input_font_style(),

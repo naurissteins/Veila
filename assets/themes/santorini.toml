@@ -57,8 +57,7 @@ opacity = 72
 [visuals.input]
 alignment = "center-left"
 center_in_layer = true
-background_color = "#FFFFFF"
-background_opacity = 8
+background_color = "#FFFFFF14"
 width = 310
 height = 54
 radius = 50
@@ -66,9 +65,8 @@ mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
 font_size = 2
-border_color = "#FFFFFF"
+border_color = "#FFFFFF33"
 border_width = 3
-border_opacity = 20
 
 [visuals.status]
 rejected_color = "#FFD5D5"

@@ -81,9 +81,8 @@ bottom_padding = 30
 alignment = "left"
 
 [visuals.input]
-background_color = "#FFFFFF"
-background_opacity = 8
-border_color = "#FFFFFF"
+background_color = "#FFFFFF14"
+border_color = "#FFFFFF00"
 width = 310
 height = 54
 radius = 10

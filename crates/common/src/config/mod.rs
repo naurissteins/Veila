@@ -458,14 +458,12 @@ fn remove_nested_visual_value(base_visuals: &mut toml::Table, section: &str, nes
 }
 
 const LEGACY_VISUAL_MAPPINGS: &[(&str, &str, &str)] = &[
-    ("input_opacity", "input", "background_opacity"),
     ("input_font_family", "input", "font_family"),
     ("input_font_weight", "input", "font_weight"),
     ("input_font_style", "input", "font_style"),
     ("input_font_size", "input", "font_size"),
     ("input_center_in_layer", "input", "center_in_layer"),
     ("input_border", "input", "border_color"),
-    ("input_border_opacity", "input", "border_opacity"),
     ("input_width", "input", "width"),
     ("input_height", "input", "height"),
     ("input_radius", "input", "radius"),

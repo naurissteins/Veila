@@ -66,14 +66,12 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.input_offset_y(), Some(0));
     assert_eq!(
         config.visuals.input_background_color(),
-        RgbColor::rgb(255, 255, 255)
+        RgbColor::rgba(255, 255, 255, 13)
     );
-    assert_eq!(config.visuals.input_background_opacity(), Some(5));
     assert_eq!(
         config.visuals.input_border_color(),
-        RgbColor::rgb(255, 255, 255)
+        RgbColor::rgba(255, 255, 255, 0)
     );
-    assert_eq!(config.visuals.input_border_opacity(), Some(0));
     assert_eq!(config.visuals.input_width(), Some(310));
     assert_eq!(config.visuals.input_height(), Some(54));
     assert_eq!(config.visuals.input_radius(), 10);
