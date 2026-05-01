@@ -12,36 +12,30 @@ fn lists_bundled_theme_names() {
 #[test]
 fn loads_bundled_default_theme_as_default_layer() {
     let (_path, raw) = read_theme_source(None, "default").expect("default theme should load");
-    let value: toml::Value = toml::from_str(&raw).expect("default theme should parse");
+    let theme_config = AppConfig::from_toml_str(&raw).expect("default theme should parse");
     let config = AppConfig::from_default_layers().expect("default config should load");
 
     assert_eq!(
         config.background.blur_radius,
-        theme_u8(&value, "background", "blur_radius").expect("theme blur radius")
+        theme_config.background.blur_radius
     );
     assert_eq!(
         config.background.dim_strength,
-        theme_u8(&value, "background", "dim_strength").expect("theme dim strength")
+        theme_config.background.dim_strength
     );
-    assert_eq!(
-        config.weather.enabled,
-        theme_bool(&value, "weather", "enabled").expect("theme weather state")
-    );
-    assert_eq!(
-        config.battery.enabled,
-        theme_bool(&value, "battery", "enabled").expect("theme battery state")
-    );
+    assert_eq!(config.weather.enabled, theme_config.weather.enabled);
+    assert_eq!(config.battery.enabled, theme_config.battery.enabled);
     assert_eq!(
         config.visuals.avatar_size(),
-        theme_u16(&value, "visuals.avatar", "size")
+        theme_config.visuals.avatar_size()
     );
     assert_eq!(
         config.visuals.clock_font_family(),
-        theme_str(&value, "visuals.clock", "font_family")
+        theme_config.visuals.clock_font_family()
     );
     assert_eq!(
         config.visuals.date_opacity(),
-        theme_u8(&value, "visuals.date", "opacity")
+        theme_config.visuals.date_opacity()
     );
 }
 
@@ -280,32 +274,4 @@ fn reads_bundled_theme_source() {
     );
     assert!(raw.contains("[visuals.clock]"));
     assert!(config.visuals.clock_font_family().is_some());
-}
-
-fn theme_value<'a>(value: &'a toml::Value, section: &str, key: &str) -> Option<&'a toml::Value> {
-    let mut current = value;
-    for part in section.split('.') {
-        current = current.get(part)?;
-    }
-    current.get(key)
-}
-
-fn theme_bool(value: &toml::Value, section: &str, key: &str) -> Option<bool> {
-    theme_value(value, section, key)?.as_bool()
-}
-
-fn theme_str<'a>(value: &'a toml::Value, section: &str, key: &str) -> Option<&'a str> {
-    theme_value(value, section, key)?.as_str()
-}
-
-fn theme_u8(value: &toml::Value, section: &str, key: &str) -> Option<u8> {
-    theme_value(value, section, key)?
-        .as_integer()
-        .and_then(|value| u8::try_from(value).ok())
-}
-
-fn theme_u16(value: &toml::Value, section: &str, key: &str) -> Option<u16> {
-    theme_value(value, section, key)?
-        .as_integer()
-        .and_then(|value| u16::try_from(value).ok())
 }
