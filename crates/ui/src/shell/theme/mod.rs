@@ -90,7 +90,6 @@ pub struct ShellTheme {
     pub placeholder_color: Option<ClearColor>,
     pub eye_enabled: bool,
     pub eye_icon_color: Option<ClearColor>,
-    pub eye_icon_opacity: Option<u8>,
     pub caps_lock_enabled: bool,
     pub keyboard_enabled: bool,
     pub keyboard_background_color: ClearColor,
@@ -294,7 +293,6 @@ impl ShellTheme {
             placeholder_color: config.visuals.placeholder_color().map(to_color),
             eye_enabled: config.visuals.eye_enabled(),
             eye_icon_color: config.visuals.eye_icon_color().map(to_color),
-            eye_icon_opacity: config.visuals.eye_icon_opacity(),
             caps_lock_enabled: config.visuals.caps_lock_enabled(),
             keyboard_enabled: config.visuals.keyboard_enabled(),
             keyboard_background_color: config

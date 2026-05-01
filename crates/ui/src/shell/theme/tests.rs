@@ -102,8 +102,7 @@ fn input_alpha_uses_rgba_values() {
     });
     config.visuals.eye = Some(EyeVisualConfig {
         enabled: Some(true),
-        color: Some(ConfigColor::rgb(244, 248, 255)),
-        opacity: Some(72),
+        color: Some(ConfigColor::rgba(244, 248, 255, 184)),
     });
     config.visuals.keyboard = Some(KeyboardVisualConfig {
         enabled: Some(true),
@@ -324,9 +323,8 @@ fn input_alpha_uses_rgba_values() {
     );
     assert_eq!(
         theme.eye_icon_color,
-        Some(ClearColor::opaque(244, 248, 255))
+        Some(ClearColor::rgba(244, 248, 255, 184))
     );
-    assert_eq!(theme.eye_icon_opacity, Some(72));
     assert_eq!(
         theme.keyboard_background_color,
         ClearColor::rgba(18, 22, 30, 82)

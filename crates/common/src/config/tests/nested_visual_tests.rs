@@ -120,9 +120,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.status_gap(), Some(18));
     assert_eq!(
         config.visuals.eye_icon_color(),
-        Some(RgbColor::rgb(255, 255, 255))
+        Some(RgbColor::rgba(255, 255, 255, 184))
     );
-    assert_eq!(config.visuals.eye_icon_opacity(), Some(72));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(config.visuals.identity_gap(), Some(26));

@@ -98,8 +98,7 @@ border_color = "#DDDDDD1F"
             gap = 18
 
             [visuals.eye]
-            color = "#ffffff"
-            opacity = 72
+            color = "#FFFFFFB8"
 
             [visuals.keyboard]
             background_color = "rgba(18, 22, 30, 0.32)"

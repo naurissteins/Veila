@@ -81,14 +81,11 @@ pub(super) fn styled_alpha(configured_alpha: u8, fallback_alpha: u8) -> u8 {
     }
 }
 
-pub(super) fn eye_icon_alpha(
-    base_alpha: u8,
-    opacity_percent: Option<u8>,
-    interaction_alpha: u8,
-) -> u8 {
-    let effective_percent = match opacity_percent {
-        Some(percent) => percent.min(100),
-        None => ((u16::from(base_alpha) * 100 + 127) / 255) as u8,
+pub(super) fn eye_icon_alpha(base_alpha: u8, interaction_alpha: u8) -> u8 {
+    let effective_percent = if base_alpha == u8::MAX {
+        72
+    } else {
+        ((u16::from(base_alpha) * 100 + 127) / 255) as u8
     };
     ((u16::from(interaction_alpha) * u16::from(effective_percent) + 50) / 100) as u8
 }

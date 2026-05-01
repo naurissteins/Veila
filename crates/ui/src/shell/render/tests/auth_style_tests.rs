@@ -144,34 +144,31 @@ fn avatar_style_uses_configured_icon_color() {
 #[test]
 fn toggle_style_uses_configured_eye_icon_color() {
     let theme = ShellTheme {
-        eye_icon_color: Some(ClearColor::opaque(244, 248, 255)),
-        eye_icon_opacity: None,
+        eye_icon_color: Some(ClearColor::rgba(244, 248, 255, 184)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.toggle_style();
 
-    assert_eq!(style.color, ClearColor::rgba(244, 248, 255, 184));
+    assert_eq!(style.color, ClearColor::rgba(244, 248, 255, 132));
 }
 
 #[test]
-fn toggle_style_scales_alpha_with_configured_eye_icon_opacity() {
+fn toggle_style_uses_opaque_eye_fallback_alpha() {
     let theme = ShellTheme {
         eye_icon_color: Some(ClearColor::opaque(244, 248, 255)),
-        eye_icon_opacity: Some(50),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.toggle_style();
 
-    assert_eq!(style.color, ClearColor::rgba(244, 248, 255, 92));
+    assert_eq!(style.color, ClearColor::rgba(244, 248, 255, 132));
 }
 
 #[test]
 fn toggle_style_preserves_explicit_eye_icon_alpha_when_unset() {
     let theme = ShellTheme {
         eye_icon_color: Some(ClearColor::rgba(244, 248, 255, 128)),
-        eye_icon_opacity: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

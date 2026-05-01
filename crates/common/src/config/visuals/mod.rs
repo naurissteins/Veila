@@ -133,8 +133,6 @@ pub struct VisualConfig {
     #[serde(default)]
     pub eye_icon_color: Option<RgbColor>,
     #[serde(default)]
-    pub eye_icon_opacity: Option<u8>,
-    #[serde(default)]
     pub keyboard_color: Option<RgbColor>,
     #[serde(default)]
     pub battery_color: Option<RgbColor>,
@@ -267,8 +265,7 @@ impl Default for VisualConfig {
             clock_size: Some(14),
             date_size: Some(2),
             placeholder_color: Some(RgbColor::rgba(255, 255, 255, 153)),
-            eye_icon_color: Some(RgbColor::rgb(255, 255, 255)),
-            eye_icon_opacity: Some(72),
+            eye_icon_color: Some(RgbColor::rgba(255, 255, 255, 184)),
             keyboard_color: Some(RgbColor::rgb(255, 255, 255)),
             battery_color: Some(RgbColor::rgb(255, 255, 255)),
             battery_background_color: Some(RgbColor::rgba(255, 255, 255, 13)),

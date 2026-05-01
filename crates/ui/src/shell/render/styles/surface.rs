@@ -91,7 +91,7 @@ impl ShellState {
             184
         };
         let base = self.theme.eye_icon_color.unwrap_or(self.theme.foreground);
-        let alpha = eye_icon_alpha(base.alpha, self.theme.eye_icon_opacity, interaction_alpha);
+        let alpha = eye_icon_alpha(base.alpha, interaction_alpha);
         IconStyle::new(base.with_alpha(alpha)).with_padding(4)
     }
 

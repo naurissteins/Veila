@@ -134,8 +134,7 @@ opacity = 88
 gap = 18
 
 [visuals.eye]
-color = "#ffffff"
-opacity = 72
+color = "#FFFFFFB8"
 
 [visuals.layout]
 header_top_offset = -12

@@ -505,7 +505,6 @@ const LEGACY_VISUAL_MAPPINGS: &[(&str, &str, &str)] = &[
     ("date_size", "date", "size"),
     ("placeholder_color", "placeholder", "color"),
     ("eye_icon_color", "eye", "color"),
-    ("eye_icon_opacity", "eye", "opacity"),
     ("keyboard_color", "keyboard", "color"),
     ("keyboard_background_size", "keyboard", "background_size"),
     ("keyboard_opacity", "keyboard", "opacity"),

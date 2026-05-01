@@ -95,16 +95,13 @@ pub struct EyeVisualConfig {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub color: Option<RgbColor>,
-    #[serde(default)]
-    pub opacity: Option<u8>,
 }
 
 impl Default for EyeVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            color: Some(RgbColor::rgb(255, 255, 255)),
-            opacity: Some(72),
+            color: Some(RgbColor::rgba(255, 255, 255, 184)),
         }
     }
 }
@@ -320,13 +317,6 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|eye| eye.enabled)
             .unwrap_or(true)
-    }
-
-    pub fn eye_icon_opacity(&self) -> Option<u8> {
-        self.eye
-            .as_ref()
-            .and_then(|eye| eye.opacity)
-            .or(self.eye_icon_opacity)
     }
 
     pub fn caps_lock_enabled(&self) -> bool {

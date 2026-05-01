@@ -102,8 +102,7 @@ right_offset = 8
 gap = 8
 
 [visuals.eye]
-color = "#000000"
-opacity = 80
+color = "#000000CC"
 
 [visuals.weather]
 temperature_color = "#000000"
