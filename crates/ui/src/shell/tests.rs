@@ -36,6 +36,51 @@ fn edits_and_submits_password_text() {
 }
 
 #[test]
+fn select_all_then_typing_replaces_secret() {
+    let mut shell = ShellState::default();
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('a')),
+        ShellAction::None
+    );
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('b')),
+        ShellAction::None
+    );
+
+    assert_eq!(shell.handle_key(ShellKey::SelectAll), ShellAction::None);
+    assert!(shell.secret_selected);
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('z')),
+        ShellAction::None
+    );
+    assert_eq!(shell.secret, "z");
+    assert!(!shell.secret_selected);
+}
+
+#[test]
+fn select_all_then_backspace_clears_secret() {
+    let mut shell = ShellState::default();
+
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('a')),
+        ShellAction::None
+    );
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('b')),
+        ShellAction::None
+    );
+
+    assert_eq!(shell.handle_key(ShellKey::SelectAll), ShellAction::None);
+    assert!(shell.secret_selected);
+
+    assert_eq!(shell.handle_key(ShellKey::Backspace), ShellAction::None);
+    assert!(shell.secret.is_empty());
+    assert!(!shell.secret_selected);
+}
+
+#[test]
 fn empty_enter_submits_authentication() {
     let mut shell = ShellState::default();
 

@@ -164,6 +164,7 @@ impl ShellState {
         let reveal_hint_text = theme.input_reveal_hint.clone();
         Self {
             secret: String::new(),
+            secret_selected: false,
             caps_lock_active: false,
             keyboard_layout_label: None,
             battery: battery_widget_data(battery_snapshot),

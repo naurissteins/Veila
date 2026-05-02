@@ -18,6 +18,7 @@ impl CurtainApp {
 
         self.has_keyboard_focus = focused;
         if !focused {
+            self.ctrl_active = false;
             self.backspace_repeat = None;
         }
         self.ui_shell.set_focus(focused);

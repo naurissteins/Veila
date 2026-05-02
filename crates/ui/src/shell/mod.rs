@@ -34,6 +34,7 @@ pub enum ShellKey {
     Backspace,
     Enter,
     Escape,
+    SelectAll,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +61,7 @@ struct NowPlayingTransition {
 #[derive(Debug, Clone)]
 pub struct ShellState {
     secret: String,
+    secret_selected: bool,
     caps_lock_active: bool,
     keyboard_layout_label: Option<String>,
     battery: Option<BatteryWidgetData>,

@@ -180,6 +180,7 @@ impl KeyboardHandler for CurtainApp {
         layout: u32,
     ) {
         self.active_keyboard_layout = layout;
+        self.ctrl_active = modifiers.ctrl;
         self.handle_shell_caps_lock(modifiers.caps_lock, qh);
         self.handle_shell_keyboard_layout(active_layout_label(self), qh);
     }
@@ -235,6 +236,11 @@ impl CurtainApp {
 
 fn handle_key_event(app: &mut CurtainApp, queue_handle: &QueueHandle<CurtainApp>, event: KeyEvent) {
     if !app.has_keyboard_focus {
+        return;
+    }
+
+    if app.ctrl_active && matches!(event.keysym, Keysym::a | Keysym::A) {
+        app.handle_shell_key(ShellKey::SelectAll, queue_handle);
         return;
     }
 

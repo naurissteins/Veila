@@ -13,7 +13,13 @@ impl ShellState {
             ShellKey::Escape if !self.input_visible() => ShellAction::None,
             ShellKey::Character(character) => {
                 self.reveal_auth();
-                if !character.is_control() && self.secret.chars().count() < 128 {
+                if !character.is_control()
+                    && (self.secret_selected || self.secret.chars().count() < 128)
+                {
+                    if self.secret_selected {
+                        self.secret.clear();
+                        self.secret_selected = false;
+                    }
                     self.secret.push(character);
                     if !self.retry_cooldown_active() {
                         self.clear_rejected_state();
@@ -24,7 +30,12 @@ impl ShellState {
             }
             ShellKey::Backspace => {
                 self.reveal_auth();
-                self.secret.pop();
+                if self.secret_selected {
+                    self.secret.clear();
+                    self.secret_selected = false;
+                } else {
+                    self.secret.pop();
+                }
                 if !self.retry_cooldown_active() {
                     self.clear_rejected_state();
                     self.status = ShellStatus::Idle;
@@ -33,10 +44,16 @@ impl ShellState {
             }
             ShellKey::Escape => {
                 self.secret.clear();
+                self.secret_selected = false;
                 self.reveal_secret = false;
                 self.reveal_toggle_pressed = false;
                 self.status = ShellStatus::Idle;
                 self.hide_auth();
+                ShellAction::None
+            }
+            ShellKey::SelectAll => {
+                self.reveal_auth();
+                self.secret_selected = !self.secret.is_empty();
                 ShellAction::None
             }
             ShellKey::Enter => {
@@ -74,6 +91,7 @@ impl ShellState {
             self.bump_static_scene_revision();
         }
         self.secret.clear();
+        self.secret_selected = false;
         self.reveal_secret = false;
         self.reveal_toggle_pressed = false;
         let retry_until = retry_after_ms
