@@ -4,7 +4,7 @@ mode = "file"
 path = "/path/to/wallpaper.jpg"
 color = "#323549"
 blur_radius = 0
-dim_strength = 0
+dim_strength = 20
 
 [lock]
 user_hint = "Password"
@@ -16,7 +16,7 @@ mode = "blur"
 alignment = "left"
 width = 540
 offset_x = 0
-color = "#0000001A"
+color = "rgba(0, 0, 0, 0.1)"
 blur_radius = 12
 
 [battery]
@@ -35,14 +35,14 @@ meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Geom"
 font_weight = 600
-color = "#FFFFFF99"
+color = "rgba(255, 255, 255, 0.6)"
 size = 14
 gap = 20
 
 [visuals.date]
 font_family = "Google Sans Flex"
 font_weight = 400
-color = "#C8D8F2E6"
+color = "rgba(255, 255, 255, 0.6)"
 
 [visuals.input]
 alignment = "center-left"
@@ -51,8 +51,8 @@ horizontal_padding = 0
 vertical_padding = 0
 offset_x = 0
 offset_y = 0
-background_color = "#FFFFFF1A"
-border_color = "#FFFFFF14"
+background_color = "rgba(255, 255, 255, 0.1)"
+border_color = "rgba(255, 255, 255, 0.08)"
 border_width = 3
 width = 310
 height = 54
@@ -66,15 +66,21 @@ font_size = 2
 rejected_color = "#FFD5D5"
 pending_color = "#ECECEC"
 
+[visuals.eye]
+color = "rgba(255, 255, 255, 0.72)"
+
+[visuals.caps_lock]
+color = "rgba(255, 255, 255, 0.52)"
+
 [visuals.placeholder]
-color = "#FFFFFFCC"
+color = "rgba(255, 255, 255, 0.8)"
 
 [visuals.avatar]
 size = 160
 gap = 24
 background_color = "rgba(255, 255, 255, 0.08)"
 placeholder_padding = 28
-ring_color = "#ffffff"
+ring_color = "rgba(255, 255, 255, 0.2)"
 ring_width = 3
 icon_color = "#ffffff"
 
@@ -87,16 +93,16 @@ gap = 28
 
 [visuals.keyboard]
 background_size = 46
-background_color = "rgba(255, 255, 255, 0.1)"
-color = "#FFFFFFE6"
+background_color = "rgba(0, 0, 0, 0.1)"
+color = "rgba(255, 255, 255, 0.9)"
 size = 2
 top_offset = -28
 right_offset = 8
 
 [visuals.battery]
-background_color = "rgba(255, 255, 255, 0.1)"
+background_color = "rgba(0, 0, 0, 0.1)"
 background_size = 46
-color = "#FFFFFFE6"
+color = "rgba(255, 255, 255, 0.9)"
 size = 20
 top_offset = -28
 right_offset = 8
@@ -104,8 +110,8 @@ gap = 8
 
 [visuals.weather]
 size = 2
-temperature_color = "#FFFFFFBA"
-location_color = "#D6E3FF93"
+temperature_color = "rgba(255, 255, 255, 0.73)"
+location_color = "rgba(214, 227, 255, 0.58)"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -124,8 +130,8 @@ alignment = "left"
 [visuals.now_playing]
 content_gap = 18
 fade_duration_ms = 320
-title_color = "#FFFFFFAF"
-artist_color = "#FFFFFF63"
+title_color = "rgba(255, 255, 255, 0.69)"
+artist_color = "rgba(255, 255, 255, 0.39)"
 title_size = 2
 artist_size = 2
 artwork_size = 44
@@ -144,9 +150,9 @@ width = 380
 [visuals.now_playing.background]
 enabled = true
 mode = "blur"
-color = "#0000003D"
+color = "rgba(0, 0, 0, 0.24)"
 radius = 18
 padding_x = 18
 padding_y = 12
-border_color = "#FFFFFF1A"
+border_color = "rgba(255, 255, 255, 0.1)"
 border_width = 1

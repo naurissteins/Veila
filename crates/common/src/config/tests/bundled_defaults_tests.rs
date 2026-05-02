@@ -27,9 +27,9 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(gradient.bottom_left, RgbColor::rgb(111, 226, 255));
     assert_eq!(gradient.bottom_right, RgbColor::rgb(111, 76, 255));
     assert!(config.background.resolved_path().is_none());
-    assert_eq!(config.background.blur_radius, 12);
+    assert_eq!(config.background.blur_radius, 0);
     assert_eq!(config.background.dim_strength, 54);
-    assert_eq!(config.background.tint, Some(RgbColor::rgba(8, 10, 14, 102)));
+    assert!(config.background.tint.is_none());
     assert!(config.weather.enabled);
     assert_eq!(config.weather.location.as_deref(), Some("Riga"));
     assert!(config.weather.clone().coordinates().is_none());

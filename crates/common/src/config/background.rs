@@ -197,7 +197,7 @@ impl Default for BackgroundConfig {
             radial: Some(BackgroundRadialConfig::default()),
             blur_radius: default_background_blur_radius(),
             dim_strength: default_background_dim_strength(),
-            tint: Some(default_background_tint()),
+            tint: None,
         }
     }
 }
@@ -267,15 +267,11 @@ const fn default_background_color() -> RgbColor {
 }
 
 const fn default_background_blur_radius() -> u8 {
-    12
+    0
 }
 
 const fn default_background_dim_strength() -> u8 {
     54
-}
-
-const fn default_background_tint() -> RgbColor {
-    RgbColor::rgba(8, 10, 14, 102)
 }
 
 const fn default_gradient_top_left() -> RgbColor {

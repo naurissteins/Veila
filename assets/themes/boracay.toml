@@ -4,7 +4,6 @@
 mode = "file"
 path = "/path/to/wallpaper.jpg"
 color = "#494732"
-blur_radius = 0
 dim_strength = 0
 
 [lock]
@@ -24,20 +23,20 @@ meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Mail Ray Stuff"
 font_weight = 400
-color = "#FFFFFF66"
+color = "rgba(255, 255, 255, 0.4)"
 size = 24
 gap = 20
 
 [visuals.date]
 font_family = "Mail Ray Stuff"
 font_weight = 400
-color = "#FFFFFF66"
+color = "rgba(255, 255, 255, 0.4)"
 size = 7
 
 [visuals.input]
 alignment = "bottom-center"
-background_color = "#FFFFFF05"
-border_color = "#FFFFFF14"
+background_color = "rgba(255, 255, 255, 0.02)"
+border_color = "rgba(255, 255, 255, 0.08)"
 border_width = 3
 width = 310
 height = 54
@@ -52,13 +51,19 @@ rejected_color = "#FFD5D5"
 pending_color = "#ECECEC"
 
 [visuals.placeholder]
-color = "#FFFFFF99"
+color = "rgba(255, 255, 255, 0.6)"
+
+[visuals.eye]
+color = "rgba(255, 255, 255, 0.72)"
+
+[visuals.caps_lock]
+color = "rgba(255, 255, 255, 0.52)"
 
 [visuals.avatar]
 enabled = false
 size = 192
 gap = 24
-background_color = "#FFFFFF0F"
+background_color = "rgba(255, 255, 255, 0.06)"
 placeholder_padding = 28
 icon_color = "#ffffff"
 
@@ -72,7 +77,7 @@ gap = 28
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(255, 255, 255, 0.05)"
-color = "#FFFFFFAD"
+color = "rgba(255, 255, 255, 0.68)"
 size = 2
 top_offset = -24
 right_offset = 8
@@ -80,7 +85,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.05)"
 background_size = 46
-color = "#FFFFFFAD"
+color = "rgba(255, 255, 255, 0.68)"
 size = 20
 top_offset = -24
 right_offset = 8
@@ -89,8 +94,8 @@ gap = 8
 [visuals.weather]
 alignment = "left"
 size = 2
-temperature_color = "#FFFFFFBA"
-location_color = "#D6E3FF93"
+temperature_color = "rgba(255, 255, 255, 0.73)"
+location_color = "rgba(214, 227, 255, 0.58)"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -110,8 +115,8 @@ bottom_padding = 30
 enabled = false
 content_gap = 18
 fade_duration_ms = 320
-title_color = "#FFFFFFAF"
-artist_color = "#FFFFFF63"
+title_color = "rgba(255, 255, 255, 0.69)"
+artist_color = "rgba(255, 255, 255, 0.39)"
 title_size = 2
 artist_size = 2
 artwork_size = 44
@@ -124,3 +129,11 @@ title_font_weight = 400
 artist_font_family = "Google Sans Flex"
 artist_font_weight = 400
 width = 380
+
+[visuals.now_playing.background]
+enabled = true
+mode = "blur"
+color = "rgba(0, 0, 0, 0.05)"
+radius = 18
+padding_x = 12
+padding_y = 12

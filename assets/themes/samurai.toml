@@ -4,7 +4,7 @@
 mode = "file"
 path = "/path/to/wallpaper.jpg"
 color = "#fafafa"
-dim_strength = 0
+dim_strength = 20
 
 [lock]
 user_hint = "Password"
@@ -16,9 +16,9 @@ style = "panel"
 alignment = "right"
 offset_x = -300
 vertical_alignment = "center"
-width = 540
+width = 600
 height = 600
-color = "#00000000"
+color = "rgba(0, 0, 0, 0)"
 blur_radius = 0
 
 [battery]
@@ -39,14 +39,14 @@ meridiem_offset_x = 6
 meridiem_offset_y = 7
 font_family = "Japanola"
 font_weight = 700
-color = "#000000B3"
-size = 24
+color = "rgba(0, 0, 0, 0.7)"
+size = 22
 gap = 20
 
 [visuals.date]
 font_family = "Japanola"
 font_weight = 700
-color = "#000000B3"
+color = "rgba(0, 0, 0, 0.7)"
 size = 5
 
 [visuals.input]
@@ -55,8 +55,8 @@ horizontal_padding = 0
 vertical_padding = 0
 offset_x = 0
 offset_y = 20
-background_color = "#00000000"
-border_color = "#000000B3"
+background_color = "rgba(0, 0, 0, 0)"
+border_color = "rgba(0, 0, 0, 0.7)"
 border_width = 3
 width = 310
 height = 54
@@ -71,10 +71,13 @@ rejected_color = "#FF4D4D"
 pending_color = "#000000"
 
 [visuals.caps_lock]
-color = "#00000099"
+color = "rgba(0, 0, 0, 0.6)"
 
 [visuals.placeholder]
-color = "#00000099"
+color = "rgba(0, 0, 0, 0.6)"
+
+[visuals.eye]
+color = "rgba(0, 0, 0, 0.8)"
 
 [visuals.avatar]
 enabled = false
@@ -85,7 +88,7 @@ enabled = false
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(0, 0, 0, 0.7)"
-color = "#FFFFFFE6"
+color = "rgba(255, 255, 255, 0.9)"
 size = 2
 top_offset = -28
 right_offset = 8
@@ -93,18 +96,15 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(0, 0, 0, 0.7)"
 background_size = 46
-color = "#FFFFFFE6"
+color = "rgba(255, 255, 255, 0.9)"
 size = 20
 top_offset = -28
 right_offset = 8
 gap = 8
 
-[visuals.eye]
-color = "#000000CC"
-
 [visuals.weather]
-temperature_color = "#000000BA"
-location_color = "#00000093"
+temperature_color = "rgba(0, 0, 0, 0.73)"
+location_color = "rgba(0, 0, 0, 0.58)"
 temperature_size = 6
 location_size = 3
 icon_size = 40
@@ -115,7 +115,7 @@ location_font_family = "Google Sans Flex"
 location_font_weight = 400
 icon_gap = 1
 location_gap = 1
-icon_opacity = 80
+icon_opacity = 100
 left_padding = 30
 bottom_padding = 30
 alignment = "left"
@@ -124,8 +124,8 @@ alignment = "left"
 enabled = false
 content_gap = 18
 fade_duration_ms = 320
-title_color = "#000000AF"
-artist_color = "#00000097"
+title_color = "rgba(0, 0, 0, 0.69)"
+artist_color = "rgba(0, 0, 0, 0.59)"
 title_size = 2
 artist_size = 2
 artwork_size = 44
@@ -140,3 +140,11 @@ title_font_weight = 400
 artist_font_family = "Google Sans Flex"
 artist_font_weight = 400
 width = 380
+
+[visuals.now_playing.background]
+enabled = true
+mode = "blur"
+color = "rgba(0, 0, 0, 0.05)"
+radius = 18
+padding_x = 12
+padding_y = 12

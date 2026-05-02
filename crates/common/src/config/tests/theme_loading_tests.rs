@@ -109,7 +109,7 @@ fn loads_bundled_theme_before_user_overrides() {
     );
     assert_eq!(
         loaded.config.visuals.now_playing_title_color(),
-        Some(RgbColor::rgba(255, 255, 255, 175))
+        theme_config.visuals.now_playing_title_color()
     );
 
     fs::remove_file(path).ok();

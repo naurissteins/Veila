@@ -81,7 +81,7 @@ enabled = false
 [visuals.keyboard]
 background_size = 46
 background_color = "rgba(166, 174, 205, 0.05)"
-color = "#FFFFFFAD"
+color = "rgba(255, 255, 255, 0.68)"
 size = 2
 top_offset = -28
 right_offset = 8
@@ -89,7 +89,7 @@ right_offset = 8
 [visuals.battery]
 background_color = "rgba(166, 174, 205, 0.05)"
 background_size = 46
-color = "#FFFFFFAD"
+color = "rgba(255, 255, 255, 0.68)"
 size = 20
 top_offset = -28
 right_offset = 8
@@ -118,7 +118,7 @@ enabled = false
 content_gap = 18
 fade_duration_ms = 320
 title_color = "#A6AECDAF"
-artist_color = "#FFFFFF9B"
+artist_color = "rgba(255, 255, 255, 0.61)"
 title_size = 2
 artist_size = 2
 artwork_size = 44
