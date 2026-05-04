@@ -358,7 +358,7 @@ impl ShellState {
     }
 
     fn input_shell_is_dynamic(&self) -> bool {
-        matches!(self.status, ShellStatus::Rejected { .. })
+        self.secret_selected || matches!(self.status, ShellStatus::Rejected { .. })
     }
 }
 

@@ -62,12 +62,15 @@ impl ShellState {
             return changed;
         }
 
+        let selection_changed = self.set_secret_selected(false);
+
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
         let pressed = toggle_rect.contains(x, y);
-        let changed =
-            self.reveal_toggle_pressed != pressed || self.reveal_toggle_hovered != pressed;
+        let changed = selection_changed
+            || self.reveal_toggle_pressed != pressed
+            || self.reveal_toggle_hovered != pressed;
         self.reveal_toggle_hovered = pressed;
         self.reveal_toggle_pressed = pressed;
         changed

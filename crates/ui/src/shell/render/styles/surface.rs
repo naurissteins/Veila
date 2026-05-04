@@ -15,6 +15,7 @@ use super::{
 
 impl ShellState {
     pub(crate) fn input_style(&self) -> PillStyle {
+        let selection_active = self.secret_selected;
         let base_border = if matches!(self.status, ShellStatus::Rejected { .. }) {
             self.theme
                 .status_rejected_color
@@ -23,18 +24,28 @@ impl ShellState {
         } else {
             self.theme.input_border
         };
-        let border = if self.focused {
+        let border = if selection_active {
+            base_border.with_alpha(if base_border.alpha == u8::MAX {
+                248
+            } else {
+                base_border.alpha.max(148)
+            })
+        } else if self.focused {
             base_border.with_alpha(styled_alpha(base_border.alpha, 240))
         } else {
             base_border.with_alpha(styled_alpha(base_border.alpha, 210))
         };
         let border_width = self.theme.input_border_width.unwrap_or(2).max(0);
 
-        let style = PillStyle::new(
-            self.theme
-                .input
-                .with_alpha(styled_alpha(self.theme.input.alpha, 232)),
-        )
+        let style = PillStyle::new(self.theme.input.with_alpha(if selection_active {
+            if self.theme.input.alpha == u8::MAX {
+                244
+            } else {
+                self.theme.input.alpha.max(88)
+            }
+        } else {
+            styled_alpha(self.theme.input.alpha, 232)
+        }))
         .with_radius(self.theme.input_radius);
 
         if border_width == 0 {

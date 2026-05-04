@@ -81,6 +81,29 @@ fn select_all_then_backspace_clears_secret() {
 }
 
 #[test]
+fn select_all_changes_static_scene_revision() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('a'));
+    let original = shell.static_scene_revision();
+
+    assert_eq!(shell.handle_key(ShellKey::SelectAll), ShellAction::None);
+
+    assert!(shell.secret_selected);
+    assert!(shell.static_scene_revision() > original);
+}
+
+#[test]
+fn pointer_press_clears_secret_selection() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('a'));
+    shell.handle_key(ShellKey::SelectAll);
+
+    assert!(shell.secret_selected);
+    assert!(shell.handle_pointer_press(1280, 720, 10.0, 10.0));
+    assert!(!shell.secret_selected);
+}
+
+#[test]
 fn empty_enter_submits_authentication() {
     let mut shell = ShellState::default();
 

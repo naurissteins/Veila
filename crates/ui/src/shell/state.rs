@@ -312,6 +312,16 @@ impl ShellState {
         self.auth_revealed || !self.theme.input_reveal_on_interaction
     }
 
+    pub(super) fn set_secret_selected(&mut self, selected: bool) -> bool {
+        if self.secret_selected == selected {
+            return false;
+        }
+
+        self.secret_selected = selected;
+        self.bump_static_scene_revision();
+        true
+    }
+
     pub(super) fn hidden_reveal_hint(&self) -> Option<&str> {
         (self.theme.reveal_enabled
             && !self.input_visible()

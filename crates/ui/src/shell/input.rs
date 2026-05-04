@@ -18,7 +18,7 @@ impl ShellState {
                 {
                     if self.secret_selected {
                         self.secret.clear();
-                        self.secret_selected = false;
+                        self.set_secret_selected(false);
                     }
                     self.secret.push(character);
                     if !self.retry_cooldown_active() {
@@ -32,7 +32,7 @@ impl ShellState {
                 self.reveal_auth();
                 if self.secret_selected {
                     self.secret.clear();
-                    self.secret_selected = false;
+                    self.set_secret_selected(false);
                 } else {
                     self.secret.pop();
                 }
@@ -44,7 +44,7 @@ impl ShellState {
             }
             ShellKey::Escape => {
                 self.secret.clear();
-                self.secret_selected = false;
+                self.set_secret_selected(false);
                 self.reveal_secret = false;
                 self.reveal_toggle_pressed = false;
                 self.status = ShellStatus::Idle;
@@ -53,11 +53,12 @@ impl ShellState {
             }
             ShellKey::SelectAll => {
                 self.reveal_auth();
-                self.secret_selected = !self.secret.is_empty();
+                self.set_secret_selected(!self.secret.is_empty());
                 ShellAction::None
             }
             ShellKey::Enter => {
                 self.reveal_auth();
+                self.set_secret_selected(false);
                 if let ShellStatus::Rejected {
                     retry_until: Some(retry_until),
                     ..
@@ -91,7 +92,7 @@ impl ShellState {
             self.bump_static_scene_revision();
         }
         self.secret.clear();
-        self.secret_selected = false;
+        self.set_secret_selected(false);
         self.reveal_secret = false;
         self.reveal_toggle_pressed = false;
         let retry_until = retry_after_ms
