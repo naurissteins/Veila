@@ -34,6 +34,7 @@ pub enum ShellKey {
     Backspace,
     Enter,
     Escape,
+    Clear,
     SelectAll,
 }
 

@@ -93,6 +93,32 @@ fn select_all_changes_static_scene_revision() {
 }
 
 #[test]
+fn ctrl_u_style_clear_empties_secret_without_hiding_auth() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('a'));
+    shell.handle_key(ShellKey::Character('b'));
+
+    assert_eq!(shell.handle_key(ShellKey::Clear), ShellAction::None);
+
+    assert!(shell.secret.is_empty());
+    assert!(shell.input_visible());
+    assert!(!shell.secret_selected);
+}
+
+#[test]
+fn ctrl_u_style_clear_resets_selected_state() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('a'));
+    shell.handle_key(ShellKey::Character('b'));
+    shell.handle_key(ShellKey::SelectAll);
+
+    assert_eq!(shell.handle_key(ShellKey::Clear), ShellAction::None);
+
+    assert!(shell.secret.is_empty());
+    assert!(!shell.secret_selected);
+}
+
+#[test]
 fn pointer_press_clears_secret_selection() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('a'));

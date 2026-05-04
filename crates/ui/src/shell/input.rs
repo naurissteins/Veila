@@ -51,6 +51,18 @@ impl ShellState {
                 self.hide_auth();
                 ShellAction::None
             }
+            ShellKey::Clear => {
+                self.reveal_auth();
+                self.secret.clear();
+                self.set_secret_selected(false);
+                self.reveal_secret = false;
+                self.reveal_toggle_pressed = false;
+                if !self.retry_cooldown_active() {
+                    self.clear_rejected_state();
+                    self.status = ShellStatus::Idle;
+                }
+                ShellAction::None
+            }
             ShellKey::SelectAll => {
                 self.reveal_auth();
                 self.set_secret_selected(!self.secret.is_empty());

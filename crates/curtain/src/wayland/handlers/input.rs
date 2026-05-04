@@ -239,9 +239,18 @@ fn handle_key_event(app: &mut CurtainApp, queue_handle: &QueueHandle<CurtainApp>
         return;
     }
 
-    if app.ctrl_active && matches!(event.keysym, Keysym::a | Keysym::A) {
-        app.handle_shell_key(ShellKey::SelectAll, queue_handle);
-        return;
+    if app.ctrl_active {
+        match event.keysym {
+            Keysym::a | Keysym::A => {
+                app.handle_shell_key(ShellKey::SelectAll, queue_handle);
+                return;
+            }
+            Keysym::u | Keysym::U => {
+                app.handle_shell_key(ShellKey::Clear, queue_handle);
+                return;
+            }
+            _ => {}
+        }
     }
 
     match event.keysym {
