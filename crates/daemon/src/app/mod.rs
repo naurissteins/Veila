@@ -1,6 +1,7 @@
 mod battery;
 mod events;
 mod helpers;
+mod memory;
 mod mpris;
 mod output_probe;
 mod prewarm;
@@ -9,7 +10,7 @@ mod state;
 mod watch;
 mod weather;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{DaemonOptions, adapters::logind};
 use anyhow::{Context, Result};
@@ -33,6 +34,13 @@ use self::runtime::{
 use self::state::AppRuntime;
 use self::watch::{AutoReloadTrigger, AutoReloadWatcher, effective_auto_reload_debounce_ms};
 
+pub async fn run_background_prewarm_once(config_path: Option<&Path>) -> Result<()> {
+    let loaded_config =
+        AppConfig::load(config_path).context("failed to load config for prewarm")?;
+    prewarm::run_background_prewarm_once(loaded_config.config).await;
+    Ok(())
+}
+
 pub async fn run(
     options: DaemonOptions,
     mut control_listener: UnixListener,
@@ -41,7 +49,7 @@ pub async fn run(
     let mut runtime = AppRuntime::new(
         AppConfig::load(options.config_path.as_deref()).context("failed to load daemon config")?,
     );
-    prewarm::spawn_background_prewarm(&runtime.loaded_config.config);
+    prewarm::spawn_background_prewarm(runtime.loaded_config.path.as_deref());
     let connection = logind::connect_system().await?;
     let session_path = logind::get_session_path(&connection, options.session_id.as_deref()).await?;
     let session_proxy = logind::session_proxy(&connection, &session_path).await?;

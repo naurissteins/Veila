@@ -10,6 +10,7 @@ use veila_common::{AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot,
 
 use super::{
     battery::BatteryHandle,
+    memory,
     mpris::NowPlayingHandle,
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
@@ -193,6 +194,9 @@ pub(super) async fn apply_loaded_config(
     battery: &BatteryHandle,
     now_playing: &NowPlayingHandle,
 ) -> Result<DaemonReloadStatus, String> {
+    let prewarm_needed =
+        prewarm::prewarm_inputs_changed(&loaded_config.config, &new_loaded_config.config);
+    let rss_kib_before_reload = memory::current_rss_kib();
     *loaded_config = new_loaded_config;
     *auth_policy = AuthPolicy::new(
         Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
@@ -201,7 +205,14 @@ pub(super) async fn apply_loaded_config(
     if !state.is_active() {
         *auth_state = AuthState::new(*auth_policy);
     }
-    prewarm::spawn_background_prewarm(&loaded_config.config);
+    if prewarm_needed {
+        prewarm::spawn_background_prewarm(loaded_config.path.as_deref());
+    } else {
+        tracing::debug!(
+            reload_source,
+            "skipping background prewarm after config reload because prewarm inputs are unchanged"
+        );
+    }
     weather.update_config(&loaded_config.config.weather);
     battery.update_config(&loaded_config.config.battery);
     now_playing.update_config(&loaded_config.config.now_playing);
@@ -236,6 +247,9 @@ pub(super) async fn apply_loaded_config(
             config,
             reload_source,
             reload_debounce_ms,
+            background_prewarm_triggered = prewarm_needed,
+            rss_kib_before_reload,
+            rss_kib_after_reload = memory::current_rss_kib(),
             "reloaded daemon config"
         );
     } else {
@@ -244,6 +258,9 @@ pub(super) async fn apply_loaded_config(
             live_reload = live_reload_status,
             config,
             reload_source,
+            background_prewarm_triggered = prewarm_needed,
+            rss_kib_before_reload,
+            rss_kib_after_reload = memory::current_rss_kib(),
             "reloaded daemon config"
         );
     }

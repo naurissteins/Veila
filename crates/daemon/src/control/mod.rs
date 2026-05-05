@@ -39,6 +39,11 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         return Ok(());
     }
 
+    if options.background_prewarm_only {
+        app::run_background_prewarm_once(options.config_path.as_deref()).await?;
+        return Ok(());
+    }
+
     let control_mode_count = usize::from(options.lock_now)
         + usize::from(options.current_theme)
         + usize::from(options.print_theme.is_some())

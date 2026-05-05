@@ -20,6 +20,7 @@ pub struct DaemonOptions {
     pub health: bool,
     pub version: bool,
     pub reload_config: bool,
+    pub background_prewarm_only: bool,
 }
 
 impl DaemonOptions {
@@ -104,6 +105,11 @@ impl DaemonOptions {
 
             if arg == "--reload-config" {
                 options.reload_config = true;
+                continue;
+            }
+
+            if arg == "--background-prewarm-only" {
+                options.background_prewarm_only = true;
                 continue;
             }
 
@@ -368,6 +374,17 @@ mod tests {
             .expect("arguments should parse");
 
         assert!(options.version);
+    }
+
+    #[test]
+    fn parses_background_prewarm_only_argument() {
+        let options = DaemonOptions::parse_args([
+            "veilad".to_string(),
+            "--background-prewarm-only".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.background_prewarm_only);
     }
 
     #[test]

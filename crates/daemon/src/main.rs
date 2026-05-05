@@ -42,6 +42,7 @@ async fn main() -> anyhow::Result<()> {
         && !options.health
         && !options.version
         && !options.reload_config
+        && !options.background_prewarm_only
     {
         tracing::info!(
             component = veila_daemon::component_name(),
@@ -119,6 +120,7 @@ fn starts_daemon(options: &veila_daemon::DaemonOptions) -> bool {
         && !options.health
         && !options.version
         && !options.reload_config
+        && !options.background_prewarm_only
 }
 
 fn normalize_log_file_path(path: &Path) -> PathBuf {

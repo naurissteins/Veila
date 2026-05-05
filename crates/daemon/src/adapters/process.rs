@@ -155,6 +155,21 @@ pub async fn wait_for_graceful_curtain_exit(
     }
 }
 
+pub async fn spawn_background_prewarm_helper(config_path: Option<&Path>) -> Result<Child> {
+    let binary = daemon_binary_path()?;
+    let mut command = Command::new(&binary);
+    command.arg("--background-prewarm-only");
+    if let Some(config_path) = config_path {
+        command.arg(format!("--config={}", config_path.display()));
+    }
+
+    tracing::debug!(binary = %binary.display(), "spawning background prewarm helper");
+
+    command
+        .spawn()
+        .with_context(|| format!("failed to spawn '{}'", binary.display()))
+}
+
 pub fn notify_socket_path() -> PathBuf {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -188,4 +203,19 @@ fn curtain_binary_path() -> Result<PathBuf> {
     }
 
     Ok(PathBuf::from("veila-curtain"))
+}
+
+fn daemon_binary_path() -> Result<PathBuf> {
+    if let Ok(path) = std::env::var("VEILAD_BIN") {
+        return Ok(PathBuf::from(path));
+    }
+
+    if let Ok(mut current_exe) = std::env::current_exe() {
+        current_exe.set_file_name("veilad");
+        if current_exe.exists() {
+            return Ok(current_exe);
+        }
+    }
+
+    Ok(PathBuf::from("veilad"))
 }

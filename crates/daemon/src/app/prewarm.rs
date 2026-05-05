@@ -4,7 +4,7 @@ use std::{
 };
 
 use veila_common::{
-    AppConfig, LayerAlignment, LayerMode, LayerStyle, RgbColor,
+    AppConfig, LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, RgbColor,
     config::{
         BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundScaling as ConfigBackgroundScaling,
@@ -29,43 +29,88 @@ use veila_renderer::{
 
 use crate::app::output_probe;
 
-pub(super) fn spawn_background_prewarm(config: &AppConfig) {
+use super::memory;
+use crate::adapters::process;
+
+pub(super) fn spawn_background_prewarm(config_path: Option<&Path>) {
+    let config_path = config_path.map(Path::to_path_buf);
+    let rss_kib_before_spawn = memory::current_rss_kib();
+
+    tokio::spawn(async move {
+        match process::spawn_background_prewarm_helper(config_path.as_deref()).await {
+            Ok(mut child) => match child.wait().await {
+                Ok(status) => {
+                    tracing::debug!(
+                        ?status,
+                        rss_kib_before_spawn,
+                        rss_kib_after = memory::current_rss_kib(),
+                        "background prewarm helper finished"
+                    );
+                }
+                Err(error) => {
+                    tracing::warn!("failed while waiting for background prewarm helper: {error:#}");
+                }
+            },
+            Err(error) => {
+                tracing::warn!("failed to spawn background prewarm helper: {error:#}");
+            }
+        }
+    });
+}
+
+pub(super) async fn run_background_prewarm_once(config: AppConfig) {
     let background = config.background.clone();
     let fallback = to_clear_color(config.background.color);
     let generated = background_generated(&config.background);
     let treatment = background_treatment(&config.background);
-    let layer = layer_prewarm_spec(config);
+    let layer = layer_prewarm_spec(&config);
+    let started_at = Instant::now();
+    let rss_kib_before = memory::current_rss_kib();
+    let join_result = tokio::task::spawn_blocking(move || {
+        prewarm_backgrounds(background, generated, fallback, treatment, layer)
+    })
+    .await;
 
-    tokio::spawn(async move {
-        let started_at = Instant::now();
-        let join_result = tokio::task::spawn_blocking(move || {
-            prewarm_backgrounds(background, generated, fallback, treatment, layer)
-        })
-        .await;
-
-        match join_result {
-            Ok(result) => {
-                for report in result.wallpapers {
-                    match report {
-                        Ok(report) => log_prewarm_report(report),
-                        Err((path, error)) => {
-                            tracing::warn!(
-                                path = %path.display(),
-                                elapsed_ms = elapsed_ms(started_at),
-                                "background source prewarm failed: {error:#}"
-                            );
-                        }
+    match join_result {
+        Ok(result) => {
+            for report in result.wallpapers {
+                match report {
+                    Ok(report) => log_prewarm_report(report),
+                    Err((path, error)) => {
+                        tracing::warn!(
+                            path = %path.display(),
+                            elapsed_ms = elapsed_ms(started_at),
+                            "background source prewarm failed: {error:#}"
+                        );
                     }
                 }
-                if let Some(report) = result.generated {
-                    log_generated_prewarm_report(report, started_at);
-                }
             }
-            Err(error) => {
-                tracing::warn!("background source prewarm task failed: {error:#}");
+            if let Some(report) = result.generated {
+                log_generated_prewarm_report(report, started_at);
             }
+            tracing::debug!(
+                elapsed_ms = elapsed_ms(started_at),
+                rss_kib_before,
+                rss_kib_after = memory::current_rss_kib(),
+                "background prewarm helper task completed"
+            );
         }
-    });
+        Err(error) => {
+            tracing::warn!("background source prewarm helper task failed: {error:#}");
+        }
+    }
+}
+
+pub(super) fn prewarm_inputs_changed(current: &AppConfig, next: &AppConfig) -> bool {
+    prewarm_inputs(current) != prewarm_inputs(next)
+}
+
+fn prewarm_inputs(config: &AppConfig) -> BackgroundPrewarmInputs {
+    BackgroundPrewarmInputs {
+        background: config.background.clone(),
+        layer: config.visuals.layer.clone(),
+        panel: config.visuals.panel,
+    }
 }
 
 fn log_prewarm_report(report: PrewarmReport) {
@@ -636,4 +681,66 @@ struct LayeredPrewarmReport {
     probed_outputs: usize,
     cache_hits: usize,
     warmed_sizes: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BackgroundPrewarmInputs {
+    background: veila_common::config::BackgroundConfig,
+    layer: Option<LayerVisualConfig>,
+    panel: RgbColor,
+}
+
+#[cfg(test)]
+mod tests {
+    use veila_common::AppConfig;
+
+    use super::prewarm_inputs_changed;
+
+    #[test]
+    fn detects_background_related_prewarm_changes() {
+        let current = AppConfig::from_toml_str(
+            r#"
+                [background]
+                mode = "file"
+                path = "/tmp/one.jpg"
+            "#,
+        )
+        .expect("current config");
+        let next = AppConfig::from_toml_str(
+            r#"
+                [background]
+                mode = "file"
+                path = "/tmp/two.jpg"
+            "#,
+        )
+        .expect("next config");
+
+        assert!(prewarm_inputs_changed(&current, &next));
+    }
+
+    #[test]
+    fn ignores_unrelated_reload_changes_for_prewarm() {
+        let current = AppConfig::from_toml_str(
+            r##"
+                [background]
+                mode = "gradient"
+
+                [visuals.clock]
+                color = "#FFFFFF"
+            "##,
+        )
+        .expect("current config");
+        let next = AppConfig::from_toml_str(
+            r##"
+                [background]
+                mode = "gradient"
+
+                [visuals.clock]
+                color = "#FF5353"
+            "##,
+        )
+        .expect("next config");
+
+        assert!(!prewarm_inputs_changed(&current, &next));
+    }
 }
