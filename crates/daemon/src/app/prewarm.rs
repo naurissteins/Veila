@@ -75,9 +75,10 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
         Ok(result) => {
             for report in result.wallpapers {
                 match report {
-                    Ok(report) => log_prewarm_report(report),
+                    Ok(report) => log_prewarm_report(report, true),
                     Err((path, error)) => {
                         tracing::warn!(
+                            prewarm_helper = true,
                             path = %path.display(),
                             elapsed_ms = elapsed_ms(started_at),
                             "background source prewarm failed: {error:#}"
@@ -86,9 +87,10 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
                 }
             }
             if let Some(report) = result.generated {
-                log_generated_prewarm_report(report, started_at);
+                log_generated_prewarm_report(report, started_at, true);
             }
             tracing::debug!(
+                prewarm_helper = true,
                 elapsed_ms = elapsed_ms(started_at),
                 rss_kib_before,
                 rss_kib_after = memory::current_rss_kib(),
@@ -96,7 +98,10 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
             );
         }
         Err(error) => {
-            tracing::warn!("background source prewarm helper task failed: {error:#}");
+            tracing::warn!(
+                prewarm_helper = true,
+                "background source prewarm helper task failed: {error:#}"
+            );
         }
     }
 }
@@ -113,8 +118,9 @@ fn prewarm_inputs(config: &AppConfig) -> BackgroundPrewarmInputs {
     }
 }
 
-fn log_prewarm_report(report: PrewarmReport) {
+fn log_prewarm_report(report: PrewarmReport, prewarm_helper: bool) {
     tracing::info!(
+        prewarm_helper,
         path = %report.path.display(),
         elapsed_ms = report.source_elapsed_ms,
         cache_status = match report.source_status {
@@ -126,6 +132,7 @@ fn log_prewarm_report(report: PrewarmReport) {
 
     if let Some(rendered) = report.rendered {
         tracing::info!(
+            prewarm_helper,
             path = %report.path.display(),
             elapsed_ms = rendered.elapsed_ms,
             probed_outputs = rendered.probed_outputs,
@@ -137,6 +144,7 @@ fn log_prewarm_report(report: PrewarmReport) {
 
     if let Some(layered) = report.layered {
         tracing::info!(
+            prewarm_helper,
             path = %report.path.display(),
             elapsed_ms = layered.elapsed_ms,
             probed_outputs = layered.probed_outputs,
@@ -147,8 +155,13 @@ fn log_prewarm_report(report: PrewarmReport) {
     }
 }
 
-fn log_generated_prewarm_report(report: GeneratedPrewarmReport, started_at: Instant) {
+fn log_generated_prewarm_report(
+    report: GeneratedPrewarmReport,
+    started_at: Instant,
+    prewarm_helper: bool,
+) {
     tracing::info!(
+        prewarm_helper,
         elapsed_ms = report.rendered.elapsed_ms,
         probed_outputs = report.rendered.probed_outputs,
         cache_hits = report.rendered.summary.cache_hits,
@@ -159,6 +172,7 @@ fn log_generated_prewarm_report(report: GeneratedPrewarmReport, started_at: Inst
 
     if let Some(layered) = report.layered {
         tracing::info!(
+            prewarm_helper,
             elapsed_ms = layered.elapsed_ms,
             probed_outputs = layered.probed_outputs,
             cache_hits = layered.cache_hits,
@@ -169,6 +183,7 @@ fn log_generated_prewarm_report(report: GeneratedPrewarmReport, started_at: Inst
     }
 
     tracing::debug!(
+        prewarm_helper,
         total_elapsed_ms = elapsed_ms(started_at),
         generated_mode = report.mode,
         "generated background prewarm completed"
