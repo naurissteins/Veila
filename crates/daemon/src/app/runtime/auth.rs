@@ -6,6 +6,7 @@ use veila_common::ipc::{ClientMessage, DaemonMessage};
 
 use crate::{
     adapters::{ipc, pam},
+    app::suspend::LockedSuspendState,
     domain::auth::{AuthAdmission, AuthState},
 };
 
@@ -27,11 +28,16 @@ pub(crate) async fn handle_client_message(
     username: &str,
     auth_state: &mut AuthState,
     auth_sender: &Option<UnboundedSender<AuthResult>>,
+    suspend_state: &mut LockedSuspendState,
     mut stream: UnixStream,
     message: ClientMessage,
 ) -> Result<()> {
     match message {
+        ClientMessage::Activity => {
+            suspend_state.note_activity(Instant::now());
+        }
         ClientMessage::SubmitPassword { attempt_id, secret } => {
+            suspend_state.note_activity(Instant::now());
             let started_at = Instant::now();
             tracing::info!(
                 attempt_id,

@@ -7,6 +7,7 @@ mod output_probe;
 mod prewarm;
 mod runtime;
 mod state;
+mod suspend;
 mod watch;
 mod weather;
 
@@ -103,6 +104,7 @@ pub async fn run(
             ),
             runtime.auth_policy,
             &mut runtime.auth_state,
+            &mut runtime.suspend_state,
         )
         .await
         .context("failed to activate manual lock")?;
@@ -115,7 +117,7 @@ pub async fn run(
                 let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let initial_background_path = runtime.select_initial_background_path();
-                let (auth_policy, slots) = runtime.slots_with_policy();
+                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_lock_signal(
                     "logind",
                     &session_proxy,
@@ -126,14 +128,16 @@ pub async fn run(
                     now_playing_snapshot.as_ref(),
                     slots,
                     auth_policy,
+                    suspend_state,
                 ).await;
             }
             Some(_) = unlock_stream.next() => {
-                let (auth_policy, slots) = runtime.slots_with_policy();
+                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_unlock_signal(
                     &session_proxy,
                     slots,
                     auth_policy,
+                    suspend_state,
                 ).await;
             }
             result = wait_for_curtain_exit(&mut runtime.curtain), if runtime.curtain.is_some() => {
@@ -141,7 +145,7 @@ pub async fn run(
                 let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let initial_background_path = runtime.select_initial_background_path();
-                let (auth_policy, slots) = runtime.slots_with_policy();
+                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_curtain_exit(
                     result?,
                     &session_proxy,
@@ -152,22 +156,30 @@ pub async fn run(
                     now_playing_snapshot.as_ref(),
                     slots,
                     auth_policy,
+                    suspend_state,
                 ).await;
             }
             result = accept_auth_connection(&mut runtime.auth_listener), if runtime.state.is_active() && runtime.auth_listener.is_some() => {
-                handle_auth_connection(&username, &runtime.auth_sender, &mut runtime.auth_state, result?).await?;
+                handle_auth_connection(
+                    &username,
+                    &runtime.auth_sender,
+                    &mut runtime.auth_state,
+                    &mut runtime.suspend_state,
+                    result?,
+                ).await?;
             }
             result = receive_auth_result(&mut runtime.auth_results), if runtime.auth_results.is_some() => {
                 let Some(result) = result else {
                     continue;
                 };
 
-                let (auth_policy, slots) = runtime.slots_with_policy();
+                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_auth_result(
                     &session_proxy,
                     slots,
                     auth_policy,
                     result,
+                    suspend_state,
                 ).await;
             }
             result = accept_control_connection(&mut control_listener) => {
@@ -177,7 +189,15 @@ pub async fn run(
                 let weather_snapshot = weather.current_snapshot();
                 let battery_snapshot = battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, background_selection, slots) = runtime.control_inputs();
+                let (
+                    loaded_config,
+                    last_reload_result,
+                    last_reload_unix_ms,
+                    auth_policy,
+                    background_selection,
+                    suspend_state,
+                    slots,
+                ) = runtime.control_inputs();
                 if handle_control_connection(
                     result?,
                     &options,
@@ -193,6 +213,7 @@ pub async fn run(
                     &battery,
                     &now_playing,
                     background_selection,
+                    suspend_state,
                     slots,
                     auth_policy,
                 ).await? {
@@ -212,6 +233,27 @@ pub async fn run(
                 ).await;
             }
             _ = auto_reload_tick.tick() => {
+                if runtime.suspend_state.should_suspend(
+                    std::time::Instant::now(),
+                    runtime.state.is_active(),
+                    runtime.auth_state.in_flight(),
+                ) {
+                    runtime.suspend_state.mark_requested();
+                    match suspend::request_system_suspend(&connection).await {
+                        Ok(()) => {
+                            tracing::info!(
+                                suspend_seconds = runtime.loaded_config.config.lock.suspend_seconds,
+                                "requesting system suspend after locked inactivity"
+                            );
+                        }
+                        Err(error) => {
+                            tracing::warn!(
+                                "failed to request system suspend after locked inactivity: {error:#}"
+                            );
+                        }
+                    }
+                }
+
                 match auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
                     Some(AutoReloadTrigger::Config) => {
                         let current_auto_reload = runtime.loaded_config.config.lock.auto_reload_config;
@@ -223,7 +265,15 @@ pub async fn run(
                                     let weather = runtime.weather.clone();
                                     let battery = runtime.battery.clone();
                                     let now_playing = runtime.now_playing.clone();
-                                    let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, _background_selection, slots) = runtime.control_inputs();
+                                    let (
+                                        loaded_config,
+                                        last_reload_result,
+                                        last_reload_unix_ms,
+                                        auth_policy,
+                                        _background_selection,
+                                        suspend_state,
+                                        slots,
+                                    ) = runtime.control_inputs();
                                     match helpers::apply_loaded_config(
                                         slots.state,
                                         slots.control_socket_path.as_deref(),
@@ -235,6 +285,7 @@ pub async fn run(
                                         Some(debounce_ms),
                                         auth_policy,
                                         slots.auth_state,
+                                        suspend_state,
                                         &weather,
                                         &battery,
                                         &now_playing,
@@ -280,7 +331,15 @@ pub async fn run(
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
                                 let now_playing = runtime.now_playing.clone();
-                                let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, _background_selection, slots) = runtime.control_inputs();
+                                let (
+                                    loaded_config,
+                                    last_reload_result,
+                                    last_reload_unix_ms,
+                                    auth_policy,
+                                    _background_selection,
+                                    suspend_state,
+                                    slots,
+                                ) = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
                                     slots.control_socket_path.as_deref(),
@@ -292,6 +351,7 @@ pub async fn run(
                                     Some(debounce_ms),
                                     auth_policy,
                                     slots.auth_state,
+                                    suspend_state,
                                     &weather,
                                     &battery,
                                     &now_playing,
@@ -329,7 +389,15 @@ pub async fn run(
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
                                 let now_playing = runtime.now_playing.clone();
-                                let (loaded_config, last_reload_result, last_reload_unix_ms, auth_policy, _background_selection, slots) = runtime.control_inputs();
+                                let (
+                                    loaded_config,
+                                    last_reload_result,
+                                    last_reload_unix_ms,
+                                    auth_policy,
+                                    _background_selection,
+                                    suspend_state,
+                                    slots,
+                                ) = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
                                     slots.control_socket_path.as_deref(),
@@ -341,6 +409,7 @@ pub async fn run(
                                     Some(debounce_ms),
                                     auth_policy,
                                     slots.auth_state,
+                                    suspend_state,
                                     &weather,
                                     &battery,
                                     &now_playing,

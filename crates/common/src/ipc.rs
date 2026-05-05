@@ -8,6 +8,7 @@ use crate::error::Result;
 pub enum ClientMessage {
     SubmitPassword { attempt_id: u64, secret: String },
     CancelAuthentication,
+    Activity,
 }
 
 /// Messages sent from the daemon to UI-facing clients.

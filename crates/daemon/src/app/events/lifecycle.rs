@@ -11,6 +11,7 @@ use super::super::{
     helpers::activate_and_log,
     runtime::{ActiveRuntime, reset_runtime, update_locked_hint},
     state::RuntimeSlots,
+    suspend::LockedSuspendState,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -24,6 +25,7 @@ pub(crate) async fn handle_lock_signal(
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
+    suspend_state: &mut LockedSuspendState,
 ) {
     let RuntimeSlots {
         state,
@@ -60,6 +62,7 @@ pub(crate) async fn handle_lock_signal(
         ),
         auth_policy,
         auth_state,
+        suspend_state,
     )
     .await
     {
@@ -71,6 +74,7 @@ pub(crate) async fn handle_unlock_signal(
     session_proxy: &logind::SessionProxy<'_>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
+    suspend_state: &mut LockedSuspendState,
 ) {
     let RuntimeSlots {
         state,
@@ -106,6 +110,8 @@ pub(crate) async fn handle_unlock_signal(
     .await
     {
         tracing::error!("failed to deactivate lock: {error:#}");
+    } else {
+        suspend_state.clear();
     }
 }
 
@@ -120,6 +126,7 @@ pub(crate) async fn handle_curtain_exit(
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
+    suspend_state: &mut LockedSuspendState,
 ) {
     let RuntimeSlots {
         state,
@@ -168,6 +175,7 @@ pub(crate) async fn handle_curtain_exit(
             ),
             auth_policy,
             auth_state,
+            suspend_state,
         )
         .await
         {

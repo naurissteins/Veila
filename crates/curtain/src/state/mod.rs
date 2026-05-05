@@ -132,6 +132,10 @@ pub(crate) struct CurtainApp {
 }
 
 impl CurtainApp {
+    pub(crate) fn daemon_socket_path(&self) -> Option<PathBuf> {
+        self.daemon_socket.clone()
+    }
+
     pub(crate) fn new(
         connection: Connection,
         globals: &GlobalList,

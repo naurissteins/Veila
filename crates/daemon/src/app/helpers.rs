@@ -15,6 +15,7 @@ use super::{
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
     state::BackgroundSelectionState,
+    suspend::{LockedSuspendState, suspend_delay_seconds},
     watch::effective_auto_reload_debounce_ms,
     weather::WeatherHandle,
 };
@@ -40,6 +41,7 @@ pub(super) async fn activate_and_install(
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
+    suspend_state: &mut LockedSuspendState,
 ) -> Result<()> {
     let activation = activate_lock(
         trigger,
@@ -54,6 +56,7 @@ pub(super) async fn activate_and_install(
     .await?;
     runtime.install_activation(activation);
     *auth_state = AuthState::new(auth_policy);
+    suspend_state.arm(Instant::now());
     Ok(())
 }
 
@@ -70,6 +73,7 @@ pub(super) async fn activate_and_log(
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
+    suspend_state: &mut LockedSuspendState,
 ) -> Result<()> {
     let started_at = Instant::now();
     activate_and_install(
@@ -84,6 +88,7 @@ pub(super) async fn activate_and_log(
         runtime,
         auth_policy,
         auth_state,
+        suspend_state,
     )
     .await?;
     tracing::info!(
@@ -190,6 +195,7 @@ pub(super) async fn apply_loaded_config(
     reload_debounce_ms: Option<u64>,
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
+    suspend_state: &mut LockedSuspendState,
     weather: &WeatherHandle,
     battery: &BatteryHandle,
     now_playing: &NowPlayingHandle,
@@ -201,6 +207,11 @@ pub(super) async fn apply_loaded_config(
     *auth_policy = AuthPolicy::new(
         Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
         Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
+    );
+    suspend_state.set_delay(
+        suspend_delay_seconds(&loaded_config.config).map(Duration::from_secs),
+        Instant::now(),
+        state.is_active(),
     );
     if !state.is_active() {
         *auth_state = AuthState::new(*auth_policy);
@@ -289,6 +300,7 @@ pub(super) async fn reload_config_response(
     last_reload_unix_ms: &mut Option<u64>,
     auth_policy: &mut AuthPolicy,
     auth_state: &mut AuthState,
+    suspend_state: &mut LockedSuspendState,
     weather: &WeatherHandle,
     battery: &BatteryHandle,
     now_playing: &NowPlayingHandle,
@@ -305,6 +317,7 @@ pub(super) async fn reload_config_response(
             None,
             auth_policy,
             auth_state,
+            suspend_state,
             weather,
             battery,
             now_playing,

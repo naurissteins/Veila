@@ -37,6 +37,14 @@ pub(crate) fn submit_password(
     });
 }
 
+pub(crate) fn notify_activity(socket_path: PathBuf) {
+    thread::spawn(move || {
+        if let Err(error) = run_activity_notification(socket_path) {
+            tracing::debug!("failed to notify daemon about lock activity: {error:#}");
+        }
+    });
+}
+
 fn run_attempt(
     socket_path: PathBuf,
     attempt_id: u64,
@@ -101,5 +109,14 @@ fn run_attempt(
         }
     }
 
+    Ok(())
+}
+
+fn run_activity_notification(socket_path: PathBuf) -> anyhow::Result<()> {
+    let mut stream = UnixStream::connect(&socket_path)?;
+    let mut payload = encode_message(&ClientMessage::Activity)?;
+    payload.push('\n');
+    stream.write_all(payload.as_bytes())?;
+    stream.flush()?;
     Ok(())
 }

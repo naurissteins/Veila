@@ -12,7 +12,7 @@ use smithay_client_toolkit::{
 use veila_ui::ShellKey;
 use xkbcommon::xkb;
 
-use crate::state::CurtainApp;
+use crate::{ipc::auth::notify_activity, state::CurtainApp};
 
 impl SeatHandler for CurtainApp {
     fn seat_state(&mut self) -> &mut smithay_client_toolkit::seat::SeatState {
@@ -124,6 +124,11 @@ impl KeyboardHandler for CurtainApp {
         _serial: u32,
         event: KeyEvent,
     ) {
+        if self.has_keyboard_focus
+            && let Some(socket_path) = self.daemon_socket_path()
+        {
+            notify_activity(socket_path);
+        }
         if self.handle_lock_activity(queue_handle) {
             return;
         }
@@ -221,6 +226,9 @@ impl PointerHandler for CurtainApp {
                     self.handle_shell_pointer_leave(queue_handle);
                 }
                 PointerEventKind::Press { button, .. } if button == BTN_LEFT => {
+                    if let Some(socket_path) = self.daemon_socket_path() {
+                        notify_activity(socket_path);
+                    }
                     self.handle_shell_pointer_press(&event.surface, event.position, queue_handle);
                 }
                 PointerEventKind::Release { button, .. } if button == BTN_LEFT => {

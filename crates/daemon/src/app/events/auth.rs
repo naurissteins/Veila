@@ -11,17 +11,26 @@ use crate::{
 use super::super::{
     runtime::{ActiveRuntime, AuthResult, deactivate_lock, handle_client_message},
     state::RuntimeSlots,
+    suspend::LockedSuspendState,
 };
 
 pub(crate) async fn handle_auth_connection(
     username: &str,
     auth_sender: &Option<tokio::sync::mpsc::UnboundedSender<AuthResult>>,
     auth_state: &mut AuthState,
+    suspend_state: &mut LockedSuspendState,
     mut stream: UnixStream,
 ) -> Result<()> {
     if let Some(message) = ipc::read_client_message(&mut stream).await?
-        && let Err(error) =
-            handle_client_message(username, auth_state, auth_sender, stream, message).await
+        && let Err(error) = handle_client_message(
+            username,
+            auth_state,
+            auth_sender,
+            suspend_state,
+            stream,
+            message,
+        )
+        .await
     {
         tracing::warn!("failed to handle auth request: {error:#}");
     }
@@ -34,6 +43,7 @@ pub(crate) async fn handle_auth_result(
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
     result: AuthResult,
+    suspend_state: &mut LockedSuspendState,
 ) {
     let RuntimeSlots {
         state,
@@ -79,6 +89,7 @@ pub(crate) async fn handle_auth_result(
             {
                 tracing::error!("failed to unlock after successful authentication: {error:#}");
             } else {
+                suspend_state.clear();
                 tracing::info!(
                     attempt_id,
                     auth_elapsed_ms = elapsed_ms,

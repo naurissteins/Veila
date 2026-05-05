@@ -40,6 +40,7 @@ pub(crate) async fn handle_control_connection(
     battery: &BatteryHandle,
     now_playing: &NowPlayingHandle,
     background_selection: &mut Option<BackgroundSelectionState>,
+    suspend_state: &mut crate::app::suspend::LockedSuspendState,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
 ) -> Result<bool> {
@@ -82,6 +83,7 @@ pub(crate) async fn handle_control_connection(
                     ),
                     *auth_policy,
                     auth_state,
+                    suspend_state,
                 )
                 .await
                 {
@@ -157,6 +159,7 @@ pub(crate) async fn handle_control_connection(
                 last_reload_unix_ms,
                 auth_policy,
                 auth_state,
+                suspend_state,
                 weather,
                 battery,
                 now_playing,

@@ -17,7 +17,11 @@ use crate::domain::{
 };
 
 use super::{
-    battery::BatteryHandle, mpris::NowPlayingHandle, runtime::AuthResult, weather::WeatherHandle,
+    battery::BatteryHandle,
+    mpris::NowPlayingHandle,
+    runtime::AuthResult,
+    suspend::{LockedSuspendState, suspend_delay_seconds},
+    weather::WeatherHandle,
 };
 
 pub(super) struct AppRuntime {
@@ -37,6 +41,7 @@ pub(super) struct AppRuntime {
     pub(super) auth_sender: Option<UnboundedSender<AuthResult>>,
     pub(super) auth_state: AuthState,
     pub(super) background_selection: Option<BackgroundSelectionState>,
+    pub(super) suspend_state: LockedSuspendState,
 }
 
 impl AppRuntime {
@@ -45,6 +50,7 @@ impl AppRuntime {
             Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
             Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
         );
+        let suspend_delay = suspend_delay_seconds(&loaded_config.config).map(Duration::from_secs);
         let weather = WeatherHandle::spawn(&loaded_config.config.weather);
         let battery = BatteryHandle::spawn(&loaded_config.config.battery);
         let now_playing = NowPlayingHandle::spawn(&loaded_config.config.now_playing);
@@ -66,6 +72,7 @@ impl AppRuntime {
             auth_sender: None,
             auth_state: AuthState::new(auth_policy),
             background_selection: None,
+            suspend_state: LockedSuspendState::new(suspend_delay),
         }
     }
 
@@ -93,6 +100,39 @@ impl AppRuntime {
         (self.auth_policy, self.slots())
     }
 
+    pub(super) fn slots_with_policy_and_suspend(
+        &mut self,
+    ) -> (AuthPolicy, &mut LockedSuspendState, RuntimeSlots<'_>) {
+        let Self {
+            auth_policy,
+            suspend_state,
+            state,
+            curtain,
+            auth_listener,
+            auth_socket_path,
+            control_socket_path,
+            auth_results,
+            auth_sender,
+            auth_state,
+            ..
+        } = self;
+
+        (
+            *auth_policy,
+            suspend_state,
+            RuntimeSlots {
+                state,
+                curtain,
+                auth_listener,
+                auth_socket_path,
+                control_socket_path,
+                auth_results,
+                auth_sender,
+                auth_state,
+            },
+        )
+    }
+
     pub(super) fn control_inputs(
         &mut self,
     ) -> (
@@ -101,6 +141,7 @@ impl AppRuntime {
         &mut Option<u64>,
         &mut AuthPolicy,
         &mut Option<BackgroundSelectionState>,
+        &mut LockedSuspendState,
         RuntimeSlots<'_>,
     ) {
         let Self {
@@ -109,6 +150,7 @@ impl AppRuntime {
             last_reload_unix_ms,
             auth_policy,
             background_selection,
+            suspend_state,
             state,
             curtain,
             auth_listener,
@@ -126,6 +168,7 @@ impl AppRuntime {
             last_reload_unix_ms,
             auth_policy,
             background_selection,
+            suspend_state,
             RuntimeSlots {
                 state,
                 curtain,

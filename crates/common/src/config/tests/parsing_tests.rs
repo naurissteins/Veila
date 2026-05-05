@@ -163,6 +163,19 @@ fn parses_lock_screen_off_seconds() {
 }
 
 #[test]
+fn parses_lock_suspend_seconds() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            suspend_seconds = 300
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.lock.suspend_seconds, Some(300));
+}
+
+#[test]
 fn parses_now_playing_player_filters() {
     let config = AppConfig::from_toml_str(
         r#"

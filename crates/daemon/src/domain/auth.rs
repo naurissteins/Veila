@@ -62,6 +62,10 @@ impl AuthState {
         self.failed_attempts
     }
 
+    pub fn in_flight(&self) -> bool {
+        self.in_flight
+    }
+
     pub fn next_failed_attempts(&self) -> u8 {
         self.failed_attempts.saturating_add(1)
     }
