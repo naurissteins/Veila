@@ -357,6 +357,10 @@ fn resolves_background_slideshow_files_and_directory() {
         slideshow.order,
         crate::config::BackgroundSlideshowOrder::Random
     );
+    assert_eq!(
+        slideshow.mode,
+        crate::config::BackgroundSlideshowMode::Timed
+    );
     assert_eq!(slideshow.change_interval().as_secs(), 45);
     assert_eq!(
         config
@@ -380,6 +384,30 @@ fn resolves_background_slideshow_files_and_directory() {
     std::fs::remove_file(ignored).ok();
     std::fs::remove_dir(slideshow_dir).ok();
     std::fs::remove_dir(temp_dir).ok();
+}
+
+#[test]
+fn parses_background_slideshow_lock_only_mode() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [background.slideshow]
+            files = ["/tmp/one.jpg", "/tmp/two.jpg"]
+            order = "random"
+            mode = "lock_only"
+        "#,
+    )
+    .expect("config should parse");
+
+    let slideshow = config
+        .background
+        .slideshow
+        .as_ref()
+        .expect("slideshow config should exist");
+    assert_eq!(
+        slideshow.mode,
+        crate::config::BackgroundSlideshowMode::LockOnly
+    );
+    assert!(!slideshow.rotates_while_locked());
 }
 
 #[test]

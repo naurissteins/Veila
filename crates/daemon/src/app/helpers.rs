@@ -13,7 +13,7 @@ use super::{
     mpris::NowPlayingHandle,
     prewarm,
     runtime::{ActiveRuntime, activate_lock},
-    state::BackgroundShuffleState,
+    state::BackgroundSelectionState,
     watch::effective_auto_reload_debounce_ms,
     weather::WeatherHandle,
 };
@@ -104,32 +104,36 @@ pub(super) fn current_username() -> Result<String> {
 
 pub(super) fn select_initial_background_path(
     config: &AppConfig,
-    background_shuffle: &mut Option<BackgroundShuffleState>,
+    background_selection: &mut Option<BackgroundSelectionState>,
 ) -> Option<PathBuf> {
     let background = &config.background;
     if !background.slideshow_enabled() {
-        *background_shuffle = None;
+        *background_selection = None;
         return None;
     }
 
+    let slideshow = background.slideshow.as_ref()?;
     let paths = background.resolved_slideshow_paths().ok()?;
     if paths.is_empty() {
-        *background_shuffle = None;
+        *background_selection = None;
         return None;
     }
 
-    match background
-        .slideshow
-        .as_ref()
-        .map(|slideshow| slideshow.order)
-    {
-        Some(veila_common::config::BackgroundSlideshowOrder::Random) => {
-            let shuffle = background_shuffle.get_or_insert_with(Default::default);
-            shuffle.next_path(&paths)
-        }
-        _ => {
-            *background_shuffle = None;
+    match (slideshow.mode, slideshow.order) {
+        (
+            veila_common::config::BackgroundSlideshowMode::Timed,
+            veila_common::config::BackgroundSlideshowOrder::Sequence,
+        ) => {
+            *background_selection = None;
             paths.into_iter().next()
+        }
+        (
+            veila_common::config::BackgroundSlideshowMode::Timed,
+            veila_common::config::BackgroundSlideshowOrder::Random,
+        )
+        | (veila_common::config::BackgroundSlideshowMode::LockOnly, _) => {
+            let selection = background_selection.get_or_insert_with(Default::default);
+            selection.next_path(&paths, slideshow.order)
         }
     }
 }

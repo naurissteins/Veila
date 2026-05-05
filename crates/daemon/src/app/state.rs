@@ -9,6 +9,7 @@ use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
 };
 use veila_common::LoadedConfig;
+use veila_common::config::BackgroundSlideshowOrder;
 
 use crate::domain::{
     auth::{AuthPolicy, AuthState},
@@ -35,7 +36,7 @@ pub(super) struct AppRuntime {
     pub(super) auth_results: Option<UnboundedReceiver<AuthResult>>,
     pub(super) auth_sender: Option<UnboundedSender<AuthResult>>,
     pub(super) auth_state: AuthState,
-    pub(super) background_shuffle: Option<BackgroundShuffleState>,
+    pub(super) background_selection: Option<BackgroundSelectionState>,
 }
 
 impl AppRuntime {
@@ -64,14 +65,14 @@ impl AppRuntime {
             auth_results: None,
             auth_sender: None,
             auth_state: AuthState::new(auth_policy),
-            background_shuffle: None,
+            background_selection: None,
         }
     }
 
     pub(super) fn select_initial_background_path(&mut self) -> Option<PathBuf> {
         super::helpers::select_initial_background_path(
             &self.loaded_config.config,
-            &mut self.background_shuffle,
+            &mut self.background_selection,
         )
     }
 
@@ -99,7 +100,7 @@ impl AppRuntime {
         &mut Option<String>,
         &mut Option<u64>,
         &mut AuthPolicy,
-        &mut Option<BackgroundShuffleState>,
+        &mut Option<BackgroundSelectionState>,
         RuntimeSlots<'_>,
     ) {
         let Self {
@@ -107,7 +108,7 @@ impl AppRuntime {
             last_reload_result,
             last_reload_unix_ms,
             auth_policy,
-            background_shuffle,
+            background_selection,
             state,
             curtain,
             auth_listener,
@@ -124,7 +125,7 @@ impl AppRuntime {
             last_reload_result,
             last_reload_unix_ms,
             auth_policy,
-            background_shuffle,
+            background_selection,
             RuntimeSlots {
                 state,
                 curtain,
@@ -140,18 +141,24 @@ impl AppRuntime {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(super) struct BackgroundShuffleState {
+pub(super) struct BackgroundSelectionState {
     paths: Vec<PathBuf>,
     remaining: Vec<PathBuf>,
     last: Option<PathBuf>,
+    sequence_index: usize,
 }
 
-impl BackgroundShuffleState {
-    pub(super) fn next_path(&mut self, paths: &[PathBuf]) -> Option<PathBuf> {
+impl BackgroundSelectionState {
+    pub(super) fn next_path(
+        &mut self,
+        paths: &[PathBuf],
+        order: BackgroundSlideshowOrder,
+    ) -> Option<PathBuf> {
         if paths.is_empty() {
             self.paths.clear();
             self.remaining.clear();
             self.last = None;
+            self.sequence_index = 0;
             return None;
         }
 
@@ -162,24 +169,35 @@ impl BackgroundShuffleState {
                 .last
                 .take()
                 .filter(|last| self.paths.iter().any(|path| path == last));
+            self.sequence_index = 0;
         }
 
-        if self.remaining.is_empty() {
-            self.remaining = self.paths.clone();
-            shuffle_paths(&mut self.remaining);
-            if self.remaining.len() > 1
-                && let Some(last) = self.last.as_ref()
-                && self.remaining.first() == Some(last)
-                && let Some(next_distinct_index) =
-                    self.remaining.iter().position(|path| path != last)
-            {
-                self.remaining.swap(0, next_distinct_index);
+        match order {
+            BackgroundSlideshowOrder::Sequence => {
+                let next = self.paths[self.sequence_index % self.paths.len()].clone();
+                self.sequence_index = (self.sequence_index + 1) % self.paths.len();
+                self.last = Some(next.clone());
+                Some(next)
+            }
+            BackgroundSlideshowOrder::Random => {
+                if self.remaining.is_empty() {
+                    self.remaining = self.paths.clone();
+                    shuffle_paths(&mut self.remaining);
+                    if self.remaining.len() > 1
+                        && let Some(last) = self.last.as_ref()
+                        && self.remaining.first() == Some(last)
+                        && let Some(next_distinct_index) =
+                            self.remaining.iter().position(|path| path != last)
+                    {
+                        self.remaining.swap(0, next_distinct_index);
+                    }
+                }
+
+                let next = self.remaining.remove(0);
+                self.last = Some(next.clone());
+                Some(next)
             }
         }
-
-        let next = self.remaining.remove(0);
-        self.last = Some(next.clone());
-        Some(next)
     }
 }
 
@@ -265,7 +283,9 @@ impl<'a>
 
 #[cfg(test)]
 mod tests {
-    use super::BackgroundShuffleState;
+    use veila_common::config::BackgroundSlideshowOrder;
+
+    use super::BackgroundSelectionState;
 
     #[test]
     fn random_shuffle_cycle_avoids_immediate_repeats() {
@@ -274,11 +294,19 @@ mod tests {
             "/tmp/two.jpg".into(),
             "/tmp/three.jpg".into(),
         ];
-        let mut shuffle = BackgroundShuffleState::default();
-        let first = shuffle.next_path(&paths).expect("first path");
-        let second = shuffle.next_path(&paths).expect("second path");
-        let third = shuffle.next_path(&paths).expect("third path");
-        let fourth = shuffle.next_path(&paths).expect("fourth path");
+        let mut selection = BackgroundSelectionState::default();
+        let first = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Random)
+            .expect("first path");
+        let second = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Random)
+            .expect("second path");
+        let third = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Random)
+            .expect("third path");
+        let fourth = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Random)
+            .expect("fourth path");
 
         assert_ne!(first, second);
         assert_ne!(second, third);
@@ -289,10 +317,42 @@ mod tests {
     fn random_shuffle_resets_when_path_set_changes() {
         let first_paths = vec!["/tmp/one.jpg".into(), "/tmp/two.jpg".into()];
         let second_paths = vec!["/tmp/three.jpg".into(), "/tmp/four.jpg".into()];
-        let mut shuffle = BackgroundShuffleState::default();
-        let _ = shuffle.next_path(&first_paths).expect("first path");
-        let next = shuffle.next_path(&second_paths).expect("changed path");
+        let mut selection = BackgroundSelectionState::default();
+        let _ = selection
+            .next_path(&first_paths, BackgroundSlideshowOrder::Random)
+            .expect("first path");
+        let next = selection
+            .next_path(&second_paths, BackgroundSlideshowOrder::Random)
+            .expect("changed path");
 
         assert!(second_paths.contains(&next));
+    }
+
+    #[test]
+    fn sequence_selection_advances_per_lock() {
+        let paths = vec![
+            "/tmp/one.jpg".into(),
+            "/tmp/two.jpg".into(),
+            "/tmp/three.jpg".into(),
+        ];
+        let mut selection = BackgroundSelectionState::default();
+
+        let first = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Sequence)
+            .expect("first path");
+        let second = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Sequence)
+            .expect("second path");
+        let third = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Sequence)
+            .expect("third path");
+        let fourth = selection
+            .next_path(&paths, BackgroundSlideshowOrder::Sequence)
+            .expect("fourth path");
+
+        assert_eq!(first, paths[0]);
+        assert_eq!(second, paths[1]);
+        assert_eq!(third, paths[2]);
+        assert_eq!(fourth, paths[0]);
     }
 }

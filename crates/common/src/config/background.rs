@@ -51,6 +51,14 @@ pub enum BackgroundSlideshowOrder {
     Random,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundSlideshowMode {
+    #[default]
+    Timed,
+    LockOnly,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BackgroundSlideshowConfig {
     #[serde(default = "default_background_slideshow_enabled")]
@@ -61,6 +69,8 @@ pub struct BackgroundSlideshowConfig {
     pub files: Vec<PathBuf>,
     #[serde(default)]
     pub order: BackgroundSlideshowOrder,
+    #[serde(default)]
+    pub mode: BackgroundSlideshowMode,
     #[serde(default = "default_background_slideshow_change_every_seconds")]
     pub change_every_seconds: u64,
 }
@@ -72,6 +82,7 @@ impl Default for BackgroundSlideshowConfig {
             directory: None,
             files: Vec::new(),
             order: BackgroundSlideshowOrder::Sequence,
+            mode: BackgroundSlideshowMode::Timed,
             change_every_seconds: default_background_slideshow_change_every_seconds(),
         }
     }
@@ -84,6 +95,10 @@ impl BackgroundSlideshowConfig {
 
     pub fn change_interval(&self) -> Duration {
         Duration::from_secs(self.change_every_seconds.max(1))
+    }
+
+    pub const fn rotates_while_locked(&self) -> bool {
+        matches!(self.mode, BackgroundSlideshowMode::Timed)
     }
 
     pub fn candidate_paths(&self) -> io::Result<Vec<PathBuf>> {

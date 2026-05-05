@@ -19,7 +19,7 @@ use super::super::{
     },
     mpris::NowPlayingHandle,
     runtime::ActiveRuntime,
-    state::BackgroundShuffleState,
+    state::BackgroundSelectionState,
     state::RuntimeSlots,
     weather::WeatherHandle,
 };
@@ -39,7 +39,7 @@ pub(crate) async fn handle_control_connection(
     weather: &WeatherHandle,
     battery: &BatteryHandle,
     now_playing: &NowPlayingHandle,
-    background_shuffle: &mut Option<BackgroundShuffleState>,
+    background_selection: &mut Option<BackgroundSelectionState>,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
 ) -> Result<bool> {
@@ -62,7 +62,7 @@ pub(crate) async fn handle_control_connection(
         DaemonControlMessage::LockNow { wait_ready } => {
             if !state.is_active() {
                 let initial_background_path =
-                    select_initial_background_path(&loaded_config.config, background_shuffle);
+                    select_initial_background_path(&loaded_config.config, background_selection);
                 match activate_and_log(
                     "forwarded",
                     session_proxy,

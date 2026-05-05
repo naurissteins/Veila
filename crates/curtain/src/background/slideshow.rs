@@ -3,10 +3,11 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use veila_common::config::{BackgroundConfig, BackgroundSlideshowOrder};
+use veila_common::config::{BackgroundConfig, BackgroundSlideshowMode, BackgroundSlideshowOrder};
 
 pub(crate) struct BackgroundSlideshow {
     paths: Vec<PathBuf>,
+    mode: BackgroundSlideshowMode,
     order: BackgroundSlideshowOrder,
     sequence: Vec<usize>,
     position: usize,
@@ -34,6 +35,7 @@ impl BackgroundSlideshow {
         }
 
         let order = slideshow.order;
+        let mode = slideshow.mode;
         let initial_path = initial_path
             .map(ToOwned::to_owned)
             .or_else(|| background.resolved_slideshow_initial_path().ok().flatten());
@@ -43,11 +45,12 @@ impl BackgroundSlideshow {
             .unwrap_or(0);
         let sequence = slideshow_sequence(paths.len(), order, initial_index);
 
-        let next_change_at =
-            (paths.len() > 1).then(|| Instant::now() + slideshow.change_interval());
+        let next_change_at = (paths.len() > 1 && slideshow.rotates_while_locked())
+            .then(|| Instant::now() + slideshow.change_interval());
 
         Some(Self {
             paths,
+            mode,
             order,
             sequence,
             position: 0,
@@ -85,7 +88,7 @@ impl BackgroundSlideshow {
     }
 
     pub(crate) fn next_preload_path(&self) -> Option<PathBuf> {
-        if self.paths.len() < 2 {
+        if self.paths.len() < 2 || !matches!(self.mode, BackgroundSlideshowMode::Timed) {
             return None;
         }
 
@@ -188,6 +191,7 @@ mod tests {
     fn next_preload_wraps_to_start() {
         let mut slideshow = BackgroundSlideshow {
             paths: vec!["/tmp/one.jpg".into(), "/tmp/two.jpg".into()],
+            mode: veila_common::config::BackgroundSlideshowMode::Timed,
             order: veila_common::config::BackgroundSlideshowOrder::Sequence,
             sequence: vec![0, 1],
             position: 1,
@@ -202,5 +206,21 @@ mod tests {
 
         slideshow.reset_sequence();
         assert_eq!(slideshow.position, 0);
+    }
+
+    #[test]
+    fn lock_only_mode_disables_next_preload_and_timed_rotation() {
+        let mut slideshow = BackgroundSlideshow {
+            paths: vec!["/tmp/one.jpg".into(), "/tmp/two.jpg".into()],
+            mode: veila_common::config::BackgroundSlideshowMode::LockOnly,
+            order: veila_common::config::BackgroundSlideshowOrder::Random,
+            sequence: vec![0, 1],
+            position: 0,
+            change_interval: Duration::from_secs(5),
+            next_change_at: None,
+        };
+
+        assert!(slideshow.next_preload_path().is_none());
+        assert!(slideshow.advance(Instant::now()).is_none());
     }
 }
