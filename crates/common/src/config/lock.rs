@@ -18,6 +18,8 @@ pub struct LockConfig {
     pub auth_backoff_base_ms: u64,
     #[serde(default = "default_auth_backoff_max_seconds")]
     pub auth_backoff_max_seconds: u64,
+    #[serde(default)]
+    pub screen_off_seconds: Option<u64>,
     #[serde(default = "default_lock_show_username")]
     pub show_username: bool,
     #[serde(default)]
@@ -38,6 +40,7 @@ impl Default for LockConfig {
             log_file_path: default_lock_log_file_path(),
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
+            screen_off_seconds: None,
             show_username: default_lock_show_username(),
             username: None,
             user_hint: Some(String::from("Password")),

@@ -26,6 +26,7 @@ impl SessionLockHandler for CurtainApp {
             "session lock confirmed by compositor"
         );
         self.session_locked = true;
+        self.screen_off.arm(session_locked_at);
         self.maybe_notify_ready();
     }
 
@@ -91,6 +92,13 @@ impl OutputHandler for CurtainApp {
         _queue_handle: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     ) {
+        for surface in &mut self.lock_surfaces {
+            if surface.output == output
+                && let Some(output_power) = surface.output_power.take()
+            {
+                output_power.destroy();
+            }
+        }
         self.lock_surfaces.retain(|entry| entry.output != output);
     }
 }

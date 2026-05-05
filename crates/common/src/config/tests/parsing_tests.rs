@@ -150,6 +150,19 @@ fn parses_lock_file_logging_settings() {
 }
 
 #[test]
+fn parses_lock_screen_off_seconds() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            screen_off_seconds = 10
+        "#,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.lock.screen_off_seconds, Some(10));
+}
+
+#[test]
 fn parses_now_playing_player_filters() {
     let config = AppConfig::from_toml_str(
         r#"

@@ -1,4 +1,5 @@
 mod interaction;
+mod power;
 mod profiler;
 mod repeat;
 
@@ -17,7 +18,7 @@ use smithay_client_toolkit::{
         globals::GlobalList,
         protocol::{wl_keyboard, wl_output, wl_surface},
     },
-    registry::RegistryState,
+    registry::{GlobalProxy, RegistryState},
     seat::{SeatState, pointer::ThemedPointer},
     session_lock::{SessionLock, SessionLockState, SessionLockSurface},
     shm::Shm,
@@ -39,6 +40,9 @@ use veila_renderer::{
     shm::SurfaceBufferPool,
 };
 use veila_ui::{ShellState, ShellTheme};
+use wayland_protocols_wlr::output_power_management::v1::client::{
+    zwlr_output_power_manager_v1, zwlr_output_power_v1,
+};
 
 use crate::{
     CurtainOptions,
@@ -47,6 +51,7 @@ use crate::{
     ipc::control::{ControlEvent, spawn_listener},
 };
 
+pub(crate) use power::ScreenOffState;
 pub(crate) use profiler::{RenderProfiler, RenderTimingSample};
 pub(crate) use repeat::KeyRepeatState;
 
@@ -61,6 +66,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) static_overlay: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) static_overlay_revision: u64,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
+    pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
 }
 
 pub(crate) struct CurtainApp {
@@ -70,6 +76,8 @@ pub(crate) struct CurtainApp {
     pub(crate) registry_state: RegistryState,
     pub(crate) seat_state: SeatState,
     pub(crate) session_lock_state: SessionLockState,
+    pub(crate) output_power_manager:
+        GlobalProxy<zwlr_output_power_manager_v1::ZwlrOutputPowerManagerV1>,
     pub(crate) session_lock: Option<SessionLock>,
     pub(crate) shm: Shm,
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
@@ -120,6 +128,7 @@ pub(crate) struct CurtainApp {
     pub(crate) failure_reason: Option<String>,
     pub(crate) render_profiler: RenderProfiler,
     pub(crate) backspace_repeat: Option<KeyRepeatState>,
+    pub(crate) screen_off: ScreenOffState,
 }
 
 impl CurtainApp {
@@ -168,6 +177,19 @@ impl CurtainApp {
             options.now_playing_snapshot.clone(),
         );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
+        let screen_off_delay = config
+            .lock
+            .screen_off_seconds
+            .filter(|seconds| *seconds > 0)
+            .map(Duration::from_secs);
+        let output_power_manager = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
+
+        if screen_off_delay.is_some() && output_power_manager.get().is_err() {
+            tracing::warn!(
+                screen_off_seconds = config.lock.screen_off_seconds,
+                "output power management is unavailable; locked screen-off timer is disabled"
+            );
+        }
 
         tracing::info!(
             config = loaded_config
@@ -197,6 +219,7 @@ impl CurtainApp {
             registry_state: RegistryState::new(globals),
             seat_state: SeatState::new(globals, queue_handle),
             session_lock_state: SessionLockState::new(globals, queue_handle),
+            output_power_manager,
             session_lock: None,
             shm: Shm::bind(globals, queue_handle)
                 .context("compositor does not advertise wl_shm")?,
@@ -247,6 +270,7 @@ impl CurtainApp {
             failure_reason: None,
             render_profiler: RenderProfiler::default(),
             backspace_repeat: None,
+            screen_off: ScreenOffState::new(screen_off_delay),
             lock_acquisition_started: false,
         })
     }
@@ -290,6 +314,7 @@ impl CurtainApp {
             return Ok(());
         };
 
+        let output_power = self.bind_output_power_for_surface(&output, queue_handle);
         let wl_surface = self.compositor_state.create_surface(queue_handle);
         let surface = session_lock.create_lock_surface(wl_surface, &output, queue_handle);
         self.lock_surfaces.push(ManagedLockSurface {
@@ -303,8 +328,18 @@ impl CurtainApp {
             static_overlay: None,
             static_overlay_revision: 0,
             shm_pool: None,
+            output_power,
         });
         self.background_render_started = false;
+
+        if self.outputs_powered_off()
+            && let Some(output_power) = self
+                .lock_surfaces
+                .last()
+                .and_then(|entry| entry.output_power.as_ref())
+        {
+            output_power.set_mode(zwlr_output_power_v1::Mode::Off);
+        }
 
         Ok(())
     }
@@ -331,8 +366,15 @@ impl CurtainApp {
             .as_ref()
             .and_then(|slideshow| slideshow.next_due_in(now))
             .unwrap_or(shell_interval);
+        let screen_off_interval = self
+            .screen_off
+            .due_in(now, self.session_locked)
+            .unwrap_or(shell_interval);
 
-        shell_interval.min(repeat_interval).min(slideshow_interval)
+        shell_interval
+            .min(repeat_interval)
+            .min(slideshow_interval)
+            .min(screen_off_interval)
     }
 
     pub(crate) fn failure_reason(&self) -> Option<&str> {
@@ -365,6 +407,10 @@ impl CurtainApp {
         if self.session_finished {
             self.session_lock.take();
             return Ok(());
+        }
+
+        if self.outputs_powered_off() {
+            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
 
         if let Some(session_lock) = self.session_lock.take()

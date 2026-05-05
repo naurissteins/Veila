@@ -124,6 +124,9 @@ impl KeyboardHandler for CurtainApp {
         _serial: u32,
         event: KeyEvent,
     ) {
+        if self.handle_lock_activity(queue_handle) {
+            return;
+        }
         if event.keysym == Keysym::BackSpace {
             self.start_backspace_repeat();
         }
@@ -138,6 +141,9 @@ impl KeyboardHandler for CurtainApp {
         _serial: u32,
         event: KeyEvent,
     ) {
+        if self.handle_lock_activity(queue_handle) {
+            return;
+        }
         if event.keysym == Keysym::BackSpace {
             return;
         }
@@ -197,6 +203,10 @@ impl PointerHandler for CurtainApp {
         for event in events {
             if !self.surface_has_focus_target(&event.surface) {
                 continue;
+            }
+
+            if self.handle_lock_activity(queue_handle) {
+                return;
             }
 
             match event.kind {

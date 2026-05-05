@@ -1994,6 +1994,7 @@ dependencies = [
  "veila-common",
  "veila-renderer",
  "veila-ui",
+ "wayland-protocols-wlr",
  "xkbcommon 0.9.0",
 ]
 

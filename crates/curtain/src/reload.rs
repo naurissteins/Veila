@@ -3,6 +3,7 @@ use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_common::AppConfig;
 use veila_renderer::background::BackgroundAsset;
 use veila_ui::ShellTheme;
+use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 
 use crate::{
     background::BackgroundSlideshow,
@@ -52,6 +53,37 @@ impl CurtainApp {
         self.ui_output_name = config.visuals.ui_output_name().map(str::to_owned);
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
+        let screen_off_delay = config
+            .lock
+            .screen_off_seconds
+            .filter(|seconds| *seconds > 0)
+            .map(std::time::Duration::from_secs);
+        let should_wake_outputs = self.outputs_powered_off() && screen_off_delay.is_none();
+        self.screen_off
+            .set_delay(screen_off_delay, std::time::Instant::now());
+        if self.screen_off.enabled() && self.output_power_manager.get().is_err() {
+            tracing::warn!(
+                screen_off_seconds = config.lock.screen_off_seconds,
+                "output power management is unavailable; locked screen-off timer is disabled"
+            );
+        }
+        for index in 0..self.lock_surfaces.len() {
+            if self.screen_off.enabled() {
+                if self.lock_surfaces[index].output_power.is_none() {
+                    let output = self.lock_surfaces[index].output.clone();
+                    self.lock_surfaces[index].output_power =
+                        self.bind_output_power_for_surface(&output, queue_handle);
+                }
+                continue;
+            }
+
+            if let Some(output_power) = self.lock_surfaces[index].output_power.take() {
+                output_power.destroy();
+            }
+        }
+        if self.outputs_powered_off() && self.screen_off.enabled() {
+            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::Off);
+        }
         self.ui_shell.apply_theme_with_username_and_weather(
             theme,
             config.lock.user_hint.clone(),
@@ -68,6 +100,10 @@ impl CurtainApp {
         for surface in &mut self.lock_surfaces {
             surface.static_overlay = None;
             surface.static_overlay_revision = 0;
+        }
+
+        if should_wake_outputs {
+            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
 
         tracing::info!(

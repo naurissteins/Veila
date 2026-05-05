@@ -195,6 +195,10 @@ impl CurtainApp {
     }
 
     pub(crate) fn advance_background_slideshow(&mut self, queue_handle: &QueueHandle<Self>) {
+        if self.outputs_powered_off() {
+            return;
+        }
+
         let Some(path) = self
             .slideshow
             .as_mut()
