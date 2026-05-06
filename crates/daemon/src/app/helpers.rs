@@ -211,6 +211,7 @@ pub(super) async fn apply_loaded_config(
     suspend_state.set_policy(
         suspend_delay_seconds(&loaded_config.config).map(Duration::from_secs),
         loaded_config.config.lock.suspend_only_on_battery,
+        loaded_config.config.lock.skip_suspend_while_media_playing,
         Instant::now(),
         state.is_active(),
     );

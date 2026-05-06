@@ -24,6 +24,8 @@ pub struct LockConfig {
     pub suspend_seconds: Option<u64>,
     #[serde(default)]
     pub suspend_only_on_battery: bool,
+    #[serde(default)]
+    pub skip_suspend_while_media_playing: bool,
     #[serde(default = "default_lock_show_username")]
     pub show_username: bool,
     #[serde(default)]
@@ -47,6 +49,7 @@ impl Default for LockConfig {
             screen_off_seconds: None,
             suspend_seconds: None,
             suspend_only_on_battery: false,
+            skip_suspend_while_media_playing: false,
             show_username: default_lock_show_username(),
             username: None,
             user_hint: Some(String::from("Password")),

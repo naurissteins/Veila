@@ -189,6 +189,19 @@ fn parses_lock_suspend_only_on_battery() {
 }
 
 #[test]
+fn parses_lock_skip_suspend_while_media_playing() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            skip_suspend_while_media_playing = true
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.lock.skip_suspend_while_media_playing);
+}
+
+#[test]
 fn parses_now_playing_player_filters() {
     let config = AppConfig::from_toml_str(
         r#"

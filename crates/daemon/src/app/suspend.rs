@@ -9,15 +9,21 @@ use crate::adapters::logind;
 pub(super) struct LockedSuspendState {
     delay: Option<Duration>,
     battery_only: bool,
+    skip_while_media_playing: bool,
     last_activity_at: Option<Instant>,
     suspend_requested: bool,
 }
 
 impl LockedSuspendState {
-    pub(super) fn new(delay: Option<Duration>, battery_only: bool) -> Self {
+    pub(super) fn new(
+        delay: Option<Duration>,
+        battery_only: bool,
+        skip_while_media_playing: bool,
+    ) -> Self {
         Self {
             delay,
             battery_only,
+            skip_while_media_playing,
             last_activity_at: None,
             suspend_requested: false,
         }
@@ -27,11 +33,13 @@ impl LockedSuspendState {
         &mut self,
         delay: Option<Duration>,
         battery_only: bool,
+        skip_while_media_playing: bool,
         now: Instant,
         active_lock: bool,
     ) {
         self.delay = delay;
         self.battery_only = battery_only;
+        self.skip_while_media_playing = skip_while_media_playing;
         self.suspend_requested = false;
         self.last_activity_at = if !active_lock || delay.is_none() {
             None
@@ -69,12 +77,17 @@ impl LockedSuspendState {
         active_lock: bool,
         auth_in_flight: bool,
         battery_snapshot: Option<&BatterySnapshot>,
+        media_playing: bool,
     ) -> bool {
         if !active_lock || auth_in_flight || self.suspend_requested {
             return false;
         }
 
         if self.battery_only && !on_battery_power(battery_snapshot) {
+            return false;
+        }
+
+        if self.skip_while_media_playing && media_playing {
             return false;
         }
 
@@ -124,31 +137,31 @@ mod tests {
     #[test]
     fn does_not_suspend_while_auth_is_in_flight() {
         let now = Instant::now();
-        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false);
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, false);
         state.arm(now);
 
-        assert!(!state.should_suspend(now + Duration::from_secs(6), true, true, None));
-        assert!(state.should_suspend(now + Duration::from_secs(6), true, false, None));
+        assert!(!state.should_suspend(now + Duration::from_secs(6), true, true, None, false));
+        assert!(state.should_suspend(now + Duration::from_secs(6), true, false, None, false));
     }
 
     #[test]
     fn activity_resets_pending_suspend_request() {
         let now = Instant::now();
-        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false);
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, false);
         state.arm(now);
         state.mark_requested();
         state.note_activity(now + Duration::from_secs(6));
 
-        assert!(!state.should_suspend(now + Duration::from_secs(7), true, false, None));
+        assert!(!state.should_suspend(now + Duration::from_secs(7), true, false, None, false));
     }
 
     #[test]
     fn battery_only_policy_requires_discharging_snapshot() {
         let now = Instant::now();
-        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), true);
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), true, false);
         state.arm(now);
 
-        assert!(!state.should_suspend(now + Duration::from_secs(6), true, false, None));
+        assert!(!state.should_suspend(now + Duration::from_secs(6), true, false, None, false));
         assert!(!state.should_suspend(
             now + Duration::from_secs(6),
             true,
@@ -157,6 +170,7 @@ mod tests {
                 percent: 80,
                 charging: true,
             }),
+            false,
         ));
         assert!(state.should_suspend(
             now + Duration::from_secs(6),
@@ -166,6 +180,17 @@ mod tests {
                 percent: 80,
                 charging: false,
             }),
+            false,
         ));
+    }
+
+    #[test]
+    fn media_playing_policy_blocks_suspend_when_enabled() {
+        let now = Instant::now();
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, true);
+        state.arm(now);
+
+        assert!(!state.should_suspend(now + Duration::from_secs(6), true, false, None, true));
+        assert!(state.should_suspend(now + Duration::from_secs(6), true, false, None, false));
     }
 }

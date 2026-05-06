@@ -15,20 +15,23 @@ const MPRIS_INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
 pub(super) struct NowPlayingHandle {
     config_tx: watch::Sender<NowPlayingConfig>,
     snapshot_rx: watch::Receiver<Option<NowPlayingSnapshot>>,
+    playback_active_rx: watch::Receiver<bool>,
 }
 
 impl NowPlayingHandle {
     pub(super) fn spawn(config: &NowPlayingConfig) -> Self {
         let (config_tx, config_rx) = watch::channel(config.clone());
         let (snapshot_tx, snapshot_rx) = watch::channel(None);
+        let (playback_active_tx, playback_active_rx) = watch::channel(false);
 
         tokio::spawn(async move {
-            run_now_playing_service(config_rx, snapshot_tx).await;
+            run_now_playing_service(config_rx, snapshot_tx, playback_active_tx).await;
         });
 
         Self {
             config_tx,
             snapshot_rx,
+            playback_active_rx,
         }
     }
 
@@ -40,6 +43,10 @@ impl NowPlayingHandle {
         self.snapshot_rx.clone()
     }
 
+    pub(super) fn currently_playing(&self) -> bool {
+        *self.playback_active_rx.borrow()
+    }
+
     pub(super) fn update_config(&self, config: &NowPlayingConfig) {
         let _ = self.config_tx.send(config.clone());
     }
@@ -48,15 +55,21 @@ impl NowPlayingHandle {
 async fn run_now_playing_service(
     mut config_rx: watch::Receiver<NowPlayingConfig>,
     snapshot_tx: watch::Sender<Option<NowPlayingSnapshot>>,
+    playback_active_tx: watch::Sender<bool>,
 ) {
     let mut last_snapshot = None;
+    let mut last_playback_active = false;
     let mut config = config_rx.borrow().clone();
 
     loop {
-        let next_snapshot = fetch_snapshot_async(config.clone()).await;
-        if !same_track_snapshot(last_snapshot.as_ref(), next_snapshot.as_ref()) {
-            last_snapshot = next_snapshot.clone();
-            snapshot_tx.send_replace(next_snapshot);
+        let refresh = fetch_refresh_state(config.clone()).await;
+        if !same_track_snapshot(last_snapshot.as_ref(), refresh.snapshot.as_ref()) {
+            last_snapshot = refresh.snapshot.clone();
+            snapshot_tx.send_replace(refresh.snapshot);
+        }
+        if refresh.playback_active != last_playback_active {
+            last_playback_active = refresh.playback_active;
+            playback_active_tx.send_replace(refresh.playback_active);
         }
 
         let refresh = tokio::time::sleep(REFRESH_INTERVAL);
@@ -74,17 +87,25 @@ async fn run_now_playing_service(
     }
 }
 
-async fn fetch_snapshot_async(config: NowPlayingConfig) -> Option<NowPlayingSnapshot> {
+struct NowPlayingRefresh {
+    snapshot: Option<NowPlayingSnapshot>,
+    playback_active: bool,
+}
+
+async fn fetch_refresh_state(config: NowPlayingConfig) -> NowPlayingRefresh {
     match fetch_snapshot(&config).await {
-        Ok(snapshot) => snapshot,
+        Ok(refresh) => refresh,
         Err(error) => {
             tracing::debug!("mpris refresh failed: {error:#}");
-            None
+            NowPlayingRefresh {
+                snapshot: None,
+                playback_active: false,
+            }
         }
     }
 }
 
-async fn fetch_snapshot(config: &NowPlayingConfig) -> Result<Option<NowPlayingSnapshot>> {
+async fn fetch_snapshot(config: &NowPlayingConfig) -> Result<NowPlayingRefresh> {
     let connection = Connection::session().await?;
     let dbus = DBusProxy::new(&connection).await?;
     let names = dbus.list_names().await?;
@@ -118,11 +139,17 @@ async fn fetch_snapshot(config: &NowPlayingConfig) -> Result<Option<NowPlayingSn
             artist = candidate.snapshot.artist.as_deref().unwrap_or("none"),
             "selected mpris player for now playing widget"
         );
-        return Ok(Some(candidate.snapshot));
+        return Ok(NowPlayingRefresh {
+            playback_active: candidate.rank >= 2,
+            snapshot: Some(candidate.snapshot),
+        });
     }
 
     tracing::debug!("no eligible mpris player selected for now playing widget");
-    Ok(None)
+    Ok(NowPlayingRefresh {
+        snapshot: None,
+        playback_active: false,
+    })
 }
 
 async fn player_snapshot(

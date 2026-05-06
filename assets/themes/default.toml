@@ -1,7 +1,7 @@
 [background]
 mode = "gradient"
 color = "#413249"
-dim_strength = 0
+dim_strength = 40
 
 [background.gradient]
 top_left = "#A85BFF"
@@ -94,7 +94,7 @@ gap = 20
 color = "rgba(255, 255, 255, 0.4)"
 font_family = "Geom"
 font_weight = 600
-size = 3
+size = 2
 
 [visuals.placeholder]
 color = "rgba(255, 255, 255, 0.9)"

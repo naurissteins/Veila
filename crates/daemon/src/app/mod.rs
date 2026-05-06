@@ -238,6 +238,7 @@ pub async fn run(
                     runtime.state.is_active(),
                     runtime.auth_state.in_flight(),
                     runtime.battery.current_snapshot().as_ref(),
+                    runtime.now_playing.currently_playing(),
                 ) {
                     runtime.suspend_state.mark_requested();
                     match suspend::request_system_suspend(&connection).await {
@@ -249,6 +250,11 @@ pub async fn run(
                                     .config
                                     .lock
                                     .suspend_only_on_battery,
+                                skip_suspend_while_media_playing = runtime
+                                    .loaded_config
+                                    .config
+                                    .lock
+                                    .skip_suspend_while_media_playing,
                                 "requesting system suspend after locked inactivity"
                             );
                         }

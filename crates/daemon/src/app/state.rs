@@ -55,6 +55,8 @@ impl AppRuntime {
         let weather = WeatherHandle::spawn(&loaded_config.config.weather);
         let battery = BatteryHandle::spawn(&loaded_config.config.battery, suspend_only_on_battery);
         let now_playing = NowPlayingHandle::spawn(&loaded_config.config.now_playing);
+        let skip_suspend_while_media_playing =
+            loaded_config.config.lock.skip_suspend_while_media_playing;
 
         Self {
             loaded_config,
@@ -73,7 +75,11 @@ impl AppRuntime {
             auth_sender: None,
             auth_state: AuthState::new(auth_policy),
             background_selection: None,
-            suspend_state: LockedSuspendState::new(suspend_delay, suspend_only_on_battery),
+            suspend_state: LockedSuspendState::new(
+                suspend_delay,
+                suspend_only_on_battery,
+                skip_suspend_while_media_playing,
+            ),
         }
     }
 
