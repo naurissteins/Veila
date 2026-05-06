@@ -95,6 +95,7 @@ pub struct ShellTheme {
     pub keyboard_size: Option<u32>,
     pub keyboard_top_offset: Option<i32>,
     pub keyboard_right_offset: Option<i32>,
+    pub power_status_enabled: bool,
     pub battery_enabled: bool,
     pub battery_color: Option<ClearColor>,
     pub battery_background_color: ClearColor,
@@ -287,6 +288,7 @@ impl ShellTheme {
             keyboard_size: config.visuals.keyboard_size().map(u32::from),
             keyboard_top_offset: config.visuals.keyboard_top_offset().map(i32::from),
             keyboard_right_offset: config.visuals.keyboard_right_offset().map(i32::from),
+            power_status_enabled: config.visuals.power_status_enabled(),
             battery_enabled: config.visuals.battery_enabled(),
             battery_color: config.visuals.battery_color().map(to_color),
             battery_background_color: config

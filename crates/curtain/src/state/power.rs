@@ -100,6 +100,16 @@ impl ScreenOffState {
 }
 
 impl CurtainApp {
+    pub(crate) fn refresh_power_status_text(&mut self) -> bool {
+        let now = Instant::now();
+        self.ui_shell
+            .set_power_status_text(self.power_status_text(now))
+    }
+
+    pub(crate) fn power_status_poll_interval(&self, now: Instant) -> Option<Duration> {
+        self.power_status_text(now).map(|_| Duration::from_secs(1))
+    }
+
     pub(crate) fn record_visible_lock_activity(&mut self) {
         self.screen_off.record_visible_activity(Instant::now());
     }
@@ -161,13 +171,62 @@ impl CurtainApp {
         }
         requested
     }
+
+    fn power_status_text(&self, now: Instant) -> Option<String> {
+        let screen_off = self
+            .screen_off
+            .due_in(now, self.session_locked)
+            .map(format_countdown_duration);
+        let suspend = self
+            .remote_power_status
+            .as_ref()
+            .map(|snapshot| format_countdown_seconds(snapshot.suspend_remaining_seconds));
+
+        match (screen_off, suspend) {
+            (Some(screen_off), Some(suspend)) => {
+                Some(format!("Off in {screen_off} · Suspend in {suspend}"))
+            }
+            (Some(screen_off), None) => Some(format!("Off in {screen_off}")),
+            (None, Some(suspend)) => Some(format!("Suspend in {suspend}")),
+            (None, None) => None,
+        }
+    }
+}
+
+fn format_countdown_duration(duration: Duration) -> String {
+    format_countdown_seconds(remaining_seconds(duration))
+}
+
+fn format_countdown_seconds(seconds: u64) -> String {
+    if seconds < 60 {
+        return format!("{seconds}s");
+    }
+
+    let minutes = seconds / 60;
+    let remainder = seconds % 60;
+    if remainder == 0 || minutes >= 10 {
+        return format!("{minutes}m");
+    }
+
+    format!("{minutes}m {remainder}s")
+}
+
+fn remaining_seconds(duration: Duration) -> u64 {
+    let seconds = duration.as_secs();
+    if duration.subsec_nanos() == 0 {
+        seconds.max(1)
+    } else {
+        seconds.saturating_add(1)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, Instant};
 
-    use super::ScreenOffState;
+    use super::{
+        ScreenOffState, format_countdown_duration, format_countdown_seconds, remaining_seconds,
+    };
 
     #[test]
     fn due_in_counts_down_until_power_off_deadline() {
@@ -216,5 +275,19 @@ mod tests {
 
         assert!(state.outputs_powered_off());
         assert_eq!(state.due_in(now + Duration::from_secs(2), true), None);
+    }
+
+    #[test]
+    fn countdown_rounds_partial_seconds_up() {
+        assert_eq!(remaining_seconds(Duration::from_millis(100)), 1);
+        assert_eq!(remaining_seconds(Duration::from_millis(1_100)), 2);
+    }
+
+    #[test]
+    fn countdown_formats_compact_text() {
+        assert_eq!(format_countdown_seconds(9), "9s");
+        assert_eq!(format_countdown_seconds(60), "1m");
+        assert_eq!(format_countdown_seconds(65), "1m 5s");
+        assert_eq!(format_countdown_duration(Duration::from_secs(600)), "10m");
     }
 }

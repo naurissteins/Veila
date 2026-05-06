@@ -178,6 +178,20 @@ impl Default for BatteryVisualConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PowerStatusVisualConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+}
+
+impl Default for PowerStatusVisualConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Some(false),
+        }
+    }
+}
+
 impl super::VisualConfig {
     pub fn reveal_enabled(&self) -> bool {
         self.reveal
@@ -376,6 +390,13 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|battery| battery.top_offset)
             .or(self.battery_top_offset)
+    }
+
+    pub fn power_status_enabled(&self) -> bool {
+        self.power_status
+            .as_ref()
+            .and_then(|power_status| power_status.enabled)
+            .unwrap_or(false)
     }
 
     pub fn battery_right_offset(&self) -> Option<i16> {

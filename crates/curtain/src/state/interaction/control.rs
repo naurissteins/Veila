@@ -33,6 +33,12 @@ impl CurtainApp {
                     self.ui_shell.set_now_playing_snapshot(snapshot);
                     self.render_all_surfaces(queue_handle);
                 }
+                ControlEvent::UpdatePowerStatus { snapshot } => {
+                    self.remote_power_status = snapshot;
+                    if self.refresh_power_status_text() {
+                        self.render_all_surfaces(queue_handle);
+                    }
+                }
             }
         }
     }

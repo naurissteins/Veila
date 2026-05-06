@@ -1,6 +1,6 @@
 use veila_renderer::SoftwareBuffer;
 
-use super::super::ShellState;
+use super::super::{ShellState, ShellStatus};
 use super::{
     layout::top_role_top,
     styles,
@@ -9,6 +9,24 @@ use super::{
 
 impl ShellState {
     pub(super) fn render_top_right_indicators(&self, buffer: &mut SoftwareBuffer) {
+        let power_block = (self.theme.power_status_enabled
+            && matches!(self.status, ShellStatus::Idle))
+        .then_some(self.power_status_text.as_deref())
+        .flatten()
+        .map(|text| {
+            self.text_layout_cache.borrow_mut().power_status_block(
+                text,
+                self.keyboard_layout_text_style(),
+                280,
+            )
+        });
+        let power_chip_diameter = power_block.as_ref().map(|block| {
+            top_right_chip_diameter(
+                self.theme.keyboard_background_size,
+                block.width as i32,
+                block.height as i32,
+            )
+        });
         let keyboard_block = if self.theme.keyboard_enabled {
             self.keyboard_layout_label.as_deref().map(|label| {
                 self.text_layout_cache.borrow_mut().keyboard_layout_block(
@@ -29,7 +47,7 @@ impl ShellState {
         });
         let row_gap = self.theme.battery_gap.unwrap_or(8).clamp(0, 64);
 
-        if let Some(block) = keyboard_block.as_ref() {
+        if let Some(block) = power_block.as_ref() {
             let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
                 + self.theme.keyboard_top_offset.unwrap_or(0))
             .max(8);
@@ -44,11 +62,39 @@ impl ShellState {
             );
         }
 
+        if let Some(block) = keyboard_block.as_ref() {
+            let right_padding = 32
+                + power_chip_diameter.unwrap_or(0)
+                + if power_chip_diameter.is_some() {
+                    row_gap
+                } else {
+                    0
+                };
+            let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
+                + self.theme.keyboard_top_offset.unwrap_or(0))
+            .max(8);
+            draw_top_right_block(
+                buffer,
+                right_padding,
+                self.theme.keyboard_right_offset.unwrap_or(0),
+                y,
+                self.theme.keyboard_background_color,
+                self.theme.keyboard_background_size,
+                block,
+            );
+        }
+
         if self.theme.battery_enabled
             && let Some(battery) = self.battery.as_ref()
         {
             let battery_icon_size = self.theme.battery_size.unwrap_or(18).clamp(12, 96);
             let right_padding = 32
+                + power_chip_diameter.unwrap_or(0)
+                + if power_chip_diameter.is_some() {
+                    row_gap
+                } else {
+                    0
+                }
                 + keyboard_chip_diameter.unwrap_or(0)
                 + if keyboard_chip_diameter.is_some() {
                     row_gap

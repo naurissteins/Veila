@@ -16,6 +16,7 @@ pub(crate) struct TextLayoutCache {
     pub(super) clock_meridiem: CachedTextBlock,
     pub(super) date: CachedTextBlock,
     pub(super) keyboard_layout: CachedTextBlock,
+    pub(super) power_status: CachedTextBlock,
     pub(super) username: CachedTextBlock,
     pub(super) placeholder: CachedTextBlock,
     pub(super) revealed_secret: CachedTextBlock,
@@ -201,6 +202,16 @@ impl TextLayoutCache {
         max_width: u32,
     ) -> TextBlock {
         self.keyboard_layout.resolve(label, style, max_width, 1)
+    }
+
+    pub(super) fn power_status_block(
+        &mut self,
+        text: &str,
+        style: TextStyle,
+        max_width: u32,
+    ) -> TextBlock {
+        self.power_status
+            .resolve_single_line(text, style, max_width)
     }
 
     pub(super) fn now_playing_title_block(

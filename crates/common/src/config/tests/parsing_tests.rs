@@ -34,6 +34,9 @@ fn parses_widget_enable_flags() {
             [visuals.battery]
             enabled = false
 
+            [visuals.power_status]
+            enabled = true
+
             [visuals.weather]
             enabled = false
 
@@ -53,8 +56,14 @@ fn parses_widget_enable_flags() {
     assert!(!config.visuals.caps_lock_enabled());
     assert!(!config.visuals.keyboard_enabled());
     assert!(!config.visuals.battery_enabled());
+    assert!(config.visuals.power_status_enabled());
     assert!(!config.visuals.weather_enabled());
     assert!(!config.visuals.now_playing_enabled());
+}
+
+#[test]
+fn power_status_indicator_defaults_to_disabled() {
+    assert!(!AppConfig::default().visuals.power_status_enabled());
 }
 
 #[test]

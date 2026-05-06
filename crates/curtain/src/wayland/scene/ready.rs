@@ -67,6 +67,7 @@ impl CurtainApp {
     }
 
     pub(crate) fn render_all_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
+        self.refresh_power_status_text();
         let surfaces: Vec<_> = self
             .lock_surfaces
             .iter()

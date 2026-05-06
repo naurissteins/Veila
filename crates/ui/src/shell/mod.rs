@@ -66,6 +66,7 @@ pub struct ShellState {
     caps_lock_active: bool,
     keyboard_layout_label: Option<String>,
     battery: Option<BatteryWidgetData>,
+    power_status_text: Option<String>,
     reveal_secret: bool,
     auth_revealed: bool,
     reveal_toggle_hovered: bool,

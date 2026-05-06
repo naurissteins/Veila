@@ -141,7 +141,8 @@ impl CurtainApp {
     }
 
     pub(crate) fn advance_animated_scene(&mut self, queue_handle: &QueueHandle<Self>) {
-        if self.ui_shell.advance_animated_state() {
+        let power_status_changed = self.refresh_power_status_text();
+        if self.ui_shell.advance_animated_state() || power_status_changed {
             self.render_all_surfaces(queue_handle);
         }
     }

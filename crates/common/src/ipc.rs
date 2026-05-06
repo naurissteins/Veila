@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 use crate::NowPlayingSnapshot;
 use crate::error::Result;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LockPowerStatusSnapshot {
+    pub suspend_remaining_seconds: u64,
+}
+
 /// Messages sent from UI-facing clients to the daemon.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
@@ -38,6 +43,9 @@ pub enum CurtainControlMessage {
     MarkResumed,
     UpdateNowPlaying {
         snapshot: Option<NowPlayingSnapshot>,
+    },
+    UpdatePowerStatus {
+        snapshot: Option<LockPowerStatusSnapshot>,
     },
 }
 
@@ -119,8 +127,8 @@ where
 mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, DaemonControlMessage, DaemonControlResponse,
-        DaemonMessage, DaemonReloadStatus, DaemonStatus, LiveReloadStatus, decode_message,
-        encode_message,
+        DaemonMessage, DaemonReloadStatus, DaemonStatus, LiveReloadStatus, LockPowerStatusSnapshot,
+        decode_message, encode_message,
     };
 
     #[test]
@@ -166,6 +174,20 @@ mod tests {
                 artist: Some("Artist".to_string()),
                 artwork_path: None,
                 fetched_at_unix: 1,
+            }),
+        };
+        let encoded = encode_message(&message).expect("control message should encode");
+        let decoded = decode_message::<CurtainControlMessage>(&encoded)
+            .expect("control message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_power_status_update_control_messages() {
+        let message = CurtainControlMessage::UpdatePowerStatus {
+            snapshot: Some(LockPowerStatusSnapshot {
+                suspend_remaining_seconds: 42,
             }),
         };
         let encoded = encode_message(&message).expect("control message should encode");

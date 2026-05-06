@@ -7,8 +7,8 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use veila_common::NowPlayingSnapshot;
 use veila_common::ipc::{CurtainControlMessage, decode_message};
+use veila_common::{NowPlayingSnapshot, ipc::LockPowerStatusSnapshot};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
@@ -20,6 +20,9 @@ pub(crate) enum ControlEvent {
     MarkResumed,
     UpdateNowPlaying {
         snapshot: Option<NowPlayingSnapshot>,
+    },
+    UpdatePowerStatus {
+        snapshot: Option<LockPowerStatusSnapshot>,
     },
 }
 
@@ -77,6 +80,9 @@ fn run_listener(listener: UnixListener, sender: Sender<ControlEvent>) -> Result<
             }
             CurtainControlMessage::UpdateNowPlaying { snapshot } => {
                 let _ = sender.send(ControlEvent::UpdateNowPlaying { snapshot });
+            }
+            CurtainControlMessage::UpdatePowerStatus { snapshot } => {
+                let _ = sender.send(ControlEvent::UpdatePowerStatus { snapshot });
             }
         }
     }

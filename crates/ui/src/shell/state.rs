@@ -168,6 +168,7 @@ impl ShellState {
             caps_lock_active: false,
             keyboard_layout_label: None,
             battery: battery_widget_data(battery_snapshot),
+            power_status_text: None,
             reveal_secret: false,
             auth_revealed: !theme.input_reveal_on_interaction,
             reveal_toggle_hovered: false,
@@ -212,6 +213,15 @@ impl ShellState {
         }
 
         self.keyboard_layout_label = label;
+        true
+    }
+
+    pub fn set_power_status_text(&mut self, text: Option<String>) -> bool {
+        if self.power_status_text == text {
+            return false;
+        }
+
+        self.power_status_text = text;
         true
     }
 

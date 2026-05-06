@@ -10,6 +10,7 @@ use tokio::{
 };
 use veila_common::LoadedConfig;
 use veila_common::config::BackgroundSlideshowOrder;
+use veila_common::ipc::LockPowerStatusSnapshot;
 
 use crate::domain::{
     auth::{AuthPolicy, AuthState},
@@ -42,6 +43,8 @@ pub(super) struct AppRuntime {
     pub(super) auth_state: AuthState,
     pub(super) background_selection: Option<BackgroundSelectionState>,
     pub(super) suspend_state: LockedSuspendState,
+    pub(super) last_power_status_snapshot: Option<LockPowerStatusSnapshot>,
+    pub(super) power_status_sent: bool,
 }
 
 impl AppRuntime {
@@ -80,6 +83,8 @@ impl AppRuntime {
                 suspend_only_on_battery,
                 skip_suspend_while_media_playing,
             ),
+            last_power_status_snapshot: None,
+            power_status_sent: false,
         }
     }
 

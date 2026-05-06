@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use veila_common::BatterySnapshot;
+use veila_common::ipc::LockPowerStatusSnapshot;
 
 use crate::adapters::logind;
 
@@ -172,6 +173,29 @@ impl LockedSuspendState {
         self.suspend_requested = true;
         self.last_reported_skip_reason = None;
     }
+
+    pub(super) fn power_status_snapshot(
+        &self,
+        now: Instant,
+        active_lock: bool,
+    ) -> Option<LockPowerStatusSnapshot> {
+        if !active_lock || self.suspend_requested {
+            return None;
+        }
+
+        let delay = self.delay?;
+        let last_activity_at = self.last_activity_at?;
+        let deadline = last_activity_at
+            .checked_add(delay)
+            .unwrap_or(last_activity_at);
+        if now >= deadline {
+            return None;
+        }
+
+        Some(LockPowerStatusSnapshot {
+            suspend_remaining_seconds: remaining_seconds(deadline.saturating_duration_since(now)),
+        })
+    }
 }
 
 pub(super) fn suspend_delay_seconds(config: &veila_common::AppConfig) -> Option<u64> {
@@ -190,6 +214,15 @@ fn battery_power_state(snapshot: Option<&BatterySnapshot>) -> BatteryPowerState 
         Some(snapshot) if !snapshot.charging => BatteryPowerState::OnBattery,
         Some(_) => BatteryPowerState::Charging,
         None => BatteryPowerState::Unavailable,
+    }
+}
+
+fn remaining_seconds(duration: Duration) -> u64 {
+    let seconds = duration.as_secs();
+    if duration.subsec_nanos() == 0 {
+        seconds.max(1)
+    } else {
+        seconds.saturating_add(1)
     }
 }
 
@@ -315,6 +348,40 @@ mod tests {
         assert_eq!(
             state.note_skip_reason(SuspendSkipReason::OnAcPower),
             Some(SuspendSkipReason::OnAcPower)
+        );
+    }
+
+    #[test]
+    fn power_status_snapshot_counts_down_while_pending() {
+        let now = Instant::now();
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(20)), false, false);
+        state.arm(now);
+
+        assert_eq!(
+            state
+                .power_status_snapshot(now + Duration::from_secs(1), true)
+                .map(|snapshot| snapshot.suspend_remaining_seconds),
+            Some(19)
+        );
+    }
+
+    #[test]
+    fn power_status_snapshot_clears_after_deadline_or_request() {
+        let now = Instant::now();
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, false);
+        state.arm(now);
+
+        assert!(
+            state
+                .power_status_snapshot(now + Duration::from_secs(5), true)
+                .is_none()
+        );
+        state.arm(now);
+        state.mark_requested();
+        assert!(
+            state
+                .power_status_snapshot(now + Duration::from_secs(1), true)
+                .is_none()
         );
     }
 }

@@ -520,6 +520,18 @@ fn can_disable_username_label() {
 }
 
 #[test]
+fn power_status_text_updates_without_touching_static_scene_revision() {
+    let mut shell = ShellState::default();
+    let original = shell.static_scene_revision();
+
+    assert!(shell.set_power_status_text(Some(String::from("Off in 10s"))));
+    assert_eq!(shell.static_scene_revision(), original);
+    assert!(!shell.set_power_status_text(Some(String::from("Off in 10s"))));
+    assert!(shell.set_power_status_text(None));
+    assert_eq!(shell.static_scene_revision(), original);
+}
+
+#[test]
 fn uses_configured_username_override() {
     let shell = ShellState::new_with_username(
         Default::default(),

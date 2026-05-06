@@ -120,6 +120,7 @@ pub async fn run(
     loop {
         tokio::select! {
             Some(_) = lock_stream.next() => {
+                let was_active = runtime.state.is_active();
                 let weather_snapshot = runtime.weather.current_snapshot();
                 let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
@@ -137,6 +138,10 @@ pub async fn run(
                     auth_policy,
                     suspend_state,
                 ).await;
+                if !was_active && runtime.state.is_active() {
+                    runtime.last_power_status_snapshot = None;
+                    runtime.power_status_sent = false;
+                }
             }
             Some(_) = unlock_stream.next() => {
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
@@ -146,6 +151,10 @@ pub async fn run(
                     auth_policy,
                     suspend_state,
                 ).await;
+                if !runtime.state.is_active() {
+                    runtime.last_power_status_snapshot = None;
+                    runtime.power_status_sent = false;
+                }
             }
             Some(signal) = prepare_for_sleep_stream.next() => {
                 match signal.args() {
@@ -196,6 +205,10 @@ pub async fn run(
                     auth_policy,
                     suspend_state,
                 ).await;
+                if !runtime.state.is_active() {
+                    runtime.last_power_status_snapshot = None;
+                    runtime.power_status_sent = false;
+                }
             }
             result = accept_auth_connection(&mut runtime.auth_listener), if runtime.state.is_active() && runtime.auth_listener.is_some() => {
                 handle_auth_connection(
@@ -271,8 +284,9 @@ pub async fn run(
                 ).await;
             }
             _ = auto_reload_tick.tick() => {
+                let now = std::time::Instant::now();
                 let suspend_decision = runtime.suspend_state.evaluate(
-                    std::time::Instant::now(),
+                    now,
                     runtime.state.is_active(),
                     runtime.auth_state.in_flight(),
                     runtime.battery.current_snapshot().as_ref(),
@@ -336,6 +350,37 @@ pub async fn run(
                     suspend::SuspendDecision::Pending => {
                         runtime.suspend_state.clear_reported_skip_reason();
                     }
+                }
+
+                if runtime.state.is_active() {
+                    let power_status_snapshot = runtime
+                        .suspend_state
+                        .power_status_snapshot(now, runtime.state.is_active());
+                    let power_status_changed = !runtime.power_status_sent
+                        || runtime.last_power_status_snapshot != power_status_snapshot;
+                    if power_status_changed
+                        && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+                    {
+                        match crate::adapters::process::request_curtain_power_status_update(
+                            control_socket_path,
+                            power_status_snapshot.as_ref(),
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                runtime.last_power_status_snapshot = power_status_snapshot;
+                                runtime.power_status_sent = true;
+                            }
+                            Err(error) => {
+                                tracing::warn!(
+                                    "failed to forward power status update to curtain: {error:#}"
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    runtime.last_power_status_snapshot = None;
+                    runtime.power_status_sent = false;
                 }
 
                 match auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {

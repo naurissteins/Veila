@@ -16,7 +16,7 @@ pub use clock::{ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, Date
 pub use identity::{AvatarVisualConfig, UsernameVisualConfig};
 pub use indicators::{
     BatteryVisualConfig, CapsLockVisualConfig, EyeVisualConfig, KeyboardVisualConfig,
-    PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig,
+    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusVisualConfig,
 };
 pub use input::{FontStyle, InputAlignment, InputRevealMode, InputVisualConfig, InputVisualEntry};
 pub use layer::{
@@ -189,6 +189,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub battery: Option<BatteryVisualConfig>,
     #[serde(default)]
+    pub power_status: Option<PowerStatusVisualConfig>,
+    #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
     pub layer: Option<LayerVisualConfig>,
@@ -284,6 +286,7 @@ impl Default for VisualConfig {
             caps_lock: Some(CapsLockVisualConfig::default()),
             keyboard: Some(KeyboardVisualConfig::default()),
             battery: Some(BatteryVisualConfig::default()),
+            power_status: Some(PowerStatusVisualConfig::default()),
             weather: Some(WeatherVisualConfig::default()),
             layer: Some(LayerVisualConfig::default()),
             now_playing: Some(NowPlayingVisualConfig::default()),

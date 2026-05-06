@@ -32,6 +32,7 @@ use veila_common::{
         BackgroundConfig, BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundOutputConfig, BackgroundScaling as ConfigBackgroundScaling,
     },
+    ipc::LockPowerStatusSnapshot,
 };
 use veila_renderer::{
     ClearColor,
@@ -109,6 +110,7 @@ pub(crate) struct CurtainApp {
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
     pub(crate) battery_snapshot: Option<BatterySnapshot>,
     pub(crate) now_playing_snapshot: Option<NowPlayingSnapshot>,
+    pub(crate) remote_power_status: Option<LockPowerStatusSnapshot>,
     pub(crate) ui_shell: ShellState,
     pub(crate) lock_wait_timeout: Duration,
     pub(crate) startup_started_at: Instant,
@@ -261,6 +263,7 @@ impl CurtainApp {
             weather_snapshot: options.weather_snapshot,
             battery_snapshot: options.battery_snapshot,
             now_playing_snapshot: options.now_playing_snapshot,
+            remote_power_status: None,
             ui_shell,
             lock_wait_timeout,
             startup_started_at,
@@ -390,11 +393,15 @@ impl CurtainApp {
             .screen_off
             .due_in(now, self.session_locked)
             .unwrap_or(shell_interval);
+        let power_status_interval = self
+            .power_status_poll_interval(now)
+            .unwrap_or(shell_interval);
 
         shell_interval
             .min(repeat_interval)
             .min(slideshow_interval)
             .min(screen_off_interval)
+            .min(power_status_interval)
     }
 
     pub(crate) fn failure_reason(&self) -> Option<&str> {

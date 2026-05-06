@@ -16,7 +16,7 @@ use tokio::{
 };
 use veila_common::{
     BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
-    ipc::{CurtainControlMessage, encode_message},
+    ipc::{CurtainControlMessage, LockPowerStatusSnapshot, encode_message},
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -113,6 +113,19 @@ pub async fn request_curtain_now_playing_update(
             snapshot: snapshot.cloned(),
         },
         "now playing update",
+    )
+}
+
+pub async fn request_curtain_power_status_update(
+    control_socket: &Path,
+    snapshot: Option<&LockPowerStatusSnapshot>,
+) -> Result<()> {
+    send_curtain_control_message(
+        control_socket,
+        &CurtainControlMessage::UpdatePowerStatus {
+            snapshot: snapshot.cloned(),
+        },
+        "power status update",
     )
 }
 
