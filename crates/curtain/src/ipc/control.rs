@@ -16,6 +16,8 @@ pub(crate) enum ControlEvent {
         attempt_id: Option<u64>,
     },
     Reload,
+    ArmResumeInputGuard,
+    MarkResumed,
     UpdateNowPlaying {
         snapshot: Option<NowPlayingSnapshot>,
     },
@@ -66,6 +68,12 @@ fn run_listener(listener: UnixListener, sender: Sender<ControlEvent>) -> Result<
             }
             CurtainControlMessage::ReloadConfig => {
                 let _ = sender.send(ControlEvent::Reload);
+            }
+            CurtainControlMessage::ArmResumeInputGuard => {
+                let _ = sender.send(ControlEvent::ArmResumeInputGuard);
+            }
+            CurtainControlMessage::MarkResumed => {
+                let _ = sender.send(ControlEvent::MarkResumed);
             }
             CurtainControlMessage::UpdateNowPlaying { snapshot } => {
                 let _ = sender.send(ControlEvent::UpdateNowPlaying { snapshot });

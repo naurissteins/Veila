@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use smithay_client_toolkit::{
     reexports::client::{
         Connection, QueueHandle,
@@ -13,6 +15,8 @@ use veila_ui::ShellKey;
 use xkbcommon::xkb;
 
 use crate::{ipc::auth::notify_activity, state::CurtainApp};
+
+const RESUME_INPUT_GRACE_PERIOD: Duration = Duration::from_millis(1000);
 
 impl SeatHandler for CurtainApp {
     fn seat_state(&mut self) -> &mut smithay_client_toolkit::seat::SeatState {
@@ -124,12 +128,31 @@ impl KeyboardHandler for CurtainApp {
         _serial: u32,
         event: KeyEvent,
     ) {
+        self.drain_control_events(queue_handle);
+        if self.wake_key_release_pending {
+            return;
+        }
+        if self.resume_input.grace_period_active() {
+            return;
+        }
         if self.has_keyboard_focus
             && let Some(socket_path) = self.daemon_socket_path()
         {
             notify_activity(socket_path);
         }
         if self.handle_lock_activity(queue_handle) {
+            self.wake_key_release_pending = true;
+            self.resume_input.clear_swallow_input();
+            self.stop_backspace_repeat();
+            return;
+        }
+        self.record_visible_lock_activity();
+        if self.resume_input.swallow_input_pending() {
+            self.resume_input.clear_swallow_input();
+            self.resume_input
+                .begin_grace_period(RESUME_INPUT_GRACE_PERIOD);
+            self.wake_key_release_pending = true;
+            self.stop_backspace_repeat();
             return;
         }
         if event.keysym == Keysym::BackSpace {
@@ -146,9 +169,14 @@ impl KeyboardHandler for CurtainApp {
         _serial: u32,
         event: KeyEvent,
     ) {
-        if self.handle_lock_activity(queue_handle) {
+        self.drain_control_events(queue_handle);
+        if self.wake_key_release_pending {
             return;
         }
+        if self.resume_input.grace_period_active() {
+            return;
+        }
+        self.record_visible_lock_activity();
         if event.keysym == Keysym::BackSpace {
             return;
         }
@@ -158,11 +186,17 @@ impl KeyboardHandler for CurtainApp {
     fn release_key(
         &mut self,
         _conn: &Connection,
-        _queue_handle: &QueueHandle<Self>,
+        queue_handle: &QueueHandle<Self>,
         _keyboard: &wl_keyboard::WlKeyboard,
         _serial: u32,
         event: KeyEvent,
     ) {
+        self.drain_control_events(queue_handle);
+        if self.wake_key_release_pending {
+            self.wake_key_release_pending = false;
+            self.stop_backspace_repeat();
+            return;
+        }
         if event.keysym == Keysym::BackSpace {
             self.stop_backspace_repeat();
         }
@@ -205,34 +239,88 @@ impl PointerHandler for CurtainApp {
         _pointer: &wl_pointer::WlPointer,
         events: &[PointerEvent],
     ) {
+        self.drain_control_events(queue_handle);
         for event in events {
             if !self.surface_has_focus_target(&event.surface) {
                 continue;
             }
 
-            if self.handle_lock_activity(queue_handle) {
-                return;
+            let outputs_powered_off = self.outputs_powered_off();
+            if outputs_powered_off && !matches!(event.kind, PointerEventKind::Press { .. }) {
+                if matches!(event.kind, PointerEventKind::Release { .. })
+                    && self.wake_pointer_release_pending
+                {
+                    self.wake_pointer_release_pending = false;
+                }
+                continue;
             }
 
             match event.kind {
                 PointerEventKind::Enter { .. } => {
+                    if self.resume_input.swallow_input_pending() {
+                        continue;
+                    }
+                    self.record_visible_lock_activity();
                     self.set_default_pointer_cursor(_conn);
                     self.handle_shell_pointer_motion(&event.surface, event.position, queue_handle);
                 }
                 PointerEventKind::Motion { .. } => {
+                    if self.resume_input.swallow_input_pending() {
+                        continue;
+                    }
+                    self.record_visible_lock_activity();
                     self.handle_shell_pointer_motion(&event.surface, event.position, queue_handle);
                 }
                 PointerEventKind::Leave { .. } => {
+                    if self.resume_input.swallow_input_pending() {
+                        continue;
+                    }
                     self.handle_shell_pointer_leave(queue_handle);
                 }
-                PointerEventKind::Press { button, .. } if button == BTN_LEFT => {
+                PointerEventKind::Press { button, .. } => {
+                    if self.wake_pointer_release_pending {
+                        continue;
+                    }
+                    if self.resume_input.grace_period_active() {
+                        continue;
+                    }
                     if let Some(socket_path) = self.daemon_socket_path() {
                         notify_activity(socket_path);
                     }
-                    self.handle_shell_pointer_press(&event.surface, event.position, queue_handle);
+                    if self.handle_lock_activity(queue_handle) {
+                        self.wake_pointer_release_pending = true;
+                        self.resume_input.clear_swallow_input();
+                        continue;
+                    }
+                    self.record_visible_lock_activity();
+                    if self.resume_input.swallow_input_pending() {
+                        self.resume_input.clear_swallow_input();
+                        self.resume_input
+                            .begin_grace_period(RESUME_INPUT_GRACE_PERIOD);
+                        self.wake_pointer_release_pending = true;
+                        continue;
+                    }
+                    if button == BTN_LEFT {
+                        self.handle_shell_pointer_press(
+                            &event.surface,
+                            event.position,
+                            queue_handle,
+                        );
+                    }
                 }
-                PointerEventKind::Release { button, .. } if button == BTN_LEFT => {
-                    self.handle_shell_pointer_release(&event.surface, event.position, queue_handle);
+                PointerEventKind::Release { button, .. } => {
+                    self.record_visible_lock_activity();
+                    if self.wake_pointer_release_pending {
+                        self.wake_pointer_release_pending = false;
+                        continue;
+                    }
+                    if button == BTN_LEFT {
+                        self.handle_shell_pointer_release(
+                            &event.surface,
+                            event.position,
+                            queue_handle,
+                        );
+                    }
                 }
                 _ => {}
             }

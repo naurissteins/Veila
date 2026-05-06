@@ -46,6 +46,14 @@ impl ScreenOffState {
         was_powered_off
     }
 
+    pub(crate) fn record_visible_activity(&mut self, now: Instant) {
+        if self.delay.is_none() || self.outputs_powered_off {
+            return;
+        }
+
+        self.last_activity_at = Some(now);
+    }
+
     pub(crate) fn due_in(&self, now: Instant, session_locked: bool) -> Option<Duration> {
         if !session_locked || self.outputs_powered_off {
             return None;
@@ -92,6 +100,10 @@ impl ScreenOffState {
 }
 
 impl CurtainApp {
+    pub(crate) fn record_visible_lock_activity(&mut self) {
+        self.screen_off.record_visible_activity(Instant::now());
+    }
+
     pub(crate) fn handle_lock_activity(&mut self, queue_handle: &QueueHandle<Self>) -> bool {
         let woke_outputs = self.screen_off.note_activity(Instant::now());
         if !woke_outputs {
@@ -99,7 +111,7 @@ impl CurtainApp {
         }
 
         if self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On) {
-            tracing::info!("woke locked outputs on input activity");
+            tracing::info!("woke locked outputs on deliberate input activity");
         }
         self.render_all_surfaces(queue_handle);
         true
@@ -179,5 +191,30 @@ mod tests {
 
         assert!(state.note_activity(now + Duration::from_secs(6)));
         assert!(!state.outputs_powered_off());
+    }
+
+    #[test]
+    fn visible_activity_refreshes_deadline_without_waking_outputs() {
+        let now = Instant::now();
+        let mut state = ScreenOffState::new(Some(Duration::from_secs(5)));
+        state.arm(now);
+        state.record_visible_activity(now + Duration::from_secs(2));
+
+        assert_eq!(
+            state.due_in(now + Duration::from_secs(4), true),
+            Some(Duration::from_secs(3))
+        );
+    }
+
+    #[test]
+    fn visible_activity_is_ignored_while_outputs_are_powered_off() {
+        let now = Instant::now();
+        let mut state = ScreenOffState::new(Some(Duration::from_secs(5)));
+        state.arm(now);
+        state.mark_outputs_powered_off();
+        state.record_visible_activity(now + Duration::from_secs(2));
+
+        assert!(state.outputs_powered_off());
+        assert_eq!(state.due_in(now + Duration::from_secs(2), true), None);
     }
 }

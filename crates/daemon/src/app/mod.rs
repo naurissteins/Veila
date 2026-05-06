@@ -52,6 +52,9 @@ pub async fn run(
     );
     prewarm::spawn_background_prewarm(runtime.loaded_config.path.as_deref());
     let connection = logind::connect_system().await?;
+    let manager_proxy = logind::ManagerProxy::new(&connection)
+        .await
+        .context("failed to create logind manager proxy")?;
     let session_path = logind::get_session_path(&connection, options.session_id.as_deref()).await?;
     let session_proxy = logind::session_proxy(&connection, &session_path).await?;
     let username = current_username()?;
@@ -63,6 +66,10 @@ pub async fn run(
         .receive_unlock()
         .await
         .context("failed to subscribe to logind Unlock signal")?;
+    let mut prepare_for_sleep_stream = manager_proxy
+        .receive_prepare_for_sleep()
+        .await
+        .context("failed to subscribe to logind PrepareForSleep signal")?;
     let mut sigint =
         signal(SignalKind::interrupt()).context("failed to register SIGINT handler")?;
     let mut sigterm =
@@ -139,6 +146,37 @@ pub async fn run(
                     auth_policy,
                     suspend_state,
                 ).await;
+            }
+            Some(signal) = prepare_for_sleep_stream.next() => {
+                match signal.args() {
+                    Ok(args) if *args.start() => {
+                        if runtime.state.is_active()
+                            && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+                        {
+                            match crate::adapters::process::request_curtain_arm_resume_input_guard(control_socket_path).await {
+                                Ok(()) => {}
+                                Err(error) => {
+                                    tracing::warn!("failed to arm curtain resume input guard before sleep: {error:#}");
+                                }
+                            }
+                        }
+                    }
+                    Ok(_) => {
+                        if runtime.state.is_active()
+                            && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+                        {
+                            match crate::adapters::process::request_curtain_mark_resumed(control_socket_path).await {
+                                Ok(()) => {}
+                                Err(error) => {
+                                    tracing::warn!("failed to mark curtain as resumed after sleep: {error:#}");
+                                }
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!("failed to decode logind PrepareForSleep signal: {error}");
+                    }
+                }
             }
             result = wait_for_curtain_exit(&mut runtime.curtain), if runtime.curtain.is_some() => {
                 let weather_snapshot = runtime.weather.current_snapshot();
@@ -243,6 +281,14 @@ pub async fn run(
                 match suspend_decision {
                     suspend::SuspendDecision::Ready => {
                         runtime.suspend_state.clear_reported_skip_reason();
+                        if let Some(control_socket_path) = runtime.control_socket_path.as_deref() {
+                            match crate::adapters::process::request_curtain_arm_resume_input_guard(control_socket_path).await {
+                                Ok(()) => {}
+                                Err(error) => {
+                                    tracing::warn!("failed to arm curtain resume input guard before suspend: {error:#}");
+                                }
+                            }
+                        }
                         runtime.suspend_state.mark_requested();
                         match suspend::request_system_suspend(&connection).await {
                             Ok(()) => {

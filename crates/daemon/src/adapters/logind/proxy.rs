@@ -11,6 +11,9 @@ pub trait Manager {
     fn get_session_by_pid(&self, pid: u32) -> zbus::Result<OwnedObjectPath>;
     fn list_sessions(&self) -> zbus::Result<Vec<(String, u32, String, String, OwnedObjectPath)>>;
     fn suspend(&self, interactive: bool) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn prepare_for_sleep(&self, start: bool) -> zbus::Result<()>;
 }
 
 #[proxy(

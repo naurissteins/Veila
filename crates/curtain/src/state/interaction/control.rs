@@ -18,6 +18,12 @@ impl CurtainApp {
                     tracing::info!("received curtain reload request from daemon");
                     self.reload_config(queue_handle);
                 }
+                ControlEvent::ArmResumeInputGuard => {
+                    self.resume_input.arm();
+                }
+                ControlEvent::MarkResumed => {
+                    self.resume_input.mark_resumed();
+                }
                 ControlEvent::UpdateNowPlaying { snapshot } => {
                     tracing::debug!(
                         has_snapshot = snapshot.is_some(),

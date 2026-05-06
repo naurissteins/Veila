@@ -34,6 +34,8 @@ pub enum CurtainControlMessage {
         attempt_id: Option<u64>,
     },
     ReloadConfig,
+    ArmResumeInputGuard,
+    MarkResumed,
     UpdateNowPlaying {
         snapshot: Option<NowPlayingSnapshot>,
     },

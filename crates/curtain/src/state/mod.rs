@@ -3,6 +3,7 @@ mod memory;
 mod power;
 mod profiler;
 mod repeat;
+mod resume;
 
 use std::{
     path::{Path, PathBuf},
@@ -56,6 +57,7 @@ use crate::{
 pub(crate) use power::ScreenOffState;
 pub(crate) use profiler::{RenderProfiler, RenderTimingSample};
 pub(crate) use repeat::KeyRepeatState;
+pub(crate) use resume::ResumeInputState;
 
 pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
@@ -132,6 +134,9 @@ pub(crate) struct CurtainApp {
     pub(crate) render_profiler: RenderProfiler,
     pub(crate) backspace_repeat: Option<KeyRepeatState>,
     pub(crate) screen_off: ScreenOffState,
+    pub(crate) resume_input: ResumeInputState,
+    pub(crate) wake_key_release_pending: bool,
+    pub(crate) wake_pointer_release_pending: bool,
     pub(crate) post_ready_nonfirst_renders: u32,
     pub(crate) post_ready_memory_logged: bool,
 }
@@ -280,6 +285,9 @@ impl CurtainApp {
             render_profiler: RenderProfiler::default(),
             backspace_repeat: None,
             screen_off: ScreenOffState::new(screen_off_delay),
+            resume_input: ResumeInputState::new(),
+            wake_key_release_pending: false,
+            wake_pointer_release_pending: false,
             post_ready_nonfirst_renders: 0,
             post_ready_memory_logged: false,
             lock_acquisition_started: false,
