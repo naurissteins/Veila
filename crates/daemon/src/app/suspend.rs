@@ -1,27 +1,37 @@
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
+use veila_common::BatterySnapshot;
 
 use crate::adapters::logind;
 
 #[derive(Debug, Clone)]
 pub(super) struct LockedSuspendState {
     delay: Option<Duration>,
+    battery_only: bool,
     last_activity_at: Option<Instant>,
     suspend_requested: bool,
 }
 
 impl LockedSuspendState {
-    pub(super) fn new(delay: Option<Duration>) -> Self {
+    pub(super) fn new(delay: Option<Duration>, battery_only: bool) -> Self {
         Self {
             delay,
+            battery_only,
             last_activity_at: None,
             suspend_requested: false,
         }
     }
 
-    pub(super) fn set_delay(&mut self, delay: Option<Duration>, now: Instant, active_lock: bool) {
+    pub(super) fn set_policy(
+        &mut self,
+        delay: Option<Duration>,
+        battery_only: bool,
+        now: Instant,
+        active_lock: bool,
+    ) {
         self.delay = delay;
+        self.battery_only = battery_only;
         self.suspend_requested = false;
         self.last_activity_at = if !active_lock || delay.is_none() {
             None
@@ -58,8 +68,13 @@ impl LockedSuspendState {
         now: Instant,
         active_lock: bool,
         auth_in_flight: bool,
+        battery_snapshot: Option<&BatterySnapshot>,
     ) -> bool {
         if !active_lock || auth_in_flight || self.suspend_requested {
+            return false;
+        }
+
+        if self.battery_only && !on_battery_power(battery_snapshot) {
             return false;
         }
 
@@ -84,6 +99,10 @@ pub(super) fn suspend_delay_seconds(config: &veila_common::AppConfig) -> Option<
     config.lock.suspend_seconds.filter(|seconds| *seconds > 0)
 }
 
+fn on_battery_power(snapshot: Option<&BatterySnapshot>) -> bool {
+    snapshot.is_some_and(|snapshot| !snapshot.charging)
+}
+
 pub(super) async fn request_system_suspend(connection: &zbus::Connection) -> Result<()> {
     let manager = logind::ManagerProxy::new(connection)
         .await
@@ -98,26 +117,55 @@ pub(super) async fn request_system_suspend(connection: &zbus::Connection) -> Res
 mod tests {
     use std::time::{Duration, Instant};
 
+    use veila_common::BatterySnapshot;
+
     use super::LockedSuspendState;
 
     #[test]
     fn does_not_suspend_while_auth_is_in_flight() {
         let now = Instant::now();
-        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)));
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false);
         state.arm(now);
 
-        assert!(!state.should_suspend(now + Duration::from_secs(6), true, true));
-        assert!(state.should_suspend(now + Duration::from_secs(6), true, false));
+        assert!(!state.should_suspend(now + Duration::from_secs(6), true, true, None));
+        assert!(state.should_suspend(now + Duration::from_secs(6), true, false, None));
     }
 
     #[test]
     fn activity_resets_pending_suspend_request() {
         let now = Instant::now();
-        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)));
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false);
         state.arm(now);
         state.mark_requested();
         state.note_activity(now + Duration::from_secs(6));
 
-        assert!(!state.should_suspend(now + Duration::from_secs(7), true, false));
+        assert!(!state.should_suspend(now + Duration::from_secs(7), true, false, None));
+    }
+
+    #[test]
+    fn battery_only_policy_requires_discharging_snapshot() {
+        let now = Instant::now();
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), true);
+        state.arm(now);
+
+        assert!(!state.should_suspend(now + Duration::from_secs(6), true, false, None));
+        assert!(!state.should_suspend(
+            now + Duration::from_secs(6),
+            true,
+            false,
+            Some(&BatterySnapshot {
+                percent: 80,
+                charging: true,
+            }),
+        ));
+        assert!(state.should_suspend(
+            now + Duration::from_secs(6),
+            true,
+            false,
+            Some(&BatterySnapshot {
+                percent: 80,
+                charging: false,
+            }),
+        ));
     }
 }

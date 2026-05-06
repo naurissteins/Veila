@@ -51,8 +51,9 @@ impl AppRuntime {
             Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
         );
         let suspend_delay = suspend_delay_seconds(&loaded_config.config).map(Duration::from_secs);
+        let suspend_only_on_battery = loaded_config.config.lock.suspend_only_on_battery;
         let weather = WeatherHandle::spawn(&loaded_config.config.weather);
-        let battery = BatteryHandle::spawn(&loaded_config.config.battery);
+        let battery = BatteryHandle::spawn(&loaded_config.config.battery, suspend_only_on_battery);
         let now_playing = NowPlayingHandle::spawn(&loaded_config.config.now_playing);
 
         Self {
@@ -72,7 +73,7 @@ impl AppRuntime {
             auth_sender: None,
             auth_state: AuthState::new(auth_policy),
             background_selection: None,
-            suspend_state: LockedSuspendState::new(suspend_delay),
+            suspend_state: LockedSuspendState::new(suspend_delay, suspend_only_on_battery),
         }
     }
 

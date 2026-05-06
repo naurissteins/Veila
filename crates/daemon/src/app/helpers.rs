@@ -208,8 +208,9 @@ pub(super) async fn apply_loaded_config(
         Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
         Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
     );
-    suspend_state.set_delay(
+    suspend_state.set_policy(
         suspend_delay_seconds(&loaded_config.config).map(Duration::from_secs),
+        loaded_config.config.lock.suspend_only_on_battery,
         Instant::now(),
         state.is_active(),
     );
@@ -225,7 +226,10 @@ pub(super) async fn apply_loaded_config(
         );
     }
     weather.update_config(&loaded_config.config.weather);
-    battery.update_config(&loaded_config.config.battery);
+    battery.update_config(
+        &loaded_config.config.battery,
+        loaded_config.config.lock.suspend_only_on_battery,
+    );
     now_playing.update_config(&loaded_config.config.now_playing);
 
     let live_reload = if !state.is_active() {

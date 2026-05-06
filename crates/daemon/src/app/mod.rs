@@ -237,12 +237,18 @@ pub async fn run(
                     std::time::Instant::now(),
                     runtime.state.is_active(),
                     runtime.auth_state.in_flight(),
+                    runtime.battery.current_snapshot().as_ref(),
                 ) {
                     runtime.suspend_state.mark_requested();
                     match suspend::request_system_suspend(&connection).await {
                         Ok(()) => {
                             tracing::info!(
                                 suspend_seconds = runtime.loaded_config.config.lock.suspend_seconds,
+                                suspend_only_on_battery = runtime
+                                    .loaded_config
+                                    .config
+                                    .lock
+                                    .suspend_only_on_battery,
                                 "requesting system suspend after locked inactivity"
                             );
                         }

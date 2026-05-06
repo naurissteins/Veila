@@ -7,14 +7,17 @@ use crate::adapters::power;
 
 #[derive(Clone)]
 pub(super) struct BatteryHandle {
-    config_tx: watch::Sender<BatteryConfig>,
+    config_tx: watch::Sender<BatteryServiceConfig>,
     snapshot_rx: watch::Receiver<Option<BatterySnapshot>>,
 }
 
 impl BatteryHandle {
-    pub(super) fn spawn(config: &BatteryConfig) -> Self {
+    pub(super) fn spawn(config: &BatteryConfig, force_refresh: bool) -> Self {
         let initial_snapshot = config.mock_snapshot();
-        let (config_tx, config_rx) = watch::channel(config.clone());
+        let (config_tx, config_rx) = watch::channel(BatteryServiceConfig {
+            battery: config.clone(),
+            force_refresh,
+        });
         let (snapshot_tx, snapshot_rx) = watch::channel(initial_snapshot);
 
         tokio::spawn(async move {
@@ -31,25 +34,34 @@ impl BatteryHandle {
         self.snapshot_rx.borrow().clone()
     }
 
-    pub(super) fn update_config(&self, config: &BatteryConfig) {
-        let _ = self.config_tx.send(config.clone());
+    pub(super) fn update_config(&self, config: &BatteryConfig, force_refresh: bool) {
+        let _ = self.config_tx.send(BatteryServiceConfig {
+            battery: config.clone(),
+            force_refresh,
+        });
     }
 }
 
+#[derive(Clone)]
+struct BatteryServiceConfig {
+    battery: BatteryConfig,
+    force_refresh: bool,
+}
+
 async fn run_battery_service(
-    mut config_rx: watch::Receiver<BatteryConfig>,
+    mut config_rx: watch::Receiver<BatteryServiceConfig>,
     snapshot_tx: watch::Sender<Option<BatterySnapshot>>,
 ) {
     let mut config = config_rx.borrow().clone();
     let mut needs_refresh = true;
 
     loop {
-        if config.enabled {
+        if config.battery.enabled || config.force_refresh {
             if needs_refresh {
-                snapshot_tx.send_replace(fetch_snapshot_async(config.clone()).await);
+                snapshot_tx.send_replace(fetch_snapshot_async(config.battery.clone()).await);
             }
 
-            let refresh = tokio::time::sleep(refresh_interval(&config));
+            let refresh = tokio::time::sleep(refresh_interval(&config.battery));
             tokio::pin!(refresh);
 
             tokio::select! {
@@ -61,7 +73,7 @@ async fn run_battery_service(
                         break;
                     }
                     config = config_rx.borrow().clone();
-                    snapshot_tx.send_replace(config.mock_snapshot());
+                    snapshot_tx.send_replace(config.battery.mock_snapshot());
                     needs_refresh = true;
                 }
             }

@@ -176,6 +176,19 @@ fn parses_lock_suspend_seconds() {
 }
 
 #[test]
+fn parses_lock_suspend_only_on_battery() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            suspend_only_on_battery = true
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.lock.suspend_only_on_battery);
+}
+
+#[test]
 fn parses_now_playing_player_filters() {
     let config = AppConfig::from_toml_str(
         r#"
