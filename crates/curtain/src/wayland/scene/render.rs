@@ -70,28 +70,28 @@ impl CurtainApp {
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
 
-        let Some(scene_base) = self.lock_surfaces[index].scene_base.as_ref() else {
+        if self.lock_surfaces[index].scene_base.is_none() {
             return Err(anyhow!("scene base buffer is unavailable"));
-        };
+        }
 
         let background_restore_started_at = timing_enabled.then(Instant::now);
-        let mut buffer = scene_base.clone();
+        let mut scratch_buffer = self.prepare_scratch_buffer(index, frame_size)?;
         let background_restore_ms = background_restore_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
         let static_blend_started_at = timing_enabled.then(Instant::now);
         if let Some(static_overlay) = self.lock_surfaces[index].static_overlay.as_ref() {
-            buffer.blend_from(static_overlay)?;
+            scratch_buffer.blend_from(static_overlay)?;
         }
         let static_overlay_blend_ms = static_blend_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
-        self.ui_shell.render_dynamic_overlay(&mut buffer);
+        self.ui_shell.render_dynamic_overlay(&mut scratch_buffer);
         let dynamic_overlay_ms = dynamic_overlay_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
-        let frame_size = buffer.size();
+        let frame_size = scratch_buffer.size();
         let shm_pool_started_at = timing_enabled.then(Instant::now);
         if self.lock_surfaces[index].shm_pool.is_none() {
             self.lock_surfaces[index].shm_pool =
@@ -102,12 +102,14 @@ impl CurtainApp {
             .unwrap_or(0);
 
         let commit_started_at = timing_enabled.then(Instant::now);
-        self.lock_surfaces[index]
+        let commit_result = self.lock_surfaces[index]
             .shm_pool
             .as_mut()
             .expect("surface SHM pool should be initialized")
-            .commit_buffer(queue_handle, surface.wl_surface(), &buffer)
-            .map_err(|error| anyhow!("failed to commit software buffer: {error}"))?;
+            .commit_buffer(queue_handle, surface.wl_surface(), &scratch_buffer)
+            .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
+        self.lock_surfaces[index].scratch_buffer = Some(scratch_buffer);
+        commit_result?;
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -171,12 +173,11 @@ impl CurtainApp {
         total_started_at: Option<Instant>,
         timing_enabled: bool,
     ) -> Result<()> {
-        let Some(background) = self.lock_surfaces[index].background.as_ref() else {
+        let Some(background) = self.lock_surfaces[index].background.take() else {
             return Err(anyhow!("background buffer is unavailable"));
         };
 
-        let buffer = background.clone();
-        let frame_size = buffer.size();
+        let frame_size = background.size();
         let shm_pool_started_at = timing_enabled.then(Instant::now);
         if self.lock_surfaces[index].shm_pool.is_none() {
             self.lock_surfaces[index].shm_pool =
@@ -187,12 +188,14 @@ impl CurtainApp {
             .unwrap_or(0);
 
         let commit_started_at = timing_enabled.then(Instant::now);
-        self.lock_surfaces[index]
+        let commit_result = self.lock_surfaces[index]
             .shm_pool
             .as_mut()
             .expect("surface SHM pool should be initialized")
-            .commit_buffer(queue_handle, surface.wl_surface(), &buffer)
-            .map_err(|error| anyhow!("failed to commit software buffer: {error}"))?;
+            .commit_buffer(queue_handle, surface.wl_surface(), &background)
+            .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
+        self.lock_surfaces[index].background = Some(background);
+        commit_result?;
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -242,5 +245,26 @@ impl CurtainApp {
         self.note_memory_after_render(first_frame);
 
         Ok(())
+    }
+
+    fn prepare_scratch_buffer(
+        &mut self,
+        index: usize,
+        frame_size: FrameSize,
+    ) -> Result<veila_renderer::SoftwareBuffer> {
+        let mut scratch_buffer = match self.lock_surfaces[index].scratch_buffer.take() {
+            Some(buffer) if buffer.size() == frame_size => buffer,
+            _ => veila_renderer::SoftwareBuffer::new(frame_size)?,
+        };
+
+        let scene_base = self.lock_surfaces[index]
+            .scene_base
+            .as_ref()
+            .expect("scene base buffer should exist");
+        scratch_buffer
+            .pixels_mut()
+            .copy_from_slice(scene_base.pixels());
+
+        Ok(scratch_buffer)
     }
 }

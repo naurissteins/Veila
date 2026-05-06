@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{Result, anyhow};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
@@ -126,10 +128,29 @@ impl CurtainApp {
             return Ok(false);
         }
 
+        if let Some(overlay) = self
+            .lock_surfaces
+            .iter()
+            .enumerate()
+            .find(|(candidate_index, surface)| {
+                *candidate_index != index
+                    && surface.static_overlay_revision == revision
+                    && surface
+                        .static_overlay
+                        .as_ref()
+                        .is_some_and(|buffer| buffer.size() == frame_size)
+            })
+            .and_then(|(_, surface)| surface.static_overlay.clone())
+        {
+            self.lock_surfaces[index].static_overlay = Some(overlay);
+            self.lock_surfaces[index].static_overlay_revision = revision;
+            return Ok(true);
+        }
+
         let mut overlay = SoftwareBuffer::new(frame_size)?;
         overlay.clear(ClearColor::rgba(0, 0, 0, 0));
         self.ui_shell.render_static_overlay(&mut overlay);
-        self.lock_surfaces[index].static_overlay = Some(overlay);
+        self.lock_surfaces[index].static_overlay = Some(Arc::new(overlay));
         self.lock_surfaces[index].static_overlay_revision = revision;
 
         Ok(true)
@@ -152,6 +173,7 @@ impl CurtainApp {
             || self.lock_surfaces[index].scene_base_revision != revision;
 
         if !needs_refresh {
+            self.lock_surfaces[index].background = None;
             return Ok(false);
         }
 
@@ -167,8 +189,9 @@ impl CurtainApp {
 
         let mut buffer = background.clone();
         self.ui_shell.render_backdrop_layer(&mut buffer);
-        self.lock_surfaces[index].scene_base = Some(buffer);
+        self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
         self.lock_surfaces[index].scene_base_revision = revision;
+        self.lock_surfaces[index].background = None;
 
         Ok(true)
     }
@@ -219,7 +242,7 @@ impl CurtainApp {
                     self.background_treatment,
                     &variant,
                 ) {
-                    self.lock_surfaces[index].scene_base = Some(buffer);
+                    self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                     self.lock_surfaces[index].scene_base_revision = revision;
                     self.lock_surfaces[index].background = None;
                     self.lock_surfaces[index].background_path = selected_path;
@@ -233,7 +256,7 @@ impl CurtainApp {
                     &variant,
                 )
             {
-                self.lock_surfaces[index].scene_base = Some(buffer);
+                self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                 self.lock_surfaces[index].scene_base_revision = revision;
                 self.lock_surfaces[index].background = None;
                 self.lock_surfaces[index].background_path = None;

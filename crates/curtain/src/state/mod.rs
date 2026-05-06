@@ -6,6 +6,7 @@ mod repeat;
 
 use std::{
     path::{Path, PathBuf},
+    sync::Arc,
     sync::mpsc::{Receiver, Sender, channel},
     time::{Duration, Instant},
 };
@@ -62,9 +63,10 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) size: Option<(u32, u32)>,
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
-    pub(crate) scene_base: Option<veila_renderer::SoftwareBuffer>,
+    pub(crate) scene_base: Option<Arc<veila_renderer::SoftwareBuffer>>,
+    pub(crate) scratch_buffer: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) scene_base_revision: u64,
-    pub(crate) static_overlay: Option<veila_renderer::SoftwareBuffer>,
+    pub(crate) static_overlay: Option<Arc<veila_renderer::SoftwareBuffer>>,
     pub(crate) static_overlay_revision: u64,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
@@ -333,6 +335,7 @@ impl CurtainApp {
             background_path: None,
             background: None,
             scene_base: None,
+            scratch_buffer: None,
             scene_base_revision: 0,
             static_overlay: None,
             static_overlay_revision: 0,
