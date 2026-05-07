@@ -56,7 +56,6 @@ fn loads_config_from_file() {
             avatar_ring_width = 3
             username_color = "#D7E3FFB8"
             username_size = 3
-            status_gap = 18
             auth_stack_offset = 16
             header_top_offset = -12
             identity_gap = 26
@@ -102,6 +101,12 @@ fn loads_config_from_file() {
             valign = "top"
             x = 24
             y = 156
+
+            [visuals.status]
+            halign = "center"
+            valign = "bottom"
+            x = 0
+            y = -24
         "##,
     )
     .expect("config file");
@@ -186,7 +191,15 @@ fn loads_config_from_file() {
         Some(RgbColor::rgba(215, 227, 255, 184))
     );
     assert_eq!(loaded.config.visuals.username_size(), Some(3));
-    assert_eq!(loaded.config.visuals.status_gap(), Some(18));
+    assert_eq!(
+        loaded.config.visuals.status_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Center),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(0),
+            y: Some(-24),
+        }
+    );
     assert_eq!(loaded.config.visuals.auth_stack_offset(), Some(16));
     assert_eq!(loaded.config.visuals.header_top_offset(), Some(-12));
     assert_eq!(loaded.config.visuals.identity_gap(), Some(26));

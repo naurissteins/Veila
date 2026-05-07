@@ -464,29 +464,6 @@ fn places_auth_center_x_on_left_and_right_edges() {
 }
 
 #[test]
-fn applies_configured_input_offset_x() {
-    let default_metrics =
-        SceneMetrics::from_frame(1280, 720, Some(300), None, None, InputAlignment::TopRight);
-    let shifted_metrics = SceneMetrics::from_frame_with_input_placement(
-        1280,
-        720,
-        Some(300),
-        None,
-        None,
-        InputPlacement {
-            alignment: InputAlignment::TopRight,
-            center_in_layer: false,
-            layer_center_x: None,
-            horizontal_padding: None,
-            offset_x: Some(-36),
-        },
-    );
-
-    assert_eq!(default_metrics.auth_center_x, 1077);
-    assert_eq!(shifted_metrics.auth_center_x, 1041);
-}
-
-#[test]
 fn applies_configured_input_horizontal_padding() {
     let default_metrics =
         SceneMetrics::from_frame(1280, 720, Some(300), None, None, InputAlignment::CenterLeft);
@@ -501,7 +478,6 @@ fn applies_configured_input_horizontal_padding() {
             center_in_layer: false,
             layer_center_x: None,
             horizontal_padding: Some(96),
-            offset_x: None,
         },
     );
 
@@ -522,7 +498,6 @@ fn centers_auth_block_inside_layer_when_requested() {
             center_in_layer: true,
             layer_center_x: Some(980),
             horizontal_padding: None,
-            offset_x: None,
         },
     );
 
@@ -641,62 +616,6 @@ fn applies_configured_layer_offset_y() {
     );
 
     assert_eq!(rect.y, 172);
-}
-
-#[test]
-fn applies_configured_input_offset_y() {
-    let default_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        InputAlignment::TopCenter,
-        AnchorOffsets::default(),
-    );
-    let shifted_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        InputAlignment::TopCenter,
-        AnchorOffsets {
-            input_offset_y: Some(22),
-            ..AnchorOffsets::default()
-        },
-    );
-
-    assert_eq!(default_anchors.auth_y, 123);
-    assert_eq!(shifted_anchors.auth_y, 145);
-}
-
-#[test]
-fn bottom_alignment_clamps_offset_instead_of_recentering() {
-    let default_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        InputAlignment::BottomCenter,
-        AnchorOffsets::default(),
-    );
-    let shifted_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        InputAlignment::BottomCenter,
-        AnchorOffsets {
-            input_offset_y: Some(24),
-            ..AnchorOffsets::default()
-        },
-    );
-
-    assert_eq!(default_anchors.auth_y, 451);
-    assert_eq!(shifted_anchors.auth_y, 451);
 }
 
 #[test]

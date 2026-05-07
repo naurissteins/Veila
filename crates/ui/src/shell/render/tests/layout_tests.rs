@@ -185,3 +185,84 @@ fn username_stays_in_auth_flow_when_only_avatar_is_explicit() {
             .any(|section| matches!(section.widget, SceneWidget::Username(_)))
     );
 }
+
+#[test]
+fn explicit_input_and_status_positions_are_removed_from_auth_flow() {
+    let mut shell = ShellState::new_with_username(
+        ShellTheme {
+            input_position: Some(crate::shell::theme::WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Bottom,
+                x: 0,
+                y: -72,
+            }),
+            status_position: Some(crate::shell::theme::WidgetPosition {
+                halign: HorizontalAlign::Right,
+                valign: VerticalAlign::Top,
+                x: -32,
+                y: 48,
+            }),
+            ..ShellTheme::default()
+        },
+        None,
+        Some(String::from("ns")),
+        None,
+        true,
+    );
+    shell.status = ShellStatus::Rejected {
+        retry_until: None,
+        displayed_retry_seconds: None,
+        failed_attempts: Some(1),
+    };
+
+    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+
+    assert!(layout.floating_input);
+    assert!(layout.floating_status.is_some());
+    assert!(
+        layout
+            .model
+            .sections_for_role(LayoutRole::Auth)
+            .all(|section| !matches!(
+                section.widget,
+                SceneWidget::Input(_) | SceneWidget::Status(_)
+            ))
+    );
+}
+
+#[test]
+fn status_follows_explicit_input_when_status_position_is_unset() {
+    let shell = ShellState::new_with_username(
+        ShellTheme {
+            input_position: Some(crate::shell::theme::WidgetPosition {
+                halign: HorizontalAlign::Left,
+                valign: VerticalAlign::Bottom,
+                x: 24,
+                y: -64,
+            }),
+            ..ShellTheme::default()
+        },
+        None,
+        Some(String::from("ns")),
+        None,
+        true,
+    );
+    let mut shell = shell;
+    shell.status = ShellStatus::Rejected {
+        retry_until: None,
+        displayed_retry_seconds: None,
+        failed_attempts: Some(1),
+    };
+
+    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+
+    assert!(layout.floating_input);
+    assert!(layout.floating_status.is_some());
+    assert!(layout.floating_status_follows_input);
+    assert!(
+        layout
+            .model
+            .sections_for_role(LayoutRole::Auth)
+            .all(|section| !matches!(section.widget, SceneWidget::Status(_)))
+    );
+}

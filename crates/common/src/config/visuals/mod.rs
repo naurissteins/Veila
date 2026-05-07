@@ -49,8 +49,6 @@ pub struct VisualConfig {
     pub input_font_style: Option<FontStyle>,
     #[serde(default)]
     pub input_font_size: Option<u16>,
-    #[serde(default)]
-    pub input_center_in_layer: Option<bool>,
     #[serde(default = "default_input_border_color")]
     pub input_border: RgbColor,
     #[serde(default)]
@@ -75,8 +73,6 @@ pub struct VisualConfig {
     pub username_color: Option<RgbColor>,
     #[serde(default)]
     pub username_size: Option<u16>,
-    #[serde(default)]
-    pub status_gap: Option<u16>,
     #[serde(default)]
     pub auth_stack_offset: Option<i16>,
     #[serde(default)]
@@ -202,7 +198,6 @@ impl Default for VisualConfig {
             input_font_weight: Some(400),
             input_font_style: Some(FontStyle::Normal),
             input_font_size: Some(2),
-            input_center_in_layer: Some(false),
             input_border: RgbColor::rgba(255, 255, 255, 0),
             input_width: Some(310),
             input_height: Some(54),
@@ -215,7 +210,6 @@ impl Default for VisualConfig {
             avatar_ring_width: Some(0),
             username_color: Some(RgbColor::rgba(255, 255, 255, 214)),
             username_size: Some(4),
-            status_gap: Some(18),
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
             identity_gap: Some(18),

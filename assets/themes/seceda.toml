@@ -50,12 +50,6 @@ x = 40
 y = 156
 
 [visuals.input]
-alignment = "center-left"
-center_in_layer = true
-horizontal_padding = 0
-vertical_padding = 0
-offset_x = 0
-offset_y = 0
 background_color = "rgba(255, 255, 255, 0.1)"
 border_color = "rgba(255, 255, 255, 0.08)"
 border_width = 3

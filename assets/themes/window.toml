@@ -52,11 +52,6 @@ x = 0
 y = 52
 
 [visuals.input]
-center_in_layer = true
-horizontal_padding = 0
-vertical_padding = 0
-offset_x = 0
-offset_y = 30
 background_color = "#A6AECD0F"
 border_color = "#FFFFFF0A"
 border_width = 3

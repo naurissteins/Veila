@@ -16,15 +16,9 @@ use super::ShellTheme;
 fn input_alpha_uses_rgba_values() {
     let mut config = AppConfig::default();
     config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
-        alignment: Some(veila_common::InputAlignment::CenterCenter),
-        center_in_layer: Some(true),
         reveal_on_interaction: Some(true),
         reveal_mode: Some(InputRevealMode::Full),
         reveal_hint: None,
-        horizontal_padding: Some(56),
-        vertical_padding: Some(44),
-        offset_x: Some(18),
-        offset_y: Some(-12),
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         font_style: Some(FontStyle::Italic),
@@ -36,6 +30,7 @@ fn input_alpha_uses_rgba_values() {
         radius: None,
         border_width: Some(3),
         mask_color: Some(ConfigColor::rgb(169, 196, 255)),
+        position: WidgetPositionConfig::default(),
     });
     config.visuals.avatar = Some(AvatarVisualConfig {
         enabled: Some(true),
@@ -202,7 +197,7 @@ fn input_alpha_uses_rgba_values() {
     config.visuals.status = Some(StatusVisualConfig {
         enabled: Some(true),
         color: Some(ConfigColor::rgba(255, 224, 160, 224)),
-        gap: Some(18),
+        position: WidgetPositionConfig::default(),
         ..StatusVisualConfig::default()
     });
     config.visuals.layout = Some(LayoutVisualConfig {
@@ -221,7 +216,7 @@ fn input_alpha_uses_rgba_values() {
         theme.input_alignment,
         veila_common::InputAlignment::CenterCenter
     );
-    assert!(theme.input_center_in_layer);
+    assert!(!theme.input_center_in_layer);
     assert!(theme.input_reveal_on_interaction);
     assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
     assert_eq!(theme.input_reveal_hint, "Press any key or click to unlock");
@@ -234,10 +229,8 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.reveal_font_weight, Some(500));
     assert_eq!(theme.reveal_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.reveal_font_size, Some(2));
-    assert_eq!(theme.input_horizontal_padding, Some(56));
-    assert_eq!(theme.input_vertical_padding, Some(44));
-    assert_eq!(theme.input_offset_x, Some(18));
-    assert_eq!(theme.input_offset_y, Some(-12));
+    assert_eq!(theme.input_horizontal_padding, None);
+    assert_eq!(theme.input_vertical_padding, None);
     assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.input_font_weight, Some(600));
     assert_eq!(theme.input_font_style, Some(FontStyle::Italic));
@@ -271,7 +264,6 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.username_position, None);
     assert_eq!(theme.avatar_gap, Some(24));
     assert_eq!(theme.username_gap, Some(28));
-    assert_eq!(theme.status_gap, Some(18));
     assert_eq!(theme.clock_gap, Some(20));
     assert_eq!(theme.auth_stack_offset, Some(16));
     assert_eq!(theme.header_top_offset, Some(-12));
@@ -532,6 +524,47 @@ fn explicit_avatar_and_username_positions_override_legacy_auth_layout() {
             valign: VerticalAlign::Bottom,
             x: 0,
             y: -72,
+        })
+    );
+}
+
+#[test]
+fn explicit_input_and_status_positions_override_auth_flow_layout() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.input]
+            halign = "left"
+            valign = "bottom"
+            x = 28
+            y = -64
+
+            [visuals.status]
+            halign = "right"
+            valign = "top"
+            x = -32
+            y = 48
+        "#,
+    )
+    .expect("position config should parse");
+
+    let theme = ShellTheme::from_config(&config);
+
+    assert_eq!(
+        theme.input_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Bottom,
+            x: 28,
+            y: -64,
+        })
+    );
+    assert_eq!(
+        theme.status_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Top,
+            x: -32,
+            y: 48,
         })
     );
 }

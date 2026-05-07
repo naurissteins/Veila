@@ -42,8 +42,6 @@ x = 0
 y = 4
 
 [visuals.input]
-alignment = "center-center"
-offset_y = 20
 background_color = "rgba(255, 255, 255, 0.08)"
 border_color = "rgba(255, 255, 255, 0.08)"
 border_width = 3

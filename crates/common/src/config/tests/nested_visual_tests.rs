@@ -13,8 +13,11 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.input_font_weight(), Some(600));
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.input_font_size(), Some(3));
-    assert_eq!(config.visuals.input_alignment(), InputAlignment::BottomLeft);
-    assert!(config.visuals.input_center_in_layer());
+    assert_eq!(
+        config.visuals.input_alignment(),
+        InputAlignment::CenterCenter
+    );
+    assert!(!config.visuals.input_center_in_layer());
     assert!(config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Full);
     assert_eq!(
@@ -44,10 +47,17 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.caps_lock_color(),
         Some(RgbColor::rgba(255, 211, 122, 163))
     );
-    assert_eq!(config.visuals.input_horizontal_padding(), Some(64));
-    assert_eq!(config.visuals.input_vertical_padding(), Some(56));
-    assert_eq!(config.visuals.input_offset_x(), Some(14));
-    assert_eq!(config.visuals.input_offset_y(), Some(-18));
+    assert_eq!(config.visuals.input_horizontal_padding(), None);
+    assert_eq!(config.visuals.input_vertical_padding(), None);
+    assert_eq!(
+        config.visuals.input_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(28),
+            y: Some(-64),
+        }
+    );
     assert_eq!(
         config.visuals.input_border_color(),
         RgbColor::rgba(221, 221, 221, 31)
@@ -137,7 +147,15 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.status_color(),
         Some(RgbColor::rgba(255, 224, 160, 224))
     );
-    assert_eq!(config.visuals.status_gap(), Some(18));
+    assert_eq!(
+        config.visuals.status_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Top),
+            x: Some(-32),
+            y: Some(48),
+        }
+    );
     assert_eq!(
         config.visuals.eye_icon_color(),
         Some(RgbColor::rgba(255, 255, 255, 184))

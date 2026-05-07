@@ -63,7 +63,6 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
     };
     let auth_offset = offsets.auth_stack.unwrap_or(0);
     let vertical_padding = offsets.input_vertical_padding.unwrap_or(0).clamp(0, 512);
-    let input_offset_y = offsets.input_offset_y.unwrap_or(0);
     let top_auth_y = vertical_padding.max(hero_bottom + minimum_gap);
     let centered_auth_y = centered_role_top(frame_height, auth_anchor_height, 0.5);
     let auth_footer_y = frame_height
@@ -88,9 +87,8 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
                     hero_top,
                     (max_auth_y - hero_height - minimum_gap).max(hero_top),
                 ) + group_shift;
-                let auth_y =
-                    (centered_hero_y + hero_height + minimum_gap + auth_offset + input_offset_y)
-                        .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
+                let auth_y = (centered_hero_y + hero_height + minimum_gap + auth_offset)
+                    .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
 
                 RoleAnchors {
                     identity_y: None,
@@ -104,8 +102,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
                     (auth_footer_y - auth_anchor_height - minimum_gap - hero_height - 24).max(0);
                 let centered_auth_y =
                     centered_role_top(frame_height, combined_height, 0.5).clamp(0, max_group_top);
-                let auth_y = (centered_auth_y + group_shift + auth_offset + input_offset_y)
-                    .clamp(0, max_group_top);
+                let auth_y = (centered_auth_y + group_shift + auth_offset).clamp(0, max_group_top);
 
                 RoleAnchors {
                     identity_y: None,
@@ -142,7 +139,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
                     .clamp(0, max_identity_y);
                 let hero_y = identity_y + identity_height + identity_gap;
                 let max_input_y = auth_footer_y - input_render_height - 24;
-                let auth_y = (hero_y + hero_height + input_gap + auth_offset + input_offset_y)
+                let auth_y = (hero_y + hero_height + input_gap + auth_offset)
                     .clamp(hero_y + hero_height + input_gap, max_input_y);
 
                 RoleAnchors {
@@ -157,9 +154,8 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
                     hero_top,
                     (max_auth_y - hero_height - minimum_gap).max(hero_top),
                 ) + group_shift;
-                let auth_y =
-                    (centered_hero_y + hero_height + minimum_gap + auth_offset + input_offset_y)
-                        .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
+                let auth_y = (centered_hero_y + hero_height + minimum_gap + auth_offset)
+                    .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
 
                 RoleAnchors {
                     identity_y: None,
@@ -193,8 +189,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
         InputAlignment::CenterCenter | InputAlignment::CenterRight | InputAlignment::CenterLeft => {
             centered_auth_y
         }
-    } + auth_offset
-        + input_offset_y)
+    } + auth_offset)
         .clamp(min_auth_y, max_auth_y);
 
     RoleAnchors {

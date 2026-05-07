@@ -27,7 +27,6 @@ pub(super) struct StandardSceneConfig {
     pub clock_gap: Option<i32>,
     pub avatar_gap: Option<i32>,
     pub username_gap: Option<i32>,
-    pub status_gap: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

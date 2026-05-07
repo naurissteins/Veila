@@ -41,7 +41,6 @@ x = 0
 y = 176
 
 [visuals.input]
-alignment = "bottom-center"
 background_color = "rgba(255, 255, 255, 0.02)"
 border_color = "rgba(255, 255, 255, 0.08)"
 border_width = 3

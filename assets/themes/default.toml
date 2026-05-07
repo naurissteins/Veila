@@ -65,6 +65,10 @@ mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
 font_size = 2
+halign = "center"
+valign = "center"
+x = 0
+y = 0
 
 [visuals.avatar]
 size = 160
@@ -115,7 +119,10 @@ color = "rgba(255, 255, 255, 0.9)"
 [visuals.status]
 rejected_color = "rgba(255, 213, 213, 0.88)"
 pending_color = "rgba(236, 236, 236, 0.88)"
-gap = 18
+halign = "center"
+valign = "bottom"
+x = 0
+y = -24
 
 [visuals.eye]
 color = "rgba(255, 255, 255, 0.72)"

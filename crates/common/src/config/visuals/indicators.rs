@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{FontStyle, RgbColor};
+use super::{FontStyle, RgbColor, WidgetPositionConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlaceholderVisualConfig {
@@ -61,8 +61,8 @@ pub struct StatusVisualConfig {
     pub pending_color: Option<RgbColor>,
     #[serde(default)]
     pub rejected_color: Option<RgbColor>,
-    #[serde(default)]
-    pub gap: Option<u16>,
+    #[serde(flatten)]
+    pub position: WidgetPositionConfig,
 }
 
 impl Default for StatusVisualConfig {
@@ -72,7 +72,7 @@ impl Default for StatusVisualConfig {
             color: Some(RgbColor::rgba(255, 224, 160, 224)),
             pending_color: None,
             rejected_color: None,
-            gap: Some(18),
+            position: WidgetPositionConfig::default(),
         }
     }
 }
@@ -268,11 +268,11 @@ impl super::VisualConfig {
             .and_then(|status| status.rejected_color)
     }
 
-    pub fn status_gap(&self) -> Option<u16> {
+    pub fn status_position(&self) -> WidgetPositionConfig {
         self.status
             .as_ref()
-            .and_then(|status| status.gap)
-            .or(self.status_gap)
+            .map(|status| status.position)
+            .unwrap_or_default()
     }
 
     pub fn eye_icon_color(&self) -> Option<RgbColor> {

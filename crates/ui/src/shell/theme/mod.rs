@@ -43,8 +43,7 @@ pub struct ShellTheme {
     pub reveal_font_size: Option<u32>,
     pub input_horizontal_padding: Option<i32>,
     pub input_vertical_padding: Option<i32>,
-    pub input_offset_x: Option<i32>,
-    pub input_offset_y: Option<i32>,
+    pub input_position: Option<WidgetPosition>,
     pub input_width: Option<i32>,
     pub input_height: Option<i32>,
     pub input_radius: i32,
@@ -66,7 +65,7 @@ pub struct ShellTheme {
     pub username_position: Option<WidgetPosition>,
     pub avatar_gap: Option<i32>,
     pub username_gap: Option<i32>,
-    pub status_gap: Option<i32>,
+    pub status_position: Option<WidgetPosition>,
     pub clock_gap: Option<i32>,
     pub auth_stack_offset: Option<i32>,
     pub header_top_offset: Option<i32>,
@@ -221,6 +220,34 @@ fn resolve_clock_position(config: &AppConfig) -> Option<WidgetPosition> {
     })
 }
 
+fn resolve_input_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.input_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Center),
+        valign: position.valign.unwrap_or(VerticalAlign::Center),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
+fn resolve_status_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.status_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Center),
+        valign: position.valign.unwrap_or(VerticalAlign::Center),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
 fn resolve_date_position(config: &AppConfig) -> Option<WidgetPosition> {
     let position = config.visuals.date_position();
     if !position.is_specified() {
@@ -296,8 +323,7 @@ impl ShellTheme {
             reveal_font_size: config.visuals.reveal_font_size().map(u32::from),
             input_horizontal_padding: config.visuals.input_horizontal_padding().map(i32::from),
             input_vertical_padding: config.visuals.input_vertical_padding().map(i32::from),
-            input_offset_x: config.visuals.input_offset_x().map(i32::from),
-            input_offset_y: config.visuals.input_offset_y().map(i32::from),
+            input_position: resolve_input_position(config),
             input_width: config.visuals.input_width().map(i32::from),
             input_height: config.visuals.input_height().map(i32::from),
             input_radius: i32::from(config.visuals.input_radius()),
@@ -319,7 +345,7 @@ impl ShellTheme {
             username_position,
             avatar_gap: Some(24),
             username_gap: Some(28),
-            status_gap: config.visuals.status_gap().map(i32::from),
+            status_position: resolve_status_position(config),
             clock_gap: Some(20),
             auth_stack_offset: config.visuals.auth_stack_offset().map(i32::from),
             header_top_offset: config.visuals.header_top_offset().map(i32::from),

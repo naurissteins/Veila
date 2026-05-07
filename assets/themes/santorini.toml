@@ -53,8 +53,6 @@ x = 40
 y = 256
 
 [visuals.input]
-alignment = "center-left"
-center_in_layer = true
 background_color = "rgba(255, 255, 255, 0.08)"
 width = 310
 height = 54

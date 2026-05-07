@@ -43,6 +43,10 @@ struct SceneLayout {
     model: SceneModel,
     anchors: RoleAnchors,
     floating_avatar: bool,
+    floating_input: bool,
+    floating_input_placeholder: Option<veila_renderer::text::TextBlock>,
+    floating_status: Option<veila_renderer::text::TextBlock>,
+    floating_status_follows_input: bool,
     floating_username: Option<veila_renderer::text::TextBlock>,
     floating_clock: Option<model::SceneClockBlocks>,
     floating_date: Option<veila_renderer::text::TextBlock>,
@@ -77,17 +81,24 @@ impl ShellState {
                 center_in_layer: self.theme.input_center_in_layer,
                 layer_center_x,
                 horizontal_padding: self.theme.input_horizontal_padding,
-                offset_x: self.theme.input_offset_x,
             },
         );
+        let identity_visible = self.identity_visible();
+        let input_visible = self.input_visible();
         let text_blocks = self.scene_text_blocks(metrics);
         let floating_avatar = self.theme.avatar_enabled && self.theme.avatar_position.is_some();
         let floating_username =
             self.theme.username_enabled && self.theme.username_position.is_some();
+        let floating_input = self.theme.input_position.is_some() && input_visible;
+        let floating_status_follows_input =
+            self.theme.input_position.is_some() && self.theme.status_position.is_none();
+        let floating_status_explicit = self.theme.status_position.is_some();
         let clock_in_flow = self.theme.clock_position.is_none();
         let date_in_flow = self.theme.date_position.is_none();
         let avatar_in_flow = !floating_avatar;
         let username_in_flow = !floating_username;
+        let input_in_flow = !floating_input;
+        let status_in_flow = !floating_status_follows_input && !floating_status_explicit;
         let floating_clock = (!clock_in_flow)
             .then(|| text_blocks.clock.clone())
             .flatten();
@@ -109,19 +120,26 @@ impl ShellState {
                 } else {
                     None
                 },
-                placeholder: text_blocks.placeholder.clone(),
-                status: text_blocks.status.clone(),
+                placeholder: if input_in_flow {
+                    text_blocks.placeholder.clone()
+                } else {
+                    None
+                },
+                status: if status_in_flow {
+                    text_blocks.status.clone()
+                } else {
+                    None
+                },
                 weather: text_blocks.weather.clone(),
             },
             StandardSceneConfig {
-                identity_visible: self.identity_visible(),
-                input_visible: self.input_visible(),
+                identity_visible,
+                input_visible: input_visible && input_in_flow,
                 input_alignment: self.theme.input_alignment,
                 avatar_enabled: self.theme.avatar_enabled && avatar_in_flow,
                 clock_gap: self.theme.clock_gap,
                 avatar_gap: self.theme.avatar_gap,
                 username_gap: self.theme.username_gap,
-                status_gap: self.theme.status_gap,
             },
         );
         let footer_render_height =
@@ -166,7 +184,6 @@ impl ShellState {
             offsets: AnchorOffsets {
                 auth_stack: self.theme.auth_stack_offset,
                 input_vertical_padding: self.theme.input_vertical_padding,
-                input_offset_y: self.theme.input_offset_y,
                 header_top: self.theme.header_top_offset,
                 identity_gap: self.theme.identity_gap,
                 center_stack_style: self.theme.center_stack_style,
@@ -181,6 +198,14 @@ impl ShellState {
             model,
             anchors,
             floating_avatar,
+            floating_input,
+            floating_input_placeholder: floating_input
+                .then(|| text_blocks.placeholder.clone())
+                .flatten(),
+            floating_status: (!status_in_flow)
+                .then(|| text_blocks.status.clone())
+                .flatten(),
+            floating_status_follows_input,
             floating_username: floating_username
                 .then(|| text_blocks.username.clone())
                 .flatten(),
@@ -283,6 +308,8 @@ impl ShellState {
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
         let identity_visible = self.identity_visible();
         let input_visible = self.input_visible();
+        let status_uses_external_position =
+            self.theme.status_position.is_some() || self.theme.input_position.is_some();
         let clock_text = self.clock.primary_text(self.theme.clock_style);
         let clock_secondary_text = self.clock.secondary_text(self.theme.clock_style);
         let clock_style = self.clock_text_style(metrics);
@@ -295,7 +322,11 @@ impl ShellState {
         let username_text = self.username_text.as_deref();
         let username_style = self.username_text_style();
         let placeholder_style = self.placeholder_text_style();
-        let status_text = (!input_visible).then(|| self.status_text()).flatten();
+        let status_text = if input_visible && status_uses_external_position {
+            self.status_text()
+        } else {
+            (!input_visible).then(|| self.status_text()).flatten()
+        };
         let hidden_reveal_hint = self.hidden_reveal_hint();
         let status_style = if hidden_reveal_hint.is_some() && status_text.is_none() {
             self.reveal_text_style()
@@ -339,10 +370,14 @@ impl ShellState {
                 ),
                 placeholder_style,
                 status_text: if input_visible {
-                    self.theme
-                        .status_enabled
-                        .then_some(())
-                        .and(status_text.as_deref())
+                    if status_uses_external_position {
+                        self.theme
+                            .status_enabled
+                            .then_some(())
+                            .and(status_text.as_deref())
+                    } else {
+                        None
+                    }
                 } else {
                     hidden_reveal_hint
                 },

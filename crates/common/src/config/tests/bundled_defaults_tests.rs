@@ -63,8 +63,6 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert!(config.visuals.input_horizontal_padding().is_none());
     assert!(config.visuals.input_vertical_padding().is_none());
-    assert_eq!(config.visuals.input_offset_x(), Some(0));
-    assert_eq!(config.visuals.input_offset_y(), Some(0));
     assert_eq!(
         config.visuals.input_background_color(),
         RgbColor::rgba(255, 255, 255, 13)
@@ -106,7 +104,6 @@ fn first_run_defaults_match_bundled_theme() {
         Some(FontStyle::Normal)
     );
     assert_eq!(config.visuals.username_size(), Some(4));
-    assert_eq!(config.visuals.status_gap(), Some(18));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.identity_gap(), Some(18));

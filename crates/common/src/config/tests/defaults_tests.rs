@@ -95,8 +95,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.reveal_font_size().is_none());
     assert!(config.visuals.input_horizontal_padding().is_none());
     assert!(config.visuals.input_vertical_padding().is_none());
-    assert!(config.visuals.input_offset_x().is_none());
-    assert!(config.visuals.input_offset_y().is_none());
     assert!(config.visuals.input_width().is_none());
     assert!(config.visuals.input_height().is_none());
     assert_eq!(config.visuals.input_radius(), 32);
@@ -109,7 +107,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.avatar_ring_width().is_none());
     assert!(config.visuals.username_color().is_none());
     assert!(config.visuals.username_size().is_none());
-    assert!(config.visuals.status_gap().is_none());
     assert!(config.visuals.auth_stack_offset().is_none());
     assert!(config.visuals.header_top_offset().is_none());
     assert!(config.visuals.identity_gap().is_none());

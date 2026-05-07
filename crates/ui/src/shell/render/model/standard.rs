@@ -4,6 +4,8 @@ use super::{
     LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget, StandardSceneConfig,
 };
 
+const DEFAULT_STATUS_GAP: i32 = 14;
+
 impl SceneModel {
     pub(crate) fn standard(blocks: SceneTextBlocks, config: StandardSceneConfig) -> Self {
         let SceneTextBlocks {
@@ -22,12 +24,11 @@ impl SceneModel {
             clock_gap,
             avatar_gap,
             username_gap,
-            status_gap,
         } = config;
         let clock_gap = clock_gap.unwrap_or(4).clamp(0, 48);
         let avatar_gap = avatar_gap.unwrap_or(10).clamp(0, 96);
         let username_gap = username_gap.unwrap_or(34).clamp(0, 96);
-        let status_gap = status_gap.unwrap_or(14).clamp(0, 96);
+        let status_gap = DEFAULT_STATUS_GAP;
 
         let mut sections = Vec::new();
 

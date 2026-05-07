@@ -1,4 +1,4 @@
-use veila_renderer::{FrameSize, SoftwareBuffer};
+use veila_renderer::{FrameSize, SoftwareBuffer, shape::Rect};
 
 use super::super::{ShellState, ShellStatus};
 use super::{
@@ -31,6 +31,7 @@ impl ShellState {
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, false);
         self.render_floating_identity_widgets(buffer, &layout);
+        self.render_floating_input_widgets(buffer, &layout, false);
         self.render_role(
             buffer,
             &layout,
@@ -67,6 +68,7 @@ impl ShellState {
             true,
         );
         self.render_floating_header_widgets(buffer, &layout);
+        self.render_floating_input_widgets(buffer, &layout, true);
         self.render_now_playing_widget(buffer, &layout);
         self.render_top_right_indicators(buffer);
     }
@@ -219,6 +221,93 @@ impl ShellState {
         }
     }
 
+    fn render_floating_input_widgets(
+        &self,
+        buffer: &mut SoftwareBuffer,
+        layout: &SceneLayout,
+        dynamic: bool,
+    ) {
+        if layout.floating_input {
+            let rect = self
+                .floating_input_rect(layout, buffer.size())
+                .expect("floating input requires explicit position");
+            let placeholder = layout.floating_input_placeholder.clone();
+            self.render_input_widget(buffer, rect, placeholder, dynamic);
+        }
+
+        if dynamic && let Some(status) = layout.floating_status.as_ref() {
+            let (x, y) = self
+                .floating_status_origin(layout, buffer.size(), status)
+                .expect("floating status requires explicit origin");
+            draw_block(buffer, x, y, status);
+        }
+    }
+
+    fn floating_input_rect(&self, layout: &SceneLayout, size: FrameSize) -> Option<Rect> {
+        let position = self.theme.input_position?;
+        let x = anchored_block_x(
+            size.width as i32,
+            layout.metrics.input_width,
+            position.halign,
+            position.x,
+        );
+        let y = anchored_block_y(
+            size.height as i32,
+            layout.metrics.input_height,
+            position.valign,
+            position.y,
+        );
+
+        Some(Rect::new(
+            x,
+            y,
+            layout.metrics.input_width,
+            layout.metrics.input_height,
+        ))
+    }
+
+    fn floating_status_origin(
+        &self,
+        layout: &SceneLayout,
+        size: FrameSize,
+        block: &veila_renderer::text::TextBlock,
+    ) -> Option<(i32, i32)> {
+        if let Some(position) = self.theme.status_position {
+            let x = anchored_block_x(
+                size.width as i32,
+                block.width as i32,
+                position.halign,
+                position.x,
+            );
+            let y = anchored_block_y(
+                size.height as i32,
+                block.height as i32,
+                position.valign,
+                position.y,
+            );
+            return Some((x, y));
+        }
+
+        if layout.floating_status_follows_input {
+            let input_rect = self.floating_input_rect(layout, size)?;
+            let x = input_rect.x + (input_rect.width - block.width as i32) / 2;
+            let gap = 14;
+            let y = if matches!(
+                self.theme.input_alignment,
+                veila_common::InputAlignment::BottomCenter
+                    | veila_common::InputAlignment::BottomRight
+                    | veila_common::InputAlignment::BottomLeft
+            ) {
+                input_rect.y - gap - block.height as i32
+            } else {
+                input_rect.y + input_rect.height + gap
+            };
+            return Some((x, y));
+        }
+
+        None
+    }
+
     fn render_section(
         &self,
         buffer: &mut SoftwareBuffer,
@@ -314,68 +403,81 @@ impl ShellState {
                 draw_weather_widget(buffer, y, weather);
             }
             SceneWidget::Input(placeholder) => {
-                let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
-                    Some(self.text_layout_cache.borrow_mut().revealed_secret_block(
-                        &self.secret,
-                        self.revealed_secret_text_style(),
-                        metrics.input_width.saturating_sub(92) as u32,
-                    ))
-                } else {
-                    None
-                };
-                let inline_status = if dynamic {
-                    self.inline_input_status_text().map(|text| {
-                        self.text_layout_cache.borrow_mut().input_status_block(
-                            &text,
-                            self.input_status_text_style(),
-                            metrics.input_width.saturating_sub(92) as u32,
-                        )
-                    })
-                } else {
-                    None
-                };
-                let right_adornment = if let Some(phase) = self.pending_spinner_phase() {
-                    InputRightAdornment::Spinner {
-                        phase,
-                        style: self.toggle_style(),
-                    }
-                } else if self.caps_lock_active && self.theme.caps_lock_enabled {
-                    InputRightAdornment::CapsLock {
-                        style: self.caps_lock_icon_style(),
-                    }
-                } else if self.theme.eye_enabled {
-                    InputRightAdornment::Toggle {
-                        hovered: self.reveal_toggle_hovered,
-                        pressed: self.reveal_toggle_pressed,
-                        reveal_secret: self.reveal_secret,
-                        style: self.toggle_style(),
-                    }
-                } else {
-                    InputRightAdornment::None
-                };
-                let widget = InputWidget {
-                    rect: metrics.input_rect(y),
-                    secret_len: self.secret.chars().count(),
-                    focused: self.focused,
-                    shell_style: self.input_style(),
-                    mask_style: self.mask_style(),
-                    placeholder: placeholder.clone(),
-                    revealed_secret,
-                    inline_status,
-                    right_adornment,
-                };
-                if dynamic {
-                    if self.input_shell_is_dynamic() {
-                        draw_input_shell(buffer, widget.rect, widget.shell_style);
-                    }
-                    draw_input_content(buffer, &widget);
-                } else {
-                    if !self.input_shell_is_dynamic() {
-                        draw_input_shell(buffer, widget.rect, widget.shell_style);
-                    }
-                }
+                self.render_input_widget(
+                    buffer,
+                    metrics.input_rect(y),
+                    placeholder.clone(),
+                    dynamic,
+                );
             }
             _ => {}
+        }
+    }
+
+    fn render_input_widget(
+        &self,
+        buffer: &mut SoftwareBuffer,
+        rect: Rect,
+        placeholder: Option<veila_renderer::text::TextBlock>,
+        dynamic: bool,
+    ) {
+        let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
+            Some(self.text_layout_cache.borrow_mut().revealed_secret_block(
+                &self.secret,
+                self.revealed_secret_text_style(),
+                rect.width.saturating_sub(92) as u32,
+            ))
+        } else {
+            None
+        };
+        let inline_status = if dynamic {
+            self.inline_input_status_text().map(|text| {
+                self.text_layout_cache.borrow_mut().input_status_block(
+                    &text,
+                    self.input_status_text_style(),
+                    rect.width.saturating_sub(92) as u32,
+                )
+            })
+        } else {
+            None
+        };
+        let right_adornment = if let Some(phase) = self.pending_spinner_phase() {
+            InputRightAdornment::Spinner {
+                phase,
+                style: self.toggle_style(),
+            }
+        } else if self.caps_lock_active && self.theme.caps_lock_enabled {
+            InputRightAdornment::CapsLock {
+                style: self.caps_lock_icon_style(),
+            }
+        } else if self.theme.eye_enabled {
+            InputRightAdornment::Toggle {
+                hovered: self.reveal_toggle_hovered,
+                pressed: self.reveal_toggle_pressed,
+                reveal_secret: self.reveal_secret,
+                style: self.toggle_style(),
+            }
+        } else {
+            InputRightAdornment::None
+        };
+        let widget = InputWidget {
+            rect,
+            secret_len: self.secret.chars().count(),
+            focused: self.focused,
+            shell_style: self.input_style(),
+            mask_style: self.mask_style(),
+            placeholder,
+            revealed_secret,
+            inline_status,
+            right_adornment,
+        };
+        if dynamic {
+            if self.input_shell_is_dynamic() {
+                draw_input_shell(buffer, widget.rect, widget.shell_style);
+            }
+            draw_input_content(buffer, &widget);
+        } else if !self.input_shell_is_dynamic() {
+            draw_input_shell(buffer, widget.rect, widget.shell_style);
         }
     }
 
@@ -388,6 +490,18 @@ impl ShellState {
             frame_width.max(1) as u32,
             frame_height.max(1) as u32,
         ));
+        if layout.floating_input {
+            return if self.theme.eye_enabled {
+                self.floating_input_rect(
+                    &layout,
+                    FrameSize::new(frame_width.max(1) as u32, frame_height.max(1) as u32),
+                )
+                .map(input_toggle_hitbox)
+                .unwrap_or_else(|| veila_renderer::shape::Rect::new(0, 0, 0, 0))
+            } else {
+                veila_renderer::shape::Rect::new(0, 0, 0, 0)
+            };
+        }
         let mut y = layout.anchors.auth_y;
 
         if layout.anchors.identity_y.is_some() {
@@ -435,7 +549,11 @@ impl ShellState {
     }
 
     pub(crate) fn inline_input_status_text(&self) -> Option<String> {
-        if !self.input_visible() || !self.theme.status_enabled {
+        if !self.input_visible()
+            || !self.theme.status_enabled
+            || self.theme.status_position.is_some()
+            || self.theme.input_position.is_some()
+        {
             return None;
         }
 

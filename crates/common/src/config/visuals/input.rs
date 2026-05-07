@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::RgbColor;
+use super::{RgbColor, WidgetPositionConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
@@ -18,15 +18,9 @@ impl Default for InputVisualEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
 pub struct InputVisualConfig {
-    pub alignment: Option<InputAlignment>,
-    pub center_in_layer: Option<bool>,
     pub reveal_on_interaction: Option<bool>,
     pub reveal_mode: Option<InputRevealMode>,
     pub reveal_hint: Option<String>,
-    pub horizontal_padding: Option<u16>,
-    pub vertical_padding: Option<u16>,
-    pub offset_x: Option<i16>,
-    pub offset_y: Option<i16>,
     pub font_family: Option<String>,
     pub font_weight: Option<u16>,
     pub font_style: Option<FontStyle>,
@@ -38,20 +32,16 @@ pub struct InputVisualConfig {
     pub radius: Option<u16>,
     pub border_width: Option<u16>,
     pub mask_color: Option<RgbColor>,
+    #[serde(flatten)]
+    pub position: WidgetPositionConfig,
 }
 
 impl Default for InputVisualConfig {
     fn default() -> Self {
         Self {
-            alignment: Some(InputAlignment::CenterCenter),
-            center_in_layer: Some(false),
             reveal_on_interaction: Some(false),
             reveal_mode: Some(InputRevealMode::Input),
             reveal_hint: Some(String::from(DEFAULT_REVEAL_HINT)),
-            horizontal_padding: None,
-            vertical_padding: None,
-            offset_x: Some(0),
-            offset_y: Some(0),
             font_family: Some(super::default_google_sans_flex_font_family()),
             font_weight: Some(400),
             font_style: Some(FontStyle::Normal),
@@ -63,6 +53,7 @@ impl Default for InputVisualConfig {
             radius: Some(10),
             border_width: Some(0),
             mask_color: Some(RgbColor::rgb(255, 255, 255)),
+            position: WidgetPositionConfig::default(),
         }
     }
 }
@@ -159,27 +150,15 @@ impl super::VisualConfig {
     }
 
     pub fn input_alignment(&self) -> InputAlignment {
-        match &self.input {
-            InputVisualEntry::Color(_) => InputAlignment::default(),
-            InputVisualEntry::Section(config) => config.alignment.unwrap_or_default(),
-        }
+        InputAlignment::default()
     }
 
     pub fn input_horizontal_padding(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => None,
-            InputVisualEntry::Section(config) => config.horizontal_padding,
-        }
+        None
     }
 
     pub fn input_center_in_layer(&self) -> bool {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_center_in_layer.unwrap_or(false),
-            InputVisualEntry::Section(config) => config
-                .center_in_layer
-                .or(self.input_center_in_layer)
-                .unwrap_or(false),
-        }
+        false
     }
 
     pub fn input_reveal_on_interaction(&self) -> bool {
@@ -206,23 +185,13 @@ impl super::VisualConfig {
     }
 
     pub fn input_vertical_padding(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => None,
-            InputVisualEntry::Section(config) => config.vertical_padding,
-        }
+        None
     }
 
-    pub fn input_offset_x(&self) -> Option<i16> {
+    pub fn input_position(&self) -> WidgetPositionConfig {
         match &self.input {
-            InputVisualEntry::Color(_) => None,
-            InputVisualEntry::Section(config) => config.offset_x,
-        }
-    }
-
-    pub fn input_offset_y(&self) -> Option<i16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => None,
-            InputVisualEntry::Section(config) => config.offset_y,
+            InputVisualEntry::Color(_) => WidgetPositionConfig::default(),
+            InputVisualEntry::Section(config) => config.position,
         }
     }
 

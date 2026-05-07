@@ -19,7 +19,6 @@ pub struct InputPlacement {
     pub center_in_layer: bool,
     pub layer_center_x: Option<i32>,
     pub horizontal_padding: Option<i32>,
-    pub offset_x: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,7 +33,6 @@ pub struct RoleAnchors {
 pub struct AnchorOffsets {
     pub auth_stack: Option<i32>,
     pub input_vertical_padding: Option<i32>,
-    pub input_offset_y: Option<i32>,
     pub header_top: Option<i32>,
     pub identity_gap: Option<i32>,
     pub center_stack_style: CenterStackStyle,

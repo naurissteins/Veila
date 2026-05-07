@@ -9,14 +9,8 @@ pub(super) fn nested_visual_config() -> AppConfig {
             foreground = "#111111"
 
 [visuals.input]
-alignment = "bottom-left"
-center_in_layer = true
 reveal_on_interaction = true
 reveal_mode = "full"
-horizontal_padding = 64
-vertical_padding = 56
-offset_x = 14
-offset_y = -18
 font_size = 3
 font_family = "Geom"
 font_weight = 600
@@ -28,6 +22,10 @@ border_color = "#DDDDDD1F"
             radius = 10
             border_width = 0
             mask_color = "#A9C4FF"
+            halign = "left"
+            valign = "bottom"
+            x = 28
+            y = -64
 
             [visuals.avatar]
             size = 192
@@ -94,9 +92,12 @@ border_color = "#DDDDDD1F"
 
             [visuals.status]
             color = "#FFE0A0E0"
-            pending_color = "#FFC25CBA"
-            rejected_color = "#DC6060EB"
-            gap = 18
+pending_color = "#FFC25CBA"
+rejected_color = "#DC6060EB"
+halign = "right"
+            valign = "top"
+            x = -32
+            y = 48
 
             [visuals.eye]
             color = "#FFFFFFB8"

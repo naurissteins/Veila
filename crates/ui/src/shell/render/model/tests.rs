@@ -20,7 +20,6 @@ fn standard_scene_config() -> StandardSceneConfig {
         clock_gap: None,
         avatar_gap: None,
         username_gap: None,
-        status_gap: None,
     }
 }
 
@@ -189,7 +188,7 @@ fn uses_configured_avatar_gap() {
 }
 
 #[test]
-fn uses_configured_status_gap() {
+fn uses_fixed_status_gap() {
     let model = SceneModel::standard(
         SceneTextBlocks {
             clock: Some(clock_blocks("09:05")),
@@ -199,17 +198,14 @@ fn uses_configured_status_gap() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
-        StandardSceneConfig {
-            status_gap: Some(20),
-            ..standard_scene_config()
-        },
+        standard_scene_config(),
     );
 
     let auth_sections = model
         .sections_for_role(LayoutRole::Auth)
         .collect::<Vec<_>>();
 
-    assert_eq!(auth_sections[2].gap_after, 20);
+    assert_eq!(auth_sections[2].gap_after, 14);
 }
 
 #[test]
@@ -225,7 +221,6 @@ fn places_status_above_input_for_bottom_aligned_layouts() {
         },
         StandardSceneConfig {
             input_alignment: InputAlignment::BottomCenter,
-            status_gap: Some(20),
             ..standard_scene_config()
         },
     );
@@ -235,7 +230,7 @@ fn places_status_above_input_for_bottom_aligned_layouts() {
         .collect::<Vec<_>>();
 
     assert!(matches!(auth_sections[2].widget, SceneWidget::Status(_)));
-    assert_eq!(auth_sections[2].gap_after, 20);
+    assert_eq!(auth_sections[2].gap_after, 14);
     assert!(matches!(auth_sections[3].widget, SceneWidget::Input(_)));
 }
 
@@ -252,10 +247,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
             status: None,
             weather: None,
         },
-        StandardSceneConfig {
-            status_gap: Some(20),
-            ..standard_scene_config()
-        },
+        standard_scene_config(),
     );
     let with_status = SceneModel::standard(
         SceneTextBlocks {
@@ -266,10 +258,7 @@ fn keeps_auth_anchor_height_stable_when_status_is_added() {
             status: Some(block("Authentication failed")),
             weather: None,
         },
-        StandardSceneConfig {
-            status_gap: Some(20),
-            ..standard_scene_config()
-        },
+        standard_scene_config(),
     );
 
     assert_eq!(
@@ -289,10 +278,7 @@ fn splits_auth_sections_into_identity_and_input_groups() {
             status: Some(block("Checking authentication")),
             weather: None,
         },
-        StandardSceneConfig {
-            status_gap: Some(20),
-            ..standard_scene_config()
-        },
+        standard_scene_config(),
     );
 
     let identity_sections = model

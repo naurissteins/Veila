@@ -24,7 +24,6 @@ impl SceneMetrics {
                 center_in_layer: false,
                 layer_center_x: None,
                 horizontal_padding: None,
-                offset_x: None,
             },
         )
     }
@@ -67,16 +66,9 @@ impl SceneMetrics {
                 input_placement.alignment,
             )
         };
-        let auth_center_x = apply_auth_offset_x(
-            base_auth_center_x,
-            width,
-            input_width,
-            input_placement.offset_x,
-        );
-
         Self {
             center_x: width / 2,
-            auth_center_x,
+            auth_center_x: base_auth_center_x,
             content_width: (input_width + 72).max(220) as u32,
             clock_width: (input_width + 140).max(280) as u32,
             input_width,
@@ -114,15 +106,4 @@ fn auth_center_x(
             centered
         }
     }
-}
-
-fn apply_auth_offset_x(
-    auth_center_x: i32,
-    frame_width: i32,
-    input_width: i32,
-    input_offset_x: Option<i32>,
-) -> i32 {
-    let min_x = input_width / 2;
-    let max_x = (frame_width - input_width / 2).max(min_x);
-    (auth_center_x + input_offset_x.unwrap_or(0)).clamp(min_x, max_x)
 }
