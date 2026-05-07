@@ -53,7 +53,6 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
 #[test]
 fn bottom_center_auth_does_not_reserve_left_weather_footer_space() {
     let theme = ShellTheme {
-        input_alignment: InputAlignment::BottomCenter,
         weather_enabled: true,
         weather_alignment: WeatherAlignment::Left,
         weather_horizontal_padding: Some(48),

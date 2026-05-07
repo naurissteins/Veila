@@ -209,7 +209,6 @@ halign = "right"
             header_top_offset = -12
             auth_stack_offset = 0
             identity_gap = 26
-            center_stack_order = "auth-hero"
             center_stack_style = "identity-hero-input"
 
             [visuals.palette]

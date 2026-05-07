@@ -18,14 +18,14 @@ pub use indicators::{
     BatteryVisualConfig, CapsLockVisualConfig, EyeVisualConfig, KeyboardVisualConfig,
     PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusVisualConfig,
 };
-pub use input::{FontStyle, InputAlignment, InputRevealMode, InputVisualConfig, InputVisualEntry};
+pub use input::{FontStyle, InputRevealMode, InputVisualConfig, InputVisualEntry};
 pub use layer::{
     LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
     LayerVisualConfig, LayerWidth, LayerWidthKeyword,
 };
 pub use layout::{
-    CenterStackOrder, CenterStackStyle, HorizontalAlign, LayoutVisualConfig, PaletteVisualConfig,
-    VerticalAlign, WidgetPositionConfig,
+    CenterStackStyle, HorizontalAlign, LayoutVisualConfig, PaletteVisualConfig, VerticalAlign,
+    WidgetPositionConfig,
 };
 pub use now_playing::{NowPlayingBackgroundConfig, NowPlayingVisualConfig};
 pub use outputs::{OutputUiMode, OutputVisualConfig};
@@ -79,8 +79,6 @@ pub struct VisualConfig {
     pub header_top_offset: Option<i16>,
     #[serde(default)]
     pub identity_gap: Option<u16>,
-    #[serde(default)]
-    pub center_stack_order: Option<CenterStackOrder>,
     #[serde(default)]
     pub center_stack_style: Option<CenterStackStyle>,
     #[serde(default)]
@@ -213,7 +211,6 @@ impl Default for VisualConfig {
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
             identity_gap: Some(18),
-            center_stack_order: Some(CenterStackOrder::HeroAuth),
             center_stack_style: Some(CenterStackStyle::HeroAuth),
             clock_font_family: Some(default_geom_font_family()),
             clock_font_weight: Some(600),

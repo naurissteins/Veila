@@ -7,14 +7,7 @@ fn clock_style_uses_fallback_alpha_for_opaque_colors() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert_eq!(style.color.alpha, 246);
     assert_eq!(style.scale, 14);
@@ -27,14 +20,7 @@ fn clock_style_uses_configured_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert_eq!(style.color.red, 248);
     assert_eq!(style.color.green, 251);
@@ -52,14 +38,7 @@ fn clock_style_uses_configured_font_family() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert!(
         style
@@ -74,14 +53,7 @@ fn clock_style_uses_configured_font_family() {
 #[test]
 fn clock_style_defaults_to_bundled_font_family() {
     let shell = ShellState::default();
-    let style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert!(
         style
@@ -133,14 +105,7 @@ fn clock_style_uses_configured_size() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert_eq!(style.scale, 4);
 }
@@ -152,8 +117,7 @@ fn clock_meridiem_style_is_smaller_than_main_clock() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let clock_style = shell.clock_text_style(metrics);
     let meridiem_style = shell.clock_meridiem_text_style(metrics);
 
@@ -168,8 +132,7 @@ fn clock_meridiem_style_uses_configured_size() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let meridiem_style = shell.clock_meridiem_text_style(metrics);
 
     assert_eq!(meridiem_style.scale, 5);
@@ -178,14 +141,7 @@ fn clock_meridiem_style_uses_configured_size() {
 #[test]
 fn header_styles_do_not_add_extra_line_spacing() {
     let shell = ShellState::default();
-    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
     let date_style = shell.date_text_style();
 
     assert_eq!(clock_style.line_spacing, 0);
@@ -199,14 +155,7 @@ fn clock_style_allows_sizes_above_previous_cap() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert_eq!(style.scale, 12);
 }
@@ -274,14 +223,7 @@ fn header_styles_preserve_explicit_foreground_alpha_when_unset() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(
-        1280,
-        720,
-        None,
-        None,
-        None,
-        InputAlignment::CenterCenter,
-    ));
+    let clock_style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
     let date_style = shell.date_text_style();
 
     assert_eq!(clock_style.color.alpha, 90);

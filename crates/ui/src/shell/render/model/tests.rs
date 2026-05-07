@@ -3,7 +3,7 @@ use veila_renderer::{
     text::{TextBlock, TextStyle},
 };
 
-use veila_common::{ClockStyle, InputAlignment};
+use veila_common::ClockStyle;
 
 use super::{
     AuthGroup, LayoutRole, SceneClockBlocks, SceneModel, SceneTextBlocks, SceneWidget,
@@ -15,7 +15,6 @@ fn standard_scene_config() -> StandardSceneConfig {
     StandardSceneConfig {
         identity_visible: true,
         input_visible: true,
-        input_alignment: InputAlignment::CenterCenter,
         avatar_enabled: true,
         clock_gap: None,
         avatar_gap: None,
@@ -89,11 +88,11 @@ fn appends_status_to_auth_role() {
     assert_eq!(
         with_status.total_height_for_role(
             LayoutRole::Auth,
-            SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter),
+            SceneMetrics::from_frame(1280, 720, None, None, None),
             &ShellStatus::Idle,
         ) - without_status.total_height_for_role(
             LayoutRole::Auth,
-            SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter),
+            SceneMetrics::from_frame(1280, 720, None, None, None),
             &ShellStatus::Idle,
         ),
         38
@@ -209,35 +208,8 @@ fn uses_fixed_status_gap() {
 }
 
 #[test]
-fn places_status_above_input_for_bottom_aligned_layouts() {
-    let model = SceneModel::standard(
-        SceneTextBlocks {
-            clock: Some(clock_blocks("09:05")),
-            date: Some(block("Tuesday, March 24")),
-            username: Some(block("ramces")),
-            placeholder: Some(block("Type your password to unlock")),
-            status: Some(block("Checking authentication")),
-            weather: None,
-        },
-        StandardSceneConfig {
-            input_alignment: InputAlignment::BottomCenter,
-            ..standard_scene_config()
-        },
-    );
-
-    let auth_sections = model
-        .sections_for_role(LayoutRole::Auth)
-        .collect::<Vec<_>>();
-
-    assert!(matches!(auth_sections[2].widget, SceneWidget::Status(_)));
-    assert_eq!(auth_sections[2].gap_after, 14);
-    assert!(matches!(auth_sections[3].widget, SceneWidget::Input(_)));
-}
-
-#[test]
 fn keeps_auth_anchor_height_stable_when_status_is_added() {
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let without_status = SceneModel::standard(
         SceneTextBlocks {
             clock: Some(clock_blocks("09:05")),
@@ -417,8 +389,7 @@ fn hidden_hint_contributes_to_auth_anchor_height_when_it_is_the_only_auth_widget
             ..standard_scene_config()
         },
     );
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     assert_eq!(
         model.anchor_height_for_role(LayoutRole::Auth, metrics, &ShellStatus::Idle),

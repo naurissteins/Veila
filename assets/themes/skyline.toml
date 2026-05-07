@@ -158,5 +158,4 @@ padding_y = 12
 [visuals.layout]
 auth_stack_offset = 0
 header_top_offset = -12
-center_stack_order = "auth-hero"
 center_stack_style = "identity-hero-input"

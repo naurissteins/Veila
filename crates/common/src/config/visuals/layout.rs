@@ -11,8 +11,6 @@ pub struct LayoutVisualConfig {
     #[serde(default)]
     pub identity_gap: Option<u16>,
     #[serde(default)]
-    pub center_stack_order: Option<CenterStackOrder>,
-    #[serde(default)]
     pub center_stack_style: Option<CenterStackStyle>,
 }
 
@@ -22,7 +20,6 @@ impl Default for LayoutVisualConfig {
             auth_stack_offset: Some(0),
             header_top_offset: Some(-12),
             identity_gap: Some(18),
-            center_stack_order: Some(CenterStackOrder::HeroAuth),
             center_stack_style: Some(CenterStackStyle::HeroAuth),
         }
     }
@@ -69,15 +66,6 @@ impl WidgetPositionConfig {
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub enum CenterStackOrder {
-    #[default]
-    #[serde(rename = "hero-auth")]
-    HeroAuth,
-    #[serde(rename = "auth-hero")]
-    AuthHero,
-}
-
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CenterStackStyle {
     #[default]
     #[serde(rename = "hero-auth")]
@@ -86,15 +74,6 @@ pub enum CenterStackStyle {
     AuthHero,
     #[serde(rename = "identity-hero-input")]
     IdentityHeroInput,
-}
-
-impl From<CenterStackOrder> for CenterStackStyle {
-    fn from(value: CenterStackOrder) -> Self {
-        match value {
-            CenterStackOrder::HeroAuth => Self::HeroAuth,
-            CenterStackOrder::AuthHero => Self::AuthHero,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -131,26 +110,11 @@ impl super::VisualConfig {
             .or(self.identity_gap)
     }
 
-    pub fn center_stack_order(&self) -> CenterStackOrder {
-        match self.center_stack_style() {
-            CenterStackStyle::HeroAuth => CenterStackOrder::HeroAuth,
-            CenterStackStyle::AuthHero | CenterStackStyle::IdentityHeroInput => {
-                CenterStackOrder::AuthHero
-            }
-        }
-    }
-
     pub fn center_stack_style(&self) -> CenterStackStyle {
         self.layout
             .as_ref()
             .and_then(|layout| layout.center_stack_style)
-            .or_else(|| {
-                self.layout
-                    .as_ref()
-                    .and_then(|layout| layout.center_stack_order.map(Into::into))
-            })
             .or(self.center_stack_style)
-            .or_else(|| self.center_stack_order.map(Into::into))
             .unwrap_or_default()
     }
 

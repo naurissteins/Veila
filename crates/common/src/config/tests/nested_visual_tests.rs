@@ -13,11 +13,6 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.input_font_weight(), Some(600));
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Italic));
     assert_eq!(config.visuals.input_font_size(), Some(3));
-    assert_eq!(
-        config.visuals.input_alignment(),
-        InputAlignment::CenterCenter
-    );
-    assert!(!config.visuals.input_center_in_layer());
     assert!(config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Full);
     assert_eq!(
@@ -47,8 +42,6 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.caps_lock_color(),
         Some(RgbColor::rgba(255, 211, 122, 163))
     );
-    assert_eq!(config.visuals.input_horizontal_padding(), None);
-    assert_eq!(config.visuals.input_vertical_padding(), None);
     assert_eq!(
         config.visuals.input_position(),
         WidgetPositionConfig {
@@ -163,10 +156,6 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(config.visuals.identity_gap(), Some(26));
-    assert_eq!(
-        config.visuals.center_stack_order(),
-        CenterStackOrder::AuthHero
-    );
     assert_eq!(
         config.visuals.center_stack_style(),
         CenterStackStyle::IdentityHeroInput

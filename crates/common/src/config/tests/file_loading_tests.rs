@@ -59,7 +59,6 @@ fn loads_config_from_file() {
             auth_stack_offset = 16
             header_top_offset = -12
             identity_gap = 26
-            center_stack_order = "auth-hero"
             center_stack_style = "identity-hero-input"
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
@@ -203,10 +202,6 @@ fn loads_config_from_file() {
     assert_eq!(loaded.config.visuals.auth_stack_offset(), Some(16));
     assert_eq!(loaded.config.visuals.header_top_offset(), Some(-12));
     assert_eq!(loaded.config.visuals.identity_gap(), Some(26));
-    assert_eq!(
-        loaded.config.visuals.center_stack_order(),
-        CenterStackOrder::AuthHero
-    );
     assert_eq!(
         loaded.config.visuals.center_stack_style(),
         CenterStackStyle::IdentityHeroInput

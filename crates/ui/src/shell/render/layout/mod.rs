@@ -12,8 +12,7 @@ pub(super) use anchors::{
 pub(super) use layer::{layer_center_x, layer_rect};
 pub(crate) use types::SceneMetrics;
 pub(super) use types::{
-    AnchorOffsets, AuthGroupHeights, FooterHeights, InputPlacement, LayerPlacement,
-    RoleAnchorInput, RoleAnchors,
+    AnchorOffsets, AuthGroupHeights, FooterHeights, LayerPlacement, RoleAnchorInput, RoleAnchors,
 };
 
 #[cfg(test)]

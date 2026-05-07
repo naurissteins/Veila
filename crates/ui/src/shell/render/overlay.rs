@@ -293,10 +293,8 @@ impl ShellState {
             let x = input_rect.x + (input_rect.width - block.width as i32) / 2;
             let gap = 14;
             let y = if matches!(
-                self.theme.input_alignment,
-                veila_common::InputAlignment::BottomCenter
-                    | veila_common::InputAlignment::BottomRight
-                    | veila_common::InputAlignment::BottomLeft
+                self.theme.input_position?.valign,
+                veila_common::VerticalAlign::Bottom
             ) {
                 input_rect.y - gap - block.height as i32
             } else {

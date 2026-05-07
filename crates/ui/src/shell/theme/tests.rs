@@ -1,10 +1,9 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BatteryVisualConfig, CenterStackOrder, CenterStackStyle,
-    ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig,
-    FontStyle, HorizontalAlign, InputRevealMode, InputVisualConfig, InputVisualEntry,
-    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
-    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayoutVisualConfig,
-    NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    AppConfig, AvatarVisualConfig, BatteryVisualConfig, CenterStackStyle, ClockFormat, ClockStyle,
+    ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign,
+    InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment,
+    LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
+    LayoutVisualConfig, NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig,
     VerticalAlign, WeatherAlignment, WeatherVisualConfig, WidgetPositionConfig,
 };
@@ -204,7 +203,6 @@ fn input_alpha_uses_rgba_values() {
         auth_stack_offset: Some(16),
         header_top_offset: Some(-12),
         identity_gap: Some(26),
-        center_stack_order: Some(CenterStackOrder::AuthHero),
         center_stack_style: Some(CenterStackStyle::IdentityHeroInput),
     });
 
@@ -212,11 +210,6 @@ fn input_alpha_uses_rgba_values() {
 
     assert_eq!(theme.input.alpha, 200);
     assert_eq!(theme.input_border.alpha, 180);
-    assert_eq!(
-        theme.input_alignment,
-        veila_common::InputAlignment::CenterCenter
-    );
-    assert!(!theme.input_center_in_layer);
     assert!(theme.input_reveal_on_interaction);
     assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
     assert_eq!(theme.input_reveal_hint, "Press any key or click to unlock");
@@ -229,8 +222,6 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.reveal_font_weight, Some(500));
     assert_eq!(theme.reveal_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.reveal_font_size, Some(2));
-    assert_eq!(theme.input_horizontal_padding, None);
-    assert_eq!(theme.input_vertical_padding, None);
     assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.input_font_weight, Some(600));
     assert_eq!(theme.input_font_style, Some(FontStyle::Italic));

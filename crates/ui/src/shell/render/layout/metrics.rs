@@ -1,7 +1,6 @@
-use veila_common::InputAlignment;
 use veila_renderer::shape::Rect;
 
-use super::{SceneMetrics, types::InputPlacement};
+use super::SceneMetrics;
 
 impl SceneMetrics {
     #[cfg(test)]
@@ -11,30 +10,22 @@ impl SceneMetrics {
         configured_input_width: Option<i32>,
         configured_input_height: Option<i32>,
         configured_avatar_size: Option<i32>,
-        input_alignment: InputAlignment,
     ) -> Self {
-        Self::from_frame_with_input_placement(
+        Self::new(
             width,
             height,
             configured_input_width,
             configured_input_height,
             configured_avatar_size,
-            InputPlacement {
-                alignment: input_alignment,
-                center_in_layer: false,
-                layer_center_x: None,
-                horizontal_padding: None,
-            },
         )
     }
 
-    pub fn from_frame_with_input_placement(
+    pub fn new(
         width: i32,
         height: i32,
         configured_input_width: Option<i32>,
         configured_input_height: Option<i32>,
         configured_avatar_size: Option<i32>,
-        input_placement: InputPlacement,
     ) -> Self {
         let scene_width = ((width as f32) * 0.34) as i32;
         let input_width = configured_input_width
@@ -46,29 +37,9 @@ impl SceneMetrics {
         let avatar_size = configured_avatar_size
             .unwrap_or_else(|| (width.min(height) / 7).clamp(84, 108))
             .clamp(56, 160);
-        let horizontal_padding = input_placement
-            .horizontal_padding
-            .unwrap_or_else(|| super::horizontal_auth_padding(width));
-        let base_auth_center_x = if input_placement.center_in_layer {
-            input_placement.layer_center_x.unwrap_or_else(|| {
-                auth_center_x(
-                    width,
-                    input_width,
-                    horizontal_padding,
-                    input_placement.alignment,
-                )
-            })
-        } else {
-            auth_center_x(
-                width,
-                input_width,
-                horizontal_padding,
-                input_placement.alignment,
-            )
-        };
         Self {
             center_x: width / 2,
-            auth_center_x: base_auth_center_x,
+            auth_center_x: width / 2,
             content_width: (input_width + 72).max(220) as u32,
             clock_width: (input_width + 140).max(280) as u32,
             input_width,
@@ -84,26 +55,5 @@ impl SceneMetrics {
             self.input_width,
             self.input_height,
         )
-    }
-}
-
-fn auth_center_x(
-    frame_width: i32,
-    input_width: i32,
-    horizontal_padding: i32,
-    input_alignment: InputAlignment,
-) -> i32 {
-    let centered = frame_width / 2;
-    let left = (horizontal_padding + input_width / 2).clamp(input_width / 2, frame_width);
-    let right =
-        (frame_width - horizontal_padding - input_width / 2).clamp(input_width / 2, frame_width);
-    match input_alignment {
-        InputAlignment::TopLeft | InputAlignment::CenterLeft | InputAlignment::BottomLeft => left,
-        InputAlignment::TopRight | InputAlignment::CenterRight | InputAlignment::BottomRight => {
-            right
-        }
-        InputAlignment::TopCenter | InputAlignment::CenterCenter | InputAlignment::BottomCenter => {
-            centered
-        }
     }
 }

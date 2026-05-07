@@ -72,11 +72,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.input_font_weight().is_none());
     assert!(config.visuals.input_font_style().is_none());
     assert!(config.visuals.input_font_size().is_none());
-    assert_eq!(
-        config.visuals.input_alignment(),
-        InputAlignment::CenterCenter
-    );
-    assert!(!config.visuals.input_center_in_layer());
     assert!(!config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Input);
     assert_eq!(
@@ -93,8 +88,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.reveal_font_weight().is_none());
     assert!(config.visuals.reveal_font_style().is_none());
     assert!(config.visuals.reveal_font_size().is_none());
-    assert!(config.visuals.input_horizontal_padding().is_none());
-    assert!(config.visuals.input_vertical_padding().is_none());
     assert!(config.visuals.input_width().is_none());
     assert!(config.visuals.input_height().is_none());
     assert_eq!(config.visuals.input_radius(), 32);
@@ -110,10 +103,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.auth_stack_offset().is_none());
     assert!(config.visuals.header_top_offset().is_none());
     assert!(config.visuals.identity_gap().is_none());
-    assert_eq!(
-        config.visuals.center_stack_order(),
-        CenterStackOrder::HeroAuth
-    );
     assert_eq!(
         config.visuals.center_stack_style(),
         CenterStackStyle::HeroAuth

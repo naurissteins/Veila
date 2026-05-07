@@ -301,7 +301,6 @@ fn scene_metrics_use_configured_avatar_size() {
         shell.theme.input_width,
         shell.theme.input_height,
         shell.theme.avatar_size,
-        InputAlignment::CenterCenter,
     );
     assert_eq!(metrics.avatar_size, 88);
 }
@@ -628,7 +627,6 @@ fn scene_metrics_use_configured_input_dimensions() {
         shell.theme.input_width,
         shell.theme.input_height,
         shell.theme.avatar_size,
-        InputAlignment::CenterCenter,
     );
 
     assert_eq!(metrics.input_width, 280);

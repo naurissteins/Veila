@@ -45,11 +45,6 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.input_font_weight(), Some(400));
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Normal));
     assert_eq!(config.visuals.input_font_size(), Some(2));
-    assert_eq!(
-        config.visuals.input_alignment(),
-        InputAlignment::CenterCenter
-    );
-    assert!(!config.visuals.input_center_in_layer());
     assert!(!config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Input);
     assert_eq!(
@@ -61,8 +56,6 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.reveal_text(),
         "Press any key or click to continue"
     );
-    assert!(config.visuals.input_horizontal_padding().is_none());
-    assert!(config.visuals.input_vertical_padding().is_none());
     assert_eq!(
         config.visuals.input_background_color(),
         RgbColor::rgba(255, 255, 255, 13)
@@ -107,10 +100,6 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.auth_stack_offset(), Some(0));
     assert_eq!(config.visuals.header_top_offset(), Some(-12));
     assert_eq!(config.visuals.identity_gap(), Some(18));
-    assert_eq!(
-        config.visuals.center_stack_order(),
-        CenterStackOrder::HeroAuth
-    );
     assert_eq!(
         config.visuals.center_stack_style(),
         CenterStackStyle::HeroAuth

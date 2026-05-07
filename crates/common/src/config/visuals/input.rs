@@ -59,29 +59,6 @@ impl Default for InputVisualConfig {
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub enum InputAlignment {
-    #[default]
-    #[serde(rename = "center-center")]
-    CenterCenter,
-    #[serde(rename = "center-right")]
-    CenterRight,
-    #[serde(rename = "center-left")]
-    CenterLeft,
-    #[serde(rename = "top-center")]
-    TopCenter,
-    #[serde(rename = "top-right")]
-    TopRight,
-    #[serde(rename = "top-left")]
-    TopLeft,
-    #[serde(rename = "bottom-center")]
-    BottomCenter,
-    #[serde(rename = "bottom-right")]
-    BottomRight,
-    #[serde(rename = "bottom-left")]
-    BottomLeft,
-}
-
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FontStyle {
     #[default]
     #[serde(rename = "normal")]
@@ -149,18 +126,6 @@ impl super::VisualConfig {
         }
     }
 
-    pub fn input_alignment(&self) -> InputAlignment {
-        InputAlignment::default()
-    }
-
-    pub fn input_horizontal_padding(&self) -> Option<u16> {
-        None
-    }
-
-    pub fn input_center_in_layer(&self) -> bool {
-        false
-    }
-
     pub fn input_reveal_on_interaction(&self) -> bool {
         match &self.input {
             InputVisualEntry::Color(_) => false,
@@ -182,10 +147,6 @@ impl super::VisualConfig {
                 sanitized_reveal_hint(config.reveal_hint.as_deref())
             }
         }
-    }
-
-    pub fn input_vertical_padding(&self) -> Option<u16> {
-        None
     }
 
     pub fn input_position(&self) -> WidgetPositionConfig {

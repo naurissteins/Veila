@@ -3,8 +3,7 @@ use super::*;
 #[test]
 fn text_layout_cache_uses_configured_weather_icon_size() {
     let mut cache = TextLayoutCache::default();
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_style_mode: ClockStyle::Standard,
@@ -53,8 +52,7 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
 #[test]
 fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
     let mut cache = TextLayoutCache::default();
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_style_mode: ClockStyle::Standard,
@@ -95,8 +93,7 @@ fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
 #[test]
 fn text_layout_cache_reuses_matching_clock_layout() {
     let mut cache = TextLayoutCache::default();
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 5);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
@@ -172,8 +169,7 @@ fn text_layout_cache_reuses_matching_clock_layout() {
 #[test]
 fn text_layout_cache_refreshes_when_clock_text_changes() {
     let mut cache = TextLayoutCache::default();
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let first = cache.scene_text_blocks(SceneTextInputs {
         clock_style_mode: ClockStyle::Standard,
@@ -253,8 +249,7 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
 #[test]
 fn text_layout_cache_builds_stacked_clock_blocks() {
     let mut cache = TextLayoutCache::default();
-    let metrics =
-        SceneMetrics::from_frame(1280, 720, None, None, None, InputAlignment::CenterCenter);
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
 
     let blocks = cache.scene_text_blocks(SceneTextInputs {
         clock_style_mode: ClockStyle::Stacked,

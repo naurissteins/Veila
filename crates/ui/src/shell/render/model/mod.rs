@@ -2,7 +2,7 @@ mod standard;
 #[cfg(test)]
 mod tests;
 
-use veila_common::{ClockStyle, InputAlignment, WeatherAlignment};
+use veila_common::{ClockStyle, WeatherAlignment};
 use veila_renderer::icon::WeatherIcon;
 use veila_renderer::text::TextBlock;
 
@@ -22,7 +22,6 @@ pub(super) struct SceneTextBlocks {
 pub(super) struct StandardSceneConfig {
     pub identity_visible: bool,
     pub input_visible: bool,
-    pub input_alignment: InputAlignment,
     pub avatar_enabled: bool,
     pub clock_gap: Option<i32>,
     pub avatar_gap: Option<i32>,

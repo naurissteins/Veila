@@ -4,7 +4,7 @@ mod tests;
 
 use veila_common::{
     AppConfig, CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
-    HorizontalAlign, InputAlignment, InputRevealMode, LayerAlignment, LayerMode, LayerStyle,
+    HorizontalAlign, InputRevealMode, LayerAlignment, LayerMode, LayerStyle,
     LayerVerticalAlignment, VerticalAlign, WeatherAlignment,
 };
 use veila_renderer::ClearColor;
@@ -30,8 +30,6 @@ pub struct ShellTheme {
     pub input_font_weight: Option<u16>,
     pub input_font_style: Option<FontStyle>,
     pub input_font_size: Option<u32>,
-    pub input_alignment: InputAlignment,
-    pub input_center_in_layer: bool,
     pub input_reveal_on_interaction: bool,
     pub input_reveal_mode: InputRevealMode,
     pub input_reveal_hint: String,
@@ -41,8 +39,6 @@ pub struct ShellTheme {
     pub reveal_font_weight: Option<u16>,
     pub reveal_font_style: Option<FontStyle>,
     pub reveal_font_size: Option<u32>,
-    pub input_horizontal_padding: Option<i32>,
-    pub input_vertical_padding: Option<i32>,
     pub input_position: Option<WidgetPosition>,
     pub input_width: Option<i32>,
     pub input_height: Option<i32>,
@@ -310,8 +306,6 @@ impl ShellTheme {
             input_font_weight: config.visuals.input_font_weight(),
             input_font_style: config.visuals.input_font_style(),
             input_font_size: config.visuals.input_font_size().map(u32::from),
-            input_alignment: config.visuals.input_alignment(),
-            input_center_in_layer: config.visuals.input_center_in_layer(),
             input_reveal_on_interaction: config.visuals.input_reveal_on_interaction(),
             input_reveal_mode: config.visuals.input_reveal_mode(),
             input_reveal_hint: config.visuals.reveal_text(),
@@ -321,8 +315,6 @@ impl ShellTheme {
             reveal_font_weight: config.visuals.reveal_font_weight(),
             reveal_font_style: config.visuals.reveal_font_style(),
             reveal_font_size: config.visuals.reveal_font_size().map(u32::from),
-            input_horizontal_padding: config.visuals.input_horizontal_padding().map(i32::from),
-            input_vertical_padding: config.visuals.input_vertical_padding().map(i32::from),
             input_position: resolve_input_position(config),
             input_width: config.visuals.input_width().map(i32::from),
             input_height: config.visuals.input_height().map(i32::from),

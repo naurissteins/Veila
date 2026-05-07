@@ -1,5 +1,3 @@
-use veila_common::InputAlignment;
-
 use super::{
     LayoutRole, SceneModel, SceneSection, SceneTextBlocks, SceneWidget, StandardSceneConfig,
 };
@@ -19,7 +17,6 @@ impl SceneModel {
         let StandardSceneConfig {
             identity_visible,
             input_visible,
-            input_alignment,
             avatar_enabled,
             clock_gap,
             avatar_gap,
@@ -67,37 +64,17 @@ impl SceneModel {
         }
 
         if input_visible {
-            let status_before_input = matches!(
-                input_alignment,
-                InputAlignment::BottomCenter
-                    | InputAlignment::BottomRight
-                    | InputAlignment::BottomLeft
-            );
-
             if let Some(status) = status {
-                if status_before_input {
-                    sections.push(SceneSection::new(
-                        LayoutRole::Auth,
-                        SceneWidget::Status(status),
-                        status_gap,
-                    ));
-                    sections.push(SceneSection::new(
-                        LayoutRole::Auth,
-                        SceneWidget::Input(placeholder),
-                        0,
-                    ));
-                } else {
-                    sections.push(SceneSection::new(
-                        LayoutRole::Auth,
-                        SceneWidget::Input(placeholder),
-                        status_gap,
-                    ));
-                    sections.push(SceneSection::new(
-                        LayoutRole::Auth,
-                        SceneWidget::Status(status),
-                        0,
-                    ));
-                }
+                sections.push(SceneSection::new(
+                    LayoutRole::Auth,
+                    SceneWidget::Input(placeholder),
+                    status_gap,
+                ));
+                sections.push(SceneSection::new(
+                    LayoutRole::Auth,
+                    SceneWidget::Status(status),
+                    0,
+                ));
             } else {
                 sections.push(SceneSection::new(
                     LayoutRole::Auth,

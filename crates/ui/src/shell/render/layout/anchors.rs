@@ -1,6 +1,4 @@
-use veila_common::{
-    CenterStackStyle, ClockAlignment, HorizontalAlign, InputAlignment, VerticalAlign,
-};
+use veila_common::{CenterStackStyle, ClockAlignment, HorizontalAlign, VerticalAlign};
 
 use super::types::{RoleAnchorInput, RoleAnchors};
 
@@ -14,7 +12,6 @@ pub fn role_anchors(
     auth_anchor_height: i32,
     auth_render_height: i32,
     footer_heights: FooterHeights,
-    input_alignment: InputAlignment,
     offsets: AnchorOffsets,
 ) -> RoleAnchors {
     role_anchors_with_groups(RoleAnchorInput {
@@ -28,7 +25,6 @@ pub fn role_anchors(
             input_render: auth_render_height,
         },
         footer_heights,
-        input_alignment,
         offsets,
     })
 }
@@ -40,7 +36,6 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
     let auth_render_height = input.auth_render_height;
     let auth_groups = input.auth_groups;
     let footer_heights = input.footer_heights;
-    let input_alignment = input.input_alignment;
     let offsets = input.offsets;
     let identity_height = auth_groups.identity;
     let input_anchor_height = auth_groups.input_anchor;
@@ -62,19 +57,14 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
         0
     };
     let auth_offset = offsets.auth_stack.unwrap_or(0);
-    let vertical_padding = offsets.input_vertical_padding.unwrap_or(0).clamp(0, 512);
-    let top_auth_y = vertical_padding.max(hero_bottom + minimum_gap);
     let centered_auth_y = centered_role_top(frame_height, auth_anchor_height, 0.5);
     let auth_footer_y = frame_height
         - footer_heights.clearance
         - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
-    let bottom_auth_y = (frame_height - vertical_padding - auth_render_height)
-        .min(auth_footer_y - auth_render_height - 24);
     let min_auth_y = hero_bottom + minimum_gap;
     let max_auth_y = auth_footer_y - auth_render_height - 24;
 
     if matches!(offsets.clock_alignment, ClockAlignment::CenterCenter)
-        && matches!(input_alignment, InputAlignment::CenterCenter)
         && hero_height > 0
         && auth_anchor_height > 0
     {
@@ -179,18 +169,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
         };
     }
 
-    let auth_y = (match input_alignment {
-        InputAlignment::TopCenter | InputAlignment::TopRight | InputAlignment::TopLeft => {
-            top_auth_y
-        }
-        InputAlignment::BottomCenter | InputAlignment::BottomRight | InputAlignment::BottomLeft => {
-            bottom_auth_y
-        }
-        InputAlignment::CenterCenter | InputAlignment::CenterRight | InputAlignment::CenterLeft => {
-            centered_auth_y
-        }
-    } + auth_offset)
-        .clamp(min_auth_y, max_auth_y);
+    let auth_y = (centered_auth_y + auth_offset).clamp(min_auth_y, max_auth_y);
 
     RoleAnchors {
         identity_y: None,

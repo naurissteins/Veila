@@ -35,15 +35,15 @@ pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use now_playing::NowPlayingConfig;
 pub use visuals::{
-    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackOrder,
-    CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig,
-    EyeVisualConfig, FontStyle, HorizontalAlign, InputAlignment, InputRevealMode,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight,
-    LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig,
-    LayerWidth, LayerWidthKeyword, LayoutVisualConfig, NowPlayingBackgroundConfig,
-    NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    VerticalAlign, VisualConfig, WeatherAlignment, WeatherVisualConfig, WidgetPositionConfig,
+    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, CenterStackStyle,
+    ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig, EyeVisualConfig,
+    FontStyle, HorizontalAlign, InputRevealMode, InputVisualConfig, InputVisualEntry,
+    KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle,
+    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LayerWidthKeyword, LayoutVisualConfig,
+    NowPlayingBackgroundConfig, NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherAlignment, WeatherVisualConfig,
+    WidgetPositionConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 
@@ -512,7 +512,6 @@ const LEGACY_VISUAL_MAPPINGS: &[(&str, &str, &str)] = &[
     ("auth_stack_offset", "layout", "auth_stack_offset"),
     ("header_top_offset", "layout", "header_top_offset"),
     ("identity_gap", "layout", "identity_gap"),
-    ("center_stack_order", "layout", "center_stack_order"),
     ("center_stack_style", "layout", "center_stack_style"),
     ("foreground", "palette", "foreground"),
     ("muted", "palette", "muted"),

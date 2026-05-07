@@ -24,9 +24,8 @@ use veila_renderer::{
 use self::{
     cache::SceneTextInputs,
     layout::{
-        AnchorOffsets, AuthGroupHeights, FooterHeights, InputPlacement, LayerPlacement,
-        RoleAnchorInput, RoleAnchors, SceneMetrics, layer_center_x, layer_rect,
-        role_anchors_with_groups,
+        AnchorOffsets, AuthGroupHeights, FooterHeights, LayerPlacement, RoleAnchorInput,
+        RoleAnchors, SceneMetrics, layer_rect, role_anchors_with_groups,
     },
     model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, SceneWidget, StandardSceneConfig},
 };
@@ -54,34 +53,12 @@ struct SceneLayout {
 
 impl ShellState {
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
-        let layer_placement = LayerPlacement {
-            alignment: self.theme.layer_alignment,
-            full_width: self.theme.layer_full_width,
-            width: self.theme.layer_width,
-            full_height: self.theme.layer_full_height,
-            height: self.theme.layer_height,
-            vertical_alignment: self.theme.layer_vertical_alignment,
-            offset_x: self.theme.layer_offset_x,
-            offset_y: self.theme.layer_offset_y,
-            left_padding: self.theme.layer_left_padding,
-            right_padding: self.theme.layer_right_padding,
-            top_padding: self.theme.layer_top_padding,
-            bottom_padding: self.theme.layer_bottom_padding,
-        };
-        let layer_center_x = (self.theme.layer_enabled && self.theme.input_center_in_layer)
-            .then(|| layer_center_x(size.width as i32, layer_placement));
-        let metrics = SceneMetrics::from_frame_with_input_placement(
+        let metrics = SceneMetrics::new(
             size.width as i32,
             size.height as i32,
             self.theme.input_width,
             self.theme.input_height,
             self.theme.avatar_size,
-            InputPlacement {
-                alignment: self.theme.input_alignment,
-                center_in_layer: self.theme.input_center_in_layer,
-                layer_center_x,
-                horizontal_padding: self.theme.input_horizontal_padding,
-            },
         );
         let identity_visible = self.identity_visible();
         let input_visible = self.input_visible();
@@ -135,7 +112,6 @@ impl ShellState {
             StandardSceneConfig {
                 identity_visible,
                 input_visible: input_visible && input_in_flow,
-                input_alignment: self.theme.input_alignment,
                 avatar_enabled: self.theme.avatar_enabled && avatar_in_flow,
                 clock_gap: self.theme.clock_gap,
                 avatar_gap: self.theme.avatar_gap,
@@ -180,10 +156,8 @@ impl ShellState {
                 render: footer_render_height,
                 clearance: footer_clearance_height,
             },
-            input_alignment: self.theme.input_alignment,
             offsets: AnchorOffsets {
                 auth_stack: self.theme.auth_stack_offset,
-                input_vertical_padding: self.theme.input_vertical_padding,
                 header_top: self.theme.header_top_offset,
                 identity_gap: self.theme.identity_gap,
                 center_stack_style: self.theme.center_stack_style,
