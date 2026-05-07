@@ -1,8 +1,8 @@
 use std::fs;
 
 use super::{
-    AppConfig, BackgroundMode, BackgroundScaling, CenterStackStyle, ClockFormat, ClockStyle,
-    FontStyle, HorizontalAlign, InputRevealMode, InputVisualEntry, LayerAlignment, LayerHeight,
+    AppConfig, BackgroundMode, BackgroundScaling, ClockFormat, ClockStyle, FontStyle,
+    HorizontalAlign, InputRevealMode, InputVisualEntry, LayerAlignment, LayerHeight,
     LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment, LayerWidth,
     LayerWidthKeyword, OutputUiMode, RgbColor, VerticalAlign, WeatherAlignment, WeatherUnit,
     WidgetPositionConfig, active_include_source_paths, active_theme_name, active_theme_source_path,

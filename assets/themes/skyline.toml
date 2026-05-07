@@ -154,8 +154,3 @@ color = "rgba(0, 0, 0, 0.05)"
 radius = 18
 padding_x = 12
 padding_y = 12
-
-[visuals.layout]
-auth_stack_offset = 0
-header_top_offset = -12
-center_stack_style = "identity-hero-input"

@@ -97,13 +97,6 @@ fn first_run_defaults_match_bundled_theme() {
         Some(FontStyle::Normal)
     );
     assert_eq!(config.visuals.username_size(), Some(4));
-    assert_eq!(config.visuals.auth_stack_offset(), Some(0));
-    assert_eq!(config.visuals.header_top_offset(), Some(-12));
-    assert_eq!(config.visuals.identity_gap(), Some(18));
-    assert_eq!(
-        config.visuals.center_stack_style(),
-        CenterStackStyle::HeroAuth
-    );
     assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
     assert_eq!(config.visuals.clock_font_weight(), Some(600));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));

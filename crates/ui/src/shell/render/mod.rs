@@ -157,10 +157,6 @@ impl ShellState {
                 clearance: footer_clearance_height,
             },
             offsets: AnchorOffsets {
-                auth_stack: self.theme.auth_stack_offset,
-                header_top: self.theme.header_top_offset,
-                identity_gap: self.theme.identity_gap,
-                center_stack_style: self.theme.center_stack_style,
                 clock_alignment: self.theme.clock_alignment,
                 clock_offset_y: self.theme.clock_offset_y,
                 weather_bottom_padding: self.theme.weather_bottom_padding,

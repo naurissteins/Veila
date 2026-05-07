@@ -3,9 +3,9 @@ mod color;
 mod tests;
 
 use veila_common::{
-    AppConfig, CenterStackStyle, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
-    HorizontalAlign, InputRevealMode, LayerAlignment, LayerMode, LayerStyle,
-    LayerVerticalAlignment, VerticalAlign, WeatherAlignment,
+    AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, HorizontalAlign,
+    InputRevealMode, LayerAlignment, LayerMode, LayerStyle, LayerVerticalAlignment, VerticalAlign,
+    WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -63,10 +63,6 @@ pub struct ShellTheme {
     pub username_gap: Option<i32>,
     pub status_position: Option<WidgetPosition>,
     pub clock_gap: Option<i32>,
-    pub auth_stack_offset: Option<i32>,
-    pub header_top_offset: Option<i32>,
-    pub identity_gap: Option<i32>,
-    pub center_stack_style: CenterStackStyle,
     pub clock_enabled: bool,
     pub clock_alignment: ClockAlignment,
     pub clock_center_in_layer: bool,
@@ -339,10 +335,6 @@ impl ShellTheme {
             username_gap: Some(28),
             status_position: resolve_status_position(config),
             clock_gap: Some(20),
-            auth_stack_offset: config.visuals.auth_stack_offset().map(i32::from),
-            header_top_offset: config.visuals.header_top_offset().map(i32::from),
-            identity_gap: config.visuals.identity_gap().map(i32::from),
-            center_stack_style: config.visuals.center_stack_style(),
             clock_enabled: config.visuals.clock_enabled(),
             clock_alignment: ClockAlignment::TopCenter,
             clock_center_in_layer: false,

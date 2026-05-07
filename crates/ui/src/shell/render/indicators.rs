@@ -48,7 +48,7 @@ impl ShellState {
         let row_gap = self.theme.battery_gap.unwrap_or(8).clamp(0, 64);
 
         if let Some(block) = power_block.as_ref() {
-            let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
+            let y = (top_role_top(buffer.size().height as i32) - 10
                 + self.theme.keyboard_top_offset.unwrap_or(0))
             .max(8);
             draw_top_right_block(
@@ -70,7 +70,7 @@ impl ShellState {
                 } else {
                     0
                 };
-            let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
+            let y = (top_role_top(buffer.size().height as i32) - 10
                 + self.theme.keyboard_top_offset.unwrap_or(0))
             .max(8);
             draw_top_right_block(
@@ -101,7 +101,7 @@ impl ShellState {
                 } else {
                     0
                 };
-            let y = (top_role_top(buffer.size().height as i32, self.theme.header_top_offset) - 10
+            let y = (top_role_top(buffer.size().height as i32) - 10
                 + self.theme.battery_top_offset.unwrap_or(0))
             .max(8);
             let battery_color = self.theme.battery_color.unwrap_or(self.theme.foreground);

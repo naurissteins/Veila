@@ -205,12 +205,6 @@ halign = "right"
             ui_mode = "single"
             ui_output = "DP-1"
 
-            [visuals.layout]
-            header_top_offset = -12
-            auth_stack_offset = 0
-            identity_gap = 26
-            center_stack_style = "identity-hero-input"
-
             [visuals.palette]
             foreground = "rgba(255, 255, 255, 0.1)"
             muted = "rgba(255, 255, 255, 0.9)"

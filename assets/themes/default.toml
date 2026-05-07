@@ -130,10 +130,6 @@ color = "rgba(255, 255, 255, 0.72)"
 [visuals.caps_lock]
 color = "rgba(255, 255, 255, 0.52)"
 
-[visuals.layout]
-header_top_offset = -12
-auth_stack_offset = 0
-
 [visuals.now_playing]
 enabled = false
 content_gap = 18

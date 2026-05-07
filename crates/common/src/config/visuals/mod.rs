@@ -23,10 +23,7 @@ pub use layer::{
     LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
     LayerVisualConfig, LayerWidth, LayerWidthKeyword,
 };
-pub use layout::{
-    CenterStackStyle, HorizontalAlign, LayoutVisualConfig, PaletteVisualConfig, VerticalAlign,
-    WidgetPositionConfig,
-};
+pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};
 pub use now_playing::{NowPlayingBackgroundConfig, NowPlayingVisualConfig};
 pub use outputs::{OutputUiMode, OutputVisualConfig};
 pub use weather::{WeatherAlignment, WeatherVisualConfig};
@@ -73,14 +70,6 @@ pub struct VisualConfig {
     pub username_color: Option<RgbColor>,
     #[serde(default)]
     pub username_size: Option<u16>,
-    #[serde(default)]
-    pub auth_stack_offset: Option<i16>,
-    #[serde(default)]
-    pub header_top_offset: Option<i16>,
-    #[serde(default)]
-    pub identity_gap: Option<u16>,
-    #[serde(default)]
-    pub center_stack_style: Option<CenterStackStyle>,
     #[serde(default)]
     pub clock_font_family: Option<String>,
     #[serde(default)]
@@ -180,8 +169,6 @@ pub struct VisualConfig {
     #[serde(default)]
     pub outputs: Option<OutputVisualConfig>,
     #[serde(default)]
-    pub layout: Option<LayoutVisualConfig>,
-    #[serde(default)]
     pub palette: Option<PaletteVisualConfig>,
 }
 
@@ -208,10 +195,6 @@ impl Default for VisualConfig {
             avatar_ring_width: Some(0),
             username_color: Some(RgbColor::rgba(255, 255, 255, 214)),
             username_size: Some(4),
-            auth_stack_offset: Some(0),
-            header_top_offset: Some(-12),
-            identity_gap: Some(18),
-            center_stack_style: Some(CenterStackStyle::HeroAuth),
             clock_font_family: Some(default_geom_font_family()),
             clock_font_weight: Some(600),
             clock_font_style: Some(FontStyle::Normal),
@@ -261,7 +244,6 @@ impl Default for VisualConfig {
             layer: Some(LayerVisualConfig::default()),
             now_playing: Some(NowPlayingVisualConfig::default()),
             outputs: Some(OutputVisualConfig::default()),
-            layout: Some(LayoutVisualConfig::default()),
             palette: None,
         }
     }

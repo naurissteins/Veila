@@ -100,13 +100,6 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.avatar_ring_width().is_none());
     assert!(config.visuals.username_color().is_none());
     assert!(config.visuals.username_size().is_none());
-    assert!(config.visuals.auth_stack_offset().is_none());
-    assert!(config.visuals.header_top_offset().is_none());
-    assert!(config.visuals.identity_gap().is_none());
-    assert_eq!(
-        config.visuals.center_stack_style(),
-        CenterStackStyle::HeroAuth
-    );
     assert!(config.visuals.clock_font_family().is_none());
     assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_font_style().is_none());

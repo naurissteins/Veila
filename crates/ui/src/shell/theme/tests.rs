@@ -1,9 +1,9 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BatteryVisualConfig, CenterStackStyle, ClockFormat, ClockStyle,
-    ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign,
-    InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment,
-    LayerHeight, LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
-    LayoutVisualConfig, NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
+    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig,
+    ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign, InputRevealMode,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight,
+    LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
+    NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig,
     VerticalAlign, WeatherAlignment, WeatherVisualConfig, WidgetPositionConfig,
 };
@@ -199,13 +199,6 @@ fn input_alpha_uses_rgba_values() {
         position: WidgetPositionConfig::default(),
         ..StatusVisualConfig::default()
     });
-    config.visuals.layout = Some(LayoutVisualConfig {
-        auth_stack_offset: Some(16),
-        header_top_offset: Some(-12),
-        identity_gap: Some(26),
-        center_stack_style: Some(CenterStackStyle::IdentityHeroInput),
-    });
-
     let theme = ShellTheme::from_config(&config);
 
     assert_eq!(theme.input.alpha, 200);
@@ -256,13 +249,6 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.avatar_gap, Some(24));
     assert_eq!(theme.username_gap, Some(28));
     assert_eq!(theme.clock_gap, Some(20));
-    assert_eq!(theme.auth_stack_offset, Some(16));
-    assert_eq!(theme.header_top_offset, Some(-12));
-    assert_eq!(theme.identity_gap, Some(26));
-    assert_eq!(
-        theme.center_stack_style,
-        CenterStackStyle::IdentityHeroInput
-    );
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
     assert_eq!(theme.clock_font_weight, Some(700));
     assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));

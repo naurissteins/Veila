@@ -1,4 +1,4 @@
-use veila_common::{CenterStackStyle, ClockAlignment, HorizontalAlign, VerticalAlign};
+use veila_common::{ClockAlignment, HorizontalAlign, VerticalAlign};
 
 use super::types::{RoleAnchorInput, RoleAnchors};
 
@@ -34,13 +34,9 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
     let hero_height = input.hero_height;
     let auth_anchor_height = input.auth_anchor_height;
     let auth_render_height = input.auth_render_height;
-    let auth_groups = input.auth_groups;
     let footer_heights = input.footer_heights;
     let offsets = input.offsets;
-    let identity_height = auth_groups.identity;
-    let input_anchor_height = auth_groups.input_anchor;
-    let input_render_height = auth_groups.input_render;
-    let hero_top = top_role_top(frame_height, offsets.header_top);
+    let hero_top = top_role_top(frame_height);
     let hero_y = match offsets.clock_alignment {
         ClockAlignment::TopCenter => hero_top,
         ClockAlignment::TopRight => hero_top,
@@ -56,7 +52,6 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
     } else {
         0
     };
-    let auth_offset = offsets.auth_stack.unwrap_or(0);
     let centered_auth_y = centered_role_top(frame_height, auth_anchor_height, 0.5);
     let auth_footer_y = frame_height
         - footer_heights.clearance
@@ -70,90 +65,18 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
     {
         let combined_height = hero_height + minimum_gap + auth_anchor_height;
         let group_shift = offsets.clock_offset_y.unwrap_or(0);
+        let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
+            hero_top,
+            (max_auth_y - hero_height - minimum_gap).max(hero_top),
+        ) + group_shift;
+        let auth_y = (centered_hero_y + hero_height + minimum_gap)
+            .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
 
-        return match offsets.center_stack_style {
-            CenterStackStyle::HeroAuth => {
-                let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
-                    hero_top,
-                    (max_auth_y - hero_height - minimum_gap).max(hero_top),
-                ) + group_shift;
-                let auth_y = (centered_hero_y + hero_height + minimum_gap + auth_offset)
-                    .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
-
-                RoleAnchors {
-                    identity_y: None,
-                    hero_y: centered_hero_y,
-                    auth_y,
-                    footer_y,
-                }
-            }
-            CenterStackStyle::AuthHero => {
-                let max_group_top =
-                    (auth_footer_y - auth_anchor_height - minimum_gap - hero_height - 24).max(0);
-                let centered_auth_y =
-                    centered_role_top(frame_height, combined_height, 0.5).clamp(0, max_group_top);
-                let auth_y = (centered_auth_y + group_shift + auth_offset).clamp(0, max_group_top);
-
-                RoleAnchors {
-                    identity_y: None,
-                    hero_y: auth_y + auth_anchor_height + minimum_gap,
-                    auth_y,
-                    footer_y,
-                }
-            }
-            CenterStackStyle::IdentityHeroInput
-                if identity_height > 0 && input_anchor_height > 0 =>
-            {
-                let identity_gap = if identity_height > 0 && hero_height > 0 {
-                    offsets.identity_gap.unwrap_or(18).clamp(0, 160)
-                } else {
-                    0
-                };
-                let input_gap = if hero_height > 0 && input_anchor_height > 0 {
-                    18
-                } else {
-                    0
-                };
-                let combined_height =
-                    identity_height + identity_gap + hero_height + input_gap + input_anchor_height;
-                let max_identity_y = (auth_footer_y
-                    - input_render_height
-                    - 24
-                    - input_gap
-                    - hero_height
-                    - identity_gap
-                    - identity_height)
-                    .max(0);
-                let identity_y = (centered_role_top(frame_height, combined_height, 0.5)
-                    + group_shift)
-                    .clamp(0, max_identity_y);
-                let hero_y = identity_y + identity_height + identity_gap;
-                let max_input_y = auth_footer_y - input_render_height - 24;
-                let auth_y = (hero_y + hero_height + input_gap + auth_offset)
-                    .clamp(hero_y + hero_height + input_gap, max_input_y);
-
-                RoleAnchors {
-                    identity_y: Some(identity_y),
-                    hero_y,
-                    auth_y,
-                    footer_y,
-                }
-            }
-            CenterStackStyle::IdentityHeroInput => {
-                let centered_hero_y = centered_role_top(frame_height, combined_height, 0.5).clamp(
-                    hero_top,
-                    (max_auth_y - hero_height - minimum_gap).max(hero_top),
-                ) + group_shift;
-                let auth_y = (centered_hero_y + hero_height + minimum_gap + auth_offset)
-                    .clamp(centered_hero_y + hero_height + minimum_gap, max_auth_y);
-
-                RoleAnchors {
-                    identity_y: None,
-                    hero_y: centered_hero_y,
-                    auth_y,
-                    footer_y,
-                }
-            }
+        return RoleAnchors {
+            identity_y: None,
+            hero_y: centered_hero_y,
+            auth_y,
+            footer_y,
         };
     }
 
@@ -169,7 +92,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
         };
     }
 
-    let auth_y = (centered_auth_y + auth_offset).clamp(min_auth_y, max_auth_y);
+    let auth_y = centered_auth_y.clamp(min_auth_y, max_auth_y);
 
     RoleAnchors {
         identity_y: None,
@@ -228,8 +151,8 @@ pub fn anchored_block_y(
     }
 }
 
-pub fn top_role_top(frame_height: i32, header_top_offset: Option<i32>) -> i32 {
-    ((frame_height / 14).clamp(28, 72) + header_top_offset.unwrap_or(0)).max(0)
+pub fn top_role_top(frame_height: i32) -> i32 {
+    (frame_height / 14).clamp(28, 72)
 }
 
 fn centered_role_top(frame_height: i32, role_height: i32, center_factor: f32) -> i32 {

@@ -1,4 +1,4 @@
-use veila_common::{CenterStackStyle, ClockAlignment, LayerAlignment, LayerVerticalAlignment};
+use veila_common::{ClockAlignment, LayerAlignment, LayerVerticalAlignment};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SceneMetrics {
@@ -21,10 +21,6 @@ pub struct RoleAnchors {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct AnchorOffsets {
-    pub auth_stack: Option<i32>,
-    pub header_top: Option<i32>,
-    pub identity_gap: Option<i32>,
-    pub center_stack_style: CenterStackStyle,
     pub clock_alignment: ClockAlignment,
     pub clock_offset_y: Option<i32>,
     pub weather_bottom_padding: Option<i32>,

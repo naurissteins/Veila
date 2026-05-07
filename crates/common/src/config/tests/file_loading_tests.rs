@@ -56,10 +56,6 @@ fn loads_config_from_file() {
             avatar_ring_width = 3
             username_color = "#D7E3FFB8"
             username_size = 3
-            auth_stack_offset = 16
-            header_top_offset = -12
-            identity_gap = 26
-            center_stack_style = "identity-hero-input"
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
             clock_font_style = "italic"
@@ -198,13 +194,6 @@ fn loads_config_from_file() {
             x: Some(0),
             y: Some(-24),
         }
-    );
-    assert_eq!(loaded.config.visuals.auth_stack_offset(), Some(16));
-    assert_eq!(loaded.config.visuals.header_top_offset(), Some(-12));
-    assert_eq!(loaded.config.visuals.identity_gap(), Some(26));
-    assert_eq!(
-        loaded.config.visuals.center_stack_style(),
-        CenterStackStyle::IdentityHeroInput
     );
     assert_eq!(
         loaded.config.visuals.clock_font_family(),

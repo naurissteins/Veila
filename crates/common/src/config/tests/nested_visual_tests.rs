@@ -153,13 +153,6 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.eye_icon_color(),
         Some(RgbColor::rgba(255, 255, 255, 184))
     );
-    assert_eq!(config.visuals.header_top_offset(), Some(-12));
-    assert_eq!(config.visuals.auth_stack_offset(), Some(0));
-    assert_eq!(config.visuals.identity_gap(), Some(26));
-    assert_eq!(
-        config.visuals.center_stack_style(),
-        CenterStackStyle::IdentityHeroInput
-    );
 }
 
 #[test]

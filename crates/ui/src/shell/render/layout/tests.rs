@@ -1,12 +1,10 @@
 use veila_common::{
-    CenterStackStyle, ClockAlignment, HorizontalAlign, LayerAlignment, LayerVerticalAlignment,
-    VerticalAlign,
+    ClockAlignment, HorizontalAlign, LayerAlignment, LayerVerticalAlignment, VerticalAlign,
 };
 
 use super::{
-    AnchorOffsets, AuthGroupHeights, FooterHeights, LayerPlacement, RoleAnchorInput, SceneMetrics,
-    anchored_block_x, anchored_block_y, hero_block_x, layer_center_x, layer_rect, role_anchors,
-    role_anchors_with_groups,
+    AnchorOffsets, FooterHeights, LayerPlacement, SceneMetrics, anchored_block_x, anchored_block_y,
+    hero_block_x, layer_center_x, layer_rect, role_anchors,
 };
 
 #[test]
@@ -105,32 +103,6 @@ fn keeps_auth_anchor_stable_when_status_height_grows() {
 }
 
 #[test]
-fn applies_configured_header_top_offset() {
-    let default_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        AnchorOffsets::default(),
-    );
-    let shifted_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        AnchorOffsets {
-            header_top: Some(-12),
-            ..AnchorOffsets::default()
-        },
-    );
-
-    assert_eq!(default_anchors.hero_y, 51);
-    assert_eq!(shifted_anchors.hero_y, 39);
-}
-
-#[test]
 fn supports_centered_clock_alignment() {
     let default_anchors = role_anchors(
         720,
@@ -186,102 +158,6 @@ fn keeps_centered_clock_and_auth_visually_grouped() {
     assert_eq!(without_status.auth_y, 298);
     assert_eq!(with_status.hero_y, 226);
     assert_eq!(with_status.auth_y, 298);
-}
-
-#[test]
-fn supports_auth_hero_order_for_centered_grouped_layouts() {
-    let anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        AnchorOffsets {
-            center_stack_style: CenterStackStyle::AuthHero,
-            clock_alignment: ClockAlignment::CenterCenter,
-            ..AnchorOffsets::default()
-        },
-    );
-
-    assert_eq!(anchors.auth_y, 226);
-    assert_eq!(anchors.hero_y, 441);
-    assert!(anchors.auth_y < anchors.hero_y);
-}
-
-#[test]
-fn supports_identity_hero_input_style_for_centered_grouped_layouts() {
-    let anchors = role_anchors_with_groups(RoleAnchorInput {
-        frame_height: 720,
-        hero_height: 54,
-        auth_anchor_height: 197,
-        auth_render_height: 197,
-        auth_groups: AuthGroupHeights {
-            identity: 72,
-            input_anchor: 51,
-            input_render: 51,
-        },
-        footer_heights: FooterHeights::same(0),
-        offsets: AnchorOffsets {
-            center_stack_style: CenterStackStyle::IdentityHeroInput,
-            clock_alignment: ClockAlignment::CenterCenter,
-            ..AnchorOffsets::default()
-        },
-    });
-
-    assert_eq!(anchors.identity_y, Some(254));
-    assert_eq!(anchors.hero_y, 344);
-    assert_eq!(anchors.auth_y, 416);
-    assert!(
-        anchors
-            .identity_y
-            .is_some_and(|identity_y| identity_y < anchors.hero_y)
-    );
-    assert!(anchors.hero_y < anchors.auth_y);
-}
-
-#[test]
-fn applies_configured_identity_gap_for_centered_grouped_layouts() {
-    let default_anchors = role_anchors_with_groups(RoleAnchorInput {
-        frame_height: 720,
-        hero_height: 54,
-        auth_anchor_height: 197,
-        auth_render_height: 197,
-        auth_groups: AuthGroupHeights {
-            identity: 72,
-            input_anchor: 51,
-            input_render: 51,
-        },
-        footer_heights: FooterHeights::same(0),
-        offsets: AnchorOffsets {
-            center_stack_style: CenterStackStyle::IdentityHeroInput,
-            clock_alignment: ClockAlignment::CenterCenter,
-            ..AnchorOffsets::default()
-        },
-    });
-    let widened_gap_anchors = role_anchors_with_groups(RoleAnchorInput {
-        frame_height: 720,
-        hero_height: 54,
-        auth_anchor_height: 197,
-        auth_render_height: 197,
-        auth_groups: AuthGroupHeights {
-            identity: 72,
-            input_anchor: 51,
-            input_render: 51,
-        },
-        footer_heights: FooterHeights::same(0),
-        offsets: AnchorOffsets {
-            center_stack_style: CenterStackStyle::IdentityHeroInput,
-            clock_alignment: ClockAlignment::CenterCenter,
-            identity_gap: Some(30),
-            ..AnchorOffsets::default()
-        },
-    });
-
-    assert_eq!(default_anchors.identity_y, Some(254));
-    assert_eq!(default_anchors.hero_y, 344);
-    assert_eq!(widened_gap_anchors.identity_y, Some(248));
-    assert_eq!(widened_gap_anchors.hero_y, 350);
-    assert_eq!(widened_gap_anchors.auth_y, 422);
 }
 
 #[test]
@@ -347,32 +223,6 @@ fn applies_clock_vertical_offset() {
     );
 
     assert_eq!(anchors.hero_y, 69);
-}
-
-#[test]
-fn applies_configured_auth_stack_offset() {
-    let default_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        AnchorOffsets::default(),
-    );
-    let shifted_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(0),
-        AnchorOffsets {
-            auth_stack: Some(16),
-            ..AnchorOffsets::default()
-        },
-    );
-
-    assert_eq!(default_anchors.auth_y, 262);
-    assert_eq!(shifted_anchors.auth_y, 278);
 }
 
 #[test]
