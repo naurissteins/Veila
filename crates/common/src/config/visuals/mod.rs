@@ -26,7 +26,10 @@ pub use layer::{
 pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};
 pub use now_playing::{NowPlayingBackgroundConfig, NowPlayingVisualConfig};
 pub use outputs::{OutputUiMode, OutputVisualConfig};
-pub use weather::{WeatherAlignment, WeatherVisualConfig};
+pub use weather::{
+    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
+    WeatherVisualConfig,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VisualConfig {
@@ -112,8 +115,6 @@ pub struct VisualConfig {
     pub keyboard_size: Option<u16>,
     #[serde(default)]
     pub battery_size: Option<u16>,
-    #[serde(default)]
-    pub weather_size: Option<u16>,
     #[serde(default)]
     pub status_color: Option<RgbColor>,
     #[serde(default)]
@@ -206,7 +207,6 @@ impl Default for VisualConfig {
             battery_background_size: Some(46),
             keyboard_size: Some(2),
             battery_size: Some(20),
-            weather_size: Some(2),
             status_color: Some(RgbColor::rgba(255, 224, 160, 224)),
             input_mask_color: Some(RgbColor::rgb(255, 255, 255)),
             foreground: default_foreground_color(),

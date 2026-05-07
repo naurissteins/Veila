@@ -147,28 +147,38 @@ halign = "right"
             border_width = 2
 
             [visuals.weather]
-            size = 3
-            icon_opacity = 41
-            temperature_color = "#FFFFFFB3"
-            location_color = "#D6E3FF62"
-            temperature_font_family = "Prototype"
-            temperature_font_weight = 600
-            temperature_font_style = "italic"
-            temperature_letter_spacing = 2
-            location_font_family = "Geom"
-            location_font_weight = 500
-            location_font_style = "italic"
-            temperature_size = 4
-            location_size = 2
-            icon_size = 36
-            icon_gap = 10
-            location_gap = 3
-            alignment = "right"
-            left_offset = 12
-            bottom_offset = -6
-            left_padding = 56
-            horizontal_padding = 64
-            bottom_padding = 72
+            enabled = true
+
+            [visuals.weather.icon]
+            size = 36
+            opacity = 41
+            halign = "right"
+            valign = "bottom"
+            x = -52
+            y = -126
+
+            [visuals.weather.temperature]
+            font_size = 4
+            font_family = "Prototype"
+            font_weight = 600
+            font_style = "italic"
+            letter_spacing = 2
+            color = "#FFFFFFB3"
+            halign = "right"
+            valign = "bottom"
+            x = -52
+            y = -80
+
+            [visuals.weather.location]
+            font_size = 2
+            font_family = "Geom"
+            font_weight = 500
+            font_style = "italic"
+            color = "#D6E3FF62"
+            halign = "right"
+            valign = "bottom"
+            x = -52
+            y = -52
 
             [visuals.now_playing]
             fade_duration_ms = 320

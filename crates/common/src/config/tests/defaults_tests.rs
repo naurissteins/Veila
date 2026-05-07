@@ -132,7 +132,13 @@ fn parses_partial_config_with_defaults() {
         config.visuals.battery_position(),
         WidgetPositionConfig::default()
     );
-    assert!(config.visuals.weather_size().is_none());
+    assert_eq!(
+        config.visuals.power_status_position(),
+        WidgetPositionConfig::default()
+    );
+    assert!(config.visuals.weather_icon_enabled());
+    assert!(config.visuals.weather_temperature_enabled());
+    assert!(config.visuals.weather_location_enabled());
     assert!(config.visuals.weather_temperature_color().is_none());
     assert!(config.visuals.weather_location_color().is_none());
     assert!(config.visuals.weather_temperature_font_family().is_none());
@@ -147,18 +153,21 @@ fn parses_partial_config_with_defaults() {
             .weather_temperature_letter_spacing()
             .is_none()
     );
-    assert!(config.visuals.weather_temperature_size().is_none());
-    assert!(config.visuals.weather_location_size().is_none());
+    assert!(config.visuals.weather_temperature_font_size().is_none());
+    assert!(config.visuals.weather_location_font_size().is_none());
     assert!(config.visuals.weather_icon_size().is_none());
-    assert!(config.visuals.weather_icon_gap().is_none());
-    assert!(config.visuals.weather_location_gap().is_none());
     assert_eq!(
-        config.visuals.weather_alignment(),
-        super::WeatherAlignment::Left
+        config.visuals.weather_icon_position(),
+        WidgetPositionConfig::default()
     );
-    assert!(config.visuals.weather_horizontal_padding().is_none());
-    assert!(config.visuals.weather_left_padding().is_none());
-    assert!(config.visuals.weather_bottom_padding().is_none());
+    assert_eq!(
+        config.visuals.weather_temperature_position(),
+        WidgetPositionConfig::default()
+    );
+    assert_eq!(
+        config.visuals.weather_location_position(),
+        WidgetPositionConfig::default()
+    );
     assert!(config.visuals.now_playing_title_color().is_none());
     assert!(config.visuals.now_playing_artist_color().is_none());
     assert!(config.visuals.username_font_family().is_none());

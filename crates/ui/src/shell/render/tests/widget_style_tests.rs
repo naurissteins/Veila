@@ -51,14 +51,13 @@ fn weather_styles_use_configured_widget_size() {
         muted: ClearColor::rgba(180, 190, 210, 255),
         weather_temperature_color: Some(ClearColor::rgba(255, 255, 255, 186)),
         weather_location_color: Some(ClearColor::rgba(214, 227, 255, 74)),
-        weather_size: Some(4),
         weather_temperature_font_family: Some(String::from("Prototype")),
         weather_temperature_font_weight: Some(600),
         weather_temperature_letter_spacing: Some(2),
         weather_location_font_family: Some(String::from("Geom")),
         weather_location_font_weight: Some(500),
-        weather_temperature_size: Some(12),
-        weather_location_size: Some(2),
+        weather_temperature_font_size: Some(12),
+        weather_location_font_size: Some(2),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

@@ -2,9 +2,9 @@ use veila_renderer::SoftwareBuffer;
 
 use super::super::{ShellState, ShellStatus};
 use super::{
-    layout::{anchored_block_x, anchored_block_y, top_role_top},
+    layout::{anchored_block_x, anchored_block_y},
     styles,
-    widgets::{draw_chip_block, draw_icon_chip, draw_top_right_block, top_right_chip_diameter},
+    widgets::{draw_chip_block, draw_icon_chip, top_right_chip_diameter},
 };
 
 impl ShellState {
@@ -39,12 +39,29 @@ impl ShellState {
             )
         });
 
-        if let Some(block) = power_block.as_ref() {
-            let y = (top_role_top(buffer.size().height as i32) - 10).max(8);
-            draw_top_right_block(
+        if let Some(block) = power_block.as_ref()
+            && let Some(position) = self.theme.power_status_position
+        {
+            let chip_diameter = top_right_chip_diameter(
+                self.theme.keyboard_background_size,
+                block.width as i32,
+                block.height as i32,
+            );
+            let x = anchored_block_x(
+                buffer.size().width as i32,
+                chip_diameter,
+                position.halign,
+                position.x,
+            );
+            let y = anchored_block_y(
+                buffer.size().height as i32,
+                chip_diameter,
+                position.valign,
+                position.y,
+            );
+            draw_chip_block(
                 buffer,
-                32,
-                0,
+                x,
                 y,
                 self.theme.keyboard_background_color,
                 self.theme.keyboard_background_size,

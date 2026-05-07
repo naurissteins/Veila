@@ -183,12 +183,20 @@ impl Default for BatteryVisualConfig {
 pub struct PowerStatusVisualConfig {
     #[serde(default)]
     pub enabled: Option<bool>,
+    #[serde(flatten)]
+    pub position: WidgetPositionConfig,
 }
 
 impl Default for PowerStatusVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(false),
+            position: WidgetPositionConfig {
+                halign: Some(super::HorizontalAlign::Right),
+                valign: Some(super::VerticalAlign::Top),
+                x: Some(-24),
+                y: Some(17),
+            },
         }
     }
 }
@@ -391,5 +399,12 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|power_status| power_status.enabled)
             .unwrap_or(false)
+    }
+
+    pub fn power_status_position(&self) -> WidgetPositionConfig {
+        self.power_status
+            .as_ref()
+            .map(|power_status| power_status.position)
+            .unwrap_or_default()
     }
 }

@@ -1,11 +1,11 @@
 use std::f32::consts::{FRAC_PI_2, TAU};
 
-use veila_common::{ClockStyle, WeatherAlignment};
+use veila_common::ClockStyle;
 use veila_renderer::{
     ClearColor, SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
     cover::CoverArtAsset,
-    icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon, icon_visible_bounds},
+    icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon},
     layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
@@ -14,7 +14,7 @@ use veila_renderer::{
 
 use crate::shell::render::styles::percent_to_alpha;
 
-use super::model::{SceneClockBlocks, SceneWeatherBlocks};
+use super::model::SceneClockBlocks;
 
 const TOGGLE_HITBOX_SIZE: i32 = 28;
 const TOGGLE_RIGHT_INSET: i32 = 14;
@@ -138,34 +138,6 @@ pub(super) fn draw_clock_widget(
             y + SceneClockBlocks::meridiem_top_offset() + clock.meridiem_offset_y,
         );
     }
-}
-
-pub(super) fn draw_top_right_block(
-    buffer: &mut SoftwareBuffer,
-    right_padding: i32,
-    right_offset: i32,
-    y: i32,
-    background: ClearColor,
-    background_size: Option<i32>,
-    block: &TextBlock,
-) {
-    let chip_diameter =
-        top_right_chip_diameter(background_size, block.width as i32, block.height as i32);
-    let max_x = (buffer.size().width as i32 - chip_diameter).max(0);
-    let x =
-        (buffer.size().width as i32 - right_padding - chip_diameter + right_offset).clamp(0, max_x);
-    let y = y.max(0);
-
-    draw_pill(
-        buffer,
-        Rect::new(x, y, chip_diameter, chip_diameter),
-        PillStyle::new(background).with_radius(chip_diameter / 2),
-    );
-    block.draw(
-        buffer,
-        x + (chip_diameter - block.width as i32) / 2,
-        y + (chip_diameter - block.height as i32) / 2,
-    );
 }
 
 pub(super) fn draw_chip_block(
@@ -292,63 +264,21 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
     }
 }
 
-pub(super) fn draw_weather_widget(
+pub(super) fn draw_weather_icon(
     buffer: &mut SoftwareBuffer,
-    top_y: i32,
-    weather: &SceneWeatherBlocks,
+    x: i32,
+    y: i32,
+    icon: veila_renderer::icon::WeatherIcon,
+    icon_size: i32,
+    opacity: Option<u8>,
 ) {
-    let icon_size = weather.icon_size;
-    let widget_width = icon_size
-        .max(weather.temperature.width as i32)
-        .max(weather.location.width as i32);
-    let origin_x = match weather.alignment {
-        WeatherAlignment::Left => weather.horizontal_padding + weather.left_offset,
-        WeatherAlignment::Right => {
-            buffer.size().width as i32 - weather.horizontal_padding - widget_width
-                + weather.left_offset
-        }
-    };
-    let icon_y = top_y + weather.bottom_offset;
-    let icon_x = align_weather_line_x(origin_x, widget_width, icon_size, weather.alignment);
-    let temperature_x = align_weather_line_x(
-        origin_x,
-        widget_width,
-        weather.temperature.width as i32,
-        weather.alignment,
-    );
-    let location_x = align_weather_line_x(
-        origin_x,
-        widget_width,
-        weather.location.width as i32,
-        weather.alignment,
-    );
-    let icon_rect = Rect::new(icon_x, icon_y, icon_size, icon_size);
+    let icon_rect = Rect::new(x, y, icon_size, icon_size);
     let icon_style = IconStyle::new(
-        veila_renderer::ClearColor::opaque(255, 255, 255).with_alpha(
-            weather
-                .icon_opacity
-                .map(percent_to_alpha)
-                .unwrap_or(u8::MAX),
-        ),
+        veila_renderer::ClearColor::opaque(255, 255, 255)
+            .with_alpha(opacity.map(percent_to_alpha).unwrap_or(u8::MAX)),
     )
     .with_padding(0);
-    let text_y = icon_visible_bounds(icon_rect, AssetIcon::Weather(weather.icon), icon_style)
-        .map(|bounds| bounds.y + bounds.height)
-        .unwrap_or(icon_y + icon_size)
-        + weather.icon_gap;
-
-    draw_icon(
-        buffer,
-        icon_rect,
-        AssetIcon::Weather(weather.icon),
-        icon_style,
-    );
-    weather.temperature.draw(buffer, temperature_x, text_y);
-    weather.location.draw(
-        buffer,
-        location_x,
-        text_y + weather.temperature.height as i32 + weather.location_gap,
-    );
+    draw_icon(buffer, icon_rect, AssetIcon::Weather(icon), icon_style);
 }
 
 pub(super) fn draw_now_playing_widget(buffer: &mut SoftwareBuffer, widget: NowPlayingWidget<'_>) {
@@ -441,18 +371,6 @@ fn draw_now_playing_background(
             background.border_width,
         ),
     );
-}
-
-fn align_weather_line_x(
-    origin_x: i32,
-    widget_width: i32,
-    content_width: i32,
-    alignment: WeatherAlignment,
-) -> i32 {
-    match alignment {
-        WeatherAlignment::Left => origin_x,
-        WeatherAlignment::Right => origin_x + widget_width - content_width,
-    }
 }
 
 pub(super) fn input_toggle_hitbox(rect: Rect) -> Rect {

@@ -28,25 +28,33 @@ fn text_layout_cache_uses_configured_weather_icon_size() {
         weather_location_style: TextStyle::new(ClearColor::opaque(180, 190, 210), 2),
         weather_icon: Some(veila_renderer::icon::WeatherIcon::Cloudy),
         weather_icon_size: Some(34),
-        weather_icon_gap: Some(10),
-        weather_location_gap: Some(3),
         weather_icon_opacity: Some(41),
-        weather_horizontal_padding: Some(64),
-        weather_alignment: WeatherAlignment::Right,
-        weather_left_offset: Some(12),
-        weather_bottom_offset: Some(-6),
         metrics,
     });
 
     let weather = blocks.weather.expect("weather blocks");
-    assert_eq!(weather.icon_size, 34);
-    assert_eq!(weather.icon_gap, 10);
-    assert_eq!(weather.location_gap, 3);
-    assert_eq!(weather.icon_opacity, Some(41));
-    assert_eq!(weather.alignment, WeatherAlignment::Right);
-    assert_eq!(weather.horizontal_padding, 64);
-    assert_eq!(weather.left_offset, 12);
-    assert_eq!(weather.bottom_offset, -6);
+    assert_eq!(
+        weather
+            .temperature
+            .as_ref()
+            .map(|block| block.lines[0].as_str()),
+        Some("12°")
+    );
+    assert_eq!(
+        weather
+            .location
+            .as_ref()
+            .map(|block| block.lines[0].as_str()),
+        Some("Riga")
+    );
+    assert_eq!(
+        weather.icon,
+        Some(super::super::model::SceneWeatherIcon {
+            asset: veila_renderer::icon::WeatherIcon::Cloudy,
+            size: 34,
+            opacity: Some(41),
+        })
+    );
 }
 
 #[test]
@@ -77,17 +85,18 @@ fn text_layout_cache_allows_weather_icon_sizes_above_previous_cap() {
         weather_location_style: TextStyle::new(ClearColor::opaque(180, 190, 210), 2),
         weather_icon: Some(veila_renderer::icon::WeatherIcon::Cloudy),
         weather_icon_size: Some(64),
-        weather_icon_gap: None,
-        weather_location_gap: None,
         weather_icon_opacity: None,
-        weather_horizontal_padding: None,
-        weather_alignment: WeatherAlignment::Left,
-        weather_left_offset: None,
-        weather_bottom_offset: None,
         metrics,
     });
 
-    assert_eq!(blocks.weather.expect("weather blocks").icon_size, 64);
+    assert_eq!(
+        blocks
+            .weather
+            .expect("weather blocks")
+            .icon
+            .map(|icon| icon.size),
+        Some(64)
+    );
 }
 
 #[test]
@@ -119,13 +128,7 @@ fn text_layout_cache_reuses_matching_clock_layout() {
         weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
         weather_icon: None,
         weather_icon_size: None,
-        weather_icon_gap: None,
-        weather_location_gap: None,
         weather_icon_opacity: None,
-        weather_horizontal_padding: None,
-        weather_alignment: WeatherAlignment::Left,
-        weather_left_offset: None,
-        weather_bottom_offset: None,
         metrics,
     });
     let cached_clock = cache.clock.block.clone().expect("cached clock block");
@@ -152,13 +155,7 @@ fn text_layout_cache_reuses_matching_clock_layout() {
         weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
         weather_icon: None,
         weather_icon_size: None,
-        weather_icon_gap: None,
-        weather_location_gap: None,
         weather_icon_opacity: None,
-        weather_horizontal_padding: None,
-        weather_alignment: WeatherAlignment::Left,
-        weather_left_offset: None,
-        weather_bottom_offset: None,
         metrics,
     });
 
@@ -194,13 +191,7 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
         weather_icon: None,
         weather_icon_size: None,
-        weather_icon_gap: None,
-        weather_location_gap: None,
         weather_icon_opacity: None,
-        weather_horizontal_padding: None,
-        weather_alignment: WeatherAlignment::Left,
-        weather_left_offset: None,
-        weather_bottom_offset: None,
         metrics,
     });
     let second = cache.scene_text_blocks(SceneTextInputs {
@@ -226,13 +217,7 @@ fn text_layout_cache_refreshes_when_clock_text_changes() {
         weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
         weather_icon: None,
         weather_icon_size: None,
-        weather_icon_gap: None,
-        weather_location_gap: None,
         weather_icon_opacity: None,
-        weather_horizontal_padding: None,
-        weather_alignment: WeatherAlignment::Left,
-        weather_left_offset: None,
-        weather_bottom_offset: None,
         metrics,
     });
 
@@ -274,13 +259,7 @@ fn text_layout_cache_builds_stacked_clock_blocks() {
         weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
         weather_icon: None,
         weather_icon_size: None,
-        weather_icon_gap: None,
-        weather_location_gap: None,
         weather_icon_opacity: None,
-        weather_horizontal_padding: None,
-        weather_alignment: WeatherAlignment::Left,
-        weather_left_offset: None,
-        weather_bottom_offset: None,
         metrics,
     });
 

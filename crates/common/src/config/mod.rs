@@ -41,8 +41,10 @@ pub use visuals::{
     LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
     LayerVisualConfig, LayerWidth, LayerWidthKeyword, NowPlayingBackgroundConfig,
     NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    VerticalAlign, VisualConfig, WeatherAlignment, WeatherVisualConfig, WidgetPositionConfig,
+    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherIconVisualConfig,
+    WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
+    WidgetPositionConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 
@@ -501,7 +503,6 @@ const LEGACY_VISUAL_MAPPINGS: &[(&str, &str, &str)] = &[
     ("battery_background_color", "battery", "background_color"),
     ("battery_background_size", "battery", "background_size"),
     ("battery_size", "battery", "size"),
-    ("weather_size", "weather", "size"),
     ("status_color", "status", "color"),
     ("foreground", "palette", "foreground"),
     ("muted", "palette", "muted"),

@@ -104,8 +104,8 @@ fn loads_bundled_theme_before_user_overrides() {
     );
     assert_eq!(loaded.config.visuals.clock_size(), Some(16));
     assert_eq!(
-        loaded.config.visuals.weather_alignment(),
-        WeatherAlignment::Left
+        loaded.config.visuals.weather_icon_position(),
+        theme_config.visuals.weather_icon_position()
     );
     assert_eq!(
         loaded.config.visuals.now_playing_title_color(),
@@ -156,8 +156,8 @@ fn loads_second_bundled_theme() {
     );
     assert_eq!(config.weather.enabled, theme_config.weather.enabled);
     assert_eq!(
-        config.visuals.weather_alignment(),
-        theme_config.visuals.weather_alignment()
+        config.visuals.weather_icon_position(),
+        theme_config.visuals.weather_icon_position()
     );
     assert_eq!(
         config.visuals.now_playing_title_color(),

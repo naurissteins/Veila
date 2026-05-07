@@ -51,12 +51,27 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
 }
 
 #[test]
-fn bottom_center_auth_does_not_reserve_left_weather_footer_space() {
+fn floating_weather_does_not_shift_auth_or_use_footer_role() {
     let theme = ShellTheme {
         weather_enabled: true,
-        weather_alignment: WeatherAlignment::Left,
-        weather_horizontal_padding: Some(48),
-        weather_bottom_padding: Some(48),
+        weather_icon_position: Some(crate::shell::theme::WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Bottom,
+            x: 32,
+            y: -120,
+        }),
+        weather_temperature_position: Some(crate::shell::theme::WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Bottom,
+            x: 32,
+            y: -72,
+        }),
+        weather_location_position: Some(crate::shell::theme::WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Bottom,
+            x: 32,
+            y: -40,
+        }),
         ..ShellTheme::default()
     };
     let without_weather = ShellState::new(theme.clone(), None, None, true);
@@ -80,40 +95,14 @@ fn bottom_center_auth_does_not_reserve_left_weather_footer_space() {
     let with_layout = with_weather.scene_layout(FrameSize::new(1280, 720));
 
     assert_eq!(with_layout.anchors.auth_y, without_layout.anchors.auth_y);
-}
-
-#[test]
-fn left_weather_footer_anchor_uses_real_widget_height() {
-    let theme = ShellTheme {
-        weather_enabled: true,
-        weather_alignment: WeatherAlignment::Left,
-        weather_horizontal_padding: Some(48),
-        weather_bottom_padding: Some(48),
-        ..ShellTheme::default()
-    };
-    let shell = ShellState::new_with_username_and_weather(
-        theme,
-        None,
-        None,
-        None,
-        true,
-        Some(String::from("Riga")),
-        Some(WeatherSnapshot {
-            temperature_celsius: 7,
-            condition: WeatherCondition::Rain,
-            fetched_at_unix: 0,
-        }),
-        WeatherUnit::Celsius,
-        None,
-    );
-
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
-    let footer_height =
-        layout
+    assert!(with_layout.floating_weather.is_some());
+    assert!(
+        with_layout
             .model
-            .total_height_for_role(LayoutRole::Footer, layout.metrics, &shell.status);
-
-    assert_eq!(layout.anchors.footer_y, 720 - footer_height - 48);
+            .sections_for_role(LayoutRole::Footer)
+            .next()
+            .is_none()
+    );
 }
 
 #[test]

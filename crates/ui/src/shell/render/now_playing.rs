@@ -12,7 +12,7 @@ impl ShellState {
     pub(super) fn render_now_playing_widget(
         &self,
         buffer: &mut SoftwareBuffer,
-        layout: &SceneLayout,
+        _layout: &SceneLayout,
     ) {
         let fade_progress = self.now_playing_fade_progress();
         if !self.theme.now_playing_enabled
@@ -45,23 +45,11 @@ impl ShellState {
                 (width - artwork_size - content_gap).max(NOW_PLAYING_MIN_TEXT_WIDTH) as u32
             })
             .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH);
-        let base_bottom_padding = self
+        let bottom_padding = self
             .theme
             .now_playing_bottom_padding
             .unwrap_or(NOW_PLAYING_BOTTOM_PADDING)
             .clamp(0, 512);
-        let bottom_padding = if self.theme.weather_alignment
-            == veila_common::WeatherAlignment::Right
-            && layout
-                .model
-                .sections_for_role(super::model::LayoutRole::Footer)
-                .next()
-                .is_some()
-        {
-            (buffer.size().height as i32 - layout.anchors.footer_y + 24).max(base_bottom_padding)
-        } else {
-            base_bottom_padding
-        };
 
         if let Some(transition) = self.now_playing_transition.as_ref()
             && let Some(previous) = transition.previous.as_ref()

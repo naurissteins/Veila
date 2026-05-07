@@ -43,9 +43,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
         ClockAlignment::TopLeft => hero_top,
         ClockAlignment::CenterCenter => centered_role_top(frame_height, hero_height, 0.5),
     } + offsets.clock_offset_y.unwrap_or(0);
-    let footer_y = frame_height
-        - footer_heights.render
-        - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
+    let footer_y = frame_height - footer_heights.render;
     let hero_bottom = hero_y + hero_height;
     let minimum_gap = if hero_height > 0 && auth_anchor_height > 0 {
         18
@@ -53,9 +51,7 @@ pub fn role_anchors_with_groups(input: RoleAnchorInput) -> RoleAnchors {
         0
     };
     let centered_auth_y = centered_role_top(frame_height, auth_anchor_height, 0.5);
-    let auth_footer_y = frame_height
-        - footer_heights.clearance
-        - offsets.weather_bottom_padding.unwrap_or(48).clamp(0, 512);
+    let auth_footer_y = frame_height - footer_heights.clearance;
     let min_auth_y = hero_bottom + minimum_gap;
     let max_auth_y = auth_footer_y - auth_render_height - 24;
 

@@ -27,7 +27,7 @@ use self::{
         AnchorOffsets, AuthGroupHeights, FooterHeights, LayerPlacement, RoleAnchorInput,
         RoleAnchors, SceneMetrics, layer_rect, role_anchors_with_groups,
     },
-    model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, SceneWidget, StandardSceneConfig},
+    model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, StandardSceneConfig},
 };
 use super::ShellState;
 
@@ -49,6 +49,7 @@ struct SceneLayout {
     floating_username: Option<veila_renderer::text::TextBlock>,
     floating_clock: Option<model::SceneClockBlocks>,
     floating_date: Option<veila_renderer::text::TextBlock>,
+    floating_weather: Option<model::SceneWeatherBlocks>,
 }
 
 impl ShellState {
@@ -80,6 +81,7 @@ impl ShellState {
             .then(|| text_blocks.clock.clone())
             .flatten();
         let floating_date = (!date_in_flow).then(|| text_blocks.date.clone()).flatten();
+        let floating_weather = text_blocks.weather.clone();
         let model = SceneModel::standard(
             SceneTextBlocks {
                 clock: if clock_in_flow {
@@ -107,7 +109,7 @@ impl ShellState {
                 } else {
                     None
                 },
-                weather: text_blocks.weather.clone(),
+                weather: None,
             },
             StandardSceneConfig {
                 identity_visible,
@@ -118,10 +120,6 @@ impl ShellState {
                 username_gap: self.theme.username_gap,
             },
         );
-        let footer_render_height =
-            model.total_height_for_role(LayoutRole::Footer, metrics, &self.status);
-        let footer_clearance_height =
-            self.footer_clearance_height(&model, size.width as i32, metrics);
         let anchors = role_anchors_with_groups(RoleAnchorInput {
             frame_height: size.height as i32,
             hero_height: model.anchor_height_for_role(LayoutRole::Hero, metrics, &self.status),
@@ -153,13 +151,12 @@ impl ShellState {
                 ),
             },
             footer_heights: FooterHeights {
-                render: footer_render_height,
-                clearance: footer_clearance_height,
+                render: 0,
+                clearance: 0,
             },
             offsets: AnchorOffsets {
                 clock_alignment: self.theme.clock_alignment,
                 clock_offset_y: self.theme.clock_offset_y,
-                weather_bottom_padding: self.theme.weather_bottom_padding,
             },
         });
 
@@ -181,39 +178,8 @@ impl ShellState {
                 .flatten(),
             floating_clock,
             floating_date,
+            floating_weather,
         }
-    }
-
-    fn footer_clearance_height(
-        &self,
-        model: &SceneModel,
-        frame_width: i32,
-        metrics: SceneMetrics,
-    ) -> i32 {
-        let auth_left = metrics.auth_center_x - metrics.content_width as i32 / 2;
-        let auth_right = metrics.auth_center_x + metrics.content_width as i32 / 2;
-
-        model
-            .sections_for_role(LayoutRole::Footer)
-            .filter_map(|section| match &section.widget {
-                SceneWidget::Weather(weather) => {
-                    let widget_left = match weather.alignment {
-                        veila_common::WeatherAlignment::Left => {
-                            weather.horizontal_padding + weather.left_offset
-                        }
-                        veila_common::WeatherAlignment::Right => {
-                            frame_width - weather.horizontal_padding - weather.width()
-                                + weather.left_offset
-                        }
-                    };
-                    let widget_right = widget_left + weather.width();
-
-                    horizontal_ranges_overlap(auth_left, auth_right, widget_left, widget_right)
-                        .then_some(section.height(metrics, &self.status) + section.gap_after)
-                }
-                _ => Some(section.height(metrics, &self.status) + section.gap_after),
-            })
-            .sum()
     }
 
     pub fn render_backdrop_layer(&self, buffer: &mut SoftwareBuffer) {
@@ -352,36 +318,30 @@ impl ShellState {
                     hidden_reveal_hint
                 },
                 status_style,
-                weather_temperature_text: if self.theme.weather_enabled {
+                weather_temperature_text: if self.theme.weather_enabled
+                    && self.theme.weather_temperature_enabled
+                {
                     weather.map(|weather| weather.temperature_text.as_str())
                 } else {
                     None
                 },
                 weather_temperature_style,
-                weather_location_text: if self.theme.weather_enabled {
+                weather_location_text: if self.theme.weather_enabled
+                    && self.theme.weather_location_enabled
+                {
                     weather.map(|weather| weather.location.as_str())
                 } else {
                     None
                 },
                 weather_location_style,
-                weather_icon: if self.theme.weather_enabled {
+                weather_icon: if self.theme.weather_enabled && self.theme.weather_icon_enabled {
                     weather.map(|weather| weather.icon)
                 } else {
                     None
                 },
                 weather_icon_size: self.theme.weather_icon_size,
-                weather_icon_gap: self.theme.weather_icon_gap,
-                weather_location_gap: self.theme.weather_location_gap,
                 weather_icon_opacity: self.theme.weather_icon_opacity,
-                weather_horizontal_padding: self.theme.weather_horizontal_padding,
-                weather_alignment: self.theme.weather_alignment,
-                weather_left_offset: self.theme.weather_left_offset,
-                weather_bottom_offset: self.theme.weather_bottom_offset,
                 metrics,
             })
     }
-}
-
-fn horizontal_ranges_overlap(left_a: i32, right_a: i32, left_b: i32, right_b: i32) -> bool {
-    left_a < right_b && left_b < right_a
 }

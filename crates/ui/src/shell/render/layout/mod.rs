@@ -7,7 +7,7 @@ mod types;
 mod tests;
 
 pub(super) use anchors::{
-    anchored_block_x, anchored_block_y, hero_block_x, role_anchors_with_groups, top_role_top,
+    anchored_block_x, anchored_block_y, hero_block_x, role_anchors_with_groups,
 };
 pub(super) use layer::{layer_center_x, layer_rect};
 pub(crate) use types::SceneMetrics;

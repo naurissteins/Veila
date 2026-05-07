@@ -6,7 +6,7 @@ use super::{
 use crate::shell::{ShellAction, ShellKey, ShellStatus, ShellTheme};
 use veila_common::{
     ClockStyle, HorizontalAlign, LayerAlignment, LayerMode, LayerVerticalAlignment, VerticalAlign,
-    WeatherAlignment, WeatherCondition, WeatherSnapshot, WeatherUnit,
+    WeatherCondition, WeatherSnapshot, WeatherUnit,
 };
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,

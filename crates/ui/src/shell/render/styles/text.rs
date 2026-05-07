@@ -256,8 +256,7 @@ impl ShellState {
                 base_color
             },
             self.theme
-                .weather_temperature_size
-                .or(self.theme.weather_size)
+                .weather_temperature_font_size
                 .unwrap_or(2)
                 .clamp(1, MAX_WEATHER_TEMPERATURE_SCALE),
         );
@@ -277,16 +276,10 @@ impl ShellState {
     }
 
     pub(crate) fn weather_location_text_style(&self) -> TextStyle {
-        let temperature_scale = self
-            .theme
-            .weather_temperature_size
-            .or(self.theme.weather_size)
-            .unwrap_or(2)
-            .clamp(1, 6);
         let location_scale = self
             .theme
-            .weather_location_size
-            .unwrap_or_else(|| temperature_scale.saturating_sub(1).max(1))
+            .weather_location_font_size
+            .unwrap_or(1)
             .clamp(1, MAX_WEATHER_LOCATION_SCALE);
         let base_color = self
             .theme

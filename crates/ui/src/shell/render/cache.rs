@@ -1,4 +1,4 @@
-use veila_common::{ClockStyle, WeatherAlignment};
+use veila_common::ClockStyle;
 use veila_renderer::{
     icon::WeatherIcon,
     text::{TextBlock, TextStyle, fit_single_line_text, fit_wrapped_text},
@@ -6,7 +6,7 @@ use veila_renderer::{
 
 use super::{
     layout::SceneMetrics,
-    model::{SceneClockBlocks, SceneTextBlocks, SceneWeatherBlocks},
+    model::{SceneClockBlocks, SceneTextBlocks, SceneWeatherBlocks, SceneWeatherIcon},
 };
 
 #[derive(Debug, Clone, Default)]
@@ -64,13 +64,7 @@ pub(super) struct SceneTextInputs<'a> {
     pub(super) weather_location_style: TextStyle,
     pub(super) weather_icon: Option<WeatherIcon>,
     pub(super) weather_icon_size: Option<i32>,
-    pub(super) weather_icon_gap: Option<i32>,
-    pub(super) weather_location_gap: Option<i32>,
     pub(super) weather_icon_opacity: Option<u8>,
-    pub(super) weather_horizontal_padding: Option<i32>,
-    pub(super) weather_alignment: WeatherAlignment,
-    pub(super) weather_left_offset: Option<i32>,
-    pub(super) weather_bottom_offset: Option<i32>,
     pub(super) metrics: SceneMetrics,
 }
 
@@ -126,53 +120,41 @@ impl TextLayoutCache {
                 inputs.metrics.content_width,
                 1,
             ),
-            weather: match (
-                inputs.weather_temperature_text,
-                inputs.weather_location_text,
-                inputs.weather_icon,
-            ) {
-                (Some(temperature), Some(location), Some(icon)) => {
-                    let temperature = self.weather_temperature.resolve(
-                        temperature,
+            weather: {
+                let temperature = inputs.weather_temperature_text.map(|text| {
+                    self.weather_temperature.resolve(
+                        text,
                         inputs.weather_temperature_style,
                         inputs.metrics.content_width,
                         1,
-                    );
-                    let location = self.weather_location.resolve(
-                        location,
+                    )
+                });
+                let location = inputs.weather_location_text.map(|text| {
+                    self.weather_location.resolve(
+                        text,
                         inputs.weather_location_style,
                         inputs.metrics.content_width,
                         1,
-                    );
-                    let derived_icon_size =
-                        SceneWeatherBlocks::clamped_icon_size(temperature.height as i32 + 6);
+                    )
+                });
+                let derived_icon_size = temperature
+                    .as_ref()
+                    .map_or(40, |temperature| temperature.height as i32 + 6);
+                let icon = inputs.weather_icon.map(|asset| SceneWeatherIcon {
+                    asset,
+                    size: inputs.weather_icon_size.map_or(derived_icon_size, |size| {
+                        SceneWeatherBlocks::clamped_icon_size(size)
+                    }),
+                    opacity: inputs.weather_icon_opacity,
+                });
 
-                    Some(SceneWeatherBlocks {
+                (temperature.is_some() || location.is_some() || icon.is_some()).then_some(
+                    SceneWeatherBlocks {
                         temperature,
                         location,
                         icon,
-                        alignment: inputs.weather_alignment,
-                        icon_opacity: inputs.weather_icon_opacity,
-                        horizontal_padding: inputs
-                            .weather_horizontal_padding
-                            .unwrap_or(48)
-                            .clamp(0, 512),
-                        left_offset: inputs.weather_left_offset.unwrap_or(0).clamp(-512, 512),
-                        bottom_offset: inputs.weather_bottom_offset.unwrap_or(0).clamp(-512, 512),
-                        icon_size: inputs.weather_icon_size.map_or(derived_icon_size, |size| {
-                            SceneWeatherBlocks::clamped_icon_size(size)
-                        }),
-                        icon_gap: inputs.weather_icon_gap.map_or(
-                            SceneWeatherBlocks::default_icon_gap(),
-                            SceneWeatherBlocks::clamped_icon_gap,
-                        ),
-                        location_gap: inputs.weather_location_gap.map_or(
-                            SceneWeatherBlocks::default_location_gap(),
-                            SceneWeatherBlocks::clamped_location_gap,
-                        ),
-                    })
-                }
-                _ => None,
+                    },
+                )
             },
         }
     }

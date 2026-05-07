@@ -67,6 +67,32 @@ fn power_status_indicator_defaults_to_disabled() {
 }
 
 #[test]
+fn parses_power_status_widget_position() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.power_status]
+            enabled = true
+            halign = "left"
+            valign = "bottom"
+            x = 28
+            y = -36
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.visuals.power_status_enabled());
+    assert_eq!(
+        config.visuals.power_status_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(28),
+            y: Some(-36),
+        }
+    );
+}
+
+#[test]
 fn parses_full_layer_width_keyword() {
     let config = AppConfig::from_toml_str(
         r#"

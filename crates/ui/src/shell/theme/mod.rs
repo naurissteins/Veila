@@ -5,7 +5,6 @@ mod tests;
 use veila_common::{
     AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, HorizontalAlign,
     InputRevealMode, LayerAlignment, LayerMode, LayerStyle, LayerVerticalAlignment, VerticalAlign,
-    WeatherAlignment,
 };
 use veila_renderer::ClearColor;
 
@@ -98,6 +97,7 @@ pub struct ShellTheme {
     pub keyboard_color: Option<ClearColor>,
     pub keyboard_size: Option<u32>,
     pub power_status_enabled: bool,
+    pub power_status_position: Option<WidgetPosition>,
     pub battery_enabled: bool,
     pub battery_position: Option<WidgetPosition>,
     pub battery_color: Option<ClearColor>,
@@ -125,27 +125,25 @@ pub struct ShellTheme {
     pub layer_border_color: Option<ClearColor>,
     pub layer_border_width: i32,
     pub weather_enabled: bool,
-    pub weather_size: Option<u32>,
+    pub weather_icon_enabled: bool,
+    pub weather_icon_position: Option<WidgetPosition>,
+    pub weather_icon_size: Option<i32>,
     pub weather_icon_opacity: Option<u8>,
+    pub weather_temperature_enabled: bool,
     pub weather_temperature_color: Option<ClearColor>,
-    pub weather_location_color: Option<ClearColor>,
     pub weather_temperature_font_family: Option<String>,
     pub weather_temperature_font_weight: Option<u16>,
     pub weather_temperature_font_style: Option<FontStyle>,
     pub weather_temperature_letter_spacing: Option<u32>,
+    pub weather_temperature_font_size: Option<u32>,
+    pub weather_temperature_position: Option<WidgetPosition>,
+    pub weather_location_enabled: bool,
+    pub weather_location_color: Option<ClearColor>,
     pub weather_location_font_family: Option<String>,
     pub weather_location_font_weight: Option<u16>,
     pub weather_location_font_style: Option<FontStyle>,
-    pub weather_temperature_size: Option<u32>,
-    pub weather_location_size: Option<u32>,
-    pub weather_icon_size: Option<i32>,
-    pub weather_icon_gap: Option<i32>,
-    pub weather_location_gap: Option<i32>,
-    pub weather_left_offset: Option<i32>,
-    pub weather_bottom_offset: Option<i32>,
-    pub weather_horizontal_padding: Option<i32>,
-    pub weather_bottom_padding: Option<i32>,
-    pub weather_alignment: WeatherAlignment,
+    pub weather_location_font_size: Option<u32>,
+    pub weather_location_position: Option<WidgetPosition>,
     pub now_playing_enabled: bool,
     pub now_playing_title_color: Option<ClearColor>,
     pub now_playing_artist_color: Option<ClearColor>,
@@ -265,6 +263,62 @@ fn resolve_battery_position(config: &AppConfig) -> Option<WidgetPosition> {
     })
 }
 
+fn resolve_weather_icon_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.weather_icon_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Left),
+        valign: position.valign.unwrap_or(VerticalAlign::Bottom),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
+fn resolve_weather_temperature_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.weather_temperature_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Left),
+        valign: position.valign.unwrap_or(VerticalAlign::Bottom),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
+fn resolve_weather_location_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.weather_location_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Left),
+        valign: position.valign.unwrap_or(VerticalAlign::Bottom),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
+fn resolve_power_status_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.power_status_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Right),
+        valign: position.valign.unwrap_or(VerticalAlign::Top),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
 fn resolve_date_position(config: &AppConfig) -> Option<WidgetPosition> {
     let position = config.visuals.date_position();
     if !position.is_specified() {
@@ -314,6 +368,10 @@ impl ShellTheme {
         let avatar_position = resolve_avatar_position(config);
         let username_position = resolve_username_position(config);
         let keyboard_position = resolve_keyboard_position(config);
+        let weather_icon_position = resolve_weather_icon_position(config);
+        let weather_temperature_position = resolve_weather_temperature_position(config);
+        let weather_location_position = resolve_weather_location_position(config);
+        let power_status_position = resolve_power_status_position(config);
         let battery_position = resolve_battery_position(config);
         Self {
             background: to_color(config.background.color),
@@ -401,6 +459,7 @@ impl ShellTheme {
             keyboard_color: config.visuals.keyboard_color().map(to_color),
             keyboard_size: config.visuals.keyboard_size().map(u32::from),
             power_status_enabled: config.visuals.power_status_enabled(),
+            power_status_position,
             battery_enabled: config.visuals.battery_enabled(),
             battery_position,
             battery_color: config.visuals.battery_color().map(to_color),
@@ -432,10 +491,12 @@ impl ShellTheme {
             layer_border_color: config.visuals.layer_border_color().map(to_color),
             layer_border_width: i32::from(config.visuals.layer_border_width().unwrap_or(0)),
             weather_enabled: config.visuals.weather_enabled(),
-            weather_size: config.visuals.weather_size().map(u32::from),
+            weather_icon_enabled: config.visuals.weather_icon_enabled(),
+            weather_icon_position,
+            weather_icon_size: config.visuals.weather_icon_size().map(i32::from),
             weather_icon_opacity: config.visuals.weather_icon_opacity(),
+            weather_temperature_enabled: config.visuals.weather_temperature_enabled(),
             weather_temperature_color: config.visuals.weather_temperature_color().map(to_color),
-            weather_location_color: config.visuals.weather_location_color().map(to_color),
             weather_temperature_font_family: config
                 .visuals
                 .weather_temperature_font_family()
@@ -446,22 +507,21 @@ impl ShellTheme {
                 .visuals
                 .weather_temperature_letter_spacing()
                 .map(u32::from),
+            weather_temperature_font_size: config
+                .visuals
+                .weather_temperature_font_size()
+                .map(u32::from),
+            weather_temperature_position,
+            weather_location_enabled: config.visuals.weather_location_enabled(),
+            weather_location_color: config.visuals.weather_location_color().map(to_color),
             weather_location_font_family: config
                 .visuals
                 .weather_location_font_family()
                 .map(str::to_owned),
             weather_location_font_weight: config.visuals.weather_location_font_weight(),
             weather_location_font_style: config.visuals.weather_location_font_style(),
-            weather_temperature_size: config.visuals.weather_temperature_size().map(u32::from),
-            weather_location_size: config.visuals.weather_location_size().map(u32::from),
-            weather_icon_size: config.visuals.weather_icon_size().map(i32::from),
-            weather_icon_gap: config.visuals.weather_icon_gap().map(i32::from),
-            weather_location_gap: config.visuals.weather_location_gap().map(i32::from),
-            weather_left_offset: config.visuals.weather_left_offset().map(i32::from),
-            weather_bottom_offset: config.visuals.weather_bottom_offset().map(i32::from),
-            weather_horizontal_padding: config.visuals.weather_horizontal_padding().map(i32::from),
-            weather_bottom_padding: config.visuals.weather_bottom_padding().map(i32::from),
-            weather_alignment: config.visuals.weather_alignment(),
+            weather_location_font_size: config.visuals.weather_location_font_size().map(u32::from),
+            weather_location_position,
             now_playing_enabled: config.visuals.now_playing_enabled(),
             now_playing_title_color: config.visuals.now_playing_title_color().map(to_color),
             now_playing_artist_color: config.visuals.now_playing_artist_color().map(to_color),

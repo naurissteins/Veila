@@ -10,7 +10,7 @@ use super::{
     model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
         InputRightAdornment, InputWidget, draw_avatar_widget, draw_block, draw_centered_block,
-        draw_clock_widget, draw_input_content, draw_input_shell, draw_weather_widget,
+        draw_clock_widget, draw_input_content, draw_input_shell, draw_weather_icon,
         input_toggle_hitbox,
     },
 };
@@ -69,6 +69,7 @@ impl ShellState {
         );
         self.render_floating_header_widgets(buffer, &layout);
         self.render_floating_input_widgets(buffer, &layout, true);
+        self.render_floating_weather_widgets(buffer, &layout);
         self.render_now_playing_widget(buffer, &layout);
         self.render_top_right_indicators(buffer);
     }
@@ -243,6 +244,66 @@ impl ShellState {
         }
     }
 
+    fn render_floating_weather_widgets(&self, buffer: &mut SoftwareBuffer, layout: &SceneLayout) {
+        let Some(weather) = layout.floating_weather.as_ref() else {
+            return;
+        };
+
+        if let Some(icon) = weather.icon
+            && let Some(position) = self.theme.weather_icon_position
+        {
+            let x = anchored_block_x(
+                buffer.size().width as i32,
+                icon.size,
+                position.halign,
+                position.x,
+            );
+            let y = anchored_block_y(
+                buffer.size().height as i32,
+                icon.size,
+                position.valign,
+                position.y,
+            );
+            draw_weather_icon(buffer, x, y, icon.asset, icon.size, icon.opacity);
+        }
+
+        if let Some(temperature) = weather.temperature.as_ref()
+            && let Some(position) = self.theme.weather_temperature_position
+        {
+            let x = anchored_block_x(
+                buffer.size().width as i32,
+                temperature.width as i32,
+                position.halign,
+                position.x,
+            );
+            let y = anchored_block_y(
+                buffer.size().height as i32,
+                temperature.height as i32,
+                position.valign,
+                position.y,
+            );
+            draw_block(buffer, x, y, temperature);
+        }
+
+        if let Some(location) = weather.location.as_ref()
+            && let Some(position) = self.theme.weather_location_position
+        {
+            let x = anchored_block_x(
+                buffer.size().width as i32,
+                location.width as i32,
+                position.halign,
+                position.x,
+            );
+            let y = anchored_block_y(
+                buffer.size().height as i32,
+                location.height as i32,
+                position.valign,
+                position.y,
+            );
+            draw_block(buffer, x, y, location);
+        }
+    }
+
     fn floating_input_rect(&self, layout: &SceneLayout, size: FrameSize) -> Option<Rect> {
         let position = self.theme.input_position?;
         let x = anchored_block_x(
@@ -396,9 +457,6 @@ impl ShellState {
                     metrics.avatar_size as u32,
                     self.avatar_style(),
                 );
-            }
-            SceneWidget::Weather(weather) if !dynamic => {
-                draw_weather_widget(buffer, y, weather);
             }
             SceneWidget::Input(placeholder) => {
                 self.render_input_widget(

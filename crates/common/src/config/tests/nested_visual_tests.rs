@@ -259,7 +259,9 @@ fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
             y: Some(29),
         }
     );
-    assert_eq!(config.visuals.weather_size(), Some(3));
+    assert!(config.visuals.weather_icon_enabled());
+    assert!(config.visuals.weather_temperature_enabled());
+    assert!(config.visuals.weather_location_enabled());
     assert_eq!(config.visuals.weather_icon_opacity(), Some(41));
     assert_eq!(
         config.visuals.weather_temperature_color(),
@@ -285,20 +287,36 @@ fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
         Some(FontStyle::Italic)
     );
     assert_eq!(config.visuals.weather_temperature_letter_spacing(), Some(2));
-    assert_eq!(config.visuals.weather_temperature_size(), Some(4));
-    assert_eq!(config.visuals.weather_location_size(), Some(2));
+    assert_eq!(config.visuals.weather_temperature_font_size(), Some(4));
+    assert_eq!(config.visuals.weather_location_font_size(), Some(2));
     assert_eq!(config.visuals.weather_icon_size(), Some(36));
-    assert_eq!(config.visuals.weather_icon_gap(), Some(10));
-    assert_eq!(config.visuals.weather_location_gap(), Some(3));
     assert_eq!(
-        config.visuals.weather_alignment(),
-        super::WeatherAlignment::Right
+        config.visuals.weather_icon_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-52),
+            y: Some(-126),
+        }
     );
-    assert_eq!(config.visuals.weather_left_offset(), Some(12));
-    assert_eq!(config.visuals.weather_bottom_offset(), Some(-6));
-    assert_eq!(config.visuals.weather_horizontal_padding(), Some(64));
-    assert_eq!(config.visuals.weather_left_padding(), Some(56));
-    assert_eq!(config.visuals.weather_bottom_padding(), Some(72));
+    assert_eq!(
+        config.visuals.weather_temperature_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-52),
+            y: Some(-80),
+        }
+    );
+    assert_eq!(
+        config.visuals.weather_location_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-52),
+            y: Some(-52),
+        }
+    );
 }
 
 #[test]

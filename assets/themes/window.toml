@@ -97,22 +97,36 @@ x = -78
 y = 13
 
 [visuals.weather]
-temperature_color = "#A6AECD74"
-location_color = "#D6E3FF5C"
-temperature_size = 6
-location_size = 3
-icon_size = 40
-temperature_font_family = "Geom"
-temperature_font_weight = 600
-temperature_letter_spacing = 0
-location_font_family = "Google Sans Flex"
-location_font_weight = 400
-icon_gap = 1
-location_gap = 1
-icon_opacity = 50
-left_padding = 30
-bottom_padding = 30
-alignment = "left"
+enabled = true
+
+[visuals.weather.icon]
+size = 40
+opacity = 50
+halign = "left"
+valign = "bottom"
+x = 30
+y = -112
+
+[visuals.weather.temperature]
+font_size = 6
+font_family = "Geom"
+font_weight = 600
+letter_spacing = 0
+color = "#A6AECD74"
+halign = "left"
+valign = "bottom"
+x = 30
+y = -66
+
+[visuals.weather.location]
+font_size = 3
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "#D6E3FF5C"
+halign = "left"
+valign = "bottom"
+x = 30
+y = -34
 
 [visuals.now_playing]
 enabled = false

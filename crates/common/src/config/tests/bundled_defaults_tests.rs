@@ -168,6 +168,15 @@ fn first_run_defaults_match_bundled_theme() {
             y: Some(17),
         }
     );
+    assert_eq!(
+        config.visuals.power_status_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Top),
+            x: Some(-24),
+            y: Some(17),
+        }
+    );
     assert!(!config.visuals.layer_enabled());
     assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
     assert_eq!(config.visuals.layer_style(), LayerStyle::Panel);
@@ -197,7 +206,9 @@ fn first_run_defaults_match_bundled_theme() {
         Some(RgbColor::rgb(255, 255, 255))
     );
     assert_eq!(config.visuals.layer_border_width(), Some(0));
-    assert_eq!(config.visuals.weather_size(), Some(2));
+    assert!(config.visuals.weather_icon_enabled());
+    assert!(config.visuals.weather_temperature_enabled());
+    assert!(config.visuals.weather_location_enabled());
     assert_eq!(config.visuals.weather_icon_opacity(), Some(50));
     assert_eq!(
         config.visuals.weather_temperature_color(),
@@ -226,20 +237,36 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.weather_location_font_style(),
         Some(FontStyle::Normal)
     );
-    assert_eq!(config.visuals.weather_temperature_size(), Some(6));
-    assert_eq!(config.visuals.weather_location_size(), Some(3));
+    assert_eq!(config.visuals.weather_temperature_font_size(), Some(6));
+    assert_eq!(config.visuals.weather_location_font_size(), Some(3));
     assert_eq!(config.visuals.weather_icon_size(), Some(40));
-    assert_eq!(config.visuals.weather_icon_gap(), Some(1));
-    assert_eq!(config.visuals.weather_location_gap(), Some(1));
     assert_eq!(
-        config.visuals.weather_alignment(),
-        super::WeatherAlignment::Left
+        config.visuals.weather_icon_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(30),
+            y: Some(-112),
+        }
     );
-    assert_eq!(config.visuals.weather_left_offset(), Some(12));
-    assert_eq!(config.visuals.weather_bottom_offset(), Some(-6));
-    assert_eq!(config.visuals.weather_horizontal_padding(), Some(48));
-    assert_eq!(config.visuals.weather_left_padding(), Some(48));
-    assert_eq!(config.visuals.weather_bottom_padding(), Some(48));
+    assert_eq!(
+        config.visuals.weather_temperature_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(30),
+            y: Some(-66),
+        }
+    );
+    assert_eq!(
+        config.visuals.weather_location_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(30),
+            y: Some(-34),
+        }
+    );
     assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(90));
     assert_eq!(

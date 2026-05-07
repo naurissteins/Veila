@@ -4,8 +4,9 @@ use veila_common::{
     InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight,
     LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
     NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig,
-    VerticalAlign, WeatherAlignment, WeatherVisualConfig, WidgetPositionConfig,
+    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusVisualConfig,
+    UsernameVisualConfig, VerticalAlign, WeatherIconVisualConfig, WeatherLocationVisualConfig,
+    WeatherTemperatureVisualConfig, WeatherVisualConfig, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -116,6 +117,15 @@ fn input_alpha_uses_rgba_values() {
             y: Some(29),
         },
     });
+    config.visuals.power_status = Some(PowerStatusVisualConfig {
+        enabled: Some(true),
+        position: WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(36),
+            y: Some(-28),
+        },
+    });
     config.visuals.layer = Some(LayerVisualConfig {
         enabled: Some(true),
         mode: Some(LayerMode::Blur),
@@ -142,28 +152,46 @@ fn input_alpha_uses_rgba_values() {
     });
     config.visuals.weather = Some(WeatherVisualConfig {
         enabled: Some(true),
-        size: Some(3),
-        icon_opacity: Some(41),
-        temperature_color: Some(ConfigColor::rgba(255, 255, 255, 179)),
-        location_color: Some(ConfigColor::rgba(214, 227, 255, 98)),
-        temperature_font_family: Some(String::from("Prototype")),
-        temperature_font_weight: Some(600),
-        temperature_font_style: Some(FontStyle::Italic),
-        temperature_letter_spacing: Some(2),
-        location_font_family: Some(String::from("Geom")),
-        location_font_weight: Some(500),
-        location_font_style: Some(FontStyle::Italic),
-        temperature_size: Some(4),
-        location_size: Some(2),
-        icon_size: Some(36),
-        icon_gap: Some(10),
-        location_gap: Some(3),
-        alignment: Some(WeatherAlignment::Right),
-        left_offset: Some(12),
-        bottom_offset: Some(-6),
-        left_padding: Some(56),
-        horizontal_padding: Some(64),
-        bottom_padding: Some(72),
+        icon: Some(WeatherIconVisualConfig {
+            enabled: Some(true),
+            size: Some(36),
+            opacity: Some(41),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-52),
+                y: Some(-126),
+            },
+        }),
+        temperature: Some(WeatherTemperatureVisualConfig {
+            enabled: Some(true),
+            font_size: Some(4),
+            font_family: Some(String::from("Prototype")),
+            font_weight: Some(600),
+            font_style: Some(FontStyle::Italic),
+            letter_spacing: Some(2),
+            color: Some(ConfigColor::rgba(255, 255, 255, 179)),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-52),
+                y: Some(-80),
+            },
+        }),
+        location: Some(WeatherLocationVisualConfig {
+            enabled: Some(true),
+            font_size: Some(2),
+            font_family: Some(String::from("Geom")),
+            font_weight: Some(500),
+            font_style: Some(FontStyle::Italic),
+            color: Some(ConfigColor::rgba(214, 227, 255, 98)),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-52),
+                y: Some(-52),
+            },
+        }),
     });
     config.visuals.now_playing = Some(NowPlayingVisualConfig {
         enabled: Some(true),
@@ -329,6 +357,16 @@ fn input_alpha_uses_rgba_values() {
             y: 29,
         })
     );
+    assert!(theme.power_status_enabled);
+    assert_eq!(
+        theme.power_status_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Bottom,
+            x: 36,
+            y: -28,
+        })
+    );
     assert!(theme.layer_enabled);
     assert_eq!(theme.layer_mode, LayerMode::Blur);
     assert_eq!(theme.layer_style, LayerStyle::Diagonal);
@@ -355,7 +393,9 @@ fn input_alpha_uses_rgba_values() {
         Some(ClearColor::rgba(255, 255, 255, 48))
     );
     assert_eq!(theme.layer_border_width, 2);
-    assert_eq!(theme.weather_size, Some(3));
+    assert!(theme.weather_icon_enabled);
+    assert!(theme.weather_temperature_enabled);
+    assert!(theme.weather_location_enabled);
     assert_eq!(theme.weather_icon_opacity, Some(41));
     assert_eq!(
         theme.weather_temperature_color,
@@ -378,16 +418,36 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.weather_location_font_weight, Some(500));
     assert_eq!(theme.weather_location_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.weather_temperature_letter_spacing, Some(2));
-    assert_eq!(theme.weather_temperature_size, Some(4));
-    assert_eq!(theme.weather_location_size, Some(2));
+    assert_eq!(theme.weather_temperature_font_size, Some(4));
+    assert_eq!(theme.weather_location_font_size, Some(2));
     assert_eq!(theme.weather_icon_size, Some(36));
-    assert_eq!(theme.weather_icon_gap, Some(10));
-    assert_eq!(theme.weather_location_gap, Some(3));
-    assert_eq!(theme.weather_alignment, WeatherAlignment::Right);
-    assert_eq!(theme.weather_left_offset, Some(12));
-    assert_eq!(theme.weather_bottom_offset, Some(-6));
-    assert_eq!(theme.weather_horizontal_padding, Some(64));
-    assert_eq!(theme.weather_bottom_padding, Some(72));
+    assert_eq!(
+        theme.weather_icon_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -52,
+            y: -126,
+        })
+    );
+    assert_eq!(
+        theme.weather_temperature_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -52,
+            y: -80,
+        })
+    );
+    assert_eq!(
+        theme.weather_location_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -52,
+            y: -52,
+        })
+    );
     assert_eq!(
         theme.now_playing_title_color,
         Some(ClearColor::rgba(248, 251, 255, 208))

@@ -23,7 +23,6 @@ pub struct RoleAnchors {
 pub struct AnchorOffsets {
     pub clock_alignment: ClockAlignment,
     pub clock_offset_y: Option<i32>,
-    pub weather_bottom_padding: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

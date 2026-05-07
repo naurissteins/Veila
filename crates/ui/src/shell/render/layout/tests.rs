@@ -226,32 +226,6 @@ fn applies_clock_vertical_offset() {
 }
 
 #[test]
-fn applies_configured_weather_bottom_padding() {
-    let default_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(80),
-        AnchorOffsets::default(),
-    );
-    let shifted_anchors = role_anchors(
-        720,
-        54,
-        197,
-        197,
-        FooterHeights::same(80),
-        AnchorOffsets {
-            weather_bottom_padding: Some(72),
-            ..AnchorOffsets::default()
-        },
-    );
-
-    assert_eq!(default_anchors.footer_y, 592);
-    assert_eq!(shifted_anchors.footer_y, 568);
-}
-
-#[test]
 fn computes_layer_center_from_layer_rect() {
     let rect = layer_rect(
         1280,

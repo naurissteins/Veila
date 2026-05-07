@@ -40,23 +40,36 @@ x = -78
 y = 21
 
 [visuals.weather]
-size = 2
-temperature_color = "rgba(255, 255, 255, 0.73)"
-location_color = "rgba(214, 227, 255, 0.58)"
-temperature_size = 6
-location_size = 3
-icon_size = 40
-temperature_font_family = "Geom"
-temperature_font_weight = 600
-temperature_letter_spacing = 0
-location_font_family = "Google Sans Flex"
-location_font_weight = 400
-icon_gap = 1
-location_gap = 1
-icon_opacity = 80
-left_padding = 30
-bottom_padding = 30
-alignment = "left"
+enabled = true
+
+[visuals.weather.icon]
+size = 40
+opacity = 80
+halign = "left"
+valign = "bottom"
+x = 30
+y = -112
+
+[visuals.weather.temperature]
+font_size = 6
+font_family = "Geom"
+font_weight = 600
+letter_spacing = 0
+color = "rgba(255, 255, 255, 0.73)"
+halign = "left"
+valign = "bottom"
+x = 30
+y = -66
+
+[visuals.weather.location]
+font_size = 3
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "rgba(214, 227, 255, 0.58)"
+halign = "left"
+valign = "bottom"
+x = 30
+y = -34
 
 [visuals.input]
 background_color = "rgba(255, 255, 255, 0.08)"
@@ -80,7 +93,7 @@ placeholder_padding = 28
 halign = "center"
 valign = "center"
 x = 0
-y = 40
+y = 0
 
 [visuals.username]
 font_family = "Google Sans Flex"
@@ -90,7 +103,7 @@ size = 4
 halign = "center"
 valign = "center"
 x = 0
-y = 220
+y = 0
 
 [visuals.clock]
 format = "24h"

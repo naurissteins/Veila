@@ -2,7 +2,7 @@ mod standard;
 #[cfg(test)]
 mod tests;
 
-use veila_common::{ClockStyle, WeatherAlignment};
+use veila_common::ClockStyle;
 use veila_renderer::icon::WeatherIcon;
 use veila_renderer::text::TextBlock;
 
@@ -40,17 +40,16 @@ pub(super) struct SceneClockBlocks {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SceneWeatherBlocks {
-    pub temperature: TextBlock,
-    pub location: TextBlock,
-    pub icon: WeatherIcon,
-    pub alignment: WeatherAlignment,
-    pub icon_opacity: Option<u8>,
-    pub horizontal_padding: i32,
-    pub left_offset: i32,
-    pub bottom_offset: i32,
-    pub icon_size: i32,
-    pub icon_gap: i32,
-    pub location_gap: i32,
+    pub temperature: Option<TextBlock>,
+    pub location: Option<TextBlock>,
+    pub icon: Option<SceneWeatherIcon>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SceneWeatherIcon {
+    pub asset: WeatherIcon,
+    pub size: i32,
+    pub opacity: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,7 +85,6 @@ pub(super) enum SceneWidget {
     Username(TextBlock),
     Input(Option<TextBlock>),
     Status(TextBlock),
-    Weather(SceneWeatherBlocks),
 }
 
 impl SceneModel {
@@ -235,7 +233,6 @@ impl SceneWidget {
             Self::Date(block) | Self::Username(block) | Self::Status(block) => block.height as i32,
             Self::Avatar => metrics.avatar_size,
             Self::Input(_) => metrics.input_height,
-            Self::Weather(blocks) => blocks.height(),
         }
     }
 
@@ -243,7 +240,7 @@ impl SceneWidget {
         match self {
             Self::Avatar | Self::Username(_) => Some(AuthGroup::Identity),
             Self::Input(_) | Self::Status(_) => Some(AuthGroup::Input),
-            Self::Clock(_) | Self::Date(_) | Self::Weather(_) => None,
+            Self::Clock(_) | Self::Date(_) => None,
         }
     }
 }
@@ -301,43 +298,10 @@ impl SceneClockBlocks {
 }
 
 impl SceneWeatherBlocks {
-    const DEFAULT_ICON_GAP: i32 = 8;
-    const DEFAULT_LOCATION_GAP: i32 = 2;
     const MIN_ICON_SIZE: i32 = 18;
     const MAX_ICON_SIZE: i32 = 96;
-    const MAX_GAP: i32 = 64;
-
-    pub(super) fn height(&self) -> i32 {
-        self.icon_size
-            + self.icon_gap
-            + self.temperature.height as i32
-            + self.location_gap
-            + self.location.height as i32
-    }
-
-    pub(super) fn width(&self) -> i32 {
-        self.icon_size
-            .max(self.temperature.width as i32)
-            .max(self.location.width as i32)
-    }
 
     pub(super) fn clamped_icon_size(size: i32) -> i32 {
         size.clamp(Self::MIN_ICON_SIZE, Self::MAX_ICON_SIZE)
-    }
-
-    pub(super) fn clamped_icon_gap(size: i32) -> i32 {
-        size.clamp(0, Self::MAX_GAP)
-    }
-
-    pub(super) fn clamped_location_gap(size: i32) -> i32 {
-        size.clamp(0, Self::MAX_GAP)
-    }
-
-    pub(super) const fn default_icon_gap() -> i32 {
-        Self::DEFAULT_ICON_GAP
-    }
-
-    pub(super) const fn default_location_gap() -> i32 {
-        Self::DEFAULT_LOCATION_GAP
     }
 }

@@ -12,7 +12,7 @@ impl SceneModel {
             username,
             placeholder,
             status,
-            weather,
+            weather: _,
         } = blocks;
         let StandardSceneConfig {
             identity_visible,
@@ -89,15 +89,6 @@ impl SceneModel {
                 0,
             ));
         }
-
-        if let Some(weather) = weather {
-            sections.push(SceneSection::new(
-                LayoutRole::Footer,
-                SceneWidget::Weather(weather),
-                0,
-            ));
-        }
-
         Self { sections }
     }
 }
