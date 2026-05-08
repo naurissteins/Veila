@@ -14,44 +14,40 @@ use super::{
 };
 
 impl ShellState {
-    pub fn layer_cache_variant(&self) -> Option<String> {
-        if !self.theme.layer_enabled {
+    pub fn backdrop_cache_variant(&self) -> Option<String> {
+        if self.theme.backdrops.is_empty() {
             return None;
         }
 
-        let color = self.theme.layer_color;
-        let border = self
-            .theme
-            .layer_border_color
-            .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
-        Some(format!(
-            "layer:v5:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
-            self.theme.layer_style,
-            self.theme.layer_mode,
-            self.theme.layer_alignment,
-            self.theme.layer_full_width,
-            self.theme.layer_width,
-            self.theme.layer_full_height,
-            self.theme.layer_height,
-            self.theme.layer_vertical_alignment,
-            self.theme.layer_offset_x,
-            self.theme.layer_offset_y,
-            self.theme.layer_left_padding,
-            self.theme.layer_right_padding,
-            self.theme.layer_top_padding,
-            self.theme.layer_bottom_padding,
-            self.theme.layer_radius,
-            color.red,
-            color.green,
-            color.blue,
-            color.alpha,
-            self.theme.layer_blur_radius,
-            border.red,
-            border.green,
-            border.blue,
-            border.alpha,
-            self.theme.layer_border_width,
-        ))
+        let mut variant = String::from("backdrop:v1");
+        for backdrop in &self.theme.backdrops {
+            let border = backdrop
+                .border_color
+                .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
+            variant.push_str(&format!(
+                ":{:?}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                backdrop.mode,
+                backdrop.position.halign,
+                backdrop.position.valign as u8,
+                backdrop.position.x,
+                backdrop.position.y,
+                backdrop.width,
+                backdrop.height,
+                backdrop.z,
+                backdrop.color.red,
+                backdrop.color.green,
+                backdrop.color.blue,
+                backdrop.color.alpha,
+                backdrop.blur_strength,
+                backdrop.radius,
+                backdrop.border_width,
+            ));
+            variant.push_str(&format!(
+                ":{}:{}:{}:{}",
+                border.red, border.green, border.blue, border.alpha
+            ));
+        }
+        Some(variant)
     }
 
     pub fn new(

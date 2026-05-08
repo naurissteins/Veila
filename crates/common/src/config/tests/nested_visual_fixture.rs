@@ -126,25 +126,21 @@ halign = "right"
             enabled = true
             color = "#FFD37AA3"
 
-            [visuals.layer]
+            [[visuals.backdrop]]
             enabled = true
             mode = "blur"
-            style = "diagonal"
-            alignment = "right"
-            width = 520
-            height = 420
-            vertical_alignment = "bottom"
-            offset_x = -12
-            offset_y = 16
-            left_margin = 24
-            right_margin = 36
-            top_margin = 18
-            bottom_margin = 22
             color = "#080A0E70"
-            blur_radius = 16
+            blur_strength = 16
             radius = 20
             border_color = "rgba(255, 255, 255, 0.18)"
             border_width = 2
+            width = 520
+            height = 420
+            halign = "right"
+            valign = "bottom"
+            x = -12
+            y = 16
+            z = 2
 
             [visuals.weather]
             enabled = true

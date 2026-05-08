@@ -1,19 +1,28 @@
 use super::*;
+use crate::shell::theme::{Backdrop, WidgetPosition};
+use veila_common::BackdropMode;
 
 #[test]
-fn backdrop_layer_rect_supports_center_and_right_alignment() {
+fn backdrop_rect_supports_center_and_right_alignment() {
     let centered = ShellState::new(
         ShellTheme {
-            layer_enabled: true,
-            layer_alignment: LayerAlignment::Center,
-            layer_full_height: false,
-            layer_width: Some(520),
-            layer_height: Some(420),
-            layer_vertical_alignment: LayerVerticalAlignment::Bottom,
-            layer_top_padding: Some(18),
-            layer_bottom_padding: Some(22),
-            layer_offset_y: Some(-24),
-            layer_mode: LayerMode::Blur,
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Blur,
+                color: ClearColor::rgba(8, 10, 14, 112),
+                blur_strength: 16,
+                radius: 20,
+                border_color: Some(ClearColor::rgba(255, 255, 255, 48)),
+                border_width: 2,
+                width: 520,
+                height: 420,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Bottom,
+                    x: 0,
+                    y: -46,
+                },
+                z: 0,
+            }],
             ..ShellTheme::default()
         },
         None,
@@ -22,13 +31,23 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
     );
     let right = ShellState::new(
         ShellTheme {
-            layer_enabled: true,
-            layer_alignment: LayerAlignment::Right,
-            layer_width: Some(520),
-            layer_offset_x: Some(-12),
-            layer_left_padding: Some(24),
-            layer_right_padding: Some(36),
-            layer_mode: LayerMode::Blur,
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Blur,
+                color: ClearColor::rgba(8, 10, 14, 112),
+                blur_strength: 16,
+                radius: 20,
+                border_color: Some(ClearColor::rgba(255, 255, 255, 48)),
+                border_width: 2,
+                width: 520,
+                height: 600,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Right,
+                    valign: VerticalAlign::Top,
+                    x: -12,
+                    y: 0,
+                },
+                z: 0,
+            }],
             ..ShellTheme::default()
         },
         None,
@@ -36,18 +55,15 @@ fn backdrop_layer_rect_supports_center_and_right_alignment() {
         true,
     );
 
-    let centered_rect = centered
-        .backdrop_layer_rect(FrameSize::new(1280, 720))
-        .expect("centered layer");
-    let right_rect = right
-        .backdrop_layer_rect(FrameSize::new(1280, 720))
-        .expect("right layer");
+    let centered_rect =
+        centered.backdrop_rect(FrameSize::new(1280, 720), centered.theme.backdrops[0]);
+    let right_rect = right.backdrop_rect(FrameSize::new(1280, 720), right.theme.backdrops[0]);
 
     assert_eq!(centered_rect.x, 380);
     assert_eq!(centered_rect.y, 254);
     assert_eq!(centered_rect.width, 520);
     assert_eq!(centered_rect.height, 420);
-    assert_eq!(right_rect.x, 712);
+    assert_eq!(right_rect.x, 748);
 }
 
 #[test]

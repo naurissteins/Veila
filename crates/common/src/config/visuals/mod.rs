@@ -1,8 +1,8 @@
+mod backdrop;
 mod clock;
 mod identity;
 mod indicators;
 mod input;
-mod layer;
 mod layout;
 mod now_playing;
 mod outputs;
@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::RgbColor;
 
+pub use backdrop::{BackdropMode, BackdropVisualConfig};
 pub use clock::{ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig};
 pub use identity::{AvatarVisualConfig, UsernameVisualConfig};
 pub use indicators::{
@@ -19,10 +20,6 @@ pub use indicators::{
     PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusVisualConfig,
 };
 pub use input::{FontStyle, InputRevealMode, InputVisualConfig, InputVisualEntry};
-pub use layer::{
-    LayerAlignment, LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
-    LayerVisualConfig, LayerWidth, LayerWidthKeyword,
-};
 pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};
 pub use now_playing::{
     NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
@@ -156,7 +153,7 @@ pub struct VisualConfig {
     #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
     #[serde(default)]
-    pub layer: Option<LayerVisualConfig>,
+    pub backdrop: Vec<BackdropVisualConfig>,
     #[serde(default)]
     pub now_playing: Option<NowPlayingVisualConfig>,
     #[serde(default)]
@@ -228,7 +225,7 @@ impl Default for VisualConfig {
             battery: Some(BatteryVisualConfig::default()),
             power_status: Some(PowerStatusVisualConfig::default()),
             weather: Some(WeatherVisualConfig::default()),
-            layer: Some(LayerVisualConfig::default()),
+            backdrop: Vec::new(),
             now_playing: Some(NowPlayingVisualConfig::default()),
             outputs: Some(OutputVisualConfig::default()),
             palette: None,

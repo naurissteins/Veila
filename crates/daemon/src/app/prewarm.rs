@@ -4,7 +4,7 @@ use std::{
 };
 
 use veila_common::{
-    AppConfig, LayerAlignment, LayerMode, LayerStyle, LayerVisualConfig, RgbColor,
+    AppConfig, BackdropMode, BackdropVisualConfig, HorizontalAlign, RgbColor, VerticalAlign,
     config::{
         BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundScaling as ConfigBackgroundScaling,
@@ -20,10 +20,7 @@ use veila_renderer::{
         prewarm_rendered_generated, prewarm_source, store_cached_generated_render_variant,
         store_cached_render_variant,
     },
-    draw::layer::{
-        BackdropLayerAlignment, BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle,
-        draw_backdrop_layer,
-    },
+    draw::layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     shape::Rect,
 };
 
@@ -63,11 +60,11 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
     let fallback = to_clear_color(config.background.color);
     let generated = background_generated(&config.background);
     let treatment = background_treatment(&config.background);
-    let layer = layer_prewarm_spec(&config);
+    let backdrops = backdrop_prewarm_specs(&config);
     let started_at = Instant::now();
     let rss_kib_before = memory::current_rss_kib();
     let join_result = tokio::task::spawn_blocking(move || {
-        prewarm_backgrounds(background, generated, fallback, treatment, layer)
+        prewarm_backgrounds(background, generated, fallback, treatment, backdrops)
     })
     .await;
 
@@ -113,7 +110,7 @@ pub(super) fn prewarm_inputs_changed(current: &AppConfig, next: &AppConfig) -> b
 fn prewarm_inputs(config: &AppConfig) -> BackgroundPrewarmInputs {
     BackgroundPrewarmInputs {
         background: config.background.clone(),
-        layer: config.visuals.layer.clone(),
+        backdrop: config.visuals.backdrop.clone(),
         panel: config.visuals.panel,
     }
 }
@@ -195,16 +192,16 @@ fn prewarm_backgrounds(
     generated: Option<GeneratedBackground>,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
-    layer: Option<LayerPrewarmSpec>,
+    backdrops: Vec<BackdropPrewarmSpec>,
 ) -> PrewarmResult {
     let outputs = output_probe::current_outputs().unwrap_or_default();
     let wallpapers = prewarm_jobs(&background, &outputs)
         .into_iter()
-        .map(|job| prewarm_wallpaper(job, fallback, treatment, layer.as_ref()))
+        .map(|job| prewarm_wallpaper(job, fallback, treatment, &backdrops))
         .collect();
     let generated = generated.and_then(|generated| {
         let sizes = generated_sizes(&background, &outputs);
-        prewarm_generated_backgrounds(generated, treatment, layer.as_ref(), &sizes)
+        prewarm_generated_backgrounds(generated, treatment, &backdrops, &sizes)
     });
 
     PrewarmResult {
@@ -217,7 +214,7 @@ fn prewarm_wallpaper(
     job: PrewarmJob,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
-    layer: Option<&LayerPrewarmSpec>,
+    backdrops: &[BackdropPrewarmSpec],
 ) -> Result<PrewarmReport, (PathBuf, anyhow::Error)> {
     let source_started_at = Instant::now();
     match prewarm_source(&job.path) {
@@ -225,7 +222,7 @@ fn prewarm_wallpaper(
             let source_elapsed_ms = elapsed_ms(source_started_at);
             let rendered = prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.sizes);
             let layered =
-                prewarm_layered_backgrounds(&job.path, fallback, treatment, layer, &job.sizes);
+                prewarm_layered_backgrounds(&job.path, fallback, treatment, backdrops, &job.sizes);
             Ok(PrewarmReport {
                 path: job.path,
                 source_status: status,
@@ -261,22 +258,21 @@ fn prewarm_layered_backgrounds(
     path: &Path,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
-    layer: Option<&LayerPrewarmSpec>,
+    backdrops: &[BackdropPrewarmSpec],
     sizes: &[FrameSize],
 ) -> Option<LayeredPrewarmReport> {
-    let layer = layer?;
-    let variant = &layer.variant;
-    if sizes.is_empty() {
+    if backdrops.is_empty() || sizes.is_empty() {
         return None;
     }
 
+    let variant = backdrop_variant(backdrops);
     let started_at = Instant::now();
     let asset = BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?;
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
     for size in sizes.iter().copied() {
-        if load_cached_render_variant(path, size, treatment, variant)
+        if load_cached_render_variant(path, size, treatment, &variant)
             .ok()
             .flatten()
             .is_some()
@@ -286,8 +282,8 @@ fn prewarm_layered_backgrounds(
         }
 
         let mut buffer = asset.render(size).ok()?;
-        apply_layer_spec(layer, &mut buffer);
-        store_cached_render_variant(path, size, treatment, &buffer, variant).ok()?;
+        apply_backdrop_specs(backdrops, &mut buffer);
+        store_cached_render_variant(path, size, treatment, &buffer, &variant).ok()?;
         warmed_sizes += 1;
     }
 
@@ -302,7 +298,7 @@ fn prewarm_layered_backgrounds(
 fn prewarm_generated_backgrounds(
     generated: GeneratedBackground,
     treatment: BackgroundTreatment,
-    layer: Option<&LayerPrewarmSpec>,
+    backdrops: &[BackdropPrewarmSpec],
     sizes: &[FrameSize],
 ) -> Option<GeneratedPrewarmReport> {
     if sizes.is_empty() {
@@ -316,7 +312,7 @@ fn prewarm_generated_backgrounds(
         probed_outputs: sizes.len(),
         summary,
     };
-    let layered = prewarm_generated_layered_backgrounds(generated, treatment, layer, sizes);
+    let layered = prewarm_generated_layered_backgrounds(generated, treatment, backdrops, sizes);
 
     Some(GeneratedPrewarmReport {
         mode: generated.mode_name(),
@@ -328,15 +324,14 @@ fn prewarm_generated_backgrounds(
 fn prewarm_generated_layered_backgrounds(
     generated: GeneratedBackground,
     treatment: BackgroundTreatment,
-    layer: Option<&LayerPrewarmSpec>,
+    backdrops: &[BackdropPrewarmSpec],
     sizes: &[FrameSize],
 ) -> Option<LayeredPrewarmReport> {
-    let layer = layer?;
-    let variant = &layer.variant;
-    if sizes.is_empty() {
+    if backdrops.is_empty() || sizes.is_empty() {
         return None;
     }
 
+    let variant = backdrop_variant(backdrops);
     let started_at = Instant::now();
     let asset = BackgroundAsset::load(
         None,
@@ -349,7 +344,7 @@ fn prewarm_generated_layered_backgrounds(
     let mut warmed_sizes = 0usize;
 
     for size in sizes.iter().copied() {
-        if load_cached_generated_render_variant(generated, size, treatment, variant)
+        if load_cached_generated_render_variant(generated, size, treatment, &variant)
             .ok()
             .flatten()
             .is_some()
@@ -359,8 +354,9 @@ fn prewarm_generated_layered_backgrounds(
         }
 
         let mut buffer = asset.render(size).ok()?;
-        apply_layer_spec(layer, &mut buffer);
-        store_cached_generated_render_variant(generated, size, treatment, &buffer, variant).ok()?;
+        apply_backdrop_specs(backdrops, &mut buffer);
+        store_cached_generated_render_variant(generated, size, treatment, &buffer, &variant)
+            .ok()?;
         warmed_sizes += 1;
     }
 
@@ -440,108 +436,106 @@ fn generated_sizes(
     sizes
 }
 
-fn apply_layer_spec(layer: &LayerPrewarmSpec, buffer: &mut veila_renderer::SoftwareBuffer) {
+fn apply_backdrop_specs(
+    backdrops: &[BackdropPrewarmSpec],
+    buffer: &mut veila_renderer::SoftwareBuffer,
+) {
     let frame_width = buffer.size().width as i32;
     let frame_height = buffer.size().height as i32;
-    let left_margin = layer.left_margin.clamp(0, frame_width.max(0));
-    let right_margin = layer.right_margin.clamp(0, frame_width.max(0));
-    let top_margin = layer.top_margin.clamp(0, frame_height.max(0));
-    let bottom_margin = layer.bottom_margin.clamp(0, frame_height.max(0));
-    let safe_left = left_margin;
-    let safe_right = (frame_width - right_margin).max(safe_left + 1);
-    let safe_width = (safe_right - safe_left).max(1);
-    let width = if layer.full_width {
-        safe_width
-    } else {
-        layer
-            .width
-            .unwrap_or((frame_width as f32 * 0.36) as i32)
-            .clamp(1, safe_width)
-    };
-    let offset_x = layer.offset_x;
-    let unclamped_x = match layer.alignment {
-        LayerAlignment::Left => safe_left + offset_x,
-        LayerAlignment::Center => safe_left + (safe_width - width) / 2 + offset_x,
-        LayerAlignment::Right => safe_right - width + offset_x,
-    };
-    let x = unclamped_x.clamp(safe_left - width + 1, safe_right - 1);
-    let y = top_margin.min(frame_height.saturating_sub(1));
-    let height = (frame_height - top_margin - bottom_margin).max(1);
-    let mode = match layer.mode {
-        LayerMode::Solid => BackdropLayerMode::Solid,
-        LayerMode::Blur => BackdropLayerMode::Blur,
-    };
-    let alignment = match layer.alignment {
-        LayerAlignment::Left => BackdropLayerAlignment::Left,
-        LayerAlignment::Center => BackdropLayerAlignment::Center,
-        LayerAlignment::Right => BackdropLayerAlignment::Right,
-    };
-    let shape = match layer.style {
-        LayerStyle::Panel => BackdropLayerShape::Panel,
-        LayerStyle::Diagonal => BackdropLayerShape::Diagonal(alignment),
-    };
 
-    draw_backdrop_layer(
-        buffer,
-        Rect::new(x, y, width, height),
-        BackdropLayerStyle::new(
-            mode,
-            shape,
-            layer.color,
-            layer.blur_radius,
-            layer.radius,
-            layer.border_color,
-            layer.border_width,
-        ),
-    );
+    for backdrop in backdrops {
+        let mode = match backdrop.mode {
+            BackdropMode::Solid => BackdropLayerMode::Solid,
+            BackdropMode::Blur => BackdropLayerMode::Blur,
+        };
+
+        draw_backdrop_layer(
+            buffer,
+            Rect::new(
+                anchored_block_x(frame_width, backdrop.width, backdrop.halign, backdrop.x),
+                anchored_block_y(frame_height, backdrop.height, backdrop.valign, backdrop.y),
+                backdrop.width,
+                backdrop.height,
+            ),
+            BackdropLayerStyle::new(
+                mode,
+                BackdropLayerShape::Panel,
+                backdrop.color,
+                backdrop.blur_strength,
+                backdrop.radius,
+                backdrop.border_color,
+                backdrop.border_width,
+            ),
+        );
+    }
 }
 
-fn layer_prewarm_spec(config: &AppConfig) -> Option<LayerPrewarmSpec> {
-    if !config.visuals.layer_enabled() {
-        return None;
-    }
+fn backdrop_prewarm_specs(config: &AppConfig) -> Vec<BackdropPrewarmSpec> {
+    let mut backdrops = config
+        .visuals
+        .backdrop
+        .iter()
+        .filter(|backdrop| backdrop.enabled.unwrap_or(true))
+        .map(|backdrop| BackdropPrewarmSpec {
+            mode: backdrop.mode.unwrap_or_default(),
+            color: to_clear_color(backdrop.color.unwrap_or(config.visuals.panel)),
+            blur_strength: backdrop.blur_strength.unwrap_or(12).min(24),
+            radius: i32::from(backdrop.radius.unwrap_or(0)).clamp(0, 160),
+            border_color: backdrop.border_color.map(to_clear_color),
+            border_width: i32::from(backdrop.border_width.unwrap_or(0)).clamp(0, 16),
+            width: i32::from(backdrop.width.unwrap_or(560)).max(1),
+            height: i32::from(backdrop.height.unwrap_or(600)).max(1),
+            halign: backdrop.position.halign.unwrap_or(HorizontalAlign::Center),
+            valign: backdrop.position.valign.unwrap_or(VerticalAlign::Top),
+            x: i32::from(backdrop.position.x.unwrap_or(0)),
+            y: i32::from(backdrop.position.y.unwrap_or(0)),
+            z: i32::from(backdrop.z.unwrap_or(0)),
+        })
+        .collect::<Vec<_>>();
+    backdrops.sort_by_key(|backdrop| backdrop.z);
+    backdrops
+}
 
-    let raw_color = config.visuals.layer_color().unwrap_or(config.visuals.panel);
-    let color = to_clear_color(raw_color);
-    let border_color = config.visuals.layer_border_color().map(to_clear_color);
-    Some(LayerPrewarmSpec {
-        variant: format!(
-            "layer:v3:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
-            config.visuals.layer_style(),
-            config.visuals.layer_mode(),
-            config.visuals.layer_alignment(),
-            config.visuals.layer_full_width(),
-            config.visuals.layer_width(),
-            config.visuals.layer_offset_x(),
-            config.visuals.layer_left_margin(),
-            config.visuals.layer_right_margin(),
-            config.visuals.layer_top_margin(),
-            config.visuals.layer_bottom_margin(),
-            config.visuals.layer_radius(),
-            color.red,
-            color.green,
-            color.blue,
-            color.alpha,
-            config.visuals.layer_blur_radius().unwrap_or(12),
-            border_color,
-            config.visuals.layer_border_width().unwrap_or(0),
-        ),
-        mode: config.visuals.layer_mode(),
-        style: config.visuals.layer_style(),
-        alignment: config.visuals.layer_alignment(),
-        full_width: config.visuals.layer_full_width(),
-        width: config.visuals.layer_width().map(i32::from),
-        offset_x: i32::from(config.visuals.layer_offset_x().unwrap_or(0)),
-        left_margin: i32::from(config.visuals.layer_left_margin().unwrap_or(0)),
-        right_margin: i32::from(config.visuals.layer_right_margin().unwrap_or(0)),
-        top_margin: i32::from(config.visuals.layer_top_margin().unwrap_or(0)),
-        bottom_margin: i32::from(config.visuals.layer_bottom_margin().unwrap_or(0)),
-        color,
-        blur_radius: config.visuals.layer_blur_radius().unwrap_or(12),
-        radius: i32::from(config.visuals.layer_radius().unwrap_or(0)),
-        border_color,
-        border_width: i32::from(config.visuals.layer_border_width().unwrap_or(0)),
-    })
+fn backdrop_variant(backdrops: &[BackdropPrewarmSpec]) -> String {
+    let mut variant = String::from("backdrop:v1");
+    for backdrop in backdrops {
+        use std::fmt::Write as _;
+
+        let _ = write!(
+            &mut variant,
+            "|{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
+            backdrop.mode,
+            backdrop.halign,
+            backdrop.valign,
+            backdrop.width,
+            backdrop.height,
+            backdrop.x,
+            backdrop.y,
+            backdrop.z,
+            backdrop.color,
+            backdrop.blur_strength,
+            backdrop.radius,
+            backdrop.border_color,
+            backdrop.border_width,
+        );
+    }
+    variant
+}
+
+fn anchored_block_x(frame_width: i32, width: i32, halign: HorizontalAlign, x: i32) -> i32 {
+    match halign {
+        HorizontalAlign::Left => x,
+        HorizontalAlign::Center => (frame_width - width) / 2 + x,
+        HorizontalAlign::Right => frame_width - width + x,
+    }
+}
+
+fn anchored_block_y(frame_height: i32, height: i32, valign: VerticalAlign, y: i32) -> i32 {
+    match valign {
+        VerticalAlign::Top => y,
+        VerticalAlign::Center => (frame_height - height) / 2 + y,
+        VerticalAlign::Bottom => frame_height - height + y,
+    }
 }
 
 fn to_clear_color(color: veila_common::RgbColor) -> ClearColor {
@@ -672,20 +666,17 @@ struct GeneratedPrewarmReport {
     layered: Option<LayeredPrewarmReport>,
 }
 
-struct LayerPrewarmSpec {
-    variant: String,
-    mode: LayerMode,
-    style: LayerStyle,
-    alignment: LayerAlignment,
-    full_width: bool,
-    width: Option<i32>,
-    offset_x: i32,
-    left_margin: i32,
-    right_margin: i32,
-    top_margin: i32,
-    bottom_margin: i32,
+struct BackdropPrewarmSpec {
+    mode: BackdropMode,
+    width: i32,
+    height: i32,
+    halign: HorizontalAlign,
+    valign: VerticalAlign,
+    x: i32,
+    y: i32,
+    z: i32,
     color: ClearColor,
-    blur_radius: u8,
+    blur_strength: u8,
     radius: i32,
     border_color: Option<ClearColor>,
     border_width: i32,
@@ -701,7 +692,7 @@ struct LayeredPrewarmReport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct BackgroundPrewarmInputs {
     background: veila_common::config::BackgroundConfig,
-    layer: Option<LayerVisualConfig>,
+    backdrop: Vec<BackdropVisualConfig>,
     panel: RgbColor,
 }
 

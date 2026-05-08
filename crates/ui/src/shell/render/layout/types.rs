@@ -1,4 +1,4 @@
-use veila_common::{ClockAlignment, LayerAlignment, LayerVerticalAlignment};
+use veila_common::ClockAlignment;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SceneMetrics {
@@ -47,22 +47,6 @@ pub struct RoleAnchorInput {
     pub auth_groups: AuthGroupHeights,
     pub footer_heights: FooterHeights,
     pub offsets: AnchorOffsets,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LayerPlacement {
-    pub alignment: LayerAlignment,
-    pub full_width: bool,
-    pub width: Option<i32>,
-    pub full_height: bool,
-    pub height: Option<i32>,
-    pub vertical_alignment: LayerVerticalAlignment,
-    pub offset_x: Option<i32>,
-    pub offset_y: Option<i32>,
-    pub left_padding: Option<i32>,
-    pub right_padding: Option<i32>,
-    pub top_padding: Option<i32>,
-    pub bottom_padding: Option<i32>,
 }
 
 impl FooterHeights {

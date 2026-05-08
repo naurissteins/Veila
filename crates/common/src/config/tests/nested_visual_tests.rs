@@ -189,38 +189,34 @@ fn reveal_text_falls_back_to_legacy_input_reveal_hint() {
 }
 
 #[test]
-fn loads_nested_visual_tables_with_precedence_for_layer_and_widgets() {
+fn loads_nested_visual_tables_with_precedence_for_backdrop_and_widgets() {
     let config = nested_visual_config();
 
-    assert!(config.visuals.layer_enabled());
-    assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
-    assert_eq!(config.visuals.layer_style(), LayerStyle::Diagonal);
-    assert!(!config.visuals.layer_full_width());
-    assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Right);
-    assert_eq!(config.visuals.layer_width(), Some(520));
-    assert!(!config.visuals.layer_full_height());
-    assert_eq!(config.visuals.layer_height(), Some(420));
+    assert_eq!(config.visuals.backdrop.len(), 1);
+    assert_eq!(config.visuals.backdrop[0].mode, Some(BackdropMode::Blur));
     assert_eq!(
-        config.visuals.layer_vertical_alignment(),
-        LayerVerticalAlignment::Bottom
-    );
-    assert_eq!(config.visuals.layer_offset_x(), Some(-12));
-    assert_eq!(config.visuals.layer_offset_y(), Some(16));
-    assert_eq!(config.visuals.layer_left_padding(), Some(24));
-    assert_eq!(config.visuals.layer_right_padding(), Some(36));
-    assert_eq!(config.visuals.layer_top_padding(), Some(18));
-    assert_eq!(config.visuals.layer_bottom_padding(), Some(22));
-    assert_eq!(
-        config.visuals.layer_color(),
+        config.visuals.backdrop[0].color,
         Some(RgbColor::rgba(8, 10, 14, 112))
     );
-    assert_eq!(config.visuals.layer_blur_radius(), Some(16));
-    assert_eq!(config.visuals.layer_radius(), Some(20));
+    assert_eq!(config.visuals.backdrop[0].blur_strength, Some(16));
+    assert_eq!(config.visuals.backdrop[0].radius, Some(20));
     assert_eq!(
-        config.visuals.layer_border_color(),
+        config.visuals.backdrop[0].border_color,
         Some(RgbColor::rgba(255, 255, 255, 46))
     );
-    assert_eq!(config.visuals.layer_border_width(), Some(2));
+    assert_eq!(config.visuals.backdrop[0].border_width, Some(2));
+    assert_eq!(config.visuals.backdrop[0].width, Some(520));
+    assert_eq!(config.visuals.backdrop[0].height, Some(420));
+    assert_eq!(
+        config.visuals.backdrop[0].position,
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-12),
+            y: Some(16),
+        }
+    );
+    assert_eq!(config.visuals.backdrop[0].z, Some(2));
     assert_eq!(
         config.visuals.keyboard_background_color(),
         Some(RgbColor::rgba(18, 22, 30, 82))

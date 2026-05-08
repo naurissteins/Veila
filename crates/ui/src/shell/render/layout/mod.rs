@@ -1,5 +1,4 @@
 mod anchors;
-mod layer;
 mod metrics;
 mod types;
 
@@ -9,10 +8,9 @@ mod tests;
 pub(super) use anchors::{
     anchored_block_x, anchored_block_y, hero_block_x, role_anchors_with_groups,
 };
-pub(super) use layer::{layer_center_x, layer_rect};
 pub(crate) use types::SceneMetrics;
 pub(super) use types::{
-    AnchorOffsets, AuthGroupHeights, FooterHeights, LayerPlacement, RoleAnchorInput, RoleAnchors,
+    AnchorOffsets, AuthGroupHeights, FooterHeights, RoleAnchorInput, RoleAnchors,
 };
 
 #[cfg(test)]

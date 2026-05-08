@@ -3,8 +3,8 @@ mod color;
 mod tests;
 
 use veila_common::{
-    AppConfig, ClockAlignment, ClockFormat, ClockStyle, FontStyle, HorizontalAlign,
-    InputRevealMode, LayerAlignment, LayerMode, LayerStyle, LayerVerticalAlignment, VerticalAlign,
+    AppConfig, BackdropMode, ClockAlignment, ClockFormat, ClockStyle, FontStyle, HorizontalAlign,
+    InputRevealMode, VerticalAlign,
 };
 use veila_renderer::ClearColor;
 
@@ -16,6 +16,20 @@ pub struct WidgetPosition {
     pub valign: VerticalAlign,
     pub x: i32,
     pub y: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Backdrop {
+    pub mode: BackdropMode,
+    pub color: ClearColor,
+    pub blur_strength: u8,
+    pub radius: i32,
+    pub border_color: Option<ClearColor>,
+    pub border_width: i32,
+    pub width: i32,
+    pub height: i32,
+    pub position: WidgetPosition,
+    pub z: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,26 +118,7 @@ pub struct ShellTheme {
     pub battery_background_color: ClearColor,
     pub battery_background_size: Option<i32>,
     pub battery_size: Option<i32>,
-    pub layer_enabled: bool,
-    pub layer_mode: LayerMode,
-    pub layer_style: LayerStyle,
-    pub layer_alignment: LayerAlignment,
-    pub layer_full_width: bool,
-    pub layer_width: Option<i32>,
-    pub layer_full_height: bool,
-    pub layer_height: Option<i32>,
-    pub layer_vertical_alignment: LayerVerticalAlignment,
-    pub layer_offset_x: Option<i32>,
-    pub layer_offset_y: Option<i32>,
-    pub layer_left_padding: Option<i32>,
-    pub layer_right_padding: Option<i32>,
-    pub layer_top_padding: Option<i32>,
-    pub layer_bottom_padding: Option<i32>,
-    pub layer_color: ClearColor,
-    pub layer_blur_radius: u8,
-    pub layer_radius: i32,
-    pub layer_border_color: Option<ClearColor>,
-    pub layer_border_width: i32,
+    pub backdrops: Vec<Backdrop>,
     pub weather_enabled: bool,
     pub weather_icon_enabled: bool,
     pub weather_icon_position: Option<WidgetPosition>,
@@ -309,6 +304,34 @@ fn resolve_power_status_position(config: &AppConfig) -> Option<WidgetPosition> {
     })
 }
 
+fn resolve_backdrops(config: &AppConfig) -> Vec<Backdrop> {
+    let mut backdrops = config
+        .visuals
+        .backdrop
+        .iter()
+        .filter(|backdrop| backdrop.enabled.unwrap_or(true))
+        .map(|backdrop| Backdrop {
+            mode: backdrop.mode.unwrap_or_default(),
+            color: to_color(backdrop.color.unwrap_or(config.visuals.panel)),
+            blur_strength: backdrop.blur_strength.unwrap_or(12).min(24),
+            radius: i32::from(backdrop.radius.unwrap_or(0)).clamp(0, 160),
+            border_color: backdrop.border_color.map(to_color),
+            border_width: i32::from(backdrop.border_width.unwrap_or(0)).clamp(0, 16),
+            width: i32::from(backdrop.width.unwrap_or(560)).max(1),
+            height: i32::from(backdrop.height.unwrap_or(600)).max(1),
+            position: WidgetPosition {
+                halign: backdrop.position.halign.unwrap_or(HorizontalAlign::Center),
+                valign: backdrop.position.valign.unwrap_or(VerticalAlign::Top),
+                x: i32::from(backdrop.position.x.unwrap_or(0)),
+                y: i32::from(backdrop.position.y.unwrap_or(0)),
+            },
+            z: i32::from(backdrop.z.unwrap_or(0)),
+        })
+        .collect::<Vec<_>>();
+    backdrops.sort_by_key(|backdrop| backdrop.z);
+    backdrops
+}
+
 fn resolve_now_playing_artwork_position(config: &AppConfig) -> Option<WidgetPosition> {
     let position = config.visuals.now_playing_artwork_position();
     if !position.is_specified() {
@@ -405,6 +428,7 @@ impl ShellTheme {
         let weather_location_position = resolve_weather_location_position(config);
         let power_status_position = resolve_power_status_position(config);
         let battery_position = resolve_battery_position(config);
+        let backdrops = resolve_backdrops(config);
         let now_playing_artwork_position = resolve_now_playing_artwork_position(config);
         let now_playing_artist_position = resolve_now_playing_artist_position(config);
         let now_playing_title_position = resolve_now_playing_title_position(config);
@@ -505,26 +529,7 @@ impl ShellTheme {
                 .unwrap_or_else(|| ClearColor::rgba(18, 22, 30, 82)),
             battery_background_size: config.visuals.battery_background_size().map(i32::from),
             battery_size: config.visuals.battery_size().map(i32::from),
-            layer_enabled: config.visuals.layer_enabled(),
-            layer_mode: config.visuals.layer_mode(),
-            layer_style: config.visuals.layer_style(),
-            layer_alignment: config.visuals.layer_alignment(),
-            layer_full_width: config.visuals.layer_full_width(),
-            layer_width: config.visuals.layer_width().map(i32::from),
-            layer_full_height: config.visuals.layer_full_height(),
-            layer_height: config.visuals.layer_height().map(i32::from),
-            layer_vertical_alignment: config.visuals.layer_vertical_alignment(),
-            layer_offset_x: config.visuals.layer_offset_x().map(i32::from),
-            layer_offset_y: config.visuals.layer_offset_y().map(i32::from),
-            layer_left_padding: config.visuals.layer_left_padding().map(i32::from),
-            layer_right_padding: config.visuals.layer_right_padding().map(i32::from),
-            layer_top_padding: config.visuals.layer_top_padding().map(i32::from),
-            layer_bottom_padding: config.visuals.layer_bottom_padding().map(i32::from),
-            layer_color: to_color(config.visuals.layer_color().unwrap_or(config.visuals.panel)),
-            layer_blur_radius: config.visuals.layer_blur_radius().unwrap_or(12),
-            layer_radius: i32::from(config.visuals.layer_radius().unwrap_or(0)),
-            layer_border_color: config.visuals.layer_border_color().map(to_color),
-            layer_border_width: i32::from(config.visuals.layer_border_width().unwrap_or(0)),
+            backdrops,
             weather_enabled: config.visuals.weather_enabled(),
             weather_icon_enabled: config.visuals.weather_icon_enabled(),
             weather_icon_position,

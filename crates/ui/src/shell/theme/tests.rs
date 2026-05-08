@@ -1,13 +1,12 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig,
-    ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign, InputRevealMode,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight,
-    LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
-    NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
-    PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig,
-    StatusVisualConfig, UsernameVisualConfig, VerticalAlign, WeatherIconVisualConfig,
-    WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
-    WidgetPositionConfig,
+    AppConfig, AvatarVisualConfig, BackdropMode, BackdropVisualConfig, BatteryVisualConfig,
+    ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig,
+    FontStyle, HorizontalAlign, InputRevealMode, InputVisualConfig, InputVisualEntry,
+    KeyboardVisualConfig, NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig,
+    RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
+    WeatherVisualConfig, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -127,30 +126,24 @@ fn input_alpha_uses_rgba_values() {
             y: Some(-28),
         },
     });
-    config.visuals.layer = Some(LayerVisualConfig {
+    config.visuals.backdrop = vec![BackdropVisualConfig {
         enabled: Some(true),
-        mode: Some(LayerMode::Blur),
-        style: Some(LayerStyle::Diagonal),
-        alignment: Some(LayerAlignment::Right),
-        width: Some(LayerWidth::Pixels(520)),
-        height: Some(LayerHeight::Pixels(420)),
-        vertical_alignment: Some(LayerVerticalAlignment::Bottom),
-        offset_x: Some(-12),
-        offset_y: Some(16),
-        left_margin: Some(24),
-        right_margin: Some(36),
-        top_margin: Some(18),
-        bottom_margin: Some(22),
-        left_padding: Some(24),
-        right_padding: Some(36),
-        top_padding: Some(18),
-        bottom_padding: Some(22),
+        mode: Some(BackdropMode::Blur),
         color: Some(ConfigColor::rgba(8, 10, 14, 112)),
-        blur_radius: Some(16),
+        blur_strength: Some(16),
         radius: Some(20),
         border_color: Some(ConfigColor::rgba(255, 255, 255, 48)),
         border_width: Some(2),
-    });
+        width: Some(520),
+        height: Some(420),
+        z: Some(2),
+        position: WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-12),
+            y: Some(16),
+        },
+    }];
     config.visuals.weather = Some(WeatherVisualConfig {
         enabled: Some(true),
         icon: Some(WeatherIconVisualConfig {
@@ -377,32 +370,28 @@ fn input_alpha_uses_rgba_values() {
             y: -28,
         })
     );
-    assert!(theme.layer_enabled);
-    assert_eq!(theme.layer_mode, LayerMode::Blur);
-    assert_eq!(theme.layer_style, LayerStyle::Diagonal);
-    assert_eq!(theme.layer_alignment, LayerAlignment::Right);
-    assert!(!theme.layer_full_width);
-    assert_eq!(theme.layer_width, Some(520));
-    assert!(!theme.layer_full_height);
-    assert_eq!(theme.layer_height, Some(420));
+    assert_eq!(theme.backdrops.len(), 1);
+    assert_eq!(theme.backdrops[0].mode, BackdropMode::Blur);
+    assert_eq!(theme.backdrops[0].color, ClearColor::rgba(8, 10, 14, 112));
+    assert_eq!(theme.backdrops[0].blur_strength, 16);
+    assert_eq!(theme.backdrops[0].radius, 20);
     assert_eq!(
-        theme.layer_vertical_alignment,
-        LayerVerticalAlignment::Bottom
-    );
-    assert_eq!(theme.layer_offset_x, Some(-12));
-    assert_eq!(theme.layer_offset_y, Some(16));
-    assert_eq!(theme.layer_left_padding, Some(24));
-    assert_eq!(theme.layer_right_padding, Some(36));
-    assert_eq!(theme.layer_top_padding, Some(18));
-    assert_eq!(theme.layer_bottom_padding, Some(22));
-    assert_eq!(theme.layer_color, ClearColor::rgba(8, 10, 14, 112));
-    assert_eq!(theme.layer_blur_radius, 16);
-    assert_eq!(theme.layer_radius, 20);
-    assert_eq!(
-        theme.layer_border_color,
+        theme.backdrops[0].border_color,
         Some(ClearColor::rgba(255, 255, 255, 48))
     );
-    assert_eq!(theme.layer_border_width, 2);
+    assert_eq!(theme.backdrops[0].border_width, 2);
+    assert_eq!(theme.backdrops[0].width, 520);
+    assert_eq!(theme.backdrops[0].height, 420);
+    assert_eq!(
+        theme.backdrops[0].position,
+        super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -12,
+            y: 16,
+        }
+    );
+    assert_eq!(theme.backdrops[0].z, 2);
     assert!(theme.weather_icon_enabled);
     assert!(theme.weather_temperature_enabled);
     assert!(theme.weather_location_enabled);

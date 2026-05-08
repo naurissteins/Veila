@@ -11,12 +11,11 @@ pub mod weather;
 
 pub use battery::BatterySnapshot;
 pub use config::{
-    AppConfig, AvatarVisualConfig, BackgroundSlideshowConfig, BackgroundSlideshowMode,
-    BackgroundSlideshowOrder, BatteryConfig, BatteryVisualConfig, CapsLockVisualConfig,
-    ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
-    EyeVisualConfig, FontStyle, GeoCoordinate, HorizontalAlign, InputRevealMode, InputVisualConfig,
-    InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
-    LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LoadedConfig,
+    AppConfig, AvatarVisualConfig, BackdropMode, BackdropVisualConfig, BackgroundSlideshowConfig,
+    BackgroundSlideshowMode, BackgroundSlideshowOrder, BatteryConfig, BatteryVisualConfig,
+    CapsLockVisualConfig, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor,
+    DateVisualConfig, EyeVisualConfig, FontStyle, GeoCoordinate, HorizontalAlign, InputRevealMode,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LoadedConfig,
     NowPlayingArtworkVisualConfig, NowPlayingConfig, NowPlayingTextVisualConfig,
     NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, RgbColor,

@@ -177,35 +177,7 @@ fn first_run_defaults_match_bundled_theme() {
             y: Some(17),
         }
     );
-    assert!(!config.visuals.layer_enabled());
-    assert_eq!(config.visuals.layer_mode(), LayerMode::Blur);
-    assert_eq!(config.visuals.layer_style(), LayerStyle::Panel);
-    assert!(!config.visuals.layer_full_width());
-    assert_eq!(config.visuals.layer_alignment(), LayerAlignment::Center);
-    assert_eq!(config.visuals.layer_width(), Some(560));
-    assert!(config.visuals.layer_full_height());
-    assert_eq!(config.visuals.layer_height(), None);
-    assert_eq!(
-        config.visuals.layer_vertical_alignment(),
-        LayerVerticalAlignment::Top
-    );
-    assert_eq!(config.visuals.layer_offset_x(), Some(0));
-    assert_eq!(config.visuals.layer_offset_y(), Some(0));
-    assert_eq!(config.visuals.layer_left_padding(), Some(0));
-    assert_eq!(config.visuals.layer_right_padding(), Some(0));
-    assert_eq!(config.visuals.layer_top_padding(), Some(0));
-    assert_eq!(config.visuals.layer_bottom_padding(), Some(0));
-    assert_eq!(
-        config.visuals.layer_color(),
-        Some(RgbColor::rgba(8, 10, 14, 107))
-    );
-    assert_eq!(config.visuals.layer_blur_radius(), Some(12));
-    assert_eq!(config.visuals.layer_radius(), Some(0));
-    assert_eq!(
-        config.visuals.layer_border_color(),
-        Some(RgbColor::rgb(255, 255, 255))
-    );
-    assert_eq!(config.visuals.layer_border_width(), Some(0));
+    assert!(config.visuals.backdrop.is_empty());
     assert!(config.visuals.weather_icon_enabled());
     assert!(config.visuals.weather_temperature_enabled());
     assert!(config.visuals.weather_location_enabled());

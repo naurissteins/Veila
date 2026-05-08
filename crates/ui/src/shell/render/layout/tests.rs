@@ -1,10 +1,8 @@
-use veila_common::{
-    ClockAlignment, HorizontalAlign, LayerAlignment, LayerVerticalAlignment, VerticalAlign,
-};
+use veila_common::{ClockAlignment, HorizontalAlign, VerticalAlign};
 
 use super::{
-    AnchorOffsets, FooterHeights, LayerPlacement, SceneMetrics, anchored_block_x, anchored_block_y,
-    hero_block_x, layer_center_x, layer_rect, role_anchors,
+    AnchorOffsets, FooterHeights, SceneMetrics, anchored_block_x, anchored_block_y, hero_block_x,
+    role_anchors,
 };
 
 #[test]
@@ -223,117 +221,4 @@ fn applies_clock_vertical_offset() {
     );
 
     assert_eq!(anchors.hero_y, 69);
-}
-
-#[test]
-fn computes_layer_center_from_layer_rect() {
-    let rect = layer_rect(
-        1280,
-        720,
-        LayerPlacement {
-            alignment: LayerAlignment::Right,
-            full_width: false,
-            width: Some(520),
-            full_height: false,
-            height: Some(420),
-            vertical_alignment: LayerVerticalAlignment::Top,
-            offset_x: Some(-12),
-            offset_y: Some(0),
-            left_padding: Some(24),
-            right_padding: Some(36),
-            top_padding: Some(18),
-            bottom_padding: Some(22),
-        },
-    );
-
-    assert_eq!(rect.x, 712);
-    assert_eq!(rect.y, 18);
-    assert_eq!(rect.height, 420);
-    assert_eq!(
-        layer_center_x(
-            1280,
-            LayerPlacement {
-                alignment: LayerAlignment::Right,
-                full_width: false,
-                width: Some(520),
-                full_height: false,
-                height: Some(420),
-                vertical_alignment: LayerVerticalAlignment::Top,
-                offset_x: Some(-12),
-                offset_y: Some(0),
-                left_padding: Some(24),
-                right_padding: Some(36),
-                top_padding: Some(18),
-                bottom_padding: Some(22),
-            },
-        ),
-        972
-    );
-}
-
-#[test]
-fn supports_configured_layer_vertical_alignment() {
-    let center_rect = layer_rect(
-        1280,
-        720,
-        LayerPlacement {
-            alignment: LayerAlignment::Center,
-            full_width: false,
-            width: Some(520),
-            full_height: false,
-            height: Some(420),
-            vertical_alignment: LayerVerticalAlignment::Center,
-            offset_x: None,
-            offset_y: Some(0),
-            left_padding: Some(24),
-            right_padding: Some(36),
-            top_padding: Some(18),
-            bottom_padding: Some(22),
-        },
-    );
-    let bottom_rect = layer_rect(
-        1280,
-        720,
-        LayerPlacement {
-            alignment: LayerAlignment::Center,
-            full_width: false,
-            width: Some(520),
-            full_height: false,
-            height: Some(420),
-            vertical_alignment: LayerVerticalAlignment::Bottom,
-            offset_x: None,
-            offset_y: Some(0),
-            left_padding: Some(24),
-            right_padding: Some(36),
-            top_padding: Some(18),
-            bottom_padding: Some(22),
-        },
-    );
-
-    assert_eq!(center_rect.y, 148);
-    assert_eq!(bottom_rect.y, 278);
-}
-
-#[test]
-fn applies_configured_layer_offset_y() {
-    let rect = layer_rect(
-        1280,
-        720,
-        LayerPlacement {
-            alignment: LayerAlignment::Center,
-            full_width: false,
-            width: Some(520),
-            full_height: false,
-            height: Some(420),
-            vertical_alignment: LayerVerticalAlignment::Center,
-            offset_x: None,
-            offset_y: Some(24),
-            left_padding: Some(24),
-            right_padding: Some(36),
-            top_padding: Some(18),
-            bottom_padding: Some(22),
-        },
-    );
-
-    assert_eq!(rect.y, 172);
 }

@@ -93,62 +93,65 @@ fn parses_power_status_widget_position() {
 }
 
 #[test]
-fn parses_full_layer_width_keyword() {
+fn parses_multiple_backdrops() {
     let config = AppConfig::from_toml_str(
-        r#"
-            [visuals.layer]
+        r##"
+            [[visuals.backdrop]]
             enabled = true
-            width = "full"
-        "#,
+            mode = "blur"
+            color = "#080A0E70"
+            blur_strength = 16
+            radius = 20
+            border_color = "#FFFFFF2E"
+            border_width = 2
+            width = 520
+            height = 420
+            halign = "right"
+            valign = "bottom"
+            x = -12
+            y = 16
+            z = 2
+
+            [[visuals.backdrop]]
+            enabled = true
+            mode = "solid"
+            color = "#101820A0"
+            width = 300
+            height = 180
+            halign = "left"
+            valign = "top"
+            x = 24
+            y = 32
+            z = 0
+        "##,
     )
     .expect("config should parse");
 
-    assert!(config.visuals.layer_enabled());
-    assert!(config.visuals.layer_full_width());
-    assert_eq!(config.visuals.layer_width(), None);
+    assert_eq!(config.visuals.backdrop.len(), 2);
     assert_eq!(
-        config.visuals.layer.as_ref().and_then(|layer| layer.width),
-        Some(LayerWidth::Keyword(LayerWidthKeyword::Full))
+        config.visuals.backdrop[0],
+        BackdropVisualConfig {
+            enabled: Some(true),
+            mode: Some(BackdropMode::Blur),
+            color: Some(RgbColor::rgba(8, 10, 14, 112)),
+            blur_strength: Some(16),
+            radius: Some(20),
+            border_color: Some(RgbColor::rgba(255, 255, 255, 46)),
+            border_width: Some(2),
+            width: Some(520),
+            height: Some(420),
+            z: Some(2),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-12),
+                y: Some(16),
+            },
+        }
     );
-}
-
-#[test]
-fn parses_full_layer_height_keyword() {
-    let config = AppConfig::from_toml_str(
-        r#"
-            [visuals.layer]
-            enabled = true
-            height = "full"
-        "#,
-    )
-    .expect("config should parse");
-
-    assert!(config.visuals.layer_enabled());
-    assert!(config.visuals.layer_full_height());
-    assert_eq!(config.visuals.layer_height(), None);
-    assert_eq!(
-        config.visuals.layer.as_ref().and_then(|layer| layer.height),
-        Some(LayerHeight::Keyword(LayerHeightKeyword::Full))
-    );
-}
-
-#[test]
-fn parses_layer_vertical_alignment() {
-    let config = AppConfig::from_toml_str(
-        r#"
-            [visuals.layer]
-            enabled = true
-            vertical_alignment = "bottom"
-            offset_y = 18
-        "#,
-    )
-    .expect("config should parse");
-
-    assert_eq!(
-        config.visuals.layer_vertical_alignment(),
-        LayerVerticalAlignment::Bottom
-    );
-    assert_eq!(config.visuals.layer_offset_y(), Some(18));
+    assert_eq!(config.visuals.backdrop[1].mode, Some(BackdropMode::Solid));
+    assert_eq!(config.visuals.backdrop[1].width, Some(300));
+    assert_eq!(config.visuals.backdrop[1].height, Some(180));
 }
 
 #[test]

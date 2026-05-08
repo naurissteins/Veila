@@ -11,21 +11,18 @@ mod widgets;
 
 pub(super) use cache::TextLayoutCache;
 
-use veila_common::{LayerAlignment, LayerMode, LayerStyle};
+use veila_common::BackdropMode;
 use veila_renderer::{
     SoftwareBuffer,
-    layer::{
-        BackdropLayerAlignment, BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle,
-        draw_backdrop_layer,
-    },
+    layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     shape::Rect,
 };
 
 use self::{
     cache::SceneTextInputs,
     layout::{
-        AnchorOffsets, AuthGroupHeights, FooterHeights, LayerPlacement, RoleAnchorInput,
-        RoleAnchors, SceneMetrics, layer_rect, role_anchors_with_groups,
+        AnchorOffsets, AuthGroupHeights, FooterHeights, RoleAnchorInput, RoleAnchors, SceneMetrics,
+        anchored_block_x, anchored_block_y, role_anchors_with_groups,
     },
     model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, StandardSceneConfig},
 };
@@ -180,63 +177,57 @@ impl ShellState {
         }
     }
 
-    pub fn render_backdrop_layer(&self, buffer: &mut SoftwareBuffer) {
-        if !self.theme.layer_enabled {
-            return;
+    pub fn render_backdrops(&self, buffer: &mut SoftwareBuffer) {
+        for backdrop in &self.theme.backdrops {
+            let rect = self.backdrop_rect(buffer.size(), *backdrop);
+            let mode = match backdrop.mode {
+                BackdropMode::Solid => BackdropLayerMode::Solid,
+                BackdropMode::Blur => BackdropLayerMode::Blur,
+            };
+
+            draw_backdrop_layer(
+                buffer,
+                rect,
+                BackdropLayerStyle::new(
+                    mode,
+                    BackdropLayerShape::Panel,
+                    backdrop.color,
+                    backdrop.blur_strength,
+                    backdrop.radius,
+                    backdrop.border_color,
+                    backdrop.border_width,
+                ),
+            );
         }
-
-        let Some(rect) = self.backdrop_layer_rect(buffer.size()) else {
-            return;
-        };
-
-        let mode = match self.theme.layer_mode {
-            LayerMode::Solid => BackdropLayerMode::Solid,
-            LayerMode::Blur => BackdropLayerMode::Blur,
-        };
-        let alignment = match self.theme.layer_alignment {
-            LayerAlignment::Left => BackdropLayerAlignment::Left,
-            LayerAlignment::Center => BackdropLayerAlignment::Center,
-            LayerAlignment::Right => BackdropLayerAlignment::Right,
-        };
-        let shape = match self.theme.layer_style {
-            LayerStyle::Panel => BackdropLayerShape::Panel,
-            LayerStyle::Diagonal => BackdropLayerShape::Diagonal(alignment),
-        };
-
-        draw_backdrop_layer(
-            buffer,
-            rect,
-            BackdropLayerStyle::new(
-                mode,
-                shape,
-                self.theme.layer_color,
-                self.theme.layer_blur_radius,
-                self.theme.layer_radius,
-                self.theme.layer_border_color,
-                self.theme.layer_border_width,
-            ),
-        );
     }
 
-    fn backdrop_layer_rect(&self, size: veila_renderer::FrameSize) -> Option<Rect> {
-        Some(layer_rect(
-            size.width as i32,
-            size.height as i32,
-            LayerPlacement {
-                alignment: self.theme.layer_alignment,
-                full_width: self.theme.layer_full_width,
-                width: self.theme.layer_width,
-                full_height: self.theme.layer_full_height,
-                height: self.theme.layer_height,
-                vertical_alignment: self.theme.layer_vertical_alignment,
-                offset_x: self.theme.layer_offset_x,
-                offset_y: self.theme.layer_offset_y,
-                left_padding: self.theme.layer_left_padding,
-                right_padding: self.theme.layer_right_padding,
-                top_padding: self.theme.layer_top_padding,
-                bottom_padding: self.theme.layer_bottom_padding,
-            },
-        ))
+    pub(super) fn backdrop_rect(
+        &self,
+        size: veila_renderer::FrameSize,
+        backdrop: crate::shell::theme::Backdrop,
+    ) -> Rect {
+        Rect::new(
+            anchored_block_x(
+                size.width as i32,
+                backdrop.width,
+                backdrop.position.halign,
+                backdrop.position.x,
+            ),
+            anchored_block_y(
+                size.height as i32,
+                backdrop.height,
+                backdrop.position.valign,
+                backdrop.position.y,
+            ),
+            backdrop.width,
+            backdrop.height,
+        )
+    }
+
+    pub(super) fn first_backdrop_center_x(&self, size: veila_renderer::FrameSize) -> Option<i32> {
+        let backdrop = *self.theme.backdrops.first()?;
+        let rect = self.backdrop_rect(size, backdrop);
+        Some(rect.x + rect.width / 2)
     }
 
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {

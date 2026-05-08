@@ -35,11 +35,10 @@ pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use now_playing::NowPlayingConfig;
 pub use visuals::{
-    AvatarVisualConfig, BatteryVisualConfig, CapsLockVisualConfig, ClockAlignment, ClockFormat,
-    ClockStyle, ClockVisualConfig, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign,
-    InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment,
-    LayerHeight, LayerHeightKeyword, LayerMode, LayerStyle, LayerVerticalAlignment,
-    LayerVisualConfig, LayerWidth, LayerWidthKeyword, NowPlayingArtworkVisualConfig,
+    AvatarVisualConfig, BackdropMode, BackdropVisualConfig, BatteryVisualConfig,
+    CapsLockVisualConfig, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig,
+    DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign, InputRevealMode,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, NowPlayingArtworkVisualConfig,
     NowPlayingTextVisualConfig, NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig,
     PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig,
     StatusVisualConfig, UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherIconVisualConfig,

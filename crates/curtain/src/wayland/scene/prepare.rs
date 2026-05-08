@@ -188,7 +188,7 @@ impl CurtainApp {
         };
 
         let mut buffer = background.clone();
-        self.ui_shell.render_backdrop_layer(&mut buffer);
+        self.ui_shell.render_backdrops(&mut buffer);
         self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
         self.lock_surfaces[index].scene_base_revision = revision;
         self.lock_surfaces[index].background = None;
@@ -234,7 +234,7 @@ impl CurtainApp {
             return Ok(Some(true));
         }
 
-        if let Some(variant) = self.ui_shell.layer_cache_variant() {
+        if let Some(variant) = self.ui_shell.backdrop_cache_variant() {
             if let Some(path) = selected_path.as_deref() {
                 if let Ok(Some(buffer)) = load_cached_render_variant(
                     path,

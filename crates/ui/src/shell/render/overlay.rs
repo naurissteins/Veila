@@ -3,10 +3,7 @@ use veila_renderer::{FrameSize, SoftwareBuffer, shape::Rect};
 use super::super::{ShellState, ShellStatus};
 use super::{
     SceneLayout,
-    layout::{
-        LayerPlacement, SceneMetrics, anchored_block_x, anchored_block_y, hero_block_x,
-        layer_center_x,
-    },
+    layout::{SceneMetrics, anchored_block_x, anchored_block_y, hero_block_x},
     model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
         InputRightAdornment, InputWidget, draw_avatar_widget, draw_block, draw_centered_block,
@@ -22,7 +19,7 @@ impl ShellState {
     }
 
     pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
-        self.render_backdrop_layer(buffer);
+        self.render_backdrops(buffer);
         self.render_static_overlay(buffer);
         self.render_dynamic_overlay(buffer);
     }
@@ -377,31 +374,16 @@ impl ShellState {
     ) {
         match &section.widget {
             SceneWidget::Clock(block) if dynamic => {
-                let layer_center_x = (self.theme.layer_enabled && self.theme.clock_center_in_layer)
-                    .then(|| {
-                        layer_center_x(
-                            buffer.size().width as i32,
-                            LayerPlacement {
-                                alignment: self.theme.layer_alignment,
-                                full_width: self.theme.layer_full_width,
-                                width: self.theme.layer_width,
-                                full_height: self.theme.layer_full_height,
-                                height: self.theme.layer_height,
-                                vertical_alignment: self.theme.layer_vertical_alignment,
-                                offset_x: self.theme.layer_offset_x,
-                                offset_y: self.theme.layer_offset_y,
-                                left_padding: self.theme.layer_left_padding,
-                                right_padding: self.theme.layer_right_padding,
-                                top_padding: self.theme.layer_top_padding,
-                                bottom_padding: self.theme.layer_bottom_padding,
-                            },
-                        )
-                    });
+                let backdrop_center_x = self
+                    .theme
+                    .clock_center_in_layer
+                    .then(|| self.first_backdrop_center_x(buffer.size()))
+                    .flatten();
                 let x = hero_block_x(
                     buffer.size().width as i32,
                     block.width(),
                     self.theme.clock_alignment,
-                    layer_center_x,
+                    backdrop_center_x,
                     self.theme.clock_offset_x,
                 );
                 draw_clock_widget(buffer, x, y, block);
@@ -410,31 +392,16 @@ impl ShellState {
                 if matches!(section.widget, SceneWidget::Status(_)) {
                     draw_centered_block(buffer, metrics.auth_center_x, y, block);
                 } else {
-                    let layer_center_x =
-                        (self.theme.layer_enabled && self.theme.clock_center_in_layer).then(|| {
-                            layer_center_x(
-                                buffer.size().width as i32,
-                                LayerPlacement {
-                                    alignment: self.theme.layer_alignment,
-                                    full_width: self.theme.layer_full_width,
-                                    width: self.theme.layer_width,
-                                    full_height: self.theme.layer_full_height,
-                                    height: self.theme.layer_height,
-                                    vertical_alignment: self.theme.layer_vertical_alignment,
-                                    offset_x: self.theme.layer_offset_x,
-                                    offset_y: self.theme.layer_offset_y,
-                                    left_padding: self.theme.layer_left_padding,
-                                    right_padding: self.theme.layer_right_padding,
-                                    top_padding: self.theme.layer_top_padding,
-                                    bottom_padding: self.theme.layer_bottom_padding,
-                                },
-                            )
-                        });
+                    let backdrop_center_x = self
+                        .theme
+                        .clock_center_in_layer
+                        .then(|| self.first_backdrop_center_x(buffer.size()))
+                        .flatten();
                     let x = hero_block_x(
                         buffer.size().width as i32,
                         block.width as i32,
                         self.theme.clock_alignment,
-                        layer_center_x,
+                        backdrop_center_x,
                         self.theme.clock_offset_x,
                     );
                     draw_block(buffer, x, y, block);
