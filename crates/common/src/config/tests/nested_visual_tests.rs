@@ -382,30 +382,6 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
             y: Some(-46),
         }
     );
-    assert!(config.visuals.now_playing_background_enabled());
-    assert_eq!(
-        config.visuals.now_playing_background_mode(),
-        LayerMode::Blur
-    );
-    assert_eq!(
-        config.visuals.now_playing_background_color(),
-        Some(RgbColor::rgba(0, 0, 0, 61))
-    );
-    assert_eq!(
-        config.visuals.now_playing_background_blur_radius(),
-        Some(12)
-    );
-    assert_eq!(config.visuals.now_playing_background_radius(), Some(18));
-    assert_eq!(config.visuals.now_playing_background_padding_x(), Some(20));
-    assert_eq!(config.visuals.now_playing_background_padding_y(), Some(14));
-    assert_eq!(
-        config.visuals.now_playing_background_border_color(),
-        Some(RgbColor::rgba(255, 255, 255, 26))
-    );
-    assert_eq!(
-        config.visuals.now_playing_background_border_width(),
-        Some(1)
-    );
     assert_eq!(
         config.visuals.foreground_color(),
         RgbColor::rgba(255, 255, 255, 26)

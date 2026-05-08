@@ -217,17 +217,6 @@ halign = "right"
             x = -58
             y = -46
 
-            [visuals.now_playing.background]
-            enabled = true
-            mode = "blur"
-            color = "#0000003D"
-            blur_radius = 12
-            radius = 18
-            padding_x = 20
-            padding_y = 14
-            border_color = "#FFFFFF1A"
-            border_width = 1
-
             [visuals.outputs]
             ui_mode = "single"
             ui_output = "DP-1"

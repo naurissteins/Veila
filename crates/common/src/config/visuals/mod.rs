@@ -25,8 +25,7 @@ pub use layer::{
 };
 pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};
 pub use now_playing::{
-    NowPlayingArtworkVisualConfig, NowPlayingBackgroundConfig, NowPlayingTextVisualConfig,
-    NowPlayingVisualConfig,
+    NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
 };
 pub use outputs::{OutputUiMode, OutputVisualConfig};
 pub use weather::{

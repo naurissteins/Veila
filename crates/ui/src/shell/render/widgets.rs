@@ -5,7 +5,6 @@ use veila_renderer::{
     ClearColor, SoftwareBuffer,
     avatar::{AvatarAsset, AvatarStyle},
     icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon},
-    layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::TextBlock,
@@ -48,18 +47,6 @@ pub(super) enum InputRightAdornment {
     CapsLock {
         style: IconStyle,
     },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct NowPlayingBackgroundStyle {
-    pub mode: BackdropLayerMode,
-    pub color: ClearColor,
-    pub blur_radius: u8,
-    pub radius: i32,
-    pub padding_x: i32,
-    pub padding_y: i32,
-    pub border_color: Option<ClearColor>,
-    pub border_width: i32,
 }
 
 pub(super) fn draw_centered_block(
@@ -259,35 +246,6 @@ pub(super) fn draw_weather_icon(
     )
     .with_padding(0);
     draw_icon(buffer, icon_rect, AssetIcon::Weather(icon), icon_style);
-}
-
-pub(super) fn draw_now_playing_background(
-    buffer: &mut SoftwareBuffer,
-    content_rect: Rect,
-    background: NowPlayingBackgroundStyle,
-) {
-    let padding_x = background.padding_x.max(0);
-    let padding_y = background.padding_y.max(0);
-    let rect = Rect::new(
-        content_rect.x - padding_x,
-        content_rect.y - padding_y,
-        content_rect.width + padding_x * 2,
-        content_rect.height + padding_y * 2,
-    );
-
-    draw_backdrop_layer(
-        buffer,
-        rect,
-        BackdropLayerStyle::new(
-            background.mode,
-            BackdropLayerShape::Panel,
-            background.color,
-            background.blur_radius,
-            background.radius,
-            background.border_color,
-            background.border_width,
-        ),
-    );
 }
 
 pub(super) fn input_toggle_hitbox(rect: Rect) -> Rect {

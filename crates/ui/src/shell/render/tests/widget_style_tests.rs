@@ -1,5 +1,4 @@
 use super::*;
-use veila_renderer::layer::BackdropLayerMode;
 
 #[test]
 fn keyboard_layout_style_uses_configured_size() {
@@ -152,36 +151,4 @@ fn now_playing_blocks_stay_single_line_and_truncate() {
     assert!(artist.width <= 100);
     assert!(title.lines[0].ends_with("..."));
     assert!(artist.lines[0].ends_with("..."));
-}
-
-#[test]
-fn now_playing_widget_draws_configured_background() {
-    let mut buffer = SoftwareBuffer::solid(FrameSize::new(300, 140), ClearColor::opaque(0, 0, 0))
-        .expect("buffer");
-
-    super::super::widgets::draw_now_playing_background(
-        &mut buffer,
-        super::super::Rect::new(160, 100, 40, 20),
-        super::super::widgets::NowPlayingBackgroundStyle {
-            mode: BackdropLayerMode::Solid,
-            color: ClearColor::rgba(255, 0, 0, 120),
-            blur_radius: 0,
-            radius: 8,
-            padding_x: 12,
-            padding_y: 8,
-            border_color: None,
-            border_width: 0,
-        },
-    );
-
-    assert!(buffer.pixels().chunks_exact(4).any(|pixel| pixel[2] > 0));
-    assert_eq!(pixel_at(&buffer, 147, 91), [0, 0, 0, 255]);
-    assert_eq!(pixel_at(&buffer, 160, 100), [0, 0, 120, 255]);
-}
-
-fn pixel_at(buffer: &SoftwareBuffer, x: usize, y: usize) -> [u8; 4] {
-    let offset = (y * buffer.size().width as usize + x) * 4;
-    buffer.pixels()[offset..offset + 4]
-        .try_into()
-        .expect("pixel")
 }

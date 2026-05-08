@@ -3,11 +3,11 @@ use veila_common::{
     ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign, InputRevealMode,
     InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight,
     LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
-    NowPlayingArtworkVisualConfig, NowPlayingBackgroundConfig, NowPlayingTextVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig,
-    RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
-    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
-    WeatherVisualConfig, WidgetPositionConfig,
+    NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig,
+    StatusVisualConfig, UsernameVisualConfig, VerticalAlign, WeatherIconVisualConfig,
+    WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
+    WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -236,17 +236,6 @@ fn input_alpha_uses_rgba_values() {
                 x: Some(-58),
                 y: Some(-46),
             },
-        }),
-        background: Some(NowPlayingBackgroundConfig {
-            enabled: Some(true),
-            mode: Some(LayerMode::Blur),
-            color: Some(ConfigColor::rgba(0, 0, 0, 61)),
-            blur_radius: Some(12),
-            radius: Some(18),
-            padding_x: Some(20),
-            padding_y: Some(14),
-            border_color: Some(ConfigColor::rgba(255, 255, 255, 26)),
-            border_width: Some(1),
         }),
     });
     config.visuals.status = Some(StatusVisualConfig {
@@ -522,21 +511,6 @@ fn input_alpha_uses_rgba_values() {
             y: -46,
         })
     );
-    assert!(theme.now_playing_background_enabled);
-    assert_eq!(theme.now_playing_background_mode, LayerMode::Blur);
-    assert_eq!(
-        theme.now_playing_background_color,
-        ClearColor::rgba(0, 0, 0, 61)
-    );
-    assert_eq!(theme.now_playing_background_blur_radius, Some(12));
-    assert_eq!(theme.now_playing_background_radius, Some(18));
-    assert_eq!(theme.now_playing_background_padding_x, Some(20));
-    assert_eq!(theme.now_playing_background_padding_y, Some(14));
-    assert_eq!(
-        theme.now_playing_background_border_color,
-        Some(ClearColor::rgba(255, 255, 255, 26))
-    );
-    assert_eq!(theme.now_playing_background_border_width, Some(1));
     assert_eq!(
         theme.status_color,
         Some(ClearColor::rgba(255, 224, 160, 224))

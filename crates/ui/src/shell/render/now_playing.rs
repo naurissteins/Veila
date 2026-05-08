@@ -1,14 +1,9 @@
-use veila_common::LayerMode;
-use veila_renderer::{
-    FrameSize, SoftwareBuffer, layer::BackdropLayerMode, shape::Rect, text::TextBlock,
-};
+use veila_renderer::{FrameSize, SoftwareBuffer, shape::Rect, text::TextBlock};
 
 use super::super::{NowPlayingWidgetData, ShellState};
 use super::{
     NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout, TextLayoutCache,
     layout::{anchored_block_x, anchored_block_y},
-    widgets,
-    widgets::NowPlayingBackgroundStyle,
 };
 
 impl ShellState {
@@ -53,13 +48,6 @@ impl ShellState {
         else {
             return;
         };
-
-        if let (Some(background), Some(content_rect)) = (
-            self.now_playing_background_style(opacity_scale),
-            layout.content_rect(),
-        ) {
-            widgets::draw_now_playing_background(buffer, content_rect, background);
-        }
 
         if let Some(artwork) = layout.artwork.as_ref() {
             artwork.asset.draw(
@@ -214,58 +202,6 @@ impl ShellState {
             block,
         })
     }
-
-    fn now_playing_background_style(&self, opacity_scale: u8) -> Option<NowPlayingBackgroundStyle> {
-        if !self.theme.now_playing_background_enabled {
-            return None;
-        }
-
-        let mode = match self.theme.now_playing_background_mode {
-            LayerMode::Solid => BackdropLayerMode::Solid,
-            LayerMode::Blur => BackdropLayerMode::Blur,
-        };
-        let mut color = self.theme.now_playing_background_color;
-        color.alpha = ((u16::from(color.alpha) * u16::from(opacity_scale.min(100))) / 100) as u8;
-        let border_color = self
-            .theme
-            .now_playing_background_border_color
-            .map(|mut color| {
-                color.alpha =
-                    ((u16::from(color.alpha) * u16::from(opacity_scale.min(100))) / 100) as u8;
-                color
-            });
-
-        Some(NowPlayingBackgroundStyle {
-            mode,
-            color,
-            blur_radius: self
-                .theme
-                .now_playing_background_blur_radius
-                .unwrap_or(12)
-                .min(24),
-            radius: self
-                .theme
-                .now_playing_background_radius
-                .unwrap_or(18)
-                .clamp(0, 80),
-            padding_x: self
-                .theme
-                .now_playing_background_padding_x
-                .unwrap_or(18)
-                .clamp(0, 160),
-            padding_y: self
-                .theme
-                .now_playing_background_padding_y
-                .unwrap_or(12)
-                .clamp(0, 160),
-            border_color,
-            border_width: self
-                .theme
-                .now_playing_background_border_width
-                .unwrap_or(0)
-                .clamp(0, 12),
-        })
-    }
 }
 
 #[derive(Debug)]
@@ -273,21 +209,6 @@ struct NowPlayingSnapshotLayout<'a> {
     artwork: Option<NowPlayingArtworkPart<'a>>,
     artist: Option<NowPlayingTextPart>,
     title: Option<NowPlayingTextPart>,
-}
-
-impl NowPlayingSnapshotLayout<'_> {
-    fn content_rect(&self) -> Option<Rect> {
-        let mut rects = self
-            .artwork
-            .as_ref()
-            .map(|artwork| artwork.rect)
-            .into_iter()
-            .chain(self.artist.as_ref().map(|artist| artist.rect))
-            .chain(self.title.as_ref().map(|title| title.rect));
-
-        let first = rects.next()?;
-        Some(rects.fold(first, union_rect))
-    }
 }
 
 #[derive(Debug)]
@@ -302,14 +223,6 @@ struct NowPlayingArtworkPart<'a> {
 struct NowPlayingTextPart {
     rect: Rect,
     block: TextBlock,
-}
-
-fn union_rect(left: Rect, right: Rect) -> Rect {
-    let x = left.x.min(right.x);
-    let y = left.y.min(right.y);
-    let right_edge = (left.x + left.width).max(right.x + right.width);
-    let bottom_edge = (left.y + left.height).max(right.y + right.height);
-    Rect::new(x, y, right_edge - x, bottom_edge - y)
 }
 
 fn apply_block_opacity(mut block: TextBlock, opacity_scale: u8) -> TextBlock {

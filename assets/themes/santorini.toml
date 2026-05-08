@@ -179,11 +179,3 @@ halign = "right"
 valign = "bottom"
 x = -48
 y = -48
-
-[visuals.now_playing.background]
-enabled = true
-mode = "blur"
-color = "rgba(0, 0, 0, 0.05)"
-radius = 18
-padding_x = 12
-padding_y = 12
