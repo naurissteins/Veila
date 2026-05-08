@@ -50,7 +50,7 @@ pub struct UsernameVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub size: Option<u16>,
+    pub font_size: Option<u16>,
     #[serde(flatten)]
     pub position: WidgetPositionConfig,
 }
@@ -63,7 +63,7 @@ impl Default for UsernameVisualConfig {
             font_weight: Some(400),
             font_style: Some(super::input::FontStyle::Normal),
             color: Some(RgbColor::rgba(255, 255, 255, 214)),
-            size: Some(4),
+            font_size: Some(28),
             position: WidgetPositionConfig::default(),
         }
     }
@@ -158,11 +158,11 @@ impl super::VisualConfig {
             .and_then(|username| username.font_style)
     }
 
-    pub fn username_size(&self) -> Option<u16> {
+    pub fn username_font_size(&self) -> Option<u16> {
         self.username
             .as_ref()
-            .and_then(|username| username.size)
-            .or(self.username_size)
+            .and_then(|username| username.font_size)
+            .or(self.username_font_size)
     }
 
     pub fn username_position(&self) -> WidgetPositionConfig {

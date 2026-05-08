@@ -44,7 +44,7 @@ fn loads_config_from_file() {
             input_font_family = "Geom"
             input_font_weight = 600
             input_font_style = "italic"
-            input_font_size = 3
+            input_font_size = 22
             input_width = 280
             input_height = 54
             input_radius = 20
@@ -55,7 +55,7 @@ fn loads_config_from_file() {
             avatar_ring_color = "#94B2FF"
             avatar_ring_width = 3
             username_color = "#D7E3FFB8"
-            username_size = 3
+            username_font_size = 22
             clock_font_family = "Bebas Neue"
             clock_font_weight = 700
             clock_font_style = "italic"
@@ -161,7 +161,7 @@ fn loads_config_from_file() {
         loaded.config.visuals.input_font_style(),
         Some(FontStyle::Italic)
     );
-    assert_eq!(loaded.config.visuals.input_font_size(), Some(3));
+    assert_eq!(loaded.config.visuals.input_font_size(), Some(22));
     assert_eq!(
         loaded.config.visuals.input_border_color(),
         RgbColor::rgba(255, 255, 255, 31)
@@ -185,7 +185,7 @@ fn loads_config_from_file() {
         loaded.config.visuals.username_color(),
         Some(RgbColor::rgba(215, 227, 255, 184))
     );
-    assert_eq!(loaded.config.visuals.username_size(), Some(3));
+    assert_eq!(loaded.config.visuals.username_font_size(), Some(22));
     assert_eq!(
         loaded.config.visuals.status_position(),
         WidgetPositionConfig {

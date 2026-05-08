@@ -101,7 +101,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.avatar_ring_color().is_none());
     assert!(config.visuals.avatar_ring_width().is_none());
     assert!(config.visuals.username_color().is_none());
-    assert!(config.visuals.username_size().is_none());
+    assert!(config.visuals.username_font_size().is_none());
     assert!(config.visuals.clock_font_family().is_none());
     assert!(config.visuals.clock_font_weight().is_none());
     assert!(config.visuals.clock_font_style().is_none());

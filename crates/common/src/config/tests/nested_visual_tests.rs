@@ -13,7 +13,7 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.input_font_family(), Some("Geom"));
     assert_eq!(config.visuals.input_font_weight(), Some(600));
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Italic));
-    assert_eq!(config.visuals.input_font_size(), Some(3));
+    assert_eq!(config.visuals.input_font_size(), Some(22));
     assert!(config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Full);
     assert_eq!(
@@ -87,7 +87,7 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.username_font_style(),
         Some(FontStyle::Italic)
     );
-    assert_eq!(config.visuals.username_size(), Some(4));
+    assert_eq!(config.visuals.username_font_size(), Some(28));
     assert_eq!(
         config.visuals.username_position(),
         WidgetPositionConfig {

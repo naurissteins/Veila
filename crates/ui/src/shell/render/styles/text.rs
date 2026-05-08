@@ -18,6 +18,8 @@ const DEFAULT_KEYBOARD_FONT_FAMILY: &str = "Geom";
 const MAX_INPUT_TEXT_SCALE: u32 = 6;
 const MAX_NOW_PLAYING_TITLE_SCALE: u32 = 4;
 const MAX_NOW_PLAYING_ARTIST_SCALE: u32 = 3;
+const MAX_USERNAME_FONT_SIZE_PX: u32 = 512;
+const MAX_INPUT_FONT_SIZE_PX: u32 = 512;
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
@@ -132,9 +134,12 @@ impl ShellState {
     }
 
     pub(crate) fn username_text_style(&self) -> TextStyle {
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             username_color(self.theme.username_color.unwrap_or(self.theme.foreground)),
-            self.theme.username_size.unwrap_or(2).clamp(1, 6),
+            self.theme
+                .username_font_size
+                .unwrap_or(28)
+                .clamp(1, MAX_USERNAME_FONT_SIZE_PX),
         );
         self.apply_font_overrides(
             style,
@@ -145,31 +150,29 @@ impl ShellState {
     }
 
     pub(crate) fn placeholder_text_style(&self) -> TextStyle {
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             secondary_text_color(
                 self.theme.placeholder_color.unwrap_or(self.theme.muted),
                 None,
                 154,
             ),
-            self.input_text_scale(),
+            self.input_font_size_px(),
         );
         self.apply_input_font(style)
     }
 
     pub(crate) fn reveal_text_style(&self) -> TextStyle {
-        let style = TextStyle::new(
-            secondary_text_color(
-                self.theme
-                    .reveal_color
-                    .unwrap_or(self.theme.placeholder_color.unwrap_or(self.theme.muted)),
-                None,
-                154,
-            ),
+        let color = secondary_text_color(
             self.theme
-                .reveal_font_size
-                .unwrap_or_else(|| self.input_text_scale())
-                .clamp(1, MAX_INPUT_TEXT_SCALE),
+                .reveal_color
+                .unwrap_or(self.theme.placeholder_color.unwrap_or(self.theme.muted)),
+            None,
+            154,
         );
+        let style = match self.theme.reveal_font_size {
+            Some(font_size) => TextStyle::new(color, font_size.clamp(1, MAX_INPUT_TEXT_SCALE)),
+            None => TextStyle::new_px(color, self.input_font_size_px()),
+        };
         self.apply_font_overrides(
             style,
             self.resolved_font_family(self.theme.reveal_font_family.as_deref())
@@ -182,9 +185,9 @@ impl ShellState {
     }
 
     pub(crate) fn revealed_secret_text_style(&self) -> TextStyle {
-        self.apply_input_font(TextStyle::new(
+        self.apply_input_font(TextStyle::new_px(
             self.theme.foreground.with_alpha(236),
-            self.input_text_scale(),
+            self.input_font_size_px(),
         ))
     }
 
@@ -220,9 +223,9 @@ impl ShellState {
             ShellStatus::Idle => self.theme.status_color.unwrap_or(self.theme.input_border),
         };
         self.apply_input_font(
-            TextStyle::new(
+            TextStyle::new_px(
                 secondary_text_color(color, None, 224),
-                self.input_text_scale(),
+                self.input_font_size_px(),
             )
             .with_line_spacing(0),
         )
@@ -237,11 +240,11 @@ impl ShellState {
         )
     }
 
-    fn input_text_scale(&self) -> u32 {
+    fn input_font_size_px(&self) -> u32 {
         self.theme
             .input_font_size
-            .unwrap_or(2)
-            .clamp(1, MAX_INPUT_TEXT_SCALE)
+            .unwrap_or(16)
+            .clamp(1, MAX_INPUT_FONT_SIZE_PX)
     }
 
     pub(crate) fn weather_temperature_text_style(&self) -> TextStyle {

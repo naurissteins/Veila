@@ -11,7 +11,7 @@ pub(super) fn nested_visual_config() -> AppConfig {
 [visuals.input]
 reveal_on_interaction = true
 reveal_mode = "full"
-font_size = 3
+font_size = 22
 font_family = "Geom"
 font_weight = 600
 font_style = "italic"
@@ -44,7 +44,7 @@ border_color = "#DDDDDD1F"
             font_weight = 600
             font_style = "italic"
             color = "#FFFFFFD6"
-            size = 4
+            font_size = 28
             halign = "right"
             valign = "bottom"
             x = -40
@@ -141,9 +141,6 @@ halign = "right"
             x = -12
             y = 16
             z = 2
-
-            [visuals.weather]
-            enabled = true
 
             [visuals.weather.icon]
             size = 36

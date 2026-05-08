@@ -59,7 +59,10 @@ pub(super) fn layout_text_block(
 }
 
 pub(super) fn font_size(style: &TextStyle) -> f32 {
-    4.0 + style.scale.max(1) as f32 * 6.0
+    style
+        .font_size_px
+        .map(|font_size_px| font_size_px as f32)
+        .unwrap_or_else(|| 4.0 + style.scale.max(1) as f32 * 6.0)
 }
 
 pub(super) fn line_height(style: &TextStyle) -> u32 {

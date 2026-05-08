@@ -23,7 +23,7 @@ fn input_alpha_uses_rgba_values() {
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         font_style: Some(FontStyle::Italic),
-        font_size: Some(3),
+        font_size: Some(22),
         background_color: Some(ConfigColor::rgba(255, 255, 255, 200)),
         border_color: Some(ConfigColor::rgba(255, 255, 255, 180)),
         width: Some(280),
@@ -49,7 +49,7 @@ fn input_alpha_uses_rgba_values() {
         font_weight: Some(600),
         font_style: Some(FontStyle::Italic),
         color: Some(ConfigColor::rgba(215, 227, 255, 184)),
-        size: Some(3),
+        font_size: Some(22),
         position: WidgetPositionConfig::default(),
     });
     config.visuals.clock = Some(ClockVisualConfig {
@@ -278,7 +278,7 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.input_font_weight, Some(600));
     assert_eq!(theme.input_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.input_font_size, Some(3));
+    assert_eq!(theme.input_font_size, Some(22));
     assert_eq!(theme.avatar_background, ClearColor::rgba(24, 30, 42, 92));
     assert_eq!(theme.input_width, Some(280));
     assert_eq!(theme.input_height, Some(54));
@@ -303,7 +303,7 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.username_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.username_font_weight, Some(600));
     assert_eq!(theme.username_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.username_size, Some(3));
+    assert_eq!(theme.username_font_size, Some(22));
     assert_eq!(theme.username_offset_y, Some(0));
     assert_eq!(theme.username_position, None);
     assert_eq!(theme.avatar_gap, Some(24));

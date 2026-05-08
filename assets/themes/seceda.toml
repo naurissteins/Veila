@@ -24,19 +24,21 @@ font_family = "Geom"
 font_weight = 600
 color = "rgba(255, 255, 255, 0.6)"
 size = 14
-halign = "left"
+halign = "center"
 valign = "top"
-x = 120
+x = 0
 y = 40
+relative_to = "auth_panel"
 
 [visuals.date]
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.6)"
-halign = "left"
+halign = "center"
 valign = "top"
-x = 200
+x = 0
 y = 156
+relative_to = "auth_panel"
 
 [visuals.input]
 background_color = "rgba(255, 255, 255, 0.1)"
@@ -48,11 +50,12 @@ radius = 50
 mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
-font_size = 2
-halign = "left"
+font_size = 16
+halign = "center"
 valign = "center"
-x = 105
+x = 0
 y = 80
+relative_to = "auth_panel"
 
 [visuals.status]
 mode = "inline"
@@ -75,20 +78,22 @@ placeholder_padding = 28
 ring_color = "rgba(255, 255, 255, 0.2)"
 ring_width = 3
 icon_color = "#ffffff"
-halign = "left"
+halign = "center"
 valign = "center"
-x = 190
+x = 0
 y = -120
+relative_to = "auth_panel"
 
 [visuals.username]
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"
-size = 4
-halign = "left"
+font_size = 28
+halign = "center"
 valign = "center"
-x = 200
+x = 0
 y = 0
+relative_to = "auth_panel"
 
 [visuals.keyboard]
 background_size = 46
@@ -144,14 +149,13 @@ enabled = true
 fade_duration_ms = 320
 
 [visuals.now_playing.artwork]
-enabled = true
 size = 44
 radius = 8
 opacity = 90
 halign = "right"
 valign = "bottom"
-x = -384
-y = -48
+x = -388
+y = -56
 
 [visuals.now_playing.artist]
 width = 318
@@ -161,8 +165,8 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -48
-y = -80
+x = -56
+y = -82
 
 [visuals.now_playing.title]
 width = 318
@@ -172,8 +176,8 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -48
-y = -48
+x = -56
+y = -60
 
 
 # Now Playing Backdrop
@@ -195,6 +199,7 @@ z = 1
 # Auth stack Background
 [[visuals.backdrop]]
 enabled = true
+name = "auth_panel"
 mode = "blur"
 color = "rgba(0, 0, 0, 0.1)"
 blur_strength = 12

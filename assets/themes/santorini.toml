@@ -47,7 +47,7 @@ radius = 50
 mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
-font_size = 2
+font_size = 16
 border_color = "rgba(255, 255, 255, 0.2)"
 border_width = 3
 
@@ -76,7 +76,7 @@ icon_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"
-size = 4
+font_size = 28
 
 [visuals.keyboard]
 background_size = 46
@@ -97,9 +97,6 @@ halign = "right"
 valign = "top"
 x = -78
 y = 13
-
-[visuals.weather]
-enabled = true
 
 [visuals.weather.icon]
 size = 40

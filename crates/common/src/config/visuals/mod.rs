@@ -74,7 +74,7 @@ pub struct VisualConfig {
     #[serde(default)]
     pub username_color: Option<RgbColor>,
     #[serde(default)]
-    pub username_size: Option<u16>,
+    pub username_font_size: Option<u16>,
     #[serde(default)]
     pub clock_font_family: Option<String>,
     #[serde(default)]
@@ -177,7 +177,7 @@ impl Default for VisualConfig {
             input_font_family: Some(default_google_sans_flex_font_family()),
             input_font_weight: Some(400),
             input_font_style: Some(FontStyle::Normal),
-            input_font_size: Some(2),
+            input_font_size: Some(16),
             input_border: RgbColor::rgba(255, 255, 255, 0),
             input_width: Some(310),
             input_height: Some(54),
@@ -189,7 +189,7 @@ impl Default for VisualConfig {
             avatar_ring_color: Some(RgbColor::rgb(148, 178, 255)),
             avatar_ring_width: Some(0),
             username_color: Some(RgbColor::rgba(255, 255, 255, 214)),
-            username_size: Some(4),
+            username_font_size: Some(28),
             clock_font_family: Some(default_geom_font_family()),
             clock_font_weight: Some(600),
             clock_font_style: Some(FontStyle::Normal),

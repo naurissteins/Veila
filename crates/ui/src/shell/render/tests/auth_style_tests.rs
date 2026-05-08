@@ -309,14 +309,14 @@ fn scene_metrics_use_configured_avatar_size() {
 fn username_style_uses_configured_alpha_and_size() {
     let theme = ShellTheme {
         username_color: Some(ClearColor::rgba(240, 244, 250, 184)),
-        username_size: Some(3),
+        username_font_size: Some(22),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.username_text_style();
 
     assert_eq!(style.color.alpha, 184);
-    assert_eq!(style.scale, 3);
+    assert_eq!(style.font_size_px, Some(22));
 }
 
 #[test]
@@ -365,7 +365,7 @@ fn username_style_preserves_explicit_foreground_alpha_when_unset() {
     let style = shell.username_text_style();
 
     assert_eq!(style.color.alpha, 90);
-    assert_eq!(style.scale, 4);
+    assert_eq!(style.font_size_px, Some(28));
 }
 
 #[test]
@@ -378,7 +378,7 @@ fn placeholder_style_uses_fallback_alpha_for_opaque_muted_colors() {
     let style = shell.placeholder_text_style();
 
     assert_eq!(style.color.alpha, 153);
-    assert_eq!(style.scale, 2);
+    assert_eq!(style.font_size_px, Some(16));
 }
 
 #[test]
@@ -401,7 +401,7 @@ fn input_text_styles_use_configured_font_family_and_weight() {
     let theme = ShellTheme {
         input_font_family: Some(String::from("Geom")),
         input_font_weight: Some(600),
-        input_font_size: Some(3),
+        input_font_size: Some(22),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -416,7 +416,7 @@ fn input_text_styles_use_configured_font_family_and_weight() {
             .is_some_and(|debug| debug.contains("Geom"))
     );
     assert_eq!(placeholder_style.font_weight, Some(600));
-    assert_eq!(placeholder_style.scale, 3);
+    assert_eq!(placeholder_style.font_size_px, Some(22));
     assert!(
         revealed_secret_style
             .font_family
@@ -425,7 +425,7 @@ fn input_text_styles_use_configured_font_family_and_weight() {
             .is_some_and(|debug| debug.contains("Geom"))
     );
     assert_eq!(revealed_secret_style.font_weight, Some(600));
-    assert_eq!(revealed_secret_style.scale, 3);
+    assert_eq!(revealed_secret_style.font_size_px, Some(22));
 }
 
 #[test]

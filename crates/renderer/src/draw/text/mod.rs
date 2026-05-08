@@ -25,6 +25,7 @@ pub enum FontStyle {
 pub struct TextStyle {
     pub color: ClearColor,
     pub scale: u32,
+    pub font_size_px: Option<u32>,
     pub letter_spacing: u32,
     pub line_spacing: u32,
     pub font_family: Option<FamilyOwned>,
@@ -45,8 +46,23 @@ impl TextStyle {
         Self {
             color,
             scale,
+            font_size_px: None,
             letter_spacing: 0,
             line_spacing: scale * 3,
+            font_family: None,
+            font_weight: None,
+            font_style: None,
+        }
+    }
+
+    pub fn new_px(color: ClearColor, font_size_px: u32) -> Self {
+        let font_size_px = font_size_px.max(1);
+        Self {
+            color,
+            scale: 1,
+            font_size_px: Some(font_size_px),
+            letter_spacing: 0,
+            line_spacing: font_size_px.div_ceil(3),
             font_family: None,
             font_weight: None,
             font_style: None,
@@ -60,6 +76,9 @@ impl TextStyle {
         Self {
             color: self.color,
             scale: next_scale,
+            font_size_px: self
+                .font_size_px
+                .map(|font_size_px| scale_component(font_size_px, current_scale, next_scale)),
             letter_spacing: scale_component(self.letter_spacing, current_scale, next_scale),
             line_spacing: scale_component(self.line_spacing, current_scale, next_scale),
             font_family: self.font_family.clone(),

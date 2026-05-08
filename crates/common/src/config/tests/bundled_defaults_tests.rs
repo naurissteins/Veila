@@ -45,7 +45,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.input_font_family(), Some("Google Sans Flex"));
     assert_eq!(config.visuals.input_font_weight(), Some(400));
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Normal));
-    assert_eq!(config.visuals.input_font_size(), Some(2));
+    assert_eq!(config.visuals.input_font_size(), Some(16));
     assert!(!config.visuals.input_reveal_on_interaction());
     assert_eq!(config.visuals.input_reveal_mode(), InputRevealMode::Input);
     assert_eq!(
@@ -98,7 +98,7 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.username_font_style(),
         Some(FontStyle::Normal)
     );
-    assert_eq!(config.visuals.username_size(), Some(4));
+    assert_eq!(config.visuals.username_font_size(), Some(28));
     assert_eq!(config.visuals.clock_font_family(), Some("Geom"));
     assert_eq!(config.visuals.clock_font_weight(), Some(600));
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));

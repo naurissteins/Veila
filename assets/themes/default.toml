@@ -52,7 +52,7 @@ radius = 10
 mask_color = "#ffffff"
 font_family = "Google Sans Flex"
 font_weight = 400
-font_size = 2
+font_size = 16
 halign = "center"
 valign = "center"
 x = 0
@@ -85,7 +85,7 @@ y = -120
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"
-size = 4
+font_size = 28
 halign = "center"
 valign = "center"
 x = 0
@@ -145,7 +145,6 @@ enabled = true
 fade_duration_ms = 320
 
 [visuals.now_playing.artwork]
-enabled = true
 size = 44
 radius = 8
 opacity = 90
@@ -162,8 +161,8 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -52
-y = -84
+x = -56
+y = -82
 
 [visuals.now_playing.title]
 width = 318
@@ -173,7 +172,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -52
+x = -56
 y = -60
 
 # Now playing backdrop

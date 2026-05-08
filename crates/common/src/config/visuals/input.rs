@@ -45,7 +45,7 @@ impl Default for InputVisualConfig {
             font_family: Some(super::default_google_sans_flex_font_family()),
             font_weight: Some(400),
             font_style: Some(FontStyle::Normal),
-            font_size: Some(2),
+            font_size: Some(16),
             background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
             border_color: Some(RgbColor::rgba(255, 255, 255, 0)),
             width: Some(310),
