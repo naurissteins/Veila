@@ -1,4 +1,5 @@
 use super::*;
+use crate::RevealDisplayMode;
 
 #[test]
 #[ignore = "legacy pre-theme defaults"]
@@ -78,6 +79,7 @@ fn parses_partial_config_with_defaults() {
         config.visuals.input_reveal_hint(),
         "Press any key or click to continue"
     );
+    assert_eq!(config.visuals.reveal_mode(), RevealDisplayMode::Shown);
     assert!(config.visuals.reveal_enabled());
     assert_eq!(
         config.visuals.reveal_text(),

@@ -41,8 +41,8 @@ pub use visuals::{
     InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,
     NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
     OutputUiMode, OutputVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
-    PowerStatusVisualConfig, RevealVisualConfig, StatusDisplayMode, StatusVisualConfig,
-    UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherIconVisualConfig,
+    PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig, StatusDisplayMode,
+    StatusVisualConfig, UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherIconVisualConfig,
     WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
     WidgetPositionConfig,
 };

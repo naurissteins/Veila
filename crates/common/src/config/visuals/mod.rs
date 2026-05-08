@@ -19,8 +19,8 @@ pub use grid::GridVisualConfig;
 pub use identity::{AvatarVisualConfig, UsernameVisualConfig};
 pub use indicators::{
     BatteryVisualConfig, CapsLockVisualConfig, EyeVisualConfig, KeyboardVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusDisplayMode,
-    StatusVisualConfig,
+    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
+    StatusDisplayMode, StatusVisualConfig,
 };
 pub use input::{FontStyle, InputRevealMode, InputVisualConfig, InputVisualEntry};
 pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};

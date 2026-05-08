@@ -82,7 +82,7 @@ border_color = "#DDDDDD1F"
             color = "#FFFFFF99"
 
             [visuals.reveal]
-            enabled = true
+            mode = "shown"
             text = "Press any key or click to unlock"
             color = "#D6E3FFA8"
             font_family = "Geom"

@@ -1,4 +1,5 @@
 use super::*;
+use crate::RevealDisplayMode;
 
 #[test]
 fn first_run_defaults_match_bundled_theme() {
@@ -51,6 +52,7 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.input_reveal_hint(),
         "Press any key or click to continue"
     );
+    assert_eq!(config.visuals.reveal_mode(), RevealDisplayMode::Shown);
     assert!(config.visuals.reveal_enabled());
     assert_eq!(
         config.visuals.reveal_text(),

@@ -1,5 +1,6 @@
 use super::nested_visual_fixture::nested_visual_config;
 use super::*;
+use crate::RevealDisplayMode;
 
 #[test]
 fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
@@ -19,6 +20,7 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.reveal_text(),
         "Press any key or click to unlock"
     );
+    assert_eq!(config.visuals.reveal_mode(), RevealDisplayMode::Shown);
     assert!(config.visuals.reveal_enabled());
     assert_eq!(
         config.visuals.reveal_color(),
@@ -172,6 +174,20 @@ fn trims_and_clamps_reveal_hint_text() {
             .reveal_text()
             .starts_with("Custom reveal hint")
     );
+}
+
+#[test]
+fn parses_hidden_reveal_mode() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.reveal]
+            mode = "hidden"
+        "#,
+    )
+    .expect("reveal mode config should parse");
+
+    assert_eq!(config.visuals.reveal_mode(), RevealDisplayMode::Hidden);
+    assert!(!config.visuals.reveal_enabled());
 }
 
 #[test]

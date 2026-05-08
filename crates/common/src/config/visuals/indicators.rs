@@ -13,6 +13,15 @@ pub enum StatusDisplayMode {
     Hidden,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RevealDisplayMode {
+    #[default]
+    #[serde(rename = "shown")]
+    Shown,
+    #[serde(rename = "hidden")]
+    Hidden,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlaceholderVisualConfig {
     #[serde(default)]
@@ -33,7 +42,7 @@ impl Default for PlaceholderVisualConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RevealVisualConfig {
     #[serde(default)]
-    pub enabled: Option<bool>,
+    pub mode: Option<RevealDisplayMode>,
     #[serde(default)]
     pub text: Option<String>,
     #[serde(default)]
@@ -51,7 +60,7 @@ pub struct RevealVisualConfig {
 impl Default for RevealVisualConfig {
     fn default() -> Self {
         Self {
-            enabled: Some(true),
+            mode: Some(RevealDisplayMode::Shown),
             text: Some(String::from("Press any key or click to continue")),
             color: None,
             font_family: None,
@@ -219,8 +228,16 @@ impl super::VisualConfig {
     pub fn reveal_enabled(&self) -> bool {
         self.reveal
             .as_ref()
-            .and_then(|reveal| reveal.enabled)
-            .unwrap_or(true)
+            .and_then(|reveal| reveal.mode)
+            .unwrap_or(RevealDisplayMode::Shown)
+            != RevealDisplayMode::Hidden
+    }
+
+    pub fn reveal_mode(&self) -> RevealDisplayMode {
+        self.reveal
+            .as_ref()
+            .and_then(|reveal| reveal.mode)
+            .unwrap_or(RevealDisplayMode::Shown)
     }
 
     pub fn reveal_text(&self) -> String {

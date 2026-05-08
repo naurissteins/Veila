@@ -4,10 +4,10 @@ use veila_common::{
     FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode, InputVisualConfig,
     InputVisualEntry, KeyboardVisualConfig, NowPlayingArtworkVisualConfig,
     NowPlayingTextVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusDisplayMode,
-    StatusVisualConfig, UsernameVisualConfig, VerticalAlign, WeatherIconVisualConfig,
-    WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
-    WidgetPositionConfig,
+    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
+    StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
+    WeatherVisualConfig, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -80,7 +80,7 @@ fn input_alpha_uses_rgba_values() {
         color: Some(ConfigColor::rgba(134, 148, 180, 153)),
     });
     config.visuals.reveal = Some(RevealVisualConfig {
-        enabled: Some(true),
+        mode: Some(RevealDisplayMode::Shown),
         text: Some(String::from("Press any key or click to unlock")),
         color: Some(ConfigColor::rgba(214, 227, 255, 168)),
         font_family: Some(String::from("Geom")),

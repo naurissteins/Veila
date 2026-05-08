@@ -18,11 +18,11 @@ pub use config::{
     InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LoadedConfig,
     NowPlayingArtworkVisualConfig, NowPlayingConfig, NowPlayingTextVisualConfig,
     NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, RgbColor,
-    StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign, WeatherConfig,
-    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
-    WeatherUnit, WeatherVisualConfig, WidgetPositionConfig, active_include_source_paths,
-    active_theme_name, active_theme_source_path, default_config_path,
+    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
+    RgbColor, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    WeatherConfig, WeatherIconVisualConfig, WeatherLocationVisualConfig,
+    WeatherTemperatureVisualConfig, WeatherUnit, WeatherVisualConfig, WidgetPositionConfig,
+    active_include_source_paths, active_theme_name, active_theme_source_path, default_config_path,
 };
 pub use error::{Result, VeilaError};
 pub use now_playing::NowPlayingSnapshot;

@@ -121,7 +121,6 @@ color = "rgba(255, 255, 255, 0.72)"
 [visuals.caps_lock]
 color = "rgba(255, 255, 255, 0.52)"
 
-
 [visuals.now_playing]
 enabled = true
 fade_duration_ms = 320
