@@ -242,6 +242,8 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(90));
     assert!(config.visuals.now_playing_artwork_enabled());
+    assert!(config.visuals.now_playing_artist_enabled());
+    assert!(config.visuals.now_playing_title_enabled());
     assert_eq!(
         config.visuals.now_playing_title_color(),
         Some(RgbColor::rgba(255, 255, 255, 175))

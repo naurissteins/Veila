@@ -144,6 +144,8 @@ pub struct ShellTheme {
     pub now_playing_enabled: bool,
     pub now_playing_fade_duration_ms: Option<u64>,
     pub now_playing_artwork_enabled: bool,
+    pub now_playing_artist_enabled: bool,
+    pub now_playing_title_enabled: bool,
     pub now_playing_artwork_position: Option<WidgetPosition>,
     pub now_playing_artwork_size: Option<i32>,
     pub now_playing_artwork_radius: Option<i32>,
@@ -595,6 +597,8 @@ impl ShellTheme {
                 .now_playing_fade_duration_ms()
                 .map(u64::from),
             now_playing_artwork_enabled: config.visuals.now_playing_artwork_enabled(),
+            now_playing_artist_enabled: config.visuals.now_playing_artist_enabled(),
+            now_playing_title_enabled: config.visuals.now_playing_title_enabled(),
             now_playing_artwork_position,
             now_playing_artwork_size: config.visuals.now_playing_artwork_size().map(i32::from),
             now_playing_artwork_radius: config.visuals.now_playing_artwork_radius().map(i32::from),

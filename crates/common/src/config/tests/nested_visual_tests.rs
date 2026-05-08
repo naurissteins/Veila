@@ -328,6 +328,8 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
         Some(RgbColor::rgba(200, 212, 236, 99))
     );
     assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
+    assert!(config.visuals.now_playing_artist_enabled());
+    assert!(config.visuals.now_playing_title_enabled());
     assert_eq!(config.visuals.now_playing_title_font_family(), Some("Geom"));
     assert_eq!(
         config.visuals.now_playing_artist_font_family(),

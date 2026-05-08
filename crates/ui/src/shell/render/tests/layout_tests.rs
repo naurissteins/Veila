@@ -1,6 +1,6 @@
 use super::*;
 use crate::shell::theme::{Backdrop, WidgetPosition};
-use veila_common::BackdropMode;
+use veila_common::{BackdropMode, WeatherUnit};
 
 #[test]
 fn backdrop_rect_supports_center_and_right_alignment() {

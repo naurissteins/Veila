@@ -77,23 +77,35 @@ impl ShellState {
         opacity_scale: u8,
     ) -> Option<NowPlayingSnapshotLayout<'a>> {
         let mut text_layout_cache = self.text_layout_cache.borrow_mut();
-        let title = self.now_playing_title_part(
-            size,
-            &mut text_layout_cache,
-            &now_playing.title,
-            opacity_scale,
-        )?;
-        let artist = now_playing.artist.as_deref().and_then(|artist| {
-            self.now_playing_artist_part(size, &mut text_layout_cache, artist, opacity_scale)
-        });
+        let title = if self.theme.now_playing_title_enabled {
+            self.now_playing_title_part(
+                size,
+                &mut text_layout_cache,
+                &now_playing.title,
+                opacity_scale,
+            )
+        } else {
+            None
+        };
+        let artist = if self.theme.now_playing_artist_enabled {
+            now_playing.artist.as_deref().and_then(|artist| {
+                self.now_playing_artist_part(size, &mut text_layout_cache, artist, opacity_scale)
+            })
+        } else {
+            None
+        };
         let artwork = (self.theme.now_playing_artwork_enabled)
             .then(|| self.now_playing_artwork_part(size, now_playing, opacity_scale))
             .flatten();
 
+        if artwork.is_none() && artist.is_none() && title.is_none() {
+            return None;
+        }
+
         Some(NowPlayingSnapshotLayout {
             artwork,
             artist,
-            title: Some(title),
+            title,
         })
     }
 
@@ -223,6 +235,50 @@ struct NowPlayingArtworkPart<'a> {
 struct NowPlayingTextPart {
     rect: Rect,
     block: TextBlock,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shell::ShellTheme;
+    use veila_common::{NowPlayingSnapshot, WeatherUnit};
+
+    #[test]
+    fn artist_can_render_without_title() {
+        let shell = ShellState::new_with_username_and_widgets(
+            ShellTheme {
+                now_playing_enabled: true,
+                now_playing_artist_enabled: true,
+                now_playing_title_enabled: false,
+                ..ShellTheme::default()
+            },
+            None,
+            None,
+            None,
+            true,
+            None,
+            None,
+            WeatherUnit::default(),
+            None,
+            Some(NowPlayingSnapshot {
+                title: String::from("Track"),
+                artist: Some(String::from("Artist")),
+                artwork_path: None,
+                fetched_at_unix: 0,
+            }),
+        );
+
+        let layout = shell
+            .now_playing_snapshot_layout(
+                FrameSize::new(1280, 720),
+                shell.now_playing.as_ref().expect("now playing snapshot"),
+                100,
+            )
+            .expect("artist-only layout should render");
+
+        assert!(layout.title.is_none());
+        assert!(layout.artist.is_some());
+    }
 }
 
 fn apply_block_opacity(mut block: TextBlock, opacity_scale: u8) -> TextBlock {

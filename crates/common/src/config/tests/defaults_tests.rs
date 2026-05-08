@@ -170,6 +170,8 @@ fn parses_partial_config_with_defaults() {
     );
     assert!(config.visuals.now_playing_title_color().is_none());
     assert!(config.visuals.now_playing_artist_color().is_none());
+    assert!(config.visuals.now_playing_artist_enabled());
+    assert!(config.visuals.now_playing_title_enabled());
     assert!(config.visuals.username_font_family().is_none());
     assert!(config.visuals.username_font_weight().is_none());
     assert!(config.visuals.now_playing_fade_duration_ms().is_none());

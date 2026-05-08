@@ -4,9 +4,7 @@ use super::{
     model::{LayoutRole, SceneWidget},
 };
 use crate::shell::{ShellAction, ShellKey, ShellStatus, ShellTheme};
-use veila_common::{
-    ClockStyle, HorizontalAlign, VerticalAlign, WeatherCondition, WeatherSnapshot, WeatherUnit,
-};
+use veila_common::{ClockStyle, HorizontalAlign, VerticalAlign, WeatherCondition, WeatherSnapshot};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     text::{TextStyle, bundled_clock_font_family},

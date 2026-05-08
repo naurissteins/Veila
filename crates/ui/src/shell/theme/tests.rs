@@ -210,6 +210,7 @@ fn input_alpha_uses_rgba_values() {
             },
         }),
         artist: Some(NowPlayingTextVisualConfig {
+            enabled: Some(true),
             width: Some(198),
             color: Some(ConfigColor::rgba(200, 212, 236, 99)),
             font_family: Some("Prototype".to_owned()),
@@ -224,6 +225,7 @@ fn input_alpha_uses_rgba_values() {
             },
         }),
         title: Some(NowPlayingTextVisualConfig {
+            enabled: Some(true),
             width: Some(198),
             color: Some(ConfigColor::rgba(248, 251, 255, 208)),
             font_family: Some("Geom".to_owned()),
@@ -482,6 +484,8 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.now_playing_title_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.now_playing_artist_font_style, Some(FontStyle::Italic));
     assert!(theme.now_playing_artwork_enabled);
+    assert!(theme.now_playing_artist_enabled);
+    assert!(theme.now_playing_title_enabled);
     assert_eq!(theme.now_playing_artwork_opacity, Some(61));
     assert_eq!(theme.now_playing_title_font_size, Some(2));
     assert_eq!(theme.now_playing_artist_font_size, Some(1));

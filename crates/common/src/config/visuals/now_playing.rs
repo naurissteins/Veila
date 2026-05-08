@@ -36,6 +36,8 @@ impl Default for NowPlayingArtworkVisualConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NowPlayingTextVisualConfig {
     #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
     pub width: Option<u16>,
     #[serde(default)]
     pub color: Option<RgbColor>,
@@ -72,6 +74,7 @@ impl Default for NowPlayingVisualConfig {
             fade_duration_ms: Some(320),
             artwork: Some(NowPlayingArtworkVisualConfig::default()),
             artist: Some(NowPlayingTextVisualConfig {
+                enabled: Some(true),
                 width: Some(318),
                 color: Some(RgbColor::rgba(255, 255, 255, 99)),
                 font_family: Some(super::default_google_sans_flex_font_family()),
@@ -86,6 +89,7 @@ impl Default for NowPlayingVisualConfig {
                 },
             }),
             title: Some(NowPlayingTextVisualConfig {
+                enabled: Some(true),
                 width: Some(318),
                 color: Some(RgbColor::rgba(255, 255, 255, 175)),
                 font_family: Some(super::default_google_sans_flex_font_family()),
@@ -161,6 +165,14 @@ impl super::VisualConfig {
             .and_then(|artist| artist.width)
     }
 
+    pub fn now_playing_artist_enabled(&self) -> bool {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.artist.as_ref())
+            .and_then(|artist| artist.enabled)
+            .unwrap_or(true)
+    }
+
     pub fn now_playing_artist_color(&self) -> Option<RgbColor> {
         self.now_playing
             .as_ref()
@@ -209,6 +221,14 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|now_playing| now_playing.title.as_ref())
             .and_then(|title| title.width)
+    }
+
+    pub fn now_playing_title_enabled(&self) -> bool {
+        self.now_playing
+            .as_ref()
+            .and_then(|now_playing| now_playing.title.as_ref())
+            .and_then(|title| title.enabled)
+            .unwrap_or(true)
     }
 
     pub fn now_playing_title_color(&self) -> Option<RgbColor> {

@@ -99,6 +99,27 @@ fn parses_preview_grid_overlay() {
 }
 
 #[test]
+fn parses_now_playing_text_enable_flags() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.now_playing]
+            enabled = true
+
+            [visuals.now_playing.artist]
+            enabled = false
+
+            [visuals.now_playing.title]
+            enabled = false
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.visuals.now_playing_enabled());
+    assert!(!config.visuals.now_playing_artist_enabled());
+    assert!(!config.visuals.now_playing_title_enabled());
+}
+
+#[test]
 fn parses_power_status_widget_position() {
     let config = AppConfig::from_toml_str(
         r#"
