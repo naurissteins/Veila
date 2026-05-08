@@ -37,7 +37,13 @@ fn parses_widget_enable_flags() {
             [visuals.power_status]
             enabled = true
 
-            [visuals.weather]
+            [visuals.weather.icon]
+            enabled = false
+
+            [visuals.weather.temperature]
+            enabled = false
+
+            [visuals.weather.location]
             enabled = false
 
             [visuals.now_playing]
@@ -59,6 +65,28 @@ fn parses_widget_enable_flags() {
     assert!(config.visuals.power_status_enabled());
     assert!(!config.visuals.weather_enabled());
     assert!(!config.visuals.now_playing_enabled());
+}
+
+#[test]
+fn weather_visuals_stay_active_when_any_part_is_enabled() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [visuals.weather.icon]
+            enabled = false
+
+            [visuals.weather.temperature]
+            enabled = true
+
+            [visuals.weather.location]
+            enabled = false
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.visuals.weather_enabled());
+    assert!(!config.visuals.weather_icon_enabled());
+    assert!(config.visuals.weather_temperature_enabled());
+    assert!(!config.visuals.weather_location_enabled());
 }
 
 #[test]

@@ -152,7 +152,6 @@ fn input_alpha_uses_rgba_values() {
         },
     }];
     config.visuals.weather = Some(WeatherVisualConfig {
-        enabled: Some(true),
         icon: Some(WeatherIconVisualConfig {
             enabled: Some(true),
             size: Some(36),

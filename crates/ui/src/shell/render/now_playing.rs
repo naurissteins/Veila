@@ -237,6 +237,17 @@ struct NowPlayingTextPart {
     block: TextBlock,
 }
 
+fn apply_block_opacity(mut block: TextBlock, opacity_scale: u8) -> TextBlock {
+    block.style.color = block.style.color.with_alpha(
+        ((u16::from(block.style.color.alpha) * u16::from(opacity_scale.min(100))) / 100) as u8,
+    );
+    block
+}
+
+fn combine_optional_opacity(base: Option<u8>, scale: u8) -> Option<u8> {
+    Some(((u16::from(base.unwrap_or(100).min(100)) * u16::from(scale.min(100))) / 100) as u8)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -279,15 +290,4 @@ mod tests {
         assert!(layout.title.is_none());
         assert!(layout.artist.is_some());
     }
-}
-
-fn apply_block_opacity(mut block: TextBlock, opacity_scale: u8) -> TextBlock {
-    block.style.color = block.style.color.with_alpha(
-        ((u16::from(block.style.color.alpha) * u16::from(opacity_scale.min(100))) / 100) as u8,
-    );
-    block
-}
-
-fn combine_optional_opacity(base: Option<u8>, scale: u8) -> Option<u8> {
-    Some(((u16::from(base.unwrap_or(100).min(100)) * u16::from(scale.min(100))) / 100) as u8)
 }

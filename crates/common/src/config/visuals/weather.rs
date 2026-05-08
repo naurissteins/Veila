@@ -5,8 +5,6 @@ use super::{RgbColor, WidgetPositionConfig, input::FontStyle};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherVisualConfig {
     #[serde(default)]
-    pub enabled: Option<bool>,
-    #[serde(default)]
     pub icon: Option<WeatherIconVisualConfig>,
     #[serde(default)]
     pub temperature: Option<WeatherTemperatureVisualConfig>,
@@ -67,7 +65,6 @@ pub struct WeatherLocationVisualConfig {
 impl Default for WeatherVisualConfig {
     fn default() -> Self {
         Self {
-            enabled: Some(true),
             icon: Some(WeatherIconVisualConfig::default()),
             temperature: Some(WeatherTemperatureVisualConfig::default()),
             location: Some(WeatherLocationVisualConfig::default()),
@@ -132,10 +129,9 @@ impl Default for WeatherLocationVisualConfig {
 
 impl super::VisualConfig {
     pub fn weather_enabled(&self) -> bool {
-        self.weather
-            .as_ref()
-            .and_then(|weather| weather.enabled)
-            .unwrap_or(true)
+        self.weather_icon_enabled()
+            || self.weather_temperature_enabled()
+            || self.weather_location_enabled()
     }
 
     pub fn weather_icon_enabled(&self) -> bool {

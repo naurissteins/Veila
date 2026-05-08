@@ -13,34 +13,10 @@ bottom_right = "#6F4CFF"
 user_hint = "Password"
 show_username = true
 
-[battery]
-enabled = true
+
 
 [weather]
 enabled = false
-
-[visuals.keyboard]
-background_size = 46
-background_color = "rgba(255, 255, 255, 0.05)"
-color = "rgba(255, 255, 255, 0.68)"
-size = 2
-halign = "right"
-valign = "top"
-x = -24
-y = 21
-
-[visuals.battery]
-background_color = "rgba(255, 255, 255, 0.05)"
-background_size = 46
-color = "rgba(255, 255, 255, 0.68)"
-size = 20
-halign = "right"
-valign = "top"
-x = -78
-y = 21
-
-[visuals.weather]
-enabled = true
 
 [visuals.weather.icon]
 size = 40
@@ -84,7 +60,7 @@ font_size = 2
 halign = "center"
 valign = "center"
 x = 0
-y = 0
+y = 80
 
 [visuals.avatar]
 size = 160
@@ -93,7 +69,7 @@ placeholder_padding = 28
 halign = "center"
 valign = "center"
 x = 0
-y = 0
+y = -120
 
 [visuals.username]
 font_family = "Google Sans Flex"
@@ -182,3 +158,26 @@ halign = "right"
 valign = "bottom"
 x = -52
 y = -56
+
+[visuals.keyboard]
+background_size = 46
+background_color = "rgba(255, 255, 255, 0.05)"
+color = "rgba(255, 255, 255, 0.68)"
+size = 2
+halign = "right"
+valign = "top"
+x = -24
+y = 21
+
+[battery]
+enabled = true
+
+[visuals.battery]
+background_color = "rgba(255, 255, 255, 0.05)"
+background_size = 46
+color = "rgba(255, 255, 255, 0.68)"
+size = 20
+halign = "right"
+valign = "top"
+x = -78
+y = 21

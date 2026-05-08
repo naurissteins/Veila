@@ -697,7 +697,7 @@ mod tests {
     }
 
     #[test]
-    fn preview_weather_respects_disabled_weather_visual_without_override() {
+    fn preview_weather_respects_disabled_weather_parts_without_override() {
         let options = CurtainOptions::default();
         let config = AppConfig::from_toml_str(
             r#"
@@ -705,7 +705,13 @@ mod tests {
                 enabled = true
                 location = "Riga"
 
-                [visuals.weather]
+                [visuals.weather.icon]
+                enabled = false
+
+                [visuals.weather.temperature]
+                enabled = false
+
+                [visuals.weather.location]
                 enabled = false
             "#,
         )
