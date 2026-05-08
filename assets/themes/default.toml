@@ -13,8 +13,103 @@ bottom_right = "#6F4CFF"
 user_hint = "Password"
 show_username = true
 
+[battery]
+enabled = true
+
 [weather]
 enabled = false
+
+[visuals.clock]
+format = "24h"
+meridiem_size = 3
+meridiem_offset_x = 6
+meridiem_offset_y = 7
+font_family = "Geom"
+font_weight = 600
+color = "rgba(255, 255, 255, 0.4)"
+size = 14
+halign = "center"
+valign = "top"
+x = 0
+y = 40
+
+[visuals.date]
+color = "rgba(255, 255, 255, 0.4)"
+font_family = "Geom"
+font_weight = 600
+size = 2
+halign = "center"
+valign = "top"
+x = 0
+y = 140
+
+[visuals.input]
+background_color = "rgba(255, 255, 255, 0.08)"
+border_color = "rgba(255, 255, 255, 0)"
+width = 310
+height = 54
+radius = 10
+mask_color = "#ffffff"
+font_family = "Google Sans Flex"
+font_weight = 400
+font_size = 2
+halign = "center"
+valign = "center"
+x = 0
+y = 80
+
+[visuals.status]
+mode = "inline"
+rejected_color = "rgba(255, 213, 213, 0.98)"
+pending_color = "rgba(236, 236, 236, 0.88)"
+
+[visuals.eye]
+color = "rgba(255, 255, 255, 0.72)"
+
+[visuals.caps_lock]
+color = "rgba(255, 255, 255, 0.52)"
+
+[visuals.placeholder]
+color = "rgba(255, 255, 255, 0.9)"
+
+[visuals.avatar]
+size = 150
+background_color = "rgba(255, 255, 255, 0.08)"
+placeholder_padding = 28
+halign = "center"
+valign = "center"
+x = 0
+y = -120
+
+[visuals.username]
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "rgba(255, 255, 255, 0.84)"
+size = 4
+halign = "center"
+valign = "center"
+x = 0
+y = 0
+
+[visuals.keyboard]
+background_size = 46
+background_color = "rgba(255, 255, 255, 0.05)"
+color = "rgba(255, 255, 255, 0.68)"
+size = 2
+halign = "right"
+valign = "top"
+x = -24
+y = 21
+
+[visuals.battery]
+background_color = "rgba(255, 255, 255, 0.05)"
+background_size = 46
+color = "rgba(255, 255, 255, 0.68)"
+size = 20
+halign = "right"
+valign = "top"
+x = -78
+y = 21
 
 [visuals.weather.icon]
 size = 40
@@ -44,82 +139,6 @@ halign = "left"
 valign = "bottom"
 x = 40
 y = -44
-
-[visuals.input]
-background_color = "rgba(255, 255, 255, 0.08)"
-border_color = "rgba(255, 255, 255, 0)"
-width = 310
-height = 54
-radius = 10
-mask_color = "#ffffff"
-font_family = "Google Sans Flex"
-font_weight = 400
-font_size = 2
-halign = "center"
-valign = "center"
-x = 0
-y = 80
-
-[visuals.avatar]
-size = 150
-background_color = "rgba(255, 255, 255, 0.08)"
-placeholder_padding = 28
-halign = "center"
-valign = "center"
-x = 0
-y = -120
-
-[visuals.username]
-font_family = "Google Sans Flex"
-font_weight = 400
-color = "rgba(255, 255, 255, 0.84)"
-size = 4
-halign = "center"
-valign = "center"
-x = 0
-y = 0
-
-[visuals.clock]
-format = "24h"
-meridiem_size = 3
-meridiem_offset_x = 6
-meridiem_offset_y = 7
-font_family = "Geom"
-font_weight = 600
-color = "rgba(255, 255, 255, 0.4)"
-size = 14
-halign = "center"
-valign = "top"
-x = 0
-y = 40
-
-[visuals.date]
-color = "rgba(255, 255, 255, 0.4)"
-font_family = "Geom"
-font_weight = 600
-size = 2
-halign = "center"
-valign = "top"
-x = 0
-y = 140
-
-[visuals.placeholder]
-color = "rgba(255, 255, 255, 0.9)"
-
-[visuals.status]
-mode = "inline"
-rejected_color = "rgba(255, 213, 213, 0.98)"
-pending_color = "rgba(236, 236, 236, 0.88)"
-halign = "center"
-valign = "center"
-x = 0
-y = 135
-
-[visuals.eye]
-color = "rgba(255, 255, 255, 0.72)"
-
-[visuals.caps_lock]
-color = "rgba(255, 255, 255, 0.52)"
 
 [visuals.now_playing]
 enabled = true
@@ -157,30 +176,7 @@ valign = "bottom"
 x = -52
 y = -60
 
-[visuals.keyboard]
-background_size = 46
-background_color = "rgba(255, 255, 255, 0.05)"
-color = "rgba(255, 255, 255, 0.68)"
-size = 2
-halign = "right"
-valign = "top"
-x = -24
-y = 21
-
-[battery]
-enabled = true
-
-[visuals.battery]
-background_color = "rgba(255, 255, 255, 0.05)"
-background_size = 46
-color = "rgba(255, 255, 255, 0.68)"
-size = 20
-halign = "right"
-valign = "top"
-x = -78
-y = 21
-
-# Now Playing Background
+# Now playing backdrop
 [[visuals.backdrop]]
 enabled = true
 mode = "blur"

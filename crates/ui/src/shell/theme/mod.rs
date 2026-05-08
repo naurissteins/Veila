@@ -27,6 +27,8 @@ pub struct Backdrop {
     pub radius: i32,
     pub border_color: Option<ClearColor>,
     pub border_width: i32,
+    pub full_width: bool,
+    pub full_height: bool,
     pub width: i32,
     pub height: i32,
     pub position: WidgetPosition,
@@ -322,6 +324,8 @@ fn resolve_backdrops(config: &AppConfig) -> Vec<Backdrop> {
             radius: i32::from(backdrop.radius.unwrap_or(0)).clamp(0, 160),
             border_color: backdrop.border_color.map(to_color),
             border_width: i32::from(backdrop.border_width.unwrap_or(0)).clamp(0, 16),
+            full_width: backdrop.full_width.unwrap_or(false),
+            full_height: backdrop.full_height.unwrap_or(false),
             width: i32::from(backdrop.width.unwrap_or(560)).max(1),
             height: i32::from(backdrop.height.unwrap_or(600)).max(1),
             position: WidgetPosition {

@@ -25,12 +25,14 @@ impl ShellState {
                 .border_color
                 .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
             variant.push_str(&format!(
-                ":{:?}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                ":{:?}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
                 backdrop.mode,
                 backdrop.position.halign,
                 backdrop.position.valign as u8,
                 backdrop.position.x,
                 backdrop.position.y,
+                backdrop.full_width as u8,
+                backdrop.full_height as u8,
                 backdrop.width,
                 backdrop.height,
                 backdrop.z,

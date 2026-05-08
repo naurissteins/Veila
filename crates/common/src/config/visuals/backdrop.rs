@@ -27,6 +27,10 @@ pub struct BackdropVisualConfig {
     #[serde(default)]
     pub border_width: Option<u16>,
     #[serde(default)]
+    pub full_width: Option<bool>,
+    #[serde(default)]
+    pub full_height: Option<bool>,
+    #[serde(default)]
     pub width: Option<u16>,
     #[serde(default)]
     pub height: Option<u16>,
@@ -46,6 +50,8 @@ impl Default for BackdropVisualConfig {
             radius: Some(0),
             border_color: Some(RgbColor::rgb(255, 255, 255)),
             border_width: Some(0),
+            full_width: Some(false),
+            full_height: Some(false),
             width: Some(560),
             height: Some(600),
             z: Some(0),

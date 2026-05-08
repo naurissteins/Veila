@@ -254,6 +254,8 @@ fn parses_multiple_backdrops() {
             radius: Some(20),
             border_color: Some(RgbColor::rgba(255, 255, 255, 46)),
             border_width: Some(2),
+            full_width: None,
+            full_height: None,
             width: Some(520),
             height: Some(420),
             z: Some(2),
@@ -268,6 +270,25 @@ fn parses_multiple_backdrops() {
     assert_eq!(config.visuals.backdrop[1].mode, Some(BackdropMode::Solid));
     assert_eq!(config.visuals.backdrop[1].width, Some(300));
     assert_eq!(config.visuals.backdrop[1].height, Some(180));
+}
+
+#[test]
+fn parses_full_backdrop_extent_flags() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [[visuals.backdrop]]
+            mode = "blur"
+            full_width = true
+            full_height = true
+            halign = "center"
+            valign = "center"
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.visuals.backdrop.len(), 1);
+    assert_eq!(config.visuals.backdrop[0].full_width, Some(true));
+    assert_eq!(config.visuals.backdrop[0].full_height, Some(true));
 }
 
 #[test]

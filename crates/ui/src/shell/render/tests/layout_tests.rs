@@ -13,6 +13,8 @@ fn backdrop_rect_supports_center_and_right_alignment() {
                 radius: 20,
                 border_color: Some(ClearColor::rgba(255, 255, 255, 48)),
                 border_width: 2,
+                full_width: false,
+                full_height: false,
                 width: 520,
                 height: 420,
                 position: WidgetPosition {
@@ -38,6 +40,8 @@ fn backdrop_rect_supports_center_and_right_alignment() {
                 radius: 20,
                 border_color: Some(ClearColor::rgba(255, 255, 255, 48)),
                 border_width: 2,
+                full_width: false,
+                full_height: false,
                 width: 520,
                 height: 600,
                 position: WidgetPosition {
@@ -64,6 +68,44 @@ fn backdrop_rect_supports_center_and_right_alignment() {
     assert_eq!(centered_rect.width, 520);
     assert_eq!(centered_rect.height, 420);
     assert_eq!(right_rect.x, 748);
+}
+
+#[test]
+fn backdrop_rect_supports_full_width_and_height() {
+    let shell = ShellState::new(
+        ShellTheme {
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Blur,
+                color: ClearColor::rgba(8, 10, 14, 112),
+                blur_strength: 16,
+                radius: 20,
+                border_color: Some(ClearColor::rgba(255, 255, 255, 48)),
+                border_width: 2,
+                full_width: true,
+                full_height: true,
+                width: 520,
+                height: 420,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Right,
+                    valign: VerticalAlign::Bottom,
+                    x: -12,
+                    y: -16,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+
+    let rect = shell.backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0]);
+
+    assert_eq!(rect.x, -12);
+    assert_eq!(rect.y, -16);
+    assert_eq!(rect.width, 1280);
+    assert_eq!(rect.height, 720);
 }
 
 #[test]

@@ -211,21 +211,32 @@ impl ShellState {
         size: veila_renderer::FrameSize,
         backdrop: crate::shell::theme::Backdrop,
     ) -> Rect {
+        let width = if backdrop.full_width {
+            size.width as i32
+        } else {
+            backdrop.width
+        };
+        let height = if backdrop.full_height {
+            size.height as i32
+        } else {
+            backdrop.height
+        };
+
         Rect::new(
             anchored_block_x(
                 size.width as i32,
-                backdrop.width,
+                width,
                 backdrop.position.halign,
                 backdrop.position.x,
             ),
             anchored_block_y(
                 size.height as i32,
-                backdrop.height,
+                height,
                 backdrop.position.valign,
                 backdrop.position.y,
             ),
-            backdrop.width,
-            backdrop.height,
+            width,
+            height,
         )
     }
 

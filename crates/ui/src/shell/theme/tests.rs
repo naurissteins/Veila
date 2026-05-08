@@ -142,6 +142,8 @@ fn input_alpha_uses_rgba_values() {
         radius: Some(20),
         border_color: Some(ConfigColor::rgba(255, 255, 255, 48)),
         border_width: Some(2),
+        full_width: Some(true),
+        full_height: Some(false),
         width: Some(520),
         height: Some(420),
         z: Some(2),
@@ -389,6 +391,8 @@ fn input_alpha_uses_rgba_values() {
         Some(ClearColor::rgba(255, 255, 255, 48))
     );
     assert_eq!(theme.backdrops[0].border_width, 2);
+    assert!(theme.backdrops[0].full_width);
+    assert!(!theme.backdrops[0].full_height);
     assert_eq!(theme.backdrops[0].width, 520);
     assert_eq!(theme.backdrops[0].height, 420);
     assert_eq!(
