@@ -145,27 +145,26 @@ pub struct ShellTheme {
     pub weather_location_font_size: Option<u32>,
     pub weather_location_position: Option<WidgetPosition>,
     pub now_playing_enabled: bool,
-    pub now_playing_title_color: Option<ClearColor>,
-    pub now_playing_artist_color: Option<ClearColor>,
     pub now_playing_fade_duration_ms: Option<u64>,
-    pub now_playing_title_font_family: Option<String>,
-    pub now_playing_artist_font_family: Option<String>,
-    pub now_playing_title_font_weight: Option<u16>,
-    pub now_playing_artist_font_weight: Option<u16>,
-    pub now_playing_title_font_style: Option<FontStyle>,
-    pub now_playing_artist_font_style: Option<FontStyle>,
-    pub now_playing_artwork_opacity: Option<u8>,
-    pub now_playing_title_size: Option<u32>,
-    pub now_playing_artist_size: Option<u32>,
-    pub now_playing_width: Option<i32>,
-    pub now_playing_content_gap: Option<i32>,
-    pub now_playing_text_gap: Option<i32>,
+    pub now_playing_artwork_enabled: bool,
+    pub now_playing_artwork_position: Option<WidgetPosition>,
     pub now_playing_artwork_size: Option<i32>,
     pub now_playing_artwork_radius: Option<i32>,
-    pub now_playing_right_padding: Option<i32>,
-    pub now_playing_bottom_padding: Option<i32>,
-    pub now_playing_right_offset: Option<i32>,
-    pub now_playing_bottom_offset: Option<i32>,
+    pub now_playing_artwork_opacity: Option<u8>,
+    pub now_playing_artist_position: Option<WidgetPosition>,
+    pub now_playing_artist_width: Option<i32>,
+    pub now_playing_artist_color: Option<ClearColor>,
+    pub now_playing_artist_font_family: Option<String>,
+    pub now_playing_artist_font_size: Option<u32>,
+    pub now_playing_artist_font_weight: Option<u16>,
+    pub now_playing_artist_font_style: Option<FontStyle>,
+    pub now_playing_title_position: Option<WidgetPosition>,
+    pub now_playing_title_width: Option<i32>,
+    pub now_playing_title_color: Option<ClearColor>,
+    pub now_playing_title_font_family: Option<String>,
+    pub now_playing_title_font_size: Option<u32>,
+    pub now_playing_title_font_weight: Option<u16>,
+    pub now_playing_title_font_style: Option<FontStyle>,
     pub now_playing_background_enabled: bool,
     pub now_playing_background_mode: LayerMode,
     pub now_playing_background_color: ClearColor,
@@ -319,6 +318,48 @@ fn resolve_power_status_position(config: &AppConfig) -> Option<WidgetPosition> {
     })
 }
 
+fn resolve_now_playing_artwork_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.now_playing_artwork_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Right),
+        valign: position.valign.unwrap_or(VerticalAlign::Bottom),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
+fn resolve_now_playing_artist_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.now_playing_artist_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Right),
+        valign: position.valign.unwrap_or(VerticalAlign::Bottom),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
+fn resolve_now_playing_title_position(config: &AppConfig) -> Option<WidgetPosition> {
+    let position = config.visuals.now_playing_title_position();
+    if !position.is_specified() {
+        return None;
+    }
+
+    Some(WidgetPosition {
+        halign: position.halign.unwrap_or(HorizontalAlign::Right),
+        valign: position.valign.unwrap_or(VerticalAlign::Bottom),
+        x: i32::from(position.x.unwrap_or(0)),
+        y: i32::from(position.y.unwrap_or(0)),
+    })
+}
+
 fn resolve_date_position(config: &AppConfig) -> Option<WidgetPosition> {
     let position = config.visuals.date_position();
     if !position.is_specified() {
@@ -373,6 +414,9 @@ impl ShellTheme {
         let weather_location_position = resolve_weather_location_position(config);
         let power_status_position = resolve_power_status_position(config);
         let battery_position = resolve_battery_position(config);
+        let now_playing_artwork_position = resolve_now_playing_artwork_position(config);
+        let now_playing_artist_position = resolve_now_playing_artist_position(config);
+        let now_playing_title_position = resolve_now_playing_title_position(config);
         Self {
             background: to_color(config.background.color),
             avatar_enabled: config.visuals.avatar_enabled(),
@@ -523,36 +567,41 @@ impl ShellTheme {
             weather_location_font_size: config.visuals.weather_location_font_size().map(u32::from),
             weather_location_position,
             now_playing_enabled: config.visuals.now_playing_enabled(),
-            now_playing_title_color: config.visuals.now_playing_title_color().map(to_color),
-            now_playing_artist_color: config.visuals.now_playing_artist_color().map(to_color),
             now_playing_fade_duration_ms: config
                 .visuals
                 .now_playing_fade_duration_ms()
                 .map(u64::from),
-            now_playing_title_font_family: config
-                .visuals
-                .now_playing_title_font_family()
-                .map(str::to_owned),
+            now_playing_artwork_enabled: config.visuals.now_playing_artwork_enabled(),
+            now_playing_artwork_position,
+            now_playing_artwork_size: config.visuals.now_playing_artwork_size().map(i32::from),
+            now_playing_artwork_radius: config.visuals.now_playing_artwork_radius().map(i32::from),
+            now_playing_artwork_opacity: config.visuals.now_playing_artwork_opacity(),
+            now_playing_artist_position,
+            now_playing_artist_width: config.visuals.now_playing_artist_width().map(i32::from),
+            now_playing_artist_color: config.visuals.now_playing_artist_color().map(to_color),
             now_playing_artist_font_family: config
                 .visuals
                 .now_playing_artist_font_family()
                 .map(str::to_owned),
-            now_playing_title_font_weight: config.visuals.now_playing_title_font_weight(),
+            now_playing_artist_font_size: config
+                .visuals
+                .now_playing_artist_font_size()
+                .map(u32::from),
             now_playing_artist_font_weight: config.visuals.now_playing_artist_font_weight(),
-            now_playing_title_font_style: config.visuals.now_playing_title_font_style(),
             now_playing_artist_font_style: config.visuals.now_playing_artist_font_style(),
-            now_playing_artwork_opacity: config.visuals.now_playing_artwork_opacity(),
-            now_playing_title_size: config.visuals.now_playing_title_size().map(u32::from),
-            now_playing_artist_size: config.visuals.now_playing_artist_size().map(u32::from),
-            now_playing_width: config.visuals.now_playing_width().map(i32::from),
-            now_playing_content_gap: config.visuals.now_playing_content_gap().map(i32::from),
-            now_playing_text_gap: config.visuals.now_playing_text_gap().map(i32::from),
-            now_playing_artwork_size: config.visuals.now_playing_artwork_size().map(i32::from),
-            now_playing_artwork_radius: config.visuals.now_playing_artwork_radius().map(i32::from),
-            now_playing_right_padding: config.visuals.now_playing_right_padding().map(i32::from),
-            now_playing_bottom_padding: config.visuals.now_playing_bottom_padding().map(i32::from),
-            now_playing_right_offset: config.visuals.now_playing_right_offset().map(i32::from),
-            now_playing_bottom_offset: config.visuals.now_playing_bottom_offset().map(i32::from),
+            now_playing_title_position,
+            now_playing_title_width: config.visuals.now_playing_title_width().map(i32::from),
+            now_playing_title_color: config.visuals.now_playing_title_color().map(to_color),
+            now_playing_title_font_family: config
+                .visuals
+                .now_playing_title_font_family()
+                .map(str::to_owned),
+            now_playing_title_font_size: config
+                .visuals
+                .now_playing_title_font_size()
+                .map(u32::from),
+            now_playing_title_font_weight: config.visuals.now_playing_title_font_weight(),
+            now_playing_title_font_style: config.visuals.now_playing_title_font_style(),
             now_playing_background_enabled: config.visuals.now_playing_background_enabled(),
             now_playing_background_mode: config.visuals.now_playing_background_mode(),
             now_playing_background_color: to_color(

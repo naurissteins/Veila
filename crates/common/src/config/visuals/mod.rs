@@ -24,7 +24,10 @@ pub use layer::{
     LayerVisualConfig, LayerWidth, LayerWidthKeyword,
 };
 pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};
-pub use now_playing::{NowPlayingBackgroundConfig, NowPlayingVisualConfig};
+pub use now_playing::{
+    NowPlayingArtworkVisualConfig, NowPlayingBackgroundConfig, NowPlayingTextVisualConfig,
+    NowPlayingVisualConfig,
+};
 pub use outputs::{OutputUiMode, OutputVisualConfig};
 pub use weather::{
     WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,

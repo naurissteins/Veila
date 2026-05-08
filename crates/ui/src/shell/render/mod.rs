@@ -31,9 +31,7 @@ use self::{
 };
 use super::ShellState;
 
-const NOW_PLAYING_RIGHT_PADDING: i32 = 48;
-const NOW_PLAYING_BOTTOM_PADDING: i32 = 48;
-const NOW_PLAYING_MAX_TEXT_WIDTH: u32 = 240;
+const NOW_PLAYING_MAX_TEXT_WIDTH: u32 = 318;
 const NOW_PLAYING_MIN_TEXT_WIDTH: i32 = 64;
 
 #[derive(Debug, Clone)]

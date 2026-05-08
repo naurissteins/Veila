@@ -17,12 +17,13 @@ pub use config::{
     EyeVisualConfig, FontStyle, GeoCoordinate, HorizontalAlign, InputRevealMode, InputVisualConfig,
     InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight, LayerMode, LayerStyle,
     LayerVerticalAlignment, LayerVisualConfig, LayerWidth, LoadedConfig,
-    NowPlayingBackgroundConfig, NowPlayingConfig, NowPlayingVisualConfig, OutputUiMode,
-    OutputVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig,
-    RevealVisualConfig, RgbColor, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
-    WeatherConfig, WeatherIconVisualConfig, WeatherLocationVisualConfig,
-    WeatherTemperatureVisualConfig, WeatherUnit, WeatherVisualConfig, WidgetPositionConfig,
-    active_include_source_paths, active_theme_name, active_theme_source_path, default_config_path,
+    NowPlayingArtworkVisualConfig, NowPlayingBackgroundConfig, NowPlayingConfig,
+    NowPlayingTextVisualConfig, NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig,
+    RgbColor, StatusVisualConfig, UsernameVisualConfig, VerticalAlign, WeatherConfig,
+    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
+    WeatherUnit, WeatherVisualConfig, WidgetPositionConfig, active_include_source_paths,
+    active_theme_name, active_theme_source_path, default_config_path,
 };
 pub use error::{Result, VeilaError};
 pub use now_playing::NowPlayingSnapshot;

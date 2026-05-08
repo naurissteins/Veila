@@ -1,11 +1,14 @@
 use veila_common::LayerMode;
-use veila_renderer::{SoftwareBuffer, layer::BackdropLayerMode, text::TextBlock};
+use veila_renderer::{
+    FrameSize, SoftwareBuffer, layer::BackdropLayerMode, shape::Rect, text::TextBlock,
+};
 
 use super::super::{NowPlayingWidgetData, ShellState};
 use super::{
-    NOW_PLAYING_BOTTOM_PADDING, NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH,
-    NOW_PLAYING_RIGHT_PADDING, SceneLayout, widgets,
-    widgets::{NowPlayingBackgroundStyle, NowPlayingWidget},
+    NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout, TextLayoutCache,
+    layout::{anchored_block_x, anchored_block_y},
+    widgets,
+    widgets::NowPlayingBackgroundStyle,
 };
 
 impl ShellState {
@@ -26,136 +29,190 @@ impl ShellState {
             return;
         }
 
-        let artwork_size = self
-            .theme
-            .now_playing_artwork_size
-            .unwrap_or(56)
-            .clamp(32, 160);
-        let content_gap = self
-            .theme
-            .now_playing_content_gap
-            .unwrap_or(widgets::NOW_PLAYING_CONTENT_GAP)
-            .clamp(0, 96);
-        let now_playing_width = self
-            .theme
-            .now_playing_width
-            .map(|width| width.clamp(96, 640));
-        let text_max_width = now_playing_width
-            .map(|width| {
-                (width - artwork_size - content_gap).max(NOW_PLAYING_MIN_TEXT_WIDTH) as u32
-            })
-            .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH);
-        let bottom_padding = self
-            .theme
-            .now_playing_bottom_padding
-            .unwrap_or(NOW_PLAYING_BOTTOM_PADDING)
-            .clamp(0, 512);
-
         if let Some(transition) = self.now_playing_transition.as_ref()
             && let Some(previous) = transition.previous.as_ref()
         {
             let fade_out = 100u8.saturating_sub(fade_progress.unwrap_or(100));
-            self.draw_now_playing_snapshot(
-                buffer,
-                previous,
-                artwork_size,
-                content_gap,
-                now_playing_width,
-                text_max_width,
-                bottom_padding,
-                fade_out,
-            );
+            self.draw_now_playing_snapshot(buffer, previous, fade_out);
         }
 
         if let Some(now_playing) = self.now_playing.as_ref() {
             let fade_in = fade_progress.unwrap_or(100);
-            self.draw_now_playing_snapshot(
-                buffer,
-                now_playing,
-                artwork_size,
-                content_gap,
-                now_playing_width,
-                text_max_width,
-                bottom_padding,
-                fade_in,
-            );
+            self.draw_now_playing_snapshot(buffer, now_playing, fade_in);
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn draw_now_playing_snapshot(
         &self,
         buffer: &mut SoftwareBuffer,
         now_playing: &NowPlayingWidgetData,
-        artwork_size: i32,
-        content_gap: i32,
-        now_playing_width: Option<i32>,
-        text_max_width: u32,
-        bottom_padding: i32,
         opacity_scale: u8,
     ) {
+        let Some(layout) =
+            self.now_playing_snapshot_layout(buffer.size(), now_playing, opacity_scale)
+        else {
+            return;
+        };
+
+        if let (Some(background), Some(content_rect)) = (
+            self.now_playing_background_style(opacity_scale),
+            layout.content_rect(),
+        ) {
+            widgets::draw_now_playing_background(buffer, content_rect, background);
+        }
+
+        if let Some(artwork) = layout.artwork.as_ref() {
+            artwork.asset.draw(
+                buffer,
+                artwork.rect.x,
+                artwork.rect.y,
+                artwork.rect.width as u32,
+                artwork.rect.height as u32,
+                artwork.radius,
+                artwork.opacity,
+            );
+        }
+
+        if let Some(artist) = layout.artist.as_ref() {
+            artist.block.draw(buffer, artist.rect.x, artist.rect.y);
+        }
+
+        if let Some(title) = layout.title.as_ref() {
+            title.block.draw(buffer, title.rect.x, title.rect.y);
+        }
+    }
+
+    fn now_playing_snapshot_layout<'a>(
+        &self,
+        size: FrameSize,
+        now_playing: &'a NowPlayingWidgetData,
+        opacity_scale: u8,
+    ) -> Option<NowPlayingSnapshotLayout<'a>> {
         let mut text_layout_cache = self.text_layout_cache.borrow_mut();
-        let title = apply_block_opacity(
-            text_layout_cache.now_playing_title_block(
-                &now_playing.title,
-                self.now_playing_title_text_style(),
-                text_max_width,
+        let title = self.now_playing_title_part(
+            size,
+            &mut text_layout_cache,
+            &now_playing.title,
+            opacity_scale,
+        )?;
+        let artist = now_playing.artist.as_deref().and_then(|artist| {
+            self.now_playing_artist_part(size, &mut text_layout_cache, artist, opacity_scale)
+        });
+        let artwork = (self.theme.now_playing_artwork_enabled)
+            .then(|| self.now_playing_artwork_part(size, now_playing, opacity_scale))
+            .flatten();
+
+        Some(NowPlayingSnapshotLayout {
+            artwork,
+            artist,
+            title: Some(title),
+        })
+    }
+
+    fn now_playing_artwork_part<'a>(
+        &self,
+        size: FrameSize,
+        now_playing: &'a NowPlayingWidgetData,
+        opacity_scale: u8,
+    ) -> Option<NowPlayingArtworkPart<'a>> {
+        let asset = now_playing.artwork.as_ref()?;
+        let position = self.theme.now_playing_artwork_position?;
+        let artwork_size = self
+            .theme
+            .now_playing_artwork_size
+            .unwrap_or(44)
+            .clamp(32, 160);
+        let x = anchored_block_x(size.width as i32, artwork_size, position.halign, position.x);
+        let y = anchored_block_y(
+            size.height as i32,
+            artwork_size,
+            position.valign,
+            position.y,
+        );
+
+        Some(NowPlayingArtworkPart {
+            asset,
+            rect: Rect::new(x, y, artwork_size, artwork_size),
+            radius: self
+                .theme
+                .now_playing_artwork_radius
+                .unwrap_or(8)
+                .clamp(0, 80),
+            opacity: combine_optional_opacity(
+                self.theme.now_playing_artwork_opacity,
+                opacity_scale,
+            ),
+        })
+    }
+
+    fn now_playing_artist_part(
+        &self,
+        size: FrameSize,
+        text_layout_cache: &mut TextLayoutCache,
+        artist: &str,
+        opacity_scale: u8,
+    ) -> Option<NowPlayingTextPart> {
+        let position = self.theme.now_playing_artist_position?;
+        let box_width = self
+            .theme
+            .now_playing_artist_width
+            .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH as i32)
+            .clamp(NOW_PLAYING_MIN_TEXT_WIDTH, 640);
+        let block = apply_block_opacity(
+            text_layout_cache.now_playing_artist_block(
+                artist,
+                self.now_playing_artist_text_style(),
+                box_width as u32,
             ),
             opacity_scale,
         );
-        let artist = now_playing.artist.as_deref().map(|artist| {
-            apply_block_opacity(
-                text_layout_cache.now_playing_artist_block(
-                    artist,
-                    self.now_playing_artist_text_style(),
-                    text_max_width,
-                ),
-                opacity_scale,
-            )
-        });
-
-        widgets::draw_now_playing_widget(
-            buffer,
-            NowPlayingWidget {
-                artwork: now_playing.artwork.as_ref(),
-                title: &title,
-                artist: artist.as_ref(),
-                background: self.now_playing_background_style(opacity_scale),
-                artwork_opacity: combine_optional_opacity(
-                    self.theme.now_playing_artwork_opacity,
-                    opacity_scale,
-                ),
-                artwork_size,
-                artwork_radius: self
-                    .theme
-                    .now_playing_artwork_radius
-                    .unwrap_or(12)
-                    .clamp(0, 80),
-                width: now_playing_width,
-                content_gap,
-                text_gap: self
-                    .theme
-                    .now_playing_text_gap
-                    .unwrap_or(widgets::NOW_PLAYING_TEXT_GAP)
-                    .clamp(0, 64),
-                right_padding: self
-                    .theme
-                    .now_playing_right_padding
-                    .unwrap_or(NOW_PLAYING_RIGHT_PADDING)
-                    .clamp(0, 512),
-                bottom_padding,
-                right_offset: self
-                    .theme
-                    .now_playing_right_offset
-                    .unwrap_or(0)
-                    .clamp(-512, 512),
-                bottom_offset: self
-                    .theme
-                    .now_playing_bottom_offset
-                    .unwrap_or(0)
-                    .clamp(-512, 512),
-            },
+        let x = anchored_block_x(size.width as i32, box_width, position.halign, position.x);
+        let y = anchored_block_y(
+            size.height as i32,
+            block.height as i32,
+            position.valign,
+            position.y,
         );
+
+        Some(NowPlayingTextPart {
+            rect: Rect::new(x, y, block.width as i32, block.height as i32),
+            block,
+        })
+    }
+
+    fn now_playing_title_part(
+        &self,
+        size: FrameSize,
+        text_layout_cache: &mut TextLayoutCache,
+        title: &str,
+        opacity_scale: u8,
+    ) -> Option<NowPlayingTextPart> {
+        let position = self.theme.now_playing_title_position?;
+        let box_width = self
+            .theme
+            .now_playing_title_width
+            .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH as i32)
+            .clamp(NOW_PLAYING_MIN_TEXT_WIDTH, 640);
+        let block = apply_block_opacity(
+            text_layout_cache.now_playing_title_block(
+                title,
+                self.now_playing_title_text_style(),
+                box_width as u32,
+            ),
+            opacity_scale,
+        );
+        let x = anchored_block_x(size.width as i32, box_width, position.halign, position.x);
+        let y = anchored_block_y(
+            size.height as i32,
+            block.height as i32,
+            position.valign,
+            position.y,
+        );
+
+        Some(NowPlayingTextPart {
+            rect: Rect::new(x, y, block.width as i32, block.height as i32),
+            block,
+        })
     }
 
     fn now_playing_background_style(&self, opacity_scale: u8) -> Option<NowPlayingBackgroundStyle> {
@@ -209,6 +266,50 @@ impl ShellState {
                 .clamp(0, 12),
         })
     }
+}
+
+#[derive(Debug)]
+struct NowPlayingSnapshotLayout<'a> {
+    artwork: Option<NowPlayingArtworkPart<'a>>,
+    artist: Option<NowPlayingTextPart>,
+    title: Option<NowPlayingTextPart>,
+}
+
+impl NowPlayingSnapshotLayout<'_> {
+    fn content_rect(&self) -> Option<Rect> {
+        let mut rects = self
+            .artwork
+            .as_ref()
+            .map(|artwork| artwork.rect)
+            .into_iter()
+            .chain(self.artist.as_ref().map(|artist| artist.rect))
+            .chain(self.title.as_ref().map(|title| title.rect));
+
+        let first = rects.next()?;
+        Some(rects.fold(first, union_rect))
+    }
+}
+
+#[derive(Debug)]
+struct NowPlayingArtworkPart<'a> {
+    asset: &'a veila_renderer::cover::CoverArtAsset,
+    rect: Rect,
+    radius: i32,
+    opacity: Option<u8>,
+}
+
+#[derive(Debug)]
+struct NowPlayingTextPart {
+    rect: Rect,
+    block: TextBlock,
+}
+
+fn union_rect(left: Rect, right: Rect) -> Rect {
+    let x = left.x.min(right.x);
+    let y = left.y.min(right.y);
+    let right_edge = (left.x + left.width).max(right.x + right.width);
+    let bottom_edge = (left.y + left.height).max(right.y + right.height);
+    Rect::new(x, y, right_edge - x, bottom_edge - y)
 }
 
 fn apply_block_opacity(mut block: TextBlock, opacity_scale: u8) -> TextBlock {

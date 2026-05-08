@@ -315,7 +315,7 @@ impl ShellState {
                 base_color
             },
             self.theme
-                .now_playing_title_size
+                .now_playing_title_font_size
                 .unwrap_or(2)
                 .clamp(1, MAX_NOW_PLAYING_TITLE_SCALE),
         );
@@ -344,7 +344,7 @@ impl ShellState {
                 base_color
             },
             self.theme
-                .now_playing_artist_size
+                .now_playing_artist_font_size
                 .unwrap_or(1)
                 .clamp(1, MAX_NOW_PLAYING_ARTIST_SCALE),
         );

@@ -179,18 +179,25 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.now_playing_artist_font_weight().is_none());
     assert!(config.visuals.now_playing_title_font_style().is_none());
     assert!(config.visuals.now_playing_artist_font_style().is_none());
-    assert!(config.visuals.now_playing_artwork_opacity().is_none());
-    assert!(config.visuals.now_playing_title_size().is_none());
-    assert!(config.visuals.now_playing_artist_size().is_none());
-    assert!(config.visuals.now_playing_width().is_none());
-    assert!(config.visuals.now_playing_content_gap().is_none());
-    assert!(config.visuals.now_playing_text_gap().is_none());
     assert!(config.visuals.now_playing_artwork_size().is_none());
     assert!(config.visuals.now_playing_artwork_radius().is_none());
-    assert!(config.visuals.now_playing_right_padding().is_none());
-    assert!(config.visuals.now_playing_bottom_padding().is_none());
-    assert!(config.visuals.now_playing_right_offset().is_none());
-    assert!(config.visuals.now_playing_bottom_offset().is_none());
+    assert!(config.visuals.now_playing_artwork_opacity().is_none());
+    assert!(config.visuals.now_playing_title_font_size().is_none());
+    assert!(config.visuals.now_playing_artist_font_size().is_none());
+    assert!(config.visuals.now_playing_title_width().is_none());
+    assert!(config.visuals.now_playing_artist_width().is_none());
+    assert_eq!(
+        config.visuals.now_playing_artwork_position(),
+        WidgetPositionConfig::default()
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_position(),
+        WidgetPositionConfig::default()
+    );
+    assert_eq!(
+        config.visuals.now_playing_title_position(),
+        WidgetPositionConfig::default()
+    );
     assert!(config.visuals.status_color().is_none());
     assert!(config.visuals.input_mask_color().is_none());
 }

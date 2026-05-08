@@ -269,6 +269,7 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(config.visuals.now_playing_fade_duration_ms(), Some(320));
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(90));
+    assert!(config.visuals.now_playing_artwork_enabled());
     assert_eq!(
         config.visuals.now_playing_title_color(),
         Some(RgbColor::rgba(255, 255, 255, 175))
@@ -295,17 +296,39 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.now_playing_artist_font_style(),
         Some(FontStyle::Normal)
     );
-    assert_eq!(config.visuals.now_playing_title_size(), Some(2));
-    assert_eq!(config.visuals.now_playing_artist_size(), Some(2));
-    assert_eq!(config.visuals.now_playing_width(), Some(380));
-    assert_eq!(config.visuals.now_playing_content_gap(), Some(18));
-    assert_eq!(config.visuals.now_playing_text_gap(), Some(10));
+    assert_eq!(config.visuals.now_playing_title_font_size(), Some(2));
+    assert_eq!(config.visuals.now_playing_artist_font_size(), Some(2));
+    assert_eq!(config.visuals.now_playing_title_width(), Some(318));
+    assert_eq!(config.visuals.now_playing_artist_width(), Some(318));
     assert_eq!(config.visuals.now_playing_artwork_size(), Some(44));
     assert_eq!(config.visuals.now_playing_artwork_radius(), Some(8));
-    assert_eq!(config.visuals.now_playing_right_padding(), Some(52));
-    assert_eq!(config.visuals.now_playing_bottom_padding(), Some(56));
-    assert_eq!(config.visuals.now_playing_right_offset(), Some(0));
-    assert_eq!(config.visuals.now_playing_bottom_offset(), Some(0));
+    assert_eq!(
+        config.visuals.now_playing_artwork_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-388),
+            y: Some(-56),
+        }
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-52),
+            y: Some(-88),
+        }
+    );
+    assert_eq!(
+        config.visuals.now_playing_title_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-52),
+            y: Some(-56),
+        }
+    );
     assert!(!config.visuals.now_playing_background_enabled());
     assert_eq!(
         config.visuals.now_playing_background_mode(),

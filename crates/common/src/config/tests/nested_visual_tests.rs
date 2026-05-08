@@ -347,18 +347,41 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
         config.visuals.now_playing_artist_font_style(),
         Some(FontStyle::Italic)
     );
+    assert!(config.visuals.now_playing_artwork_enabled());
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(61));
-    assert_eq!(config.visuals.now_playing_title_size(), Some(2));
-    assert_eq!(config.visuals.now_playing_artist_size(), Some(1));
-    assert_eq!(config.visuals.now_playing_width(), Some(280));
-    assert_eq!(config.visuals.now_playing_content_gap(), Some(18));
-    assert_eq!(config.visuals.now_playing_text_gap(), Some(10));
+    assert_eq!(config.visuals.now_playing_title_font_size(), Some(2));
+    assert_eq!(config.visuals.now_playing_artist_font_size(), Some(1));
+    assert_eq!(config.visuals.now_playing_title_width(), Some(198));
+    assert_eq!(config.visuals.now_playing_artist_width(), Some(198));
     assert_eq!(config.visuals.now_playing_artwork_size(), Some(64));
     assert_eq!(config.visuals.now_playing_artwork_radius(), Some(16));
-    assert_eq!(config.visuals.now_playing_right_padding(), Some(52));
-    assert_eq!(config.visuals.now_playing_bottom_padding(), Some(56));
-    assert_eq!(config.visuals.now_playing_right_offset(), Some(-6));
-    assert_eq!(config.visuals.now_playing_bottom_offset(), Some(10));
+    assert_eq!(
+        config.visuals.now_playing_artwork_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-274),
+            y: Some(-46),
+        }
+    );
+    assert_eq!(
+        config.visuals.now_playing_artist_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-58),
+            y: Some(-78),
+        }
+    );
+    assert_eq!(
+        config.visuals.now_playing_title_position(),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-58),
+            y: Some(-46),
+        }
+    );
     assert!(config.visuals.now_playing_background_enabled());
     assert_eq!(
         config.visuals.now_playing_background_mode(),

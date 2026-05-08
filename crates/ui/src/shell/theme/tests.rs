@@ -3,10 +3,11 @@ use veila_common::{
     ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, HorizontalAlign, InputRevealMode,
     InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerAlignment, LayerHeight,
     LayerMode, LayerStyle, LayerVerticalAlignment, LayerVisualConfig, LayerWidth,
-    NowPlayingBackgroundConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealVisualConfig, StatusVisualConfig,
-    UsernameVisualConfig, VerticalAlign, WeatherIconVisualConfig, WeatherLocationVisualConfig,
-    WeatherTemperatureVisualConfig, WeatherVisualConfig, WidgetPositionConfig,
+    NowPlayingArtworkVisualConfig, NowPlayingBackgroundConfig, NowPlayingTextVisualConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig,
+    RevealVisualConfig, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
+    WeatherVisualConfig, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -196,26 +197,46 @@ fn input_alpha_uses_rgba_values() {
     config.visuals.now_playing = Some(NowPlayingVisualConfig {
         enabled: Some(true),
         fade_duration_ms: Some(320),
-        artwork_opacity: Some(61),
-        title_color: Some(ConfigColor::rgba(248, 251, 255, 208)),
-        artist_color: Some(ConfigColor::rgba(200, 212, 236, 99)),
-        title_font_family: Some("Geom".to_owned()),
-        artist_font_family: Some("Prototype".to_owned()),
-        title_font_weight: Some(700),
-        artist_font_weight: Some(500),
-        title_font_style: Some(FontStyle::Italic),
-        artist_font_style: Some(FontStyle::Italic),
-        title_size: Some(2),
-        artist_size: Some(1),
-        width: Some(280),
-        content_gap: Some(18),
-        text_gap: Some(10),
-        artwork_size: Some(64),
-        artwork_radius: Some(16),
-        right_padding: Some(52),
-        bottom_padding: Some(56),
-        right_offset: Some(-6),
-        bottom_offset: Some(10),
+        artwork: Some(NowPlayingArtworkVisualConfig {
+            enabled: Some(true),
+            size: Some(64),
+            radius: Some(16),
+            opacity: Some(61),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-274),
+                y: Some(-46),
+            },
+        }),
+        artist: Some(NowPlayingTextVisualConfig {
+            width: Some(198),
+            color: Some(ConfigColor::rgba(200, 212, 236, 99)),
+            font_family: Some("Prototype".to_owned()),
+            font_size: Some(1),
+            font_weight: Some(500),
+            font_style: Some(FontStyle::Italic),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-58),
+                y: Some(-78),
+            },
+        }),
+        title: Some(NowPlayingTextVisualConfig {
+            width: Some(198),
+            color: Some(ConfigColor::rgba(248, 251, 255, 208)),
+            font_family: Some("Geom".to_owned()),
+            font_size: Some(2),
+            font_weight: Some(700),
+            font_style: Some(FontStyle::Italic),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Right),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(-58),
+                y: Some(-46),
+            },
+        }),
         background: Some(NowPlayingBackgroundConfig {
             enabled: Some(true),
             mode: Some(LayerMode::Blur),
@@ -466,18 +487,41 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.now_playing_artist_font_weight, Some(500));
     assert_eq!(theme.now_playing_title_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.now_playing_artist_font_style, Some(FontStyle::Italic));
+    assert!(theme.now_playing_artwork_enabled);
     assert_eq!(theme.now_playing_artwork_opacity, Some(61));
-    assert_eq!(theme.now_playing_title_size, Some(2));
-    assert_eq!(theme.now_playing_artist_size, Some(1));
-    assert_eq!(theme.now_playing_width, Some(280));
-    assert_eq!(theme.now_playing_content_gap, Some(18));
-    assert_eq!(theme.now_playing_text_gap, Some(10));
+    assert_eq!(theme.now_playing_title_font_size, Some(2));
+    assert_eq!(theme.now_playing_artist_font_size, Some(1));
+    assert_eq!(theme.now_playing_title_width, Some(198));
+    assert_eq!(theme.now_playing_artist_width, Some(198));
     assert_eq!(theme.now_playing_artwork_size, Some(64));
     assert_eq!(theme.now_playing_artwork_radius, Some(16));
-    assert_eq!(theme.now_playing_right_padding, Some(52));
-    assert_eq!(theme.now_playing_bottom_padding, Some(56));
-    assert_eq!(theme.now_playing_right_offset, Some(-6));
-    assert_eq!(theme.now_playing_bottom_offset, Some(10));
+    assert_eq!(
+        theme.now_playing_artwork_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -274,
+            y: -46,
+        })
+    );
+    assert_eq!(
+        theme.now_playing_artist_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -58,
+            y: -78,
+        })
+    );
+    assert_eq!(
+        theme.now_playing_title_position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Right,
+            valign: VerticalAlign::Bottom,
+            x: -58,
+            y: -46,
+        })
+    );
     assert!(theme.now_playing_background_enabled);
     assert_eq!(theme.now_playing_background_mode, LayerMode::Blur);
     assert_eq!(

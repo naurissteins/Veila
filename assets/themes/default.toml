@@ -146,28 +146,45 @@ color = "rgba(255, 255, 255, 0.72)"
 [visuals.caps_lock]
 color = "rgba(255, 255, 255, 0.52)"
 
+
 [visuals.now_playing]
-enabled = false
-content_gap = 18
+enabled = true
 fade_duration_ms = 320
-title_color = "rgba(255, 255, 255, 0.69)"
-artist_color = "rgba(255, 255, 255, 0.39)"
-title_size = 2
-artist_size = 2
-artwork_size = 44
-artwork_radius = 8
-right_padding = 52
-bottom_padding = 56
-artwork_opacity = 90
-title_font_family = "Google Sans Flex"
-title_font_weight = 400
-artist_font_family = "Google Sans Flex"
-artist_font_weight = 400
-width = 380
-text_gap = 10
+
+[visuals.now_playing.artwork]
+enabled = true
+size = 44
+radius = 8
+opacity = 90
+halign = "right"
+valign = "bottom"
+x = -388
+y = -56
+
+[visuals.now_playing.artist]
+width = 318
+color = "rgba(255, 255, 255, 0.39)"
+font_family = "Google Sans Flex"
+font_size = 2
+font_weight = 400
+halign = "right"
+valign = "bottom"
+x = -52
+y = -88
+
+[visuals.now_playing.title]
+width = 318
+color = "rgba(255, 255, 255, 0.69)"
+font_family = "Google Sans Flex"
+font_size = 2
+font_weight = 400
+halign = "right"
+valign = "bottom"
+x = -52
+y = -56
 
 [visuals.now_playing.background]
-enabled = true
+enabled = false
 mode = "blur"
 color = "rgba(0, 0, 0, 0.05)"
 radius = 18

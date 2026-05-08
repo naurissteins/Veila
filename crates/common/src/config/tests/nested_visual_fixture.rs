@@ -182,26 +182,40 @@ halign = "right"
 
             [visuals.now_playing]
             fade_duration_ms = 320
-            artwork_opacity = 61
-            title_color = "#F8FBFFD0"
-            artist_color = "#C8D4EC63"
-            title_font_family = "Geom"
-            artist_font_family = "Prototype"
-            title_font_weight = 700
-            artist_font_weight = 500
-            title_font_style = "italic"
-            artist_font_style = "italic"
-            title_size = 2
-            artist_size = 1
-            width = 280
-            content_gap = 18
-            text_gap = 10
-            artwork_size = 64
-            artwork_radius = 16
-            right_padding = 52
-            bottom_padding = 56
-            right_offset = -6
-            bottom_offset = 10
+
+            [visuals.now_playing.artwork]
+            enabled = true
+            size = 64
+            radius = 16
+            opacity = 61
+            halign = "right"
+            valign = "bottom"
+            x = -274
+            y = -46
+
+            [visuals.now_playing.artist]
+            width = 198
+            color = "#C8D4EC63"
+            font_family = "Prototype"
+            font_size = 1
+            font_weight = 500
+            font_style = "italic"
+            halign = "right"
+            valign = "bottom"
+            x = -58
+            y = -78
+
+            [visuals.now_playing.title]
+            width = 198
+            color = "#F8FBFFD0"
+            font_family = "Geom"
+            font_size = 2
+            font_weight = 700
+            font_style = "italic"
+            halign = "right"
+            valign = "bottom"
+            x = -58
+            y = -46
 
             [visuals.now_playing.background]
             enabled = true

@@ -100,9 +100,9 @@ fn now_playing_styles_use_configured_theme_values() {
         now_playing_artist_font_family: Some("Prototype".to_owned()),
         now_playing_title_font_weight: Some(700),
         now_playing_artist_font_weight: Some(500),
-        now_playing_title_size: Some(3),
-        now_playing_artist_size: Some(2),
-        now_playing_content_gap: Some(18),
+        now_playing_title_font_size: Some(3),
+        now_playing_artist_font_size: Some(2),
+        now_playing_title_width: Some(220),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -122,7 +122,7 @@ fn now_playing_styles_use_configured_theme_values() {
     assert_eq!(artist_style.color, ClearColor::rgba(200, 212, 236, 99));
     assert_eq!(artist_style.scale, 2);
     assert_eq!(artist_style.font_weight, Some(500));
-    assert_eq!(shell.theme.now_playing_content_gap, Some(18));
+    assert_eq!(shell.theme.now_playing_title_width, Some(220));
     assert!(
         artist_style
             .font_family
@@ -156,46 +156,27 @@ fn now_playing_blocks_stay_single_line_and_truncate() {
 
 #[test]
 fn now_playing_widget_draws_configured_background() {
-    let mut cache = TextLayoutCache::default();
-    let title = cache.now_playing_title_block(
-        "Track",
-        TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
-        120,
-    );
     let mut buffer = SoftwareBuffer::solid(FrameSize::new(300, 140), ClearColor::opaque(0, 0, 0))
         .expect("buffer");
 
-    super::super::widgets::draw_now_playing_widget(
+    super::super::widgets::draw_now_playing_background(
         &mut buffer,
-        super::super::widgets::NowPlayingWidget {
-            artwork: None,
-            title: &title,
-            artist: None,
-            background: Some(super::super::widgets::NowPlayingBackgroundStyle {
-                mode: BackdropLayerMode::Solid,
-                color: ClearColor::rgba(255, 0, 0, 120),
-                blur_radius: 0,
-                radius: 8,
-                padding_x: 12,
-                padding_y: 8,
-                border_color: None,
-                border_width: 0,
-            }),
-            artwork_opacity: None,
-            artwork_size: 0,
-            artwork_radius: 0,
-            width: Some(120),
-            content_gap: 0,
-            text_gap: 0,
-            right_padding: 20,
-            bottom_padding: 20,
-            right_offset: 0,
-            bottom_offset: 0,
+        super::super::Rect::new(160, 100, 40, 20),
+        super::super::widgets::NowPlayingBackgroundStyle {
+            mode: BackdropLayerMode::Solid,
+            color: ClearColor::rgba(255, 0, 0, 120),
+            blur_radius: 0,
+            radius: 8,
+            padding_x: 12,
+            padding_y: 8,
+            border_color: None,
+            border_width: 0,
         },
     );
 
     assert!(buffer.pixels().chunks_exact(4).any(|pixel| pixel[2] > 0));
-    assert_eq!(pixel_at(&buffer, 160, 100), [0, 0, 0, 255]);
+    assert_eq!(pixel_at(&buffer, 147, 91), [0, 0, 0, 255]);
+    assert_eq!(pixel_at(&buffer, 160, 100), [0, 0, 120, 255]);
 }
 
 fn pixel_at(buffer: &SoftwareBuffer, x: usize, y: usize) -> [u8; 4] {

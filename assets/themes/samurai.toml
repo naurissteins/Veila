@@ -135,26 +135,42 @@ valign = "bottom"
 x = 30
 y = -34
 
+
 [visuals.now_playing]
 enabled = false
-content_gap = 18
 fade_duration_ms = 320
-title_color = "rgba(0, 0, 0, 0.69)"
-artist_color = "rgba(0, 0, 0, 0.59)"
-title_size = 2
-artist_size = 2
-artwork_size = 44
-artwork_radius = 8
-right_padding = 48
-bottom_padding = 48
-right_offset = 0
-bottom_offset = 0
-artwork_opacity = 90
-title_font_family = "Google Sans Flex"
-title_font_weight = 400
-artist_font_family = "Google Sans Flex"
-artist_font_weight = 400
-width = 380
+
+[visuals.now_playing.artwork]
+enabled = true
+size = 44
+radius = 8
+opacity = 90
+halign = "right"
+valign = "bottom"
+x = -384
+y = -48
+
+[visuals.now_playing.artist]
+width = 318
+color = "rgba(0, 0, 0, 0.59)"
+font_family = "Google Sans Flex"
+font_size = 2
+font_weight = 400
+halign = "right"
+valign = "bottom"
+x = -48
+y = -80
+
+[visuals.now_playing.title]
+width = 318
+color = "rgba(0, 0, 0, 0.69)"
+font_family = "Google Sans Flex"
+font_size = 2
+font_weight = 400
+halign = "right"
+valign = "bottom"
+x = -48
+y = -48
 
 [visuals.now_playing.background]
 enabled = true
