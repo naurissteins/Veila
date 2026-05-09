@@ -477,7 +477,7 @@ fn reveal_style_uses_configured_color_alpha_and_font() {
         reveal_font_family: Some(String::from("Geom")),
         reveal_font_weight: Some(500),
         reveal_font_style: Some(veila_common::FontStyle::Italic),
-        reveal_font_size: Some(2),
+        reveal_font_size: Some(22),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -487,7 +487,7 @@ fn reveal_style_uses_configured_color_alpha_and_font() {
     assert_eq!(style.color.green, 227);
     assert_eq!(style.color.blue, 255);
     assert_eq!(style.color.alpha, 168);
-    assert_eq!(style.scale, 2);
+    assert_eq!(style.font_size_px, Some(22));
     assert_eq!(style.font_weight, Some(500));
     assert_eq!(
         style.font_style,

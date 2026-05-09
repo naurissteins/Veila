@@ -88,7 +88,7 @@ border_color = "#DDDDDD1F"
             font_family = "Geom"
             font_weight = 500
             font_style = "italic"
-            font_size = 2
+            font_size = 18
 
             [visuals.status]
             color = "#FFE0A0E0"

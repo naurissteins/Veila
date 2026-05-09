@@ -16,11 +16,11 @@ const MAX_WEATHER_TEMPERATURE_FONT_SIZE_PX: u32 = 512;
 const MAX_WEATHER_LOCATION_FONT_SIZE_PX: u32 = 512;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
 const DEFAULT_KEYBOARD_FONT_FAMILY: &str = "Geom";
-const MAX_INPUT_TEXT_SCALE: u32 = 6;
 const MAX_NOW_PLAYING_TITLE_SCALE: u32 = 4;
 const MAX_NOW_PLAYING_ARTIST_SCALE: u32 = 3;
 const MAX_USERNAME_FONT_SIZE_PX: u32 = 512;
 const MAX_INPUT_FONT_SIZE_PX: u32 = 512;
+const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
@@ -171,7 +171,9 @@ impl ShellState {
             154,
         );
         let style = match self.theme.reveal_font_size {
-            Some(font_size) => TextStyle::new(color, font_size.clamp(1, MAX_INPUT_TEXT_SCALE)),
+            Some(font_size) => {
+                TextStyle::new_px(color, font_size.clamp(1, MAX_REVEAL_FONT_SIZE_PX))
+            }
             None => TextStyle::new_px(color, self.input_font_size_px()),
         };
         self.apply_font_overrides(

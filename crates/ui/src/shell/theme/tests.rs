@@ -86,7 +86,7 @@ fn input_alpha_uses_rgba_values() {
         font_family: Some(String::from("Geom")),
         font_weight: Some(500),
         font_style: Some(FontStyle::Italic),
-        font_size: Some(2),
+        font_size: Some(18),
     });
     config.visuals.eye = Some(EyeVisualConfig {
         enabled: Some(true),
@@ -279,7 +279,7 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.reveal_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.reveal_font_weight, Some(500));
     assert_eq!(theme.reveal_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.reveal_font_size, Some(2));
+    assert_eq!(theme.reveal_font_size, Some(18));
     assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
     assert_eq!(theme.input_font_weight, Some(600));
     assert_eq!(theme.input_font_style, Some(FontStyle::Italic));
