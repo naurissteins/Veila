@@ -101,8 +101,8 @@ pub(super) fn draw_clock_widget(
     if let Some(meridiem) = clock.meridiem.as_ref() {
         meridiem.draw(
             buffer,
-            x + base_width + SceneClockBlocks::meridiem_gap() + clock.meridiem_offset_x,
-            y + SceneClockBlocks::meridiem_top_offset() + clock.meridiem_offset_y,
+            x + base_width + SceneClockBlocks::meridiem_gap() + clock.meridiem_x,
+            y + SceneClockBlocks::meridiem_top_offset() + clock.meridiem_y,
         );
     }
 }

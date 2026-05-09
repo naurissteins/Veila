@@ -34,8 +34,8 @@ pub(super) struct SceneClockBlocks {
     pub primary: TextBlock,
     pub secondary: Option<TextBlock>,
     pub meridiem: Option<TextBlock>,
-    pub meridiem_offset_x: i32,
-    pub meridiem_offset_y: i32,
+    pub meridiem_x: i32,
+    pub meridiem_y: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

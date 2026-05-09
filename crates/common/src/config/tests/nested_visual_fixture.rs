@@ -60,11 +60,11 @@ border_color = "#DDDDDD1F"
             x = 20
             y = -40
             format = "12h"
-            meridiem_size = 3
-            meridiem_offset_x = 6
-            meridiem_offset_y = -2
+            meridiem_font_size = 22
+            meridiem_x = 6
+            meridiem_y = -2
             color = "#FFFFFF66"
-            size = 14
+            font_size = 88
             gap = 20
 
             [visuals.date]
@@ -72,7 +72,7 @@ border_color = "#DDDDDD1F"
             font_weight = 600
             font_style = "italic"
             color = "#FFFFFF66"
-            size = 2
+            font_size = 16
             halign = "right"
             valign = "top"
             x = -24

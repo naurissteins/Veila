@@ -21,13 +21,13 @@ enabled = false
 
 [visuals.clock]
 format = "24h"
-meridiem_size = 3
-meridiem_offset_x = 6
-meridiem_offset_y = 7
+meridiem_font_size = 22
+meridiem_x = 6
+meridiem_y = 7
 font_family = "Geom"
 font_weight = 600
 color = "rgba(255, 255, 255, 0.4)"
-size = 14
+font_size = 88
 halign = "center"
 valign = "top"
 x = 0
@@ -37,7 +37,7 @@ y = 40
 color = "rgba(255, 255, 255, 0.4)"
 font_family = "Geom"
 font_weight = 600
-size = 2
+font_size = 18
 halign = "center"
 valign = "top"
 x = 0

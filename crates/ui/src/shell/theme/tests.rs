@@ -59,11 +59,11 @@ fn input_alpha_uses_rgba_values() {
         font_style: Some(FontStyle::Italic),
         style: Some(ClockStyle::Stacked),
         format: Some(ClockFormat::TwelveHour),
-        meridiem_size: Some(3),
-        meridiem_offset_x: Some(6),
-        meridiem_offset_y: Some(-2),
+        meridiem_font_size: Some(22),
+        meridiem_x: Some(6),
+        meridiem_y: Some(-2),
         color: Some(ConfigColor::rgba(248, 251, 255, 245)),
-        size: Some(4),
+        font_size: Some(28),
         position: WidgetPositionConfig::default(),
     });
     config.visuals.date = Some(DateVisualConfig {
@@ -72,7 +72,7 @@ fn input_alpha_uses_rgba_values() {
         font_weight: Some(600),
         font_style: Some(FontStyle::Italic),
         color: Some(ConfigColor::rgba(200, 212, 236, 189)),
-        size: Some(3),
+        font_size: Some(22),
         position: WidgetPositionConfig::default(),
     });
     config.visuals.placeholder = Some(PlaceholderVisualConfig {
@@ -322,9 +322,9 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.clock_offset_y, Some(0));
     assert_eq!(theme.clock_position, None);
     assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
-    assert_eq!(theme.clock_meridiem_size, Some(3));
-    assert_eq!(theme.clock_meridiem_offset_x, Some(6));
-    assert_eq!(theme.clock_meridiem_offset_y, Some(-2));
+    assert_eq!(theme.clock_meridiem_font_size, Some(22));
+    assert_eq!(theme.clock_meridiem_x, Some(6));
+    assert_eq!(theme.clock_meridiem_y, Some(-2));
     assert_eq!(
         theme.clock_color,
         Some(ClearColor::rgba(248, 251, 255, 245))
@@ -334,8 +334,8 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.date_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.date_color, Some(ClearColor::rgba(200, 212, 236, 189)));
     assert_eq!(theme.date_position, None);
-    assert_eq!(theme.clock_size, Some(4));
-    assert_eq!(theme.date_size, Some(3));
+    assert_eq!(theme.clock_font_size, Some(28));
+    assert_eq!(theme.date_font_size, Some(22));
     assert_eq!(
         theme.placeholder_color,
         Some(ClearColor::rgba(134, 148, 180, 153))

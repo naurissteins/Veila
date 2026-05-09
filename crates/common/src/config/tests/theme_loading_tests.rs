@@ -87,7 +87,7 @@ fn loads_bundled_theme_before_user_overrides() {
             theme = "boracay"
 
             [visuals.clock]
-            size = 16
+            font_size = 100
         "#,
     )
     .expect("config file");
@@ -102,7 +102,7 @@ fn loads_bundled_theme_before_user_overrides() {
         loaded.config.visuals.clock_font_weight(),
         theme_config.visuals.clock_font_weight()
     );
-    assert_eq!(loaded.config.visuals.clock_size(), Some(16));
+    assert_eq!(loaded.config.visuals.clock_font_size(), Some(100));
     assert_eq!(
         loaded.config.visuals.weather_icon_position(),
         theme_config.visuals.weather_icon_position()
@@ -231,7 +231,7 @@ fn loads_user_theme_from_config_directory() {
             theme = "custom"
 
             [visuals.clock]
-            size = 17
+            font_size = 106
         "#,
     )
     .expect("config file");
@@ -246,7 +246,7 @@ fn loads_user_theme_from_config_directory() {
         loaded.config.visuals.clock_color(),
         Some(RgbColor::rgba(255, 255, 255, 156))
     );
-    assert_eq!(loaded.config.visuals.clock_size(), Some(17));
+    assert_eq!(loaded.config.visuals.clock_font_size(), Some(106));
 
     fs::remove_file(themes_dir.join("custom.toml")).ok();
     fs::remove_dir(themes_dir).ok();
@@ -261,7 +261,7 @@ fn resolves_active_user_theme_source_path() {
     fs::create_dir_all(&themes_dir).expect("temp dir");
     let config_path = dir.join("config.toml");
     let theme_path = themes_dir.join("custom.toml");
-    fs::write(&theme_path, "[visuals.clock]\nsize = 17\n").expect("theme file");
+    fs::write(&theme_path, "[visuals.clock]\nfont_size = 106\n").expect("theme file");
     fs::write(&config_path, "theme = \"custom\"\n").expect("config file");
 
     let resolved =

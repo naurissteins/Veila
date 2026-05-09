@@ -1,9 +1,5 @@
 use veila_renderer::ClearColor;
 
-pub(super) fn clock_scale(avatar_size: i32) -> u32 {
-    if avatar_size < 100 { 4 } else { 5 }
-}
-
 pub(super) fn avatar_background_color(base: ClearColor) -> ClearColor {
     let alpha = if base.alpha == u8::MAX {
         104

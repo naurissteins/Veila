@@ -86,19 +86,19 @@ pub struct VisualConfig {
     #[serde(default)]
     pub clock_format: Option<ClockFormat>,
     #[serde(default)]
-    pub clock_meridiem_size: Option<u16>,
+    pub clock_meridiem_font_size: Option<u16>,
     #[serde(default)]
-    pub clock_meridiem_offset_x: Option<i16>,
+    pub clock_meridiem_x: Option<i16>,
     #[serde(default)]
-    pub clock_meridiem_offset_y: Option<i16>,
+    pub clock_meridiem_y: Option<i16>,
     #[serde(default)]
     pub clock_color: Option<RgbColor>,
     #[serde(default)]
     pub date_color: Option<RgbColor>,
     #[serde(default)]
-    pub clock_size: Option<u16>,
+    pub clock_font_size: Option<u16>,
     #[serde(default)]
-    pub date_size: Option<u16>,
+    pub date_font_size: Option<u16>,
     #[serde(default)]
     pub placeholder_color: Option<RgbColor>,
     #[serde(default)]
@@ -195,13 +195,13 @@ impl Default for VisualConfig {
             clock_font_style: Some(FontStyle::Normal),
             clock_style: Some(ClockStyle::Standard),
             clock_format: Some(ClockFormat::TwentyFourHour),
-            clock_meridiem_size: Some(3),
-            clock_meridiem_offset_x: Some(6),
-            clock_meridiem_offset_y: Some(7),
+            clock_meridiem_font_size: Some(22),
+            clock_meridiem_x: Some(6),
+            clock_meridiem_y: Some(7),
             clock_color: Some(RgbColor::rgba(255, 255, 255, 102)),
             date_color: Some(RgbColor::rgba(255, 255, 255, 128)),
-            clock_size: Some(14),
-            date_size: Some(2),
+            clock_font_size: Some(88),
+            date_font_size: Some(16),
             placeholder_color: Some(RgbColor::rgba(255, 255, 255, 153)),
             eye_icon_color: Some(RgbColor::rgba(255, 255, 255, 184)),
             keyboard_color: Some(RgbColor::rgba(255, 255, 255, 173)),

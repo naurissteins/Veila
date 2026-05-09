@@ -10,7 +10,7 @@ fn clock_style_uses_fallback_alpha_for_opaque_colors() {
     let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
     assert_eq!(style.color.alpha, 246);
-    assert_eq!(style.scale, 14);
+    assert_eq!(style.font_size_px, Some(88));
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn date_style_uses_fallback_alpha_for_opaque_colors() {
     let style = shell.date_text_style();
 
     assert_eq!(style.color.alpha, 188);
-    assert_eq!(style.scale, 2);
+    assert_eq!(style.font_size_px, Some(16));
 }
 
 #[test]
@@ -101,19 +101,19 @@ fn date_style_uses_configured_color() {
 #[test]
 fn clock_style_uses_configured_size() {
     let theme = ShellTheme {
-        clock_size: Some(4),
+        clock_font_size: Some(28),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
-    assert_eq!(style.scale, 4);
+    assert_eq!(style.font_size_px, Some(28));
 }
 
 #[test]
 fn clock_meridiem_style_is_smaller_than_main_clock() {
     let theme = ShellTheme {
-        clock_size: Some(12),
+        clock_font_size: Some(76),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -121,21 +121,24 @@ fn clock_meridiem_style_is_smaller_than_main_clock() {
     let clock_style = shell.clock_text_style(metrics);
     let meridiem_style = shell.clock_meridiem_text_style(metrics);
 
-    assert!(meridiem_style.scale < clock_style.scale);
+    assert!(
+        meridiem_style.font_size_px.expect("meridiem font size")
+            < clock_style.font_size_px.expect("clock font size")
+    );
     assert_eq!(meridiem_style.line_spacing, 0);
 }
 
 #[test]
 fn clock_meridiem_style_uses_configured_size() {
     let theme = ShellTheme {
-        clock_meridiem_size: Some(5),
+        clock_meridiem_font_size: Some(34),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
     let meridiem_style = shell.clock_meridiem_text_style(metrics);
 
-    assert_eq!(meridiem_style.scale, 5);
+    assert_eq!(meridiem_style.font_size_px, Some(34));
 }
 
 #[test]
@@ -151,25 +154,25 @@ fn header_styles_do_not_add_extra_line_spacing() {
 #[test]
 fn clock_style_allows_sizes_above_previous_cap() {
     let theme = ShellTheme {
-        clock_size: Some(12),
+        clock_font_size: Some(76),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.clock_text_style(SceneMetrics::from_frame(1280, 720, None, None, None));
 
-    assert_eq!(style.scale, 12);
+    assert_eq!(style.font_size_px, Some(76));
 }
 
 #[test]
 fn date_style_uses_configured_size() {
     let theme = ShellTheme {
-        date_size: Some(3),
+        date_font_size: Some(22),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.date_text_style();
 
-    assert_eq!(style.scale, 3);
+    assert_eq!(style.font_size_px, Some(22));
 }
 
 #[test]
@@ -205,13 +208,13 @@ fn date_style_uses_configured_font_family() {
 #[test]
 fn date_style_allows_sizes_above_previous_cap() {
     let theme = ShellTheme {
-        date_size: Some(12),
+        date_font_size: Some(76),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.date_text_style();
 
-    assert_eq!(style.scale, 12);
+    assert_eq!(style.font_size_px, Some(76));
 }
 
 #[test]

@@ -104,14 +104,14 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_font_style(), Some(FontStyle::Normal));
     assert_eq!(config.visuals.clock_style(), ClockStyle::Standard);
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwentyFourHour);
-    assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
-    assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
-    assert_eq!(config.visuals.clock_meridiem_offset_y(), Some(7));
+    assert_eq!(config.visuals.clock_meridiem_font_size(), Some(22));
+    assert_eq!(config.visuals.clock_meridiem_x(), Some(6));
+    assert_eq!(config.visuals.clock_meridiem_y(), Some(7));
     assert_eq!(
         config.visuals.clock_color(),
         Some(RgbColor::rgba(255, 255, 255, 102))
     );
-    assert_eq!(config.visuals.clock_size(), Some(14));
+    assert_eq!(config.visuals.clock_font_size(), Some(88));
     assert_eq!(
         config.visuals.date_color(),
         Some(RgbColor::rgba(255, 255, 255, 128))
@@ -119,7 +119,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
     assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Normal));
-    assert_eq!(config.visuals.date_size(), Some(2));
+    assert_eq!(config.visuals.date_font_size(), Some(16));
     assert_eq!(
         config.visuals.placeholder_color(),
         Some(RgbColor::rgba(255, 255, 255, 153))

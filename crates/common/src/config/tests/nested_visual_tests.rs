@@ -113,14 +113,14 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         }
     );
     assert_eq!(config.visuals.clock_format(), ClockFormat::TwelveHour);
-    assert_eq!(config.visuals.clock_meridiem_size(), Some(3));
-    assert_eq!(config.visuals.clock_meridiem_offset_x(), Some(6));
-    assert_eq!(config.visuals.clock_meridiem_offset_y(), Some(-2));
+    assert_eq!(config.visuals.clock_meridiem_font_size(), Some(22));
+    assert_eq!(config.visuals.clock_meridiem_x(), Some(6));
+    assert_eq!(config.visuals.clock_meridiem_y(), Some(-2));
     assert_eq!(
         config.visuals.clock_color(),
         Some(RgbColor::rgba(255, 255, 255, 102))
     );
-    assert_eq!(config.visuals.clock_size(), Some(14));
+    assert_eq!(config.visuals.clock_font_size(), Some(88));
     assert_eq!(
         config.visuals.date_color(),
         Some(RgbColor::rgba(255, 255, 255, 102))
@@ -128,7 +128,7 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
     assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Italic));
-    assert_eq!(config.visuals.date_size(), Some(2));
+    assert_eq!(config.visuals.date_font_size(), Some(16));
     assert_eq!(
         config.visuals.date_position(),
         WidgetPositionConfig {

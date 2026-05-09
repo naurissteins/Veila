@@ -291,7 +291,7 @@ mod tests {
         fs::create_dir_all(&themes_dir).expect("dir");
         let config_path = root.join("config.toml");
         let theme_path = themes_dir.join("custom.toml");
-        fs::write(&theme_path, b"[visuals.clock]\nsize = 14\n").expect("theme");
+        fs::write(&theme_path, b"[visuals.clock]\nfont_size = 88\n").expect("theme");
         fs::write(
             &config_path,
             b"theme = \"custom\"\n\n[lock]\nauto_reload_config = true\n",
@@ -304,7 +304,7 @@ mod tests {
         };
         let mut watcher = AutoReloadWatcher::new(Some(&config_path), &loaded);
 
-        fs::write(&theme_path, b"[visuals.clock]\nsize = 15\n").expect("theme");
+        fs::write(&theme_path, b"[visuals.clock]\nfont_size = 94\n").expect("theme");
         assert_eq!(watcher.poll(Some(&config_path), &loaded), None);
         std::thread::sleep(std::time::Duration::from_millis(300));
         assert_eq!(
@@ -328,7 +328,7 @@ mod tests {
         fs::create_dir_all(&root).expect("dir");
         let config_path = root.join("config.toml");
         let include_path = root.join("matugen.toml");
-        fs::write(&include_path, b"[visuals.clock]\nsize = 14\n").expect("include");
+        fs::write(&include_path, b"[visuals.clock]\nfont_size = 88\n").expect("include");
         fs::write(
             &config_path,
             b"include = [\"matugen.toml\"]\n\n[lock]\nauto_reload_config = true\n",
@@ -341,7 +341,7 @@ mod tests {
         };
         let mut watcher = AutoReloadWatcher::new(Some(&config_path), &loaded);
 
-        fs::write(&include_path, b"[visuals.clock]\nsize = 15\n").expect("include");
+        fs::write(&include_path, b"[visuals.clock]\nfont_size = 94\n").expect("include");
         assert_eq!(watcher.poll(Some(&config_path), &loaded), None);
         std::thread::sleep(std::time::Duration::from_millis(300));
         assert_eq!(

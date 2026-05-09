@@ -289,8 +289,8 @@ impl ShellState {
         let clock_style = self.clock_text_style(metrics);
         let clock_meridiem_text = self.clock.meridiem_text();
         let clock_meridiem_style = self.clock_meridiem_text_style(metrics);
-        let clock_meridiem_offset_x = self.theme.clock_meridiem_offset_x;
-        let clock_meridiem_offset_y = self.theme.clock_meridiem_offset_y;
+        let clock_meridiem_x = self.theme.clock_meridiem_x;
+        let clock_meridiem_y = self.theme.clock_meridiem_y;
         let date_text = self.clock.date_text();
         let date_style = self.date_text_style();
         let username_text = self.username_text.as_deref();
@@ -328,8 +328,8 @@ impl ShellState {
                     .then_some(())
                     .and(clock_meridiem_text),
                 clock_meridiem_style,
-                clock_meridiem_offset_x,
-                clock_meridiem_offset_y,
+                clock_meridiem_x,
+                clock_meridiem_y,
                 date_text: self.theme.date_enabled.then_some(date_text),
                 date_style,
                 username_text: identity_visible

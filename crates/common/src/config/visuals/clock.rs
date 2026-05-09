@@ -17,15 +17,15 @@ pub struct ClockVisualConfig {
     #[serde(default)]
     pub format: Option<ClockFormat>,
     #[serde(default)]
-    pub meridiem_size: Option<u16>,
+    pub meridiem_font_size: Option<u16>,
     #[serde(default)]
-    pub meridiem_offset_x: Option<i16>,
+    pub meridiem_x: Option<i16>,
     #[serde(default)]
-    pub meridiem_offset_y: Option<i16>,
+    pub meridiem_y: Option<i16>,
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub size: Option<u16>,
+    pub font_size: Option<u16>,
     #[serde(flatten)]
     pub position: WidgetPositionConfig,
 }
@@ -39,11 +39,11 @@ impl Default for ClockVisualConfig {
             font_style: Some(FontStyle::Normal),
             style: Some(ClockStyle::Standard),
             format: Some(ClockFormat::TwentyFourHour),
-            meridiem_size: Some(3),
-            meridiem_offset_x: Some(6),
-            meridiem_offset_y: Some(7),
+            meridiem_font_size: Some(22),
+            meridiem_x: Some(6),
+            meridiem_y: Some(7),
             color: Some(RgbColor::rgba(255, 255, 255, 102)),
-            size: Some(14),
+            font_size: Some(88),
             position: WidgetPositionConfig::default(),
         }
     }
@@ -93,7 +93,7 @@ pub struct DateVisualConfig {
     #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
-    pub size: Option<u16>,
+    pub font_size: Option<u16>,
     #[serde(flatten)]
     pub position: WidgetPositionConfig,
 }
@@ -106,7 +106,7 @@ impl Default for DateVisualConfig {
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
             color: Some(RgbColor::rgba(255, 255, 255, 128)),
-            size: Some(2),
+            font_size: Some(16),
             position: WidgetPositionConfig::default(),
         }
     }
@@ -157,25 +157,25 @@ impl super::VisualConfig {
             .unwrap_or_default()
     }
 
-    pub fn clock_meridiem_size(&self) -> Option<u16> {
+    pub fn clock_meridiem_font_size(&self) -> Option<u16> {
         self.clock
             .as_ref()
-            .and_then(|clock| clock.meridiem_size)
-            .or(self.clock_meridiem_size)
+            .and_then(|clock| clock.meridiem_font_size)
+            .or(self.clock_meridiem_font_size)
     }
 
-    pub fn clock_meridiem_offset_x(&self) -> Option<i16> {
+    pub fn clock_meridiem_x(&self) -> Option<i16> {
         self.clock
             .as_ref()
-            .and_then(|clock| clock.meridiem_offset_x)
-            .or(self.clock_meridiem_offset_x)
+            .and_then(|clock| clock.meridiem_x)
+            .or(self.clock_meridiem_x)
     }
 
-    pub fn clock_meridiem_offset_y(&self) -> Option<i16> {
+    pub fn clock_meridiem_y(&self) -> Option<i16> {
         self.clock
             .as_ref()
-            .and_then(|clock| clock.meridiem_offset_y)
-            .or(self.clock_meridiem_offset_y)
+            .and_then(|clock| clock.meridiem_y)
+            .or(self.clock_meridiem_y)
     }
 
     pub fn clock_color(&self) -> Option<RgbColor> {
@@ -185,11 +185,11 @@ impl super::VisualConfig {
             .or(self.clock_color)
     }
 
-    pub fn clock_size(&self) -> Option<u16> {
+    pub fn clock_font_size(&self) -> Option<u16> {
         self.clock
             .as_ref()
-            .and_then(|clock| clock.size)
-            .or(self.clock_size)
+            .and_then(|clock| clock.font_size)
+            .or(self.clock_font_size)
     }
 
     pub fn clock_position(&self) -> WidgetPositionConfig {
@@ -227,11 +227,11 @@ impl super::VisualConfig {
         self.date.as_ref().and_then(|date| date.font_style)
     }
 
-    pub fn date_size(&self) -> Option<u16> {
+    pub fn date_font_size(&self) -> Option<u16> {
         self.date
             .as_ref()
-            .and_then(|date| date.size)
-            .or(self.date_size)
+            .and_then(|date| date.font_size)
+            .or(self.date_font_size)
     }
 
     pub fn date_position(&self) -> WidgetPositionConfig {

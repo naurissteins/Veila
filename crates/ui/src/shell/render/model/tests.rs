@@ -416,7 +416,7 @@ fn clock_blocks(text: &str) -> SceneClockBlocks {
         primary: block(text),
         secondary: None,
         meridiem: None,
-        meridiem_offset_x: 0,
-        meridiem_offset_y: 0,
+        meridiem_x: 0,
+        meridiem_y: 0,
     }
 }

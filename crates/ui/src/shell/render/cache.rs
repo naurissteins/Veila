@@ -48,8 +48,8 @@ pub(super) struct SceneTextInputs<'a> {
     pub(super) clock_style: TextStyle,
     pub(super) clock_meridiem_text: Option<&'a str>,
     pub(super) clock_meridiem_style: TextStyle,
-    pub(super) clock_meridiem_offset_x: Option<i32>,
-    pub(super) clock_meridiem_offset_y: Option<i32>,
+    pub(super) clock_meridiem_x: Option<i32>,
+    pub(super) clock_meridiem_y: Option<i32>,
     pub(super) date_text: Option<&'a str>,
     pub(super) date_style: TextStyle,
     pub(super) username_text: Option<&'a str>,
@@ -94,8 +94,8 @@ impl TextLayoutCache {
                         inputs.metrics.clock_width,
                         1,
                     ),
-                    meridiem_offset_x: inputs.clock_meridiem_offset_x.unwrap_or(0).clamp(-128, 128),
-                    meridiem_offset_y: inputs.clock_meridiem_offset_y.unwrap_or(0).clamp(-128, 128),
+                    meridiem_x: inputs.clock_meridiem_x.unwrap_or(0).clamp(-128, 128),
+                    meridiem_y: inputs.clock_meridiem_y.unwrap_or(0).clamp(-128, 128),
                 }
             }),
             date: inputs.date_text.map(|date_text| {

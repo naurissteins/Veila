@@ -6,11 +6,12 @@ use veila_renderer::text::{
 
 use super::{
     super::{ShellState, layout::SceneMetrics},
-    color::{clock_scale, header_color, secondary_text_color, username_color},
+    color::{header_color, secondary_text_color, username_color},
 };
 
-const MAX_HEADER_TEXT_SCALE: u32 = 24;
-const MAX_CLOCK_MERIDIEM_SCALE: u32 = 8;
+const MAX_CLOCK_FONT_SIZE_PX: u32 = 1024;
+const MAX_DATE_FONT_SIZE_PX: u32 = 512;
+const MAX_CLOCK_MERIDIEM_FONT_SIZE_PX: u32 = 512;
 const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
 const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
@@ -42,17 +43,17 @@ impl ShellState {
         )
     }
 
-    pub(crate) fn clock_text_style(&self, metrics: SceneMetrics) -> TextStyle {
-        let style = TextStyle::new(
+    pub(crate) fn clock_text_style(&self, _metrics: SceneMetrics) -> TextStyle {
+        let style = TextStyle::new_px(
             header_color(
                 self.theme.clock_color.unwrap_or(self.theme.foreground),
                 None,
                 246,
             ),
             self.theme
-                .clock_size
-                .unwrap_or_else(|| clock_scale(metrics.avatar_size))
-                .clamp(1, MAX_HEADER_TEXT_SCALE),
+                .clock_font_size
+                .unwrap_or(88)
+                .clamp(1, MAX_CLOCK_FONT_SIZE_PX),
         )
         .with_line_spacing(0);
 
@@ -73,24 +74,24 @@ impl ShellState {
         )
     }
 
-    pub(crate) fn clock_meridiem_text_style(&self, metrics: SceneMetrics) -> TextStyle {
-        let clock_scale = self
+    pub(crate) fn clock_meridiem_text_style(&self, _metrics: SceneMetrics) -> TextStyle {
+        let clock_font_size = self
             .theme
-            .clock_size
-            .unwrap_or_else(|| clock_scale(metrics.avatar_size))
-            .clamp(1, MAX_HEADER_TEXT_SCALE);
-        let meridiem_scale = self
+            .clock_font_size
+            .unwrap_or(88)
+            .clamp(1, MAX_CLOCK_FONT_SIZE_PX);
+        let meridiem_font_size = self
             .theme
-            .clock_meridiem_size
-            .unwrap_or_else(|| clock_scale.div_ceil(3))
-            .clamp(1, MAX_CLOCK_MERIDIEM_SCALE);
-        let style = TextStyle::new(
+            .clock_meridiem_font_size
+            .unwrap_or_else(|| (clock_font_size / 4).max(1))
+            .clamp(1, MAX_CLOCK_MERIDIEM_FONT_SIZE_PX);
+        let style = TextStyle::new_px(
             header_color(
                 self.theme.clock_color.unwrap_or(self.theme.foreground),
                 None,
                 246,
             ),
-            meridiem_scale,
+            meridiem_font_size,
         )
         .with_line_spacing(0);
 
@@ -112,16 +113,16 @@ impl ShellState {
     }
 
     pub(crate) fn date_text_style(&self) -> TextStyle {
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             header_color(
                 self.theme.date_color.unwrap_or(self.theme.foreground),
                 None,
                 188,
             ),
             self.theme
-                .date_size
-                .unwrap_or(2)
-                .clamp(1, MAX_HEADER_TEXT_SCALE),
+                .date_font_size
+                .unwrap_or(16)
+                .clamp(1, MAX_DATE_FONT_SIZE_PX),
         )
         .with_line_spacing(0);
 

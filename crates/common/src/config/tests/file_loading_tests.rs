@@ -61,13 +61,13 @@ fn loads_config_from_file() {
             clock_font_style = "italic"
             clock_style = "stacked"
             clock_format = "12h"
-            clock_meridiem_size = 3
-            clock_meridiem_offset_x = 6
-            clock_meridiem_offset_y = -2
+            clock_meridiem_font_size = 22
+            clock_meridiem_x = 6
+            clock_meridiem_y = -2
             clock_color = "#F8FBFFF5"
             date_color = "#C8D4ECBD"
-            clock_size = 4
-            date_size = 3
+            clock_font_size = 28
+            date_font_size = 22
             placeholder_color = "#8694B499"
             eye_icon_color = "#F4F8FFB8"
             status_color = "#FFE0A0E0"
@@ -210,9 +210,9 @@ fn loads_config_from_file() {
         loaded.config.visuals.clock_format(),
         ClockFormat::TwelveHour
     );
-    assert_eq!(loaded.config.visuals.clock_meridiem_size(), Some(3));
-    assert_eq!(loaded.config.visuals.clock_meridiem_offset_x(), Some(6));
-    assert_eq!(loaded.config.visuals.clock_meridiem_offset_y(), Some(-2));
+    assert_eq!(loaded.config.visuals.clock_meridiem_font_size(), Some(22));
+    assert_eq!(loaded.config.visuals.clock_meridiem_x(), Some(6));
+    assert_eq!(loaded.config.visuals.clock_meridiem_y(), Some(-2));
     assert_eq!(
         loaded.config.visuals.clock_color(),
         Some(RgbColor::rgba(248, 251, 255, 245))
@@ -261,8 +261,8 @@ fn loads_config_from_file() {
         loaded.config.visuals.date_color(),
         Some(RgbColor::rgba(200, 212, 236, 189))
     );
-    assert_eq!(loaded.config.visuals.clock_size(), Some(4));
-    assert_eq!(loaded.config.visuals.date_size(), Some(3));
+    assert_eq!(loaded.config.visuals.clock_font_size(), Some(28));
+    assert_eq!(loaded.config.visuals.date_font_size(), Some(22));
     assert_eq!(
         loaded.config.visuals.placeholder_color(),
         Some(RgbColor::rgba(134, 148, 180, 153))
@@ -304,7 +304,7 @@ fn loads_include_files_before_main_config_overrides() {
 
             [visuals.clock]
             color = "#F1E8D9"
-            size = 42
+            font_size = 256
 
             [visuals.input]
             background_color = "#17130F"
@@ -318,7 +318,7 @@ fn loads_include_files_before_main_config_overrides() {
             include = ["matugen.toml", "missing.toml"]
 
             [visuals.clock]
-            size = 52
+            font_size = 316
         "##,
     )
     .expect("config file");
@@ -333,7 +333,7 @@ fn loads_include_files_before_main_config_overrides() {
         loaded.config.visuals.clock_color(),
         Some(RgbColor::rgb(241, 232, 217))
     );
-    assert_eq!(loaded.config.visuals.clock_size(), Some(52));
+    assert_eq!(loaded.config.visuals.clock_font_size(), Some(316));
     assert_eq!(
         loaded.config.visuals.input_background_color(),
         RgbColor::rgb(23, 19, 15)
