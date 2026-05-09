@@ -45,7 +45,6 @@ y = 140
 
 [visuals.input]
 background_color = "rgba(255, 255, 255, 0.08)"
-border_color = "rgba(255, 255, 255, 0)"
 width = 310
 height = 54
 radius = 10
@@ -120,7 +119,7 @@ x = 40
 y = -122
 
 [visuals.weather.temperature]
-font_size = 6
+font_size = 40
 font_family = "Geom"
 font_weight = 600
 letter_spacing = 0
@@ -131,7 +130,7 @@ x = 40
 y = -76
 
 [visuals.weather.location]
-font_size = 3
+font_size = 22
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(214, 227, 255, 0.58)"

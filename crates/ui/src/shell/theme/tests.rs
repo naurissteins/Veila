@@ -179,7 +179,7 @@ fn input_alpha_uses_rgba_values() {
         }),
         temperature: Some(WeatherTemperatureVisualConfig {
             enabled: Some(true),
-            font_size: Some(4),
+            font_size: Some(40),
             font_family: Some(String::from("Prototype")),
             font_weight: Some(600),
             font_style: Some(FontStyle::Italic),
@@ -195,7 +195,7 @@ fn input_alpha_uses_rgba_values() {
         }),
         location: Some(WeatherLocationVisualConfig {
             enabled: Some(true),
-            font_size: Some(2),
+            font_size: Some(22),
             font_family: Some(String::from("Geom")),
             font_weight: Some(500),
             font_style: Some(FontStyle::Italic),
@@ -464,8 +464,8 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.weather_location_font_weight, Some(500));
     assert_eq!(theme.weather_location_font_style, Some(FontStyle::Italic));
     assert_eq!(theme.weather_temperature_letter_spacing, Some(2));
-    assert_eq!(theme.weather_temperature_font_size, Some(4));
-    assert_eq!(theme.weather_location_font_size, Some(2));
+    assert_eq!(theme.weather_temperature_font_size, Some(40));
+    assert_eq!(theme.weather_location_font_size, Some(22));
     assert_eq!(theme.weather_icon_size, Some(36));
     assert_eq!(
         theme.weather_icon_position,

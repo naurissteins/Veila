@@ -214,8 +214,8 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.weather_location_font_style(),
         Some(FontStyle::Normal)
     );
-    assert_eq!(config.visuals.weather_temperature_font_size(), Some(6));
-    assert_eq!(config.visuals.weather_location_font_size(), Some(3));
+    assert_eq!(config.visuals.weather_temperature_font_size(), Some(40));
+    assert_eq!(config.visuals.weather_location_font_size(), Some(22));
     assert_eq!(config.visuals.weather_icon_size(), Some(40));
     assert_eq!(
         config.visuals.weather_icon_position(),

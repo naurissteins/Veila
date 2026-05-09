@@ -151,7 +151,7 @@ halign = "right"
             y = -126
 
             [visuals.weather.temperature]
-            font_size = 4
+            font_size = 40
             font_family = "Prototype"
             font_weight = 600
             font_style = "italic"
@@ -163,7 +163,7 @@ halign = "right"
             y = -80
 
             [visuals.weather.location]
-            font_size = 2
+            font_size = 22
             font_family = "Geom"
             font_weight = 500
             font_style = "italic"

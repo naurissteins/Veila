@@ -93,7 +93,7 @@ impl Default for WeatherTemperatureVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            font_size: Some(6),
+            font_size: Some(40),
             font_family: Some(super::default_geom_font_family()),
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
@@ -114,7 +114,7 @@ impl Default for WeatherLocationVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            font_size: Some(3),
+            font_size: Some(22),
             font_family: Some(super::default_google_sans_flex_font_family()),
             font_weight: Some(400),
             font_style: Some(FontStyle::Normal),

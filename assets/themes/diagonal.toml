@@ -108,7 +108,7 @@ x = 30
 y = -112
 
 [visuals.weather.temperature]
-font_size = 6
+font_size = 40
 font_family = "Google Sans Flex"
 font_weight = 400
 letter_spacing = 0
@@ -119,7 +119,7 @@ x = 30
 y = -66
 
 [visuals.weather.location]
-font_size = 3
+font_size = 22
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(214, 227, 255, 0.58)"

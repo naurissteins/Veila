@@ -308,8 +308,8 @@ fn loads_nested_visual_tables_with_precedence_for_backdrop_and_widgets() {
         Some(FontStyle::Italic)
     );
     assert_eq!(config.visuals.weather_temperature_letter_spacing(), Some(2));
-    assert_eq!(config.visuals.weather_temperature_font_size(), Some(4));
-    assert_eq!(config.visuals.weather_location_font_size(), Some(2));
+    assert_eq!(config.visuals.weather_temperature_font_size(), Some(40));
+    assert_eq!(config.visuals.weather_location_font_size(), Some(22));
     assert_eq!(config.visuals.weather_icon_size(), Some(36));
     assert_eq!(
         config.visuals.weather_icon_position(),

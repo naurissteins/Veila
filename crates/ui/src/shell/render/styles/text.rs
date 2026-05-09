@@ -12,8 +12,8 @@ use super::{
 const MAX_CLOCK_FONT_SIZE_PX: u32 = 1024;
 const MAX_DATE_FONT_SIZE_PX: u32 = 512;
 const MAX_CLOCK_MERIDIEM_FONT_SIZE_PX: u32 = 512;
-const MAX_WEATHER_TEMPERATURE_SCALE: u32 = 24;
-const MAX_WEATHER_LOCATION_SCALE: u32 = 12;
+const MAX_WEATHER_TEMPERATURE_FONT_SIZE_PX: u32 = 512;
+const MAX_WEATHER_LOCATION_FONT_SIZE_PX: u32 = 512;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
 const DEFAULT_KEYBOARD_FONT_FAMILY: &str = "Geom";
 const MAX_INPUT_TEXT_SCALE: u32 = 6;
@@ -253,7 +253,7 @@ impl ShellState {
             .theme
             .weather_temperature_color
             .unwrap_or(self.theme.foreground);
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             if base_color.alpha == u8::MAX {
                 base_color.with_alpha(116)
             } else {
@@ -261,8 +261,8 @@ impl ShellState {
             },
             self.theme
                 .weather_temperature_font_size
-                .unwrap_or(2)
-                .clamp(1, MAX_WEATHER_TEMPERATURE_SCALE),
+                .unwrap_or(40)
+                .clamp(1, MAX_WEATHER_TEMPERATURE_FONT_SIZE_PX),
         );
 
         let style = self.apply_font_overrides(
@@ -280,22 +280,22 @@ impl ShellState {
     }
 
     pub(crate) fn weather_location_text_style(&self) -> TextStyle {
-        let location_scale = self
+        let location_font_size = self
             .theme
             .weather_location_font_size
-            .unwrap_or(1)
-            .clamp(1, MAX_WEATHER_LOCATION_SCALE);
+            .unwrap_or(22)
+            .clamp(1, MAX_WEATHER_LOCATION_FONT_SIZE_PX);
         let base_color = self
             .theme
             .weather_location_color
             .unwrap_or(self.theme.muted);
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             if base_color.alpha == u8::MAX {
                 base_color.with_alpha(92)
             } else {
                 base_color
             },
-            location_scale,
+            location_font_size,
         )
         .with_line_spacing(0);
 

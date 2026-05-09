@@ -44,7 +44,7 @@ fn keyboard_layout_style_defaults_to_geom() {
 }
 
 #[test]
-fn weather_styles_use_configured_widget_size() {
+fn weather_styles_use_configured_font_size_px() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
         muted: ClearColor::rgba(180, 190, 210, 255),
@@ -55,16 +55,16 @@ fn weather_styles_use_configured_widget_size() {
         weather_temperature_letter_spacing: Some(2),
         weather_location_font_family: Some(String::from("Geom")),
         weather_location_font_weight: Some(500),
-        weather_temperature_font_size: Some(12),
-        weather_location_font_size: Some(2),
+        weather_temperature_font_size: Some(42),
+        weather_location_font_size: Some(22),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let temperature_style = shell.weather_temperature_text_style();
     let location_style = shell.weather_location_text_style();
 
-    assert_eq!(temperature_style.scale, 12);
-    assert_eq!(location_style.scale, 2);
+    assert_eq!(temperature_style.font_size_px, Some(42));
+    assert_eq!(location_style.font_size_px, Some(22));
     assert_eq!(temperature_style.color.alpha, 186);
     assert_eq!(location_style.color.alpha, 74);
     assert_eq!(temperature_style.color.red, 255);
