@@ -5,7 +5,6 @@ pub(crate) struct SceneMetrics {
     pub center_x: i32,
     pub auth_center_x: i32,
     pub content_width: u32,
-    pub clock_width: u32,
     pub input_width: i32,
     pub input_height: i32,
     pub avatar_size: i32,

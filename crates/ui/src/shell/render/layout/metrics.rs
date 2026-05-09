@@ -41,7 +41,6 @@ impl SceneMetrics {
             center_x: width / 2,
             auth_center_x: width / 2,
             content_width: (input_width + 72).max(220) as u32,
-            clock_width: (input_width + 140).max(280) as u32,
             input_width,
             input_height,
             avatar_size,

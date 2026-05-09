@@ -273,6 +273,44 @@ fn text_layout_cache_builds_stacked_clock_blocks() {
 }
 
 #[test]
+fn large_standard_clock_stays_single_line() {
+    let mut cache = TextLayoutCache::default();
+    let metrics = SceneMetrics::from_frame(1280, 720, None, None, None);
+
+    let blocks = cache.scene_text_blocks(SceneTextInputs {
+        clock_style_mode: ClockStyle::Standard,
+        clock_text: Some("09:41"),
+        clock_secondary_text: None,
+        clock_style: TextStyle::new_px(ClearColor::opaque(255, 255, 255), 288),
+        clock_meridiem_text: None,
+        clock_meridiem_style: TextStyle::new_px(ClearColor::opaque(255, 255, 255), 72),
+        clock_meridiem_x: None,
+        clock_meridiem_y: None,
+        date_text: Some("Tuesday"),
+        date_style: TextStyle::new_px(ClearColor::opaque(255, 255, 255), 128),
+        username_text: None,
+        username_style: TextStyle::new(ClearColor::opaque(240, 244, 250), 2),
+        placeholder_text: None,
+        placeholder_style: TextStyle::new(ClearColor::opaque(72, 82, 108), 2),
+        status_text: None,
+        status_style: TextStyle::new(ClearColor::opaque(255, 194, 92), 2),
+        weather_temperature_text: None,
+        weather_temperature_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+        weather_location_text: None,
+        weather_location_style: TextStyle::new(ClearColor::opaque(255, 255, 255), 1),
+        weather_icon: None,
+        weather_icon_size: None,
+        weather_icon_opacity: None,
+        metrics,
+    });
+
+    let clock = blocks.clock.expect("clock blocks");
+    let date = blocks.date.expect("date block");
+    assert_eq!(clock.primary.lines.len(), 1);
+    assert_eq!(date.lines.len(), 1);
+}
+
+#[test]
 fn text_layout_cache_reuses_matching_revealed_secret_layout() {
     let mut cache = TextLayoutCache::default();
     let style = TextStyle::new(ClearColor::rgba(240, 244, 250, 236), 2);

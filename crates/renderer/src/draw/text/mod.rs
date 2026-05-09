@@ -156,6 +156,10 @@ pub fn draw_text(buffer: &mut SoftwareBuffer, x: i32, y: i32, text: &str, style:
     layout_text_block(text, style, None, cosmic_text::Wrap::None).draw(buffer, x, y);
 }
 
+pub fn single_line_text_block(text: &str, style: TextStyle) -> TextBlock {
+    layout_text_block(text, style, None, cosmic_text::Wrap::None)
+}
+
 pub fn draw_text_with_shadow(
     buffer: &mut SoftwareBuffer,
     x: i32,

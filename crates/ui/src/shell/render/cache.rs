@@ -1,7 +1,7 @@
 use veila_common::ClockStyle;
 use veila_renderer::{
     icon::WeatherIcon,
-    text::{TextBlock, TextStyle, fit_single_line_text, fit_wrapped_text},
+    text::{TextBlock, TextStyle, fit_single_line_text, fit_wrapped_text, single_line_text_block},
 };
 
 use super::{
@@ -76,32 +76,23 @@ impl TextLayoutCache {
 
                 SceneClockBlocks {
                     style: inputs.clock_style_mode,
-                    primary: self.clock.resolve(
-                        clock_text,
-                        clock_style.clone(),
-                        inputs.metrics.clock_width,
-                        3,
-                    ),
-                    secondary: self.clock_secondary.resolve_optional(
-                        inputs.clock_secondary_text,
-                        clock_style,
-                        inputs.metrics.clock_width,
-                        3,
-                    ),
-                    meridiem: self.clock_meridiem.resolve_optional(
+                    primary: self
+                        .clock
+                        .resolve_unbounded(clock_text, clock_style.clone()),
+                    secondary: self
+                        .clock_secondary
+                        .resolve_optional_unbounded(inputs.clock_secondary_text, clock_style),
+                    meridiem: self.clock_meridiem.resolve_optional_unbounded(
                         inputs.clock_meridiem_text,
                         inputs.clock_meridiem_style,
-                        inputs.metrics.clock_width,
-                        1,
                     ),
                     meridiem_x: inputs.clock_meridiem_x.unwrap_or(0).clamp(-128, 128),
                     meridiem_y: inputs.clock_meridiem_y.unwrap_or(0).clamp(-128, 128),
                 }
             }),
-            date: inputs.date_text.map(|date_text| {
-                self.date
-                    .resolve(date_text, inputs.date_style, inputs.metrics.clock_width, 1)
-            }),
+            date: inputs
+                .date_text
+                .map(|date_text| self.date.resolve_unbounded(date_text, inputs.date_style)),
             username: self.username.resolve_optional(
                 inputs.username_text,
                 inputs.username_style,
@@ -218,6 +209,35 @@ impl TextLayoutCache {
 }
 
 impl CachedTextBlock {
+    fn resolve_unbounded(&mut self, text: &str, style: TextStyle) -> TextBlock {
+        let key = CachedTextKey {
+            text: text.to_string(),
+            style: style.clone(),
+            max_width: 0,
+            min_scale: 0,
+        };
+
+        if self.key.as_ref() == Some(&key)
+            && let Some(block) = self.block.as_ref()
+        {
+            return block.clone();
+        }
+
+        let block = single_line_text_block(text, style);
+        self.key = Some(key);
+        self.block = Some(block.clone());
+        block
+    }
+
+    fn resolve_optional_unbounded(
+        &mut self,
+        text: Option<&str>,
+        style: TextStyle,
+    ) -> Option<TextBlock> {
+        let text = text?;
+        Some(self.resolve_unbounded(text, style))
+    }
+
     fn resolve(
         &mut self,
         text: &str,
