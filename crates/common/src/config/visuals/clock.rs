@@ -44,7 +44,13 @@ impl Default for ClockVisualConfig {
             meridiem_y: Some(7),
             color: Some(RgbColor::rgba(255, 255, 255, 102)),
             font_size: Some(88),
-            position: WidgetPositionConfig::default(),
+            position: WidgetPositionConfig {
+                halign: Some(super::HorizontalAlign::Center),
+                valign: Some(super::VerticalAlign::Top),
+                x: Some(0),
+                y: Some(40),
+                relative_to: None,
+            },
         }
     }
 }
@@ -105,9 +111,15 @@ impl Default for DateVisualConfig {
             font_family: Some(super::default_geom_font_family()),
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
-            color: Some(RgbColor::rgba(255, 255, 255, 128)),
-            font_size: Some(16),
-            position: WidgetPositionConfig::default(),
+            color: Some(RgbColor::rgba(255, 255, 255, 102)),
+            font_size: Some(18),
+            position: WidgetPositionConfig {
+                halign: Some(super::HorizontalAlign::Center),
+                valign: Some(super::VerticalAlign::Top),
+                x: Some(0),
+                y: Some(140),
+                relative_to: None,
+            },
         }
     }
 }

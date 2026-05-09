@@ -34,7 +34,7 @@ impl Default for PlaceholderVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            color: Some(RgbColor::rgba(255, 255, 255, 153)),
+            color: Some(RgbColor::rgba(255, 255, 255, 230)),
         }
     }
 }
@@ -92,9 +92,9 @@ impl Default for StatusVisualConfig {
         Self {
             enabled: Some(true),
             mode: Some(StatusDisplayMode::Inline),
-            color: Some(RgbColor::rgba(255, 224, 160, 224)),
-            pending_color: None,
-            rejected_color: None,
+            color: None,
+            pending_color: Some(RgbColor::rgba(236, 236, 236, 224)),
+            rejected_color: Some(RgbColor::rgba(255, 213, 213, 250)),
             position: WidgetPositionConfig::default(),
         }
     }
@@ -129,7 +129,7 @@ impl Default for CapsLockVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            color: None,
+            color: Some(RgbColor::rgba(255, 255, 255, 133)),
         }
     }
 }
@@ -154,7 +154,7 @@ impl Default for KeyboardVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             background_size: Some(46),
             color: Some(RgbColor::rgba(255, 255, 255, 173)),
             size: Some(2),
@@ -162,7 +162,7 @@ impl Default for KeyboardVisualConfig {
                 halign: Some(super::HorizontalAlign::Right),
                 valign: Some(super::VerticalAlign::Top),
                 x: Some(-24),
-                y: Some(17),
+                y: Some(21),
                 relative_to: None,
             },
         }
@@ -189,7 +189,7 @@ impl Default for BatteryVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             background_size: Some(46),
             color: Some(RgbColor::rgba(255, 255, 255, 173)),
             size: Some(20),
@@ -197,7 +197,7 @@ impl Default for BatteryVisualConfig {
                 halign: Some(super::HorizontalAlign::Right),
                 valign: Some(super::VerticalAlign::Top),
                 x: Some(-78),
-                y: Some(17),
+                y: Some(21),
                 relative_to: None,
             },
         }

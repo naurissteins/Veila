@@ -46,14 +46,20 @@ impl Default for InputVisualConfig {
             font_weight: Some(400),
             font_style: Some(FontStyle::Normal),
             font_size: Some(16),
-            background_color: Some(RgbColor::rgba(255, 255, 255, 13)),
+            background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             border_color: Some(RgbColor::rgba(255, 255, 255, 0)),
             width: Some(310),
             height: Some(54),
             radius: Some(10),
             border_width: Some(0),
             mask_color: Some(RgbColor::rgb(255, 255, 255)),
-            position: WidgetPositionConfig::default(),
+            position: WidgetPositionConfig {
+                halign: Some(super::HorizontalAlign::Center),
+                valign: Some(super::VerticalAlign::Center),
+                x: Some(0),
+                y: Some(80),
+                relative_to: None,
+            },
         }
     }
 }

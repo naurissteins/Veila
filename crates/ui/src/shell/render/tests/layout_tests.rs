@@ -300,6 +300,7 @@ fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
 fn preview_grid_renders_centered_major_and_minor_lines() {
     let mut shell = ShellState::new(
         ShellTheme {
+            background: ClearColor::opaque(0, 0, 0),
             grid: Some(crate::shell::PreviewGrid {
                 cell_size: 40,
                 color: ClearColor::rgba(255, 255, 255, 20),
@@ -322,7 +323,7 @@ fn preview_grid_renders_centered_major_and_minor_lines() {
     let minor = &buffer.pixels()[(5 * 200 + 140) * 4..(5 * 200 + 140) * 4 + 4];
     let background = &buffer.pixels()[(19 * 200 + 119) * 4..(19 * 200 + 119) * 4 + 4];
 
-    assert_eq!(center, &[38, 38, 38, 255]);
+    assert_eq!(center, &[47, 47, 47, 255]);
     assert_eq!(minor, &[20, 20, 20, 255]);
     assert_eq!(background, &[0, 0, 0, 255]);
 }
@@ -437,6 +438,7 @@ fn username_stays_in_auth_flow_when_only_avatar_is_explicit() {
                 y: -48,
                 target: WidgetPositionTarget::Screen,
             }),
+            username_position: None,
             ..ShellTheme::default()
         },
         None,

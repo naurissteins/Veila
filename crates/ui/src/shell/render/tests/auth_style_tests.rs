@@ -6,7 +6,7 @@ fn unfocused_input_style_uses_configured_input_border() {
     shell.set_focus(false);
     let style = shell.input_style();
 
-    assert_eq!(style.fill.alpha, 13);
+    assert_eq!(style.fill.alpha, 10);
     assert!(style.border.is_none());
 }
 
@@ -372,12 +372,13 @@ fn username_style_preserves_explicit_foreground_alpha_when_unset() {
 fn placeholder_style_uses_fallback_alpha_for_opaque_muted_colors() {
     let theme = ShellTheme {
         muted: ClearColor::rgba(72, 82, 108, 255),
+        placeholder_color: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.placeholder_text_style();
 
-    assert_eq!(style.color.alpha, 153);
+    assert_eq!(style.color.alpha, 154);
     assert_eq!(style.font_size_px, Some(16));
 }
 
@@ -513,6 +514,7 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
     let theme = ShellTheme {
         pending: ClearColor::rgba(255, 194, 92, 90),
         status_color: None,
+        status_pending_color: None,
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);

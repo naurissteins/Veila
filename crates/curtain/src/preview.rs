@@ -633,7 +633,8 @@ mod tests {
             preview_hide_keyboard_label: true,
             ..CurtainOptions::default()
         };
-        let config = AppConfig::default();
+        let mut config = AppConfig::default();
+        config.weather.enabled = true;
 
         assert_eq!(preview_keyboard_layout_label(&options), None);
         assert!(!preview_weather_hidden(&options, &config));
@@ -647,7 +648,8 @@ mod tests {
             preview_hide_weather: true,
             ..CurtainOptions::default()
         };
-        let config = AppConfig::default();
+        let mut config = AppConfig::default();
+        config.weather.enabled = true;
 
         assert!(preview_weather_hidden(&options, &config));
         assert!(!preview_battery_hidden(&options));
@@ -660,7 +662,8 @@ mod tests {
             preview_hide_battery: true,
             ..CurtainOptions::default()
         };
-        let config = AppConfig::default();
+        let mut config = AppConfig::default();
+        config.weather.enabled = true;
 
         assert!(!preview_weather_hidden(&options, &config));
         assert!(preview_battery_hidden(&options));
@@ -673,7 +676,8 @@ mod tests {
             preview_hide_now_playing: true,
             ..CurtainOptions::default()
         };
-        let config = AppConfig::default();
+        let mut config = AppConfig::default();
+        config.weather.enabled = true;
 
         assert!(!preview_weather_hidden(&options, &config));
         assert!(!preview_battery_hidden(&options));

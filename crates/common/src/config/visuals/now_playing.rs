@@ -27,7 +27,7 @@ impl Default for NowPlayingArtworkVisualConfig {
                 halign: Some(super::HorizontalAlign::Right),
                 valign: Some(super::VerticalAlign::Bottom),
                 x: Some(-388),
-                y: Some(-56),
+                y: Some(-48),
                 relative_to: None,
             },
         }
@@ -85,15 +85,15 @@ impl Default for NowPlayingVisualConfig {
                 position: WidgetPositionConfig {
                     halign: Some(super::HorizontalAlign::Right),
                     valign: Some(super::VerticalAlign::Bottom),
-                    x: Some(-52),
-                    y: Some(-88),
+                    x: Some(-58),
+                    y: Some(-72),
                     relative_to: None,
                 },
             }),
             title: Some(NowPlayingTextVisualConfig {
                 enabled: Some(true),
                 width: Some(318),
-                color: Some(RgbColor::rgba(255, 255, 255, 175)),
+                color: Some(RgbColor::rgba(255, 255, 255, 176)),
                 font_family: Some(super::default_google_sans_flex_font_family()),
                 font_size: Some(2),
                 font_weight: Some(400),
@@ -101,8 +101,8 @@ impl Default for NowPlayingVisualConfig {
                 position: WidgetPositionConfig {
                     halign: Some(super::HorizontalAlign::Right),
                     valign: Some(super::VerticalAlign::Bottom),
-                    x: Some(-52),
-                    y: Some(-56),
+                    x: Some(-58),
+                    y: Some(-50),
                     relative_to: None,
                 },
             }),

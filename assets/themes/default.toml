@@ -3,18 +3,12 @@ mode = "radial"
 color = "#413249"
 dim_strength = 0
 
-# [background.gradient]
-# top_left = "#A85BFF"
-# top_right = "#39B8FF"
-# bottom_left = "#6FE2FF"
-# bottom_right = "#6F4CFF"
-
 [background.radial]
 center = "#373057"
 edge = "#1F1B2E"
 center_x = 50
 center_y = 50
-radius = 100
+radius = 80
 
 [lock]
 user_hint = "Password"
@@ -99,7 +93,7 @@ y = 0
 
 [visuals.keyboard]
 background_size = 46
-background_color = "rgba(255, 255, 255, 0.05)"
+background_color = "rgba(255, 255, 255, 0.04)"
 color = "rgba(255, 255, 255, 0.68)"
 size = 2
 halign = "right"
@@ -108,7 +102,7 @@ x = -24
 y = 21
 
 [visuals.battery]
-background_color = "rgba(255, 255, 255, 0.05)"
+background_color = "rgba(255, 255, 255, 0.04)"
 background_size = 46
 color = "rgba(255, 255, 255, 0.68)"
 size = 20
@@ -123,7 +117,7 @@ opacity = 80
 halign = "left"
 valign = "bottom"
 x = 40
-y = -122
+y = -106
 
 [visuals.weather.temperature]
 font_size = 40
@@ -134,7 +128,7 @@ color = "rgba(255, 255, 255, 0.73)"
 halign = "left"
 valign = "bottom"
 x = 40
-y = -76
+y = -70
 
 [visuals.weather.location]
 font_size = 22
@@ -167,7 +161,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -62
+x = -58
 y = -72
 
 [visuals.now_playing.title]
@@ -178,7 +172,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -62
+x = -58
 y = -50
 
 # Now playing backdrop

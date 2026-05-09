@@ -167,7 +167,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -62
+x = -58
 y = -72
 
 [visuals.now_playing.title]
@@ -178,7 +178,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -62
+x = -58
 y = -50
 
 # Now playing backdrop

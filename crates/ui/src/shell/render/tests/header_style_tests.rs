@@ -80,7 +80,7 @@ fn date_style_uses_fallback_alpha_for_opaque_colors() {
     let style = shell.date_text_style();
 
     assert_eq!(style.color.alpha, 188);
-    assert_eq!(style.font_size_px, Some(16));
+    assert_eq!(style.font_size_px, Some(18));
 }
 
 #[test]

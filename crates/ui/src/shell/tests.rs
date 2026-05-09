@@ -825,7 +825,15 @@ fn battery_widget_uses_charging_icon_when_charging() {
 
 #[test]
 fn updating_now_playing_snapshot_starts_transition_without_static_scene_revision_change() {
-    let mut shell = ShellState::default();
+    let mut shell = ShellState::new(
+        ShellTheme {
+            backdrops: Vec::new(),
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
     let original = shell.static_scene_revision();
 
     shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {

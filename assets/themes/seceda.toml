@@ -121,7 +121,7 @@ opacity = 80
 halign = "left"
 valign = "bottom"
 x = 40
-y = -122
+y = -106
 
 [visuals.weather.temperature]
 font_size = 40
@@ -132,7 +132,7 @@ color = "rgba(255, 255, 255, 0.73)"
 halign = "left"
 valign = "bottom"
 x = 40
-y = -76
+y = -70
 
 [visuals.weather.location]
 font_size = 22
@@ -165,7 +165,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -62
+x = -58
 y = -72
 
 [visuals.now_playing.title]
@@ -176,7 +176,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -62
+x = -58
 y = -50
 
 # Now playing backdrop

@@ -280,7 +280,7 @@ pub struct BackgroundConfig {
 impl Default for BackgroundConfig {
     fn default() -> Self {
         Self {
-            mode: Some(BackgroundMode::Gradient),
+            mode: Some(BackgroundMode::Radial),
             path: None,
             outputs: Vec::new(),
             slideshow: None,
@@ -393,7 +393,7 @@ pub struct BackgroundOutputConfig {
 }
 
 const fn default_background_color() -> RgbColor {
-    RgbColor::rgb(32, 40, 51)
+    RgbColor::rgb(65, 50, 73)
 }
 
 const fn default_background_slideshow_enabled() -> bool {
@@ -409,7 +409,7 @@ const fn default_background_blur_strength() -> u8 {
 }
 
 const fn default_background_dim_strength() -> u8 {
-    54
+    0
 }
 
 const fn default_gradient_top_left() -> RgbColor {
@@ -429,11 +429,11 @@ const fn default_gradient_bottom_right() -> RgbColor {
 }
 
 const fn default_radial_center_color() -> RgbColor {
-    RgbColor::rgb(111, 226, 255)
+    RgbColor::rgb(55, 48, 87)
 }
 
 const fn default_radial_edge_color() -> RgbColor {
-    RgbColor::rgb(111, 76, 255)
+    RgbColor::rgb(31, 27, 46)
 }
 
 const fn default_radial_center_x() -> u8 {
@@ -445,7 +445,7 @@ const fn default_radial_center_y() -> u8 {
 }
 
 const fn default_radial_radius() -> u8 {
-    100
+    80
 }
 
 const fn default_layered_blob_color() -> RgbColor {

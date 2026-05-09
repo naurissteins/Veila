@@ -26,13 +26,19 @@ impl Default for AvatarVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
-            size: Some(192),
-            background_color: Some(RgbColor::rgba(255, 255, 255, 15)),
+            size: Some(150),
+            background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             placeholder_padding: Some(28),
             ring_color: Some(RgbColor::rgb(148, 178, 255)),
             ring_width: Some(0),
             icon_color: Some(RgbColor::rgb(255, 255, 255)),
-            position: WidgetPositionConfig::default(),
+            position: WidgetPositionConfig {
+                halign: Some(super::HorizontalAlign::Center),
+                valign: Some(super::VerticalAlign::Center),
+                x: Some(0),
+                y: Some(-120),
+                relative_to: None,
+            },
         }
     }
 }
@@ -64,7 +70,13 @@ impl Default for UsernameVisualConfig {
             font_style: Some(super::input::FontStyle::Normal),
             color: Some(RgbColor::rgba(255, 255, 255, 214)),
             font_size: Some(28),
-            position: WidgetPositionConfig::default(),
+            position: WidgetPositionConfig {
+                halign: Some(super::HorizontalAlign::Center),
+                valign: Some(super::VerticalAlign::Center),
+                x: Some(0),
+                y: Some(0),
+                relative_to: None,
+            },
         }
     }
 }

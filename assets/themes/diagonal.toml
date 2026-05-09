@@ -104,8 +104,8 @@ size = 40
 opacity = 80
 halign = "left"
 valign = "bottom"
-x = 30
-y = -112
+x = 40
+y = -106
 
 [visuals.weather.temperature]
 font_size = 40
@@ -115,8 +115,8 @@ letter_spacing = 0
 color = "rgba(255, 255, 255, 0.73)"
 halign = "left"
 valign = "bottom"
-x = 30
-y = -66
+x = 40
+y = -70
 
 [visuals.weather.location]
 font_size = 22
@@ -151,7 +151,7 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -48
+x = -58
 y = -80
 
 [visuals.now_playing.title]
@@ -162,5 +162,5 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -48
+x = -58
 y = -48

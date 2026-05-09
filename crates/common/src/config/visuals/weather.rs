@@ -77,12 +77,12 @@ impl Default for WeatherIconVisualConfig {
         Self {
             enabled: Some(true),
             size: Some(40),
-            opacity: Some(50),
+            opacity: Some(80),
             position: WidgetPositionConfig {
                 halign: Some(super::HorizontalAlign::Left),
                 valign: Some(super::VerticalAlign::Bottom),
-                x: Some(30),
-                y: Some(-112),
+                x: Some(40),
+                y: Some(-106),
                 relative_to: None,
             },
         }
@@ -98,12 +98,12 @@ impl Default for WeatherTemperatureVisualConfig {
             font_weight: Some(600),
             font_style: Some(FontStyle::Normal),
             letter_spacing: Some(0),
-            color: Some(RgbColor::rgba(255, 255, 255, 116)),
+            color: Some(RgbColor::rgba(255, 255, 255, 186)),
             position: WidgetPositionConfig {
                 halign: Some(super::HorizontalAlign::Left),
                 valign: Some(super::VerticalAlign::Bottom),
-                x: Some(30),
-                y: Some(-66),
+                x: Some(40),
+                y: Some(-70),
                 relative_to: None,
             },
         }
@@ -118,12 +118,12 @@ impl Default for WeatherLocationVisualConfig {
             font_family: Some(super::default_google_sans_flex_font_family()),
             font_weight: Some(400),
             font_style: Some(FontStyle::Normal),
-            color: Some(RgbColor::rgba(214, 227, 255, 92)),
+            color: Some(RgbColor::rgba(214, 227, 255, 148)),
             position: WidgetPositionConfig {
                 halign: Some(super::HorizontalAlign::Left),
                 valign: Some(super::VerticalAlign::Bottom),
-                x: Some(30),
-                y: Some(-34),
+                x: Some(40),
+                y: Some(-44),
                 relative_to: None,
             },
         }

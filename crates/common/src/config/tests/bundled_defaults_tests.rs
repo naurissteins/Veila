@@ -17,23 +17,24 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(config.lock.username.is_none());
     assert_eq!(config.lock.user_hint.as_deref(), Some("Password"));
     assert!(config.lock.avatar_path.is_none());
-    assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
-    assert_eq!(config.background.color, RgbColor::rgb(32, 40, 51));
-    let gradient = config
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Radial);
+    assert_eq!(config.background.color, RgbColor::rgb(65, 50, 73));
+    let radial = config
         .background
-        .resolved_gradient()
-        .expect("gradient defaults should resolve");
-    assert_eq!(gradient.top_left, RgbColor::rgb(168, 91, 255));
-    assert_eq!(gradient.top_right, RgbColor::rgb(57, 184, 255));
-    assert_eq!(gradient.bottom_left, RgbColor::rgb(111, 226, 255));
-    assert_eq!(gradient.bottom_right, RgbColor::rgb(111, 76, 255));
+        .resolved_radial()
+        .expect("radial defaults should resolve");
+    assert_eq!(radial.center, RgbColor::rgb(55, 48, 87));
+    assert_eq!(radial.edge, RgbColor::rgb(31, 27, 46));
+    assert_eq!(radial.center_x, 50);
+    assert_eq!(radial.center_y, 50);
+    assert_eq!(radial.radius, 80);
     assert!(config.background.resolved_path().is_none());
     assert_eq!(config.background.blur_strength, 0);
-    assert_eq!(config.background.dim_strength, 54);
+    assert_eq!(config.background.dim_strength, 0);
     assert!(config.background.tint.is_none());
     assert!(!config.lock.suspend_only_on_battery);
-    assert!(config.weather.enabled);
-    assert_eq!(config.weather.location.as_deref(), Some("Riga"));
+    assert!(!config.weather.enabled);
+    assert!(config.weather.location.is_none());
     assert!(config.weather.clone().coordinates().is_none());
     assert_eq!(config.weather.refresh_minutes, 15);
     assert_eq!(config.weather.unit, WeatherUnit::Celsius);
@@ -60,7 +61,7 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(
         config.visuals.input_background_color(),
-        RgbColor::rgba(255, 255, 255, 13)
+        RgbColor::rgba(255, 255, 255, 10)
     );
     assert_eq!(
         config.visuals.input_border_color(),
@@ -72,9 +73,9 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.input_border_width(), Some(0));
     assert_eq!(
         config.visuals.avatar_background_color(),
-        Some(RgbColor::rgba(255, 255, 255, 15))
+        Some(RgbColor::rgba(255, 255, 255, 10))
     );
-    assert_eq!(config.visuals.avatar_size(), Some(192));
+    assert_eq!(config.visuals.avatar_size(), Some(150));
     assert_eq!(config.visuals.avatar_placeholder_padding(), Some(28));
     assert_eq!(
         config.visuals.avatar_icon_color(),
@@ -114,19 +115,24 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.visuals.clock_font_size(), Some(88));
     assert_eq!(
         config.visuals.date_color(),
-        Some(RgbColor::rgba(255, 255, 255, 128))
+        Some(RgbColor::rgba(255, 255, 255, 102))
     );
     assert_eq!(config.visuals.date_font_family(), Some("Geom"));
     assert_eq!(config.visuals.date_font_weight(), Some(600));
     assert_eq!(config.visuals.date_font_style(), Some(FontStyle::Normal));
-    assert_eq!(config.visuals.date_font_size(), Some(16));
+    assert_eq!(config.visuals.date_font_size(), Some(18));
     assert_eq!(
         config.visuals.placeholder_color(),
-        Some(RgbColor::rgba(255, 255, 255, 153))
+        Some(RgbColor::rgba(255, 255, 255, 230))
+    );
+    assert!(config.visuals.status_color().is_none());
+    assert_eq!(
+        config.visuals.status_pending_color(),
+        Some(RgbColor::rgba(236, 236, 236, 224))
     );
     assert_eq!(
-        config.visuals.status_color(),
-        Some(RgbColor::rgba(255, 224, 160, 224))
+        config.visuals.status_rejected_color(),
+        Some(RgbColor::rgba(255, 213, 213, 250))
     );
     assert_eq!(
         config.visuals.eye_icon_color(),
@@ -134,7 +140,7 @@ fn first_run_defaults_match_bundled_theme() {
     );
     assert_eq!(
         config.visuals.keyboard_background_color(),
-        Some(RgbColor::rgba(255, 255, 255, 13))
+        Some(RgbColor::rgba(255, 255, 255, 10))
     );
     assert_eq!(
         config.visuals.keyboard_color(),
@@ -148,13 +154,13 @@ fn first_run_defaults_match_bundled_theme() {
             halign: Some(HorizontalAlign::Right),
             valign: Some(VerticalAlign::Top),
             x: Some(-24),
-            y: Some(17),
+            y: Some(21),
             relative_to: None,
         }
     );
     assert_eq!(
         config.visuals.battery_background_color(),
-        Some(RgbColor::rgba(255, 255, 255, 13))
+        Some(RgbColor::rgba(255, 255, 255, 10))
     );
     assert_eq!(
         config.visuals.battery_color(),
@@ -168,7 +174,7 @@ fn first_run_defaults_match_bundled_theme() {
             halign: Some(HorizontalAlign::Right),
             valign: Some(VerticalAlign::Top),
             x: Some(-78),
-            y: Some(17),
+            y: Some(21),
             relative_to: None,
         }
     );
@@ -182,18 +188,49 @@ fn first_run_defaults_match_bundled_theme() {
             relative_to: None,
         }
     );
-    assert!(config.visuals.backdrop.is_empty());
+    assert_eq!(config.visuals.backdrop.len(), 1);
+    assert_eq!(
+        config.visuals.backdrop[0].name.as_deref(),
+        Some("now_playing_panel")
+    );
+    assert_eq!(
+        config.visuals.backdrop[0].show_when,
+        Some(BackdropShowWhen::NowPlaying)
+    );
+    assert_eq!(config.visuals.backdrop[0].mode, Some(BackdropMode::Blur));
+    assert_eq!(
+        config.visuals.backdrop[0].color,
+        Some(RgbColor::rgba(255, 255, 255, 5))
+    );
+    assert_eq!(config.visuals.backdrop[0].blur_strength, Some(12));
+    assert_eq!(config.visuals.backdrop[0].radius, Some(10));
+    assert_eq!(
+        config.visuals.backdrop[0].border_color,
+        Some(RgbColor::rgba(255, 255, 255, 24))
+    );
+    assert_eq!(config.visuals.backdrop[0].width, Some(400));
+    assert_eq!(config.visuals.backdrop[0].height, Some(60));
+    assert_eq!(
+        config.visuals.backdrop[0].position,
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Right),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(-40),
+            y: Some(-40),
+            relative_to: None,
+        }
+    );
     assert!(config.visuals.weather_icon_enabled());
     assert!(config.visuals.weather_temperature_enabled());
     assert!(config.visuals.weather_location_enabled());
-    assert_eq!(config.visuals.weather_icon_opacity(), Some(50));
+    assert_eq!(config.visuals.weather_icon_opacity(), Some(80));
     assert_eq!(
         config.visuals.weather_temperature_color(),
-        Some(RgbColor::rgba(255, 255, 255, 116))
+        Some(RgbColor::rgba(255, 255, 255, 186))
     );
     assert_eq!(
         config.visuals.weather_location_color(),
-        Some(RgbColor::rgba(214, 227, 255, 92))
+        Some(RgbColor::rgba(214, 227, 255, 148))
     );
     assert_eq!(
         config.visuals.weather_temperature_font_family(),
@@ -222,8 +259,8 @@ fn first_run_defaults_match_bundled_theme() {
         WidgetPositionConfig {
             halign: Some(HorizontalAlign::Left),
             valign: Some(VerticalAlign::Bottom),
-            x: Some(30),
-            y: Some(-112),
+            x: Some(40),
+            y: Some(-106),
             relative_to: None,
         }
     );
@@ -232,8 +269,8 @@ fn first_run_defaults_match_bundled_theme() {
         WidgetPositionConfig {
             halign: Some(HorizontalAlign::Left),
             valign: Some(VerticalAlign::Bottom),
-            x: Some(30),
-            y: Some(-66),
+            x: Some(40),
+            y: Some(-70),
             relative_to: None,
         }
     );
@@ -242,8 +279,8 @@ fn first_run_defaults_match_bundled_theme() {
         WidgetPositionConfig {
             halign: Some(HorizontalAlign::Left),
             valign: Some(VerticalAlign::Bottom),
-            x: Some(30),
-            y: Some(-34),
+            x: Some(40),
+            y: Some(-44),
             relative_to: None,
         }
     );
@@ -254,7 +291,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(config.visuals.now_playing_title_enabled());
     assert_eq!(
         config.visuals.now_playing_title_color(),
-        Some(RgbColor::rgba(255, 255, 255, 175))
+        Some(RgbColor::rgba(255, 255, 255, 176))
     );
     assert_eq!(
         config.visuals.now_playing_artist_color(),
@@ -290,7 +327,7 @@ fn first_run_defaults_match_bundled_theme() {
             halign: Some(HorizontalAlign::Right),
             valign: Some(VerticalAlign::Bottom),
             x: Some(-388),
-            y: Some(-56),
+            y: Some(-48),
             relative_to: None,
         }
     );
@@ -299,8 +336,8 @@ fn first_run_defaults_match_bundled_theme() {
         WidgetPositionConfig {
             halign: Some(HorizontalAlign::Right),
             valign: Some(VerticalAlign::Bottom),
-            x: Some(-52),
-            y: Some(-88),
+            x: Some(-58),
+            y: Some(-72),
             relative_to: None,
         }
     );
@@ -309,8 +346,8 @@ fn first_run_defaults_match_bundled_theme() {
         WidgetPositionConfig {
             halign: Some(HorizontalAlign::Right),
             valign: Some(VerticalAlign::Bottom),
-            x: Some(-52),
-            y: Some(-56),
+            x: Some(-58),
+            y: Some(-50),
             relative_to: None,
         }
     );
