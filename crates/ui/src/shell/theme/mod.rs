@@ -5,8 +5,9 @@ mod tests;
 use std::collections::HashMap;
 
 use veila_common::{
-    AppConfig, BackdropMode, ClockAlignment, ClockFormat, ClockStyle, FontStyle, GridVisualConfig,
-    HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign, WidgetPositionConfig,
+    AppConfig, BackdropMode, BackdropShowWhen, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
+    GridVisualConfig, HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign,
+    WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -31,6 +32,7 @@ pub enum WidgetPositionTarget {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Backdrop {
     pub mode: BackdropMode,
+    pub show_when: BackdropShowWhen,
     pub color: ClearColor,
     pub blur_strength: u8,
     pub radius: i32,
@@ -336,6 +338,7 @@ fn resolve_backdrops(config: &AppConfig) -> (Vec<Backdrop>, HashMap<String, usiz
                 backdrop.name.clone(),
                 Backdrop {
                     mode: backdrop.mode.unwrap_or_default(),
+                    show_when: backdrop.show_when.unwrap_or_default(),
                     color: to_color(backdrop.color.unwrap_or(config.visuals.panel)),
                     blur_strength: backdrop.blur_strength.unwrap_or(12).min(24),
                     radius: i32::from(backdrop.radius.unwrap_or(0)).clamp(0, 160),

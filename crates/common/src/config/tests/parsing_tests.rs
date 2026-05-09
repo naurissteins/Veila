@@ -222,6 +222,7 @@ fn parses_multiple_backdrops() {
             radius = 20
             border_color = "#FFFFFF2E"
             border_width = 2
+            show_when = "now_playing"
             width = 520
             height = 420
             halign = "right"
@@ -232,6 +233,7 @@ fn parses_multiple_backdrops() {
 
             [[visuals.backdrop]]
             enabled = true
+            show_when = "always"
             mode = "solid"
             color = "#101820A0"
             width = 300
@@ -251,6 +253,7 @@ fn parses_multiple_backdrops() {
         BackdropVisualConfig {
             name: Some(String::from("auth_panel")),
             enabled: Some(true),
+            show_when: Some(BackdropShowWhen::NowPlaying),
             mode: Some(BackdropMode::Blur),
             color: Some(RgbColor::rgba(8, 10, 14, 112)),
             blur_strength: Some(16),
@@ -270,6 +273,10 @@ fn parses_multiple_backdrops() {
                 relative_to: None,
             },
         }
+    );
+    assert_eq!(
+        config.visuals.backdrop[1].show_when,
+        Some(BackdropShowWhen::Always)
     );
     assert_eq!(config.visuals.backdrop[1].mode, Some(BackdropMode::Solid));
     assert_eq!(config.visuals.backdrop[1].width, Some(300));

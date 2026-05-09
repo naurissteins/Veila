@@ -1,6 +1,8 @@
 use super::*;
 use crate::shell::theme::{Backdrop, WidgetPosition, WidgetPositionTarget};
-use veila_common::{BackdropMode, StatusDisplayMode, WeatherUnit};
+use veila_common::{
+    BackdropMode, BackdropShowWhen, NowPlayingSnapshot, StatusDisplayMode, WeatherUnit,
+};
 
 #[test]
 fn backdrop_rect_supports_center_and_right_alignment() {
@@ -8,6 +10,7 @@ fn backdrop_rect_supports_center_and_right_alignment() {
         ShellTheme {
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Blur,
+                show_when: BackdropShowWhen::Always,
                 color: ClearColor::rgba(8, 10, 14, 112),
                 blur_strength: 16,
                 radius: 20,
@@ -36,6 +39,7 @@ fn backdrop_rect_supports_center_and_right_alignment() {
         ShellTheme {
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Blur,
+                show_when: BackdropShowWhen::Always,
                 color: ClearColor::rgba(8, 10, 14, 112),
                 blur_strength: 16,
                 radius: 20,
@@ -81,6 +85,7 @@ fn backdrop_rect_supports_full_width_and_height() {
         ShellTheme {
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Blur,
+                show_when: BackdropShowWhen::Always,
                 color: ClearColor::rgba(8, 10, 14, 112),
                 blur_strength: 16,
                 radius: 20,
@@ -120,6 +125,7 @@ fn widget_position_can_center_inside_backdrop_rect() {
         ShellTheme {
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Blur,
+                show_when: BackdropShowWhen::Always,
                 color: ClearColor::rgba(8, 10, 14, 112),
                 blur_strength: 16,
                 radius: 20,
@@ -162,6 +168,68 @@ fn widget_position_can_center_inside_backdrop_rect() {
     assert_eq!(rect.y, 40);
     assert_eq!(rect.width, 300);
     assert_eq!(rect.height, 120);
+}
+
+#[test]
+fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
+    let theme = ShellTheme {
+        now_playing_enabled: true,
+        backdrops: vec![Backdrop {
+            mode: BackdropMode::Solid,
+            show_when: BackdropShowWhen::NowPlaying,
+            color: ClearColor::opaque(255, 0, 0),
+            blur_strength: 0,
+            radius: 0,
+            border_color: None,
+            border_width: 0,
+            full_width: false,
+            full_height: false,
+            width: 120,
+            height: 80,
+            position: WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Center,
+                x: 0,
+                y: 0,
+                target: WidgetPositionTarget::Screen,
+            },
+            z: 0,
+        }],
+        ..ShellTheme::default()
+    };
+
+    let hidden = ShellState::new(theme.clone(), None, None, true);
+    let visible = ShellState::new_with_username_and_widgets(
+        theme,
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::default(),
+        None,
+        Some(NowPlayingSnapshot {
+            title: String::from("Track"),
+            artist: Some(String::from("Artist")),
+            artwork_path: None,
+            fetched_at_unix: 0,
+        }),
+    );
+
+    let mut hidden_buffer = SoftwareBuffer::new(FrameSize::new(200, 120)).expect("buffer");
+    hidden_buffer.clear(ClearColor::opaque(0, 0, 0));
+    hidden.render_backdrops(&mut hidden_buffer);
+
+    let mut visible_buffer = SoftwareBuffer::new(FrameSize::new(200, 120)).expect("buffer");
+    visible_buffer.clear(ClearColor::opaque(0, 0, 0));
+    visible.render_backdrops(&mut visible_buffer);
+
+    let hidden_center = &hidden_buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
+    let visible_center = &visible_buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
+
+    assert_eq!(hidden_center, &[0, 0, 0, 255]);
+    assert_eq!(visible_center, &[0, 0, 255, 255]);
 }
 
 #[test]

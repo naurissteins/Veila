@@ -21,12 +21,15 @@ impl ShellState {
 
         let mut variant = String::from("backdrop:v1");
         for backdrop in &self.theme.backdrops {
+            let visible = self.backdrop_visible(backdrop);
             let border = backdrop
                 .border_color
                 .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
             variant.push_str(&format!(
-                ":{:?}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
                 backdrop.mode,
+                backdrop.show_when as u8,
+                visible as u8,
                 backdrop.position.halign,
                 backdrop.position.valign as u8,
                 backdrop.position.x,
@@ -50,6 +53,30 @@ impl ShellState {
             ));
         }
         Some(variant)
+    }
+
+    pub(super) fn backdrop_visible(&self, backdrop: &crate::shell::theme::Backdrop) -> bool {
+        match backdrop.show_when {
+            veila_common::BackdropShowWhen::Always => true,
+            veila_common::BackdropShowWhen::NowPlaying => self.now_playing_widget_visible(),
+        }
+    }
+
+    pub(super) fn has_conditional_now_playing_backdrop(&self) -> bool {
+        self.theme
+            .backdrops
+            .iter()
+            .any(|backdrop| backdrop.show_when == veila_common::BackdropShowWhen::NowPlaying)
+    }
+
+    pub(super) fn now_playing_widget_visible(&self) -> bool {
+        self.theme.now_playing_enabled
+            && (self.now_playing.is_some()
+                || self
+                    .now_playing_transition
+                    .as_ref()
+                    .and_then(|transition| transition.previous.as_ref())
+                    .is_some())
     }
 
     pub fn new(
@@ -234,11 +261,18 @@ impl ShellState {
             return;
         }
 
+        let was_visible = self.now_playing_widget_visible();
+
         self.now_playing_transition = Some(NowPlayingTransition {
             previous: self.now_playing.clone(),
             started_at: std::time::Instant::now(),
         });
         self.now_playing = next;
+        if self.has_conditional_now_playing_backdrop()
+            && was_visible != self.now_playing_widget_visible()
+        {
+            self.bump_static_scene_revision();
+        }
     }
 
     pub fn apply_theme(

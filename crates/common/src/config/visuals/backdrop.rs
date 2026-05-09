@@ -10,12 +10,22 @@ pub enum BackdropMode {
     Blur,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BackdropShowWhen {
+    #[default]
+    Always,
+    NowPlaying,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BackdropVisualConfig {
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
+    #[serde(default)]
+    pub show_when: Option<BackdropShowWhen>,
     #[serde(default)]
     pub mode: Option<BackdropMode>,
     #[serde(default)]
@@ -47,6 +57,7 @@ impl Default for BackdropVisualConfig {
         Self {
             name: None,
             enabled: Some(true),
+            show_when: Some(BackdropShowWhen::Always),
             mode: Some(BackdropMode::Blur),
             color: Some(RgbColor::rgba(8, 10, 14, 107)),
             blur_strength: Some(12),

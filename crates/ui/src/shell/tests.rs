@@ -4,7 +4,8 @@ use std::{
 };
 
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, WeatherUnit,
+    BackdropMode, BackdropShowWhen, BatterySnapshot, NowPlayingSnapshot, WeatherCondition,
+    WeatherSnapshot, WeatherUnit,
 };
 use veila_common::{
     ClockFormat, HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign,
@@ -13,6 +14,7 @@ use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellKey, ShellState, ShellStatus, ShellTheme};
+use crate::shell::theme::{Backdrop, WidgetPosition, WidgetPositionTarget};
 
 #[test]
 fn edits_and_submits_password_text() {
@@ -845,6 +847,50 @@ fn updating_now_playing_snapshot_starts_transition_without_static_scene_revision
 }
 
 #[test]
+fn conditional_now_playing_backdrop_appearing_bumps_static_scene_revision() {
+    let mut shell = ShellState::new(
+        ShellTheme {
+            now_playing_enabled: true,
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Solid,
+                show_when: BackdropShowWhen::NowPlaying,
+                color: veila_renderer::ClearColor::opaque(0, 0, 0),
+                blur_strength: 0,
+                radius: 0,
+                border_color: None,
+                border_width: 0,
+                full_width: false,
+                full_height: false,
+                width: 120,
+                height: 80,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let original = shell.static_scene_revision();
+
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: Some(String::from("Artist")),
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+
+    assert!(shell.static_scene_revision() > original);
+}
+
+#[test]
 fn now_playing_transition_clears_after_fade_duration() {
     let mut shell = ShellState::default();
     shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
@@ -859,6 +905,59 @@ fn now_playing_transition_clears_after_fade_duration() {
 
     assert!(shell.advance_animated_state());
     assert!(shell.now_playing_transition.is_none());
+}
+
+#[test]
+fn conditional_now_playing_backdrop_disappearing_after_fade_bumps_static_scene_revision() {
+    let mut shell = ShellState::new_with_username_and_widgets(
+        ShellTheme {
+            now_playing_enabled: true,
+            now_playing_fade_duration_ms: Some(10),
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Solid,
+                show_when: BackdropShowWhen::NowPlaying,
+                color: veila_renderer::ClearColor::opaque(0, 0, 0),
+                blur_strength: 0,
+                radius: 0,
+                border_color: None,
+                border_width: 0,
+                full_width: false,
+                full_height: false,
+                width: 120,
+                height: 80,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::default(),
+        None,
+        Some(NowPlayingSnapshot {
+            title: String::from("Track"),
+            artist: Some(String::from("Artist")),
+            artwork_path: None,
+            fetched_at_unix: 1,
+        }),
+    );
+
+    shell.set_now_playing_snapshot(None);
+    let after_clear = shell.static_scene_revision();
+    thread::sleep(Duration::from_millis(20));
+
+    assert!(shell.advance_animated_state());
+    assert!(shell.static_scene_revision() > after_clear);
 }
 
 #[test]

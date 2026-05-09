@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use super::RgbColor;
 
-pub use backdrop::{BackdropMode, BackdropVisualConfig};
+pub use backdrop::{BackdropMode, BackdropShowWhen, BackdropVisualConfig};
 pub use clock::{ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateVisualConfig};
 pub use grid::GridVisualConfig;
 pub use identity::{AvatarVisualConfig, UsernameVisualConfig};

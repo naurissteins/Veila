@@ -179,7 +179,6 @@ valign = "bottom"
 x = -56
 y = -60
 
-
 # Now Playing Backdrop
 [[visuals.backdrop]]
 enabled = true

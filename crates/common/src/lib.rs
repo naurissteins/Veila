@@ -11,16 +11,16 @@ pub mod weather;
 
 pub use battery::BatterySnapshot;
 pub use config::{
-    AppConfig, AvatarVisualConfig, BackdropMode, BackdropVisualConfig, BackgroundSlideshowConfig,
-    BackgroundSlideshowMode, BackgroundSlideshowOrder, BatteryConfig, BatteryVisualConfig,
-    CapsLockVisualConfig, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor,
-    DateVisualConfig, EyeVisualConfig, FontStyle, GeoCoordinate, GridVisualConfig, HorizontalAlign,
-    InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LoadedConfig,
-    NowPlayingArtworkVisualConfig, NowPlayingConfig, NowPlayingTextVisualConfig,
-    NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
-    RgbColor, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
-    WeatherConfig, WeatherIconVisualConfig, WeatherLocationVisualConfig,
+    AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
+    BackgroundSlideshowConfig, BackgroundSlideshowMode, BackgroundSlideshowOrder, BatteryConfig,
+    BatteryVisualConfig, CapsLockVisualConfig, ClockAlignment, ClockFormat, ClockStyle,
+    ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig, FontStyle, GeoCoordinate,
+    GridVisualConfig, HorizontalAlign, InputRevealMode, InputVisualConfig, InputVisualEntry,
+    KeyboardVisualConfig, LoadedConfig, NowPlayingArtworkVisualConfig, NowPlayingConfig,
+    NowPlayingTextVisualConfig, NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode,
+    RevealVisualConfig, RgbColor, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig,
+    VerticalAlign, WeatherConfig, WeatherIconVisualConfig, WeatherLocationVisualConfig,
     WeatherTemperatureVisualConfig, WeatherUnit, WeatherVisualConfig, WidgetPositionConfig,
     active_include_source_paths, active_theme_name, active_theme_source_path, default_config_path,
 };

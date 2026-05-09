@@ -178,6 +178,8 @@ y = -60
 # Now playing backdrop
 [[visuals.backdrop]]
 enabled = true
+name = "now_playing_panel"
+show_when = "now_playing"
 mode = "blur"
 color = "rgba(255, 255, 255, 0.05)"
 blur_strength = 12

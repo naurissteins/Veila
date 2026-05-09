@@ -1,8 +1,8 @@
 use veila_common::{
-    AppConfig, AvatarVisualConfig, BackdropMode, BackdropVisualConfig, BatteryVisualConfig,
-    ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig, EyeVisualConfig,
-    FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode, InputVisualConfig,
-    InputVisualEntry, KeyboardVisualConfig, NowPlayingArtworkVisualConfig,
+    AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
+    BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
+    EyeVisualConfig, FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, NowPlayingArtworkVisualConfig,
     NowPlayingTextVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
     PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
     StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
@@ -140,6 +140,7 @@ fn input_alpha_uses_rgba_values() {
     config.visuals.backdrop = vec![BackdropVisualConfig {
         name: None,
         enabled: Some(true),
+        show_when: Some(BackdropShowWhen::NowPlaying),
         mode: Some(BackdropMode::Blur),
         color: Some(ConfigColor::rgba(8, 10, 14, 112)),
         blur_strength: Some(16),
@@ -397,6 +398,7 @@ fn input_alpha_uses_rgba_values() {
     );
     assert_eq!(theme.backdrops.len(), 1);
     assert_eq!(theme.backdrops[0].mode, BackdropMode::Blur);
+    assert_eq!(theme.backdrops[0].show_when, BackdropShowWhen::NowPlaying);
     assert_eq!(theme.backdrops[0].color, ClearColor::rgba(8, 10, 14, 112));
     assert_eq!(theme.backdrops[0].blur_strength, 16);
     assert_eq!(theme.backdrops[0].radius, 20);

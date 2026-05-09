@@ -35,7 +35,7 @@ pub use color::ConfigColor;
 pub use lock::LockConfig;
 pub use now_playing::NowPlayingConfig;
 pub use visuals::{
-    AvatarVisualConfig, BackdropMode, BackdropVisualConfig, BatteryVisualConfig,
+    AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig, BatteryVisualConfig,
     CapsLockVisualConfig, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig,
     DateVisualConfig, EyeVisualConfig, FontStyle, GridVisualConfig, HorizontalAlign,
     InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig,

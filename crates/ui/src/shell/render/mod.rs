@@ -185,6 +185,9 @@ impl ShellState {
 
     pub fn render_backdrops(&self, buffer: &mut SoftwareBuffer) {
         for backdrop in &self.theme.backdrops {
+            if !self.backdrop_visible(backdrop) {
+                continue;
+            }
             let rect = self.backdrop_rect(buffer.size(), backdrop.clone());
             let mode = match backdrop.mode {
                 BackdropMode::Solid => BackdropLayerMode::Solid,
