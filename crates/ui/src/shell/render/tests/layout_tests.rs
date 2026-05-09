@@ -18,6 +18,10 @@ fn backdrop_rect_supports_center_and_right_alignment() {
                 border_width: 2,
                 full_width: false,
                 full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
                 width: 520,
                 height: 420,
                 position: WidgetPosition {
@@ -47,6 +51,10 @@ fn backdrop_rect_supports_center_and_right_alignment() {
                 border_width: 2,
                 full_width: false,
                 full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
                 width: 520,
                 height: 600,
                 position: WidgetPosition {
@@ -93,6 +101,10 @@ fn backdrop_rect_supports_full_width_and_height() {
                 border_width: 2,
                 full_width: true,
                 full_height: true,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
                 width: 520,
                 height: 420,
                 position: WidgetPosition {
@@ -113,10 +125,54 @@ fn backdrop_rect_supports_full_width_and_height() {
 
     let rect = shell.backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0].clone());
 
-    assert_eq!(rect.x, -12);
-    assert_eq!(rect.y, -16);
+    assert_eq!(rect.x, 0);
+    assert_eq!(rect.y, 0);
     assert_eq!(rect.width, 1280);
     assert_eq!(rect.height, 720);
+}
+
+#[test]
+fn backdrop_rect_applies_full_height_insets() {
+    let shell = ShellState::new(
+        ShellTheme {
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Blur,
+                show_when: BackdropShowWhen::Always,
+                color: ClearColor::rgba(8, 10, 14, 112),
+                blur_strength: 16,
+                radius: 20,
+                border_color: Some(ClearColor::rgba(255, 255, 255, 48)),
+                border_width: 2,
+                full_width: false,
+                full_height: true,
+                inset_top: 110,
+                inset_bottom: 110,
+                inset_left: 0,
+                inset_right: 0,
+                width: 540,
+                height: 420,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Left,
+                    valign: VerticalAlign::Center,
+                    x: 110,
+                    y: 999,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+
+    let rect = shell.backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0].clone());
+
+    assert_eq!(rect.x, 110);
+    assert_eq!(rect.y, 110);
+    assert_eq!(rect.width, 540);
+    assert_eq!(rect.height, 500);
 }
 
 #[test]
@@ -133,6 +189,10 @@ fn widget_position_can_center_inside_backdrop_rect() {
                 border_width: 2,
                 full_width: false,
                 full_height: true,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
                 width: 540,
                 height: 420,
                 position: WidgetPosition {
@@ -184,6 +244,10 @@ fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
             border_width: 0,
             full_width: false,
             full_height: false,
+            inset_top: 0,
+            inset_bottom: 0,
+            inset_left: 0,
+            inset_right: 0,
             width: 120,
             height: 80,
             position: WidgetPosition {

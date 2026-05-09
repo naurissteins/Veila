@@ -149,6 +149,10 @@ fn input_alpha_uses_rgba_values() {
         border_width: Some(2),
         full_width: Some(true),
         full_height: Some(false),
+        inset_top: Some(14),
+        inset_bottom: Some(18),
+        inset_left: Some(22),
+        inset_right: Some(26),
         width: Some(520),
         height: Some(420),
         z: Some(2),
@@ -409,6 +413,10 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.backdrops[0].border_width, 2);
     assert!(theme.backdrops[0].full_width);
     assert!(!theme.backdrops[0].full_height);
+    assert_eq!(theme.backdrops[0].inset_top, 14);
+    assert_eq!(theme.backdrops[0].inset_bottom, 18);
+    assert_eq!(theme.backdrops[0].inset_left, 22);
+    assert_eq!(theme.backdrops[0].inset_right, 26);
     assert_eq!(theme.backdrops[0].width, 520);
     assert_eq!(theme.backdrops[0].height, 420);
     assert_eq!(

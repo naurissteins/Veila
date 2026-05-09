@@ -103,7 +103,7 @@ size = 2
 halign = "right"
 valign = "top"
 x = -24
-y = 13
+y = 21
 
 [visuals.battery]
 background_color = "rgba(0, 0, 0, 0.1)"
@@ -113,7 +113,7 @@ size = 20
 halign = "right"
 valign = "top"
 x = -78
-y = 13
+y = 21
 
 [visuals.weather.icon]
 size = 40
@@ -121,12 +121,12 @@ opacity = 80
 halign = "left"
 valign = "bottom"
 x = 40
-y = -112
+y = -122
 
 [visuals.weather.temperature]
 font_size = 6
-font_family = "Google Sans Flex"
-font_weight = 400
+font_family = "Geom"
+font_weight = 600
 letter_spacing = 0
 color = "rgba(255, 255, 255, 0.73)"
 halign = "left"
@@ -145,7 +145,7 @@ x = 40
 y = -44
 
 [visuals.now_playing]
-enabled = true
+enabled = false
 fade_duration_ms = 320
 
 [visuals.now_playing.artwork]
@@ -155,7 +155,7 @@ opacity = 90
 halign = "right"
 valign = "bottom"
 x = -388
-y = -56
+y = -48
 
 [visuals.now_playing.artist]
 width = 318
@@ -165,8 +165,8 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -56
-y = -82
+x = -62
+y = -72
 
 [visuals.now_playing.title]
 width = 318
@@ -176,23 +176,25 @@ font_size = 2
 font_weight = 400
 halign = "right"
 valign = "bottom"
-x = -56
-y = -60
+x = -62
+y = -50
 
-# Now Playing Backdrop
+# Now playing backdrop
 [[visuals.backdrop]]
 enabled = true
+name = "now_playing_panel"
+show_when = "now_playing"
 mode = "blur"
 color = "rgba(255, 255, 255, 0.05)"
 blur_strength = 12
 radius = 10
 border_color = "#FFFFFF18"
-width = 390
+width = 400
 height = 60
 halign = "right"
 valign = "bottom"
-x = -50
-y = -48
+x = -40
+y = -40
 z = 1
 
 # Auth stack Background

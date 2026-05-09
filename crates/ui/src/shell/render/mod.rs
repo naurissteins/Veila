@@ -215,33 +215,40 @@ impl ShellState {
         size: veila_renderer::FrameSize,
         backdrop: crate::shell::theme::Backdrop,
     ) -> Rect {
+        let screen_width = size.width as i32;
+        let screen_height = size.height as i32;
+        let x = if backdrop.full_width {
+            backdrop.inset_left.min(screen_width)
+        } else {
+            anchored_block_x(
+                screen_width,
+                backdrop.width,
+                backdrop.position.halign,
+                backdrop.position.x,
+            )
+        };
+        let y = if backdrop.full_height {
+            backdrop.inset_top.min(screen_height)
+        } else {
+            anchored_block_y(
+                screen_height,
+                backdrop.height,
+                backdrop.position.valign,
+                backdrop.position.y,
+            )
+        };
         let width = if backdrop.full_width {
-            size.width as i32
+            (screen_width - backdrop.inset_left - backdrop.inset_right).max(0)
         } else {
             backdrop.width
         };
         let height = if backdrop.full_height {
-            size.height as i32
+            (screen_height - backdrop.inset_top - backdrop.inset_bottom).max(0)
         } else {
             backdrop.height
         };
 
-        Rect::new(
-            anchored_block_x(
-                size.width as i32,
-                width,
-                backdrop.position.halign,
-                backdrop.position.x,
-            ),
-            anchored_block_y(
-                size.height as i32,
-                height,
-                backdrop.position.valign,
-                backdrop.position.y,
-            ),
-            width,
-            height,
-        )
+        Rect::new(x, y, width, height)
     }
 
     pub(super) fn first_backdrop_center_x(&self, size: veila_renderer::FrameSize) -> Option<i32> {

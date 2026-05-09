@@ -26,7 +26,7 @@ impl ShellState {
                 .border_color
                 .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
             variant.push_str(&format!(
-                ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
                 backdrop.mode,
                 backdrop.show_when as u8,
                 visible as u8,
@@ -36,6 +36,10 @@ impl ShellState {
                 backdrop.position.y,
                 backdrop.full_width as u8,
                 backdrop.full_height as u8,
+                backdrop.inset_top,
+                backdrop.inset_bottom,
+                backdrop.inset_left,
+                backdrop.inset_right,
                 backdrop.width,
                 backdrop.height,
                 backdrop.z,

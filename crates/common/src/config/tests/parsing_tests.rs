@@ -223,6 +223,10 @@ fn parses_multiple_backdrops() {
             border_color = "#FFFFFF2E"
             border_width = 2
             show_when = "now_playing"
+            inset_top = 14
+            inset_bottom = 18
+            inset_left = 22
+            inset_right = 26
             width = 520
             height = 420
             halign = "right"
@@ -262,6 +266,10 @@ fn parses_multiple_backdrops() {
             border_width: Some(2),
             full_width: None,
             full_height: None,
+            inset_top: Some(14),
+            inset_bottom: Some(18),
+            inset_left: Some(22),
+            inset_right: Some(26),
             width: Some(520),
             height: Some(420),
             z: Some(2),
@@ -279,6 +287,10 @@ fn parses_multiple_backdrops() {
         Some(BackdropShowWhen::Always)
     );
     assert_eq!(config.visuals.backdrop[1].mode, Some(BackdropMode::Solid));
+    assert_eq!(config.visuals.backdrop[1].inset_top, None);
+    assert_eq!(config.visuals.backdrop[1].inset_bottom, None);
+    assert_eq!(config.visuals.backdrop[1].inset_left, None);
+    assert_eq!(config.visuals.backdrop[1].inset_right, None);
     assert_eq!(config.visuals.backdrop[1].width, Some(300));
     assert_eq!(config.visuals.backdrop[1].height, Some(180));
 }
@@ -327,6 +339,10 @@ fn parses_full_backdrop_extent_flags() {
             mode = "blur"
             full_width = true
             full_height = true
+            inset_top = 12
+            inset_bottom = 20
+            inset_left = 8
+            inset_right = 16
             halign = "center"
             valign = "center"
         "##,
@@ -336,6 +352,10 @@ fn parses_full_backdrop_extent_flags() {
     assert_eq!(config.visuals.backdrop.len(), 1);
     assert_eq!(config.visuals.backdrop[0].full_width, Some(true));
     assert_eq!(config.visuals.backdrop[0].full_height, Some(true));
+    assert_eq!(config.visuals.backdrop[0].inset_top, Some(12));
+    assert_eq!(config.visuals.backdrop[0].inset_bottom, Some(20));
+    assert_eq!(config.visuals.backdrop[0].inset_left, Some(8));
+    assert_eq!(config.visuals.backdrop[0].inset_right, Some(16));
 }
 
 #[test]

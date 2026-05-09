@@ -861,6 +861,10 @@ fn conditional_now_playing_backdrop_appearing_bumps_static_scene_revision() {
                 border_width: 0,
                 full_width: false,
                 full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
                 width: 120,
                 height: 80,
                 position: WidgetPosition {
@@ -923,6 +927,10 @@ fn conditional_now_playing_backdrop_disappearing_after_fade_bumps_static_scene_r
                 border_width: 0,
                 full_width: false,
                 full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
                 width: 120,
                 height: 80,
                 position: WidgetPosition {

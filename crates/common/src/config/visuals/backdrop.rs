@@ -43,6 +43,14 @@ pub struct BackdropVisualConfig {
     #[serde(default)]
     pub full_height: Option<bool>,
     #[serde(default)]
+    pub inset_top: Option<u16>,
+    #[serde(default)]
+    pub inset_bottom: Option<u16>,
+    #[serde(default)]
+    pub inset_left: Option<u16>,
+    #[serde(default)]
+    pub inset_right: Option<u16>,
+    #[serde(default)]
     pub width: Option<u16>,
     #[serde(default)]
     pub height: Option<u16>,
@@ -66,6 +74,10 @@ impl Default for BackdropVisualConfig {
             border_width: Some(0),
             full_width: Some(false),
             full_height: Some(false),
+            inset_top: Some(0),
+            inset_bottom: Some(0),
+            inset_left: Some(0),
+            inset_right: Some(0),
             width: Some(560),
             height: Some(600),
             z: Some(0),
