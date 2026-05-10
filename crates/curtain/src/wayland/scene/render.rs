@@ -66,12 +66,6 @@ impl CurtainApp {
             );
         }
 
-        let static_started_at = timing_enabled.then(Instant::now);
-        let static_overlay_refreshed = self.prepare_static_overlay(index, size)?;
-        let static_overlay_prepare_ms = static_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
-
         if self.lock_surfaces[index].scene_base.is_none() {
             return Err(anyhow!("scene base buffer is unavailable"));
         }
@@ -79,13 +73,6 @@ impl CurtainApp {
         let background_restore_started_at = timing_enabled.then(Instant::now);
         let mut scratch_buffer = self.prepare_scratch_buffer(index, frame_size)?;
         let background_restore_ms = background_restore_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
-        let static_blend_started_at = timing_enabled.then(Instant::now);
-        if let Some(static_overlay) = self.lock_surfaces[index].static_overlay.as_ref() {
-            scratch_buffer.blend_from(static_overlay)?;
-        }
-        let static_overlay_blend_ms = static_blend_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
@@ -123,9 +110,7 @@ impl CurtainApp {
             let sample = RenderTimingSample {
                 first_frame,
                 background_prepare_ms,
-                static_overlay_prepare_ms,
                 background_restore_ms,
-                static_overlay_blend_ms,
                 dynamic_overlay_ms,
                 shm_pool_prepare_ms,
                 commit_ms: commit_started_at
@@ -154,11 +139,8 @@ impl CurtainApp {
                 first_frame = sample.first_frame,
                 background_refreshed,
                 scene_base_refreshed,
-                static_overlay_refreshed,
                 background_prepare_ms = sample.background_prepare_ms,
-                static_overlay_prepare_ms = sample.static_overlay_prepare_ms,
                 background_restore_ms = sample.background_restore_ms,
-                static_overlay_blend_ms = sample.static_overlay_blend_ms,
                 dynamic_overlay_ms = sample.dynamic_overlay_ms,
                 shm_pool_prepare_ms = sample.shm_pool_prepare_ms,
                 commit_ms = sample.commit_ms,
@@ -213,9 +195,7 @@ impl CurtainApp {
             let sample = RenderTimingSample {
                 first_frame,
                 background_prepare_ms,
-                static_overlay_prepare_ms: 0,
                 background_restore_ms: 0,
-                static_overlay_blend_ms: 0,
                 dynamic_overlay_ms: 0,
                 shm_pool_prepare_ms,
                 commit_ms: commit_started_at
@@ -244,11 +224,8 @@ impl CurtainApp {
                 first_frame = sample.first_frame,
                 background_refreshed,
                 scene_base_refreshed = false,
-                static_overlay_refreshed = false,
                 background_prepare_ms = sample.background_prepare_ms,
-                static_overlay_prepare_ms = 0,
                 background_restore_ms = 0,
-                static_overlay_blend_ms = 0,
                 dynamic_overlay_ms = 0,
                 shm_pool_prepare_ms = sample.shm_pool_prepare_ms,
                 commit_ms = sample.commit_ms,

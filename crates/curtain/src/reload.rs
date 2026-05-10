@@ -97,11 +97,6 @@ impl CurtainApp {
             self.now_playing_snapshot.clone(),
         );
         self.reset_background_source_state();
-        for surface in &mut self.lock_surfaces {
-            surface.static_overlay = None;
-            surface.static_overlay_revision = 0;
-        }
-
         if should_wake_outputs {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }

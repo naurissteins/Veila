@@ -15,7 +15,6 @@ struct SurfaceMemorySummary {
     has_background: bool,
     has_scene_base: bool,
     has_scratch_buffer: bool,
-    has_static_overlay: bool,
 }
 
 struct CurtainMemorySummary {
@@ -58,7 +57,6 @@ impl CurtainApp {
                 has_background = surface.has_background,
                 has_scene_base = surface.has_scene_base,
                 has_scratch_buffer = surface.has_scratch_buffer,
-                has_static_overlay = surface.has_static_overlay,
                 "curtain surface memory summary"
             );
         }
@@ -86,7 +84,6 @@ impl CurtainApp {
         let mut ui_visible_surfaces = 0_usize;
         let mut surfaces = Vec::with_capacity(self.lock_surfaces.len());
         let mut counted_scene_bases = HashSet::with_capacity(self.lock_surfaces.len());
-        let mut counted_static_overlays = HashSet::with_capacity(self.lock_surfaces.len());
 
         for (index, surface) in self.lock_surfaces.iter().enumerate() {
             let Some(size) = surface.size else {
@@ -104,9 +101,7 @@ impl CurtainApp {
             let background_kib = software_buffer_kib(surface.background.as_ref());
             let scene_base_kib = software_buffer_kib(surface.scene_base.as_deref());
             let scratch_kib = software_buffer_kib(surface.scratch_buffer.as_ref());
-            let static_overlay_kib = software_buffer_kib(surface.static_overlay.as_deref());
-            let software_total_kib =
-                background_kib + scene_base_kib + scratch_kib + static_overlay_kib;
+            let software_total_kib = background_kib + scene_base_kib + scratch_kib;
             let shm_kib = u64::from(surface.shm_pool.is_some()) * frame_kib;
             let scratch_budget_kib = if surface.scratch_buffer.is_none()
                 && (surface.background.is_some() || surface.scene_base.is_some())
@@ -124,11 +119,6 @@ impl CurtainApp {
             {
                 software_buffers_kib = software_buffers_kib.saturating_add(scene_base_kib);
             }
-            if let Some(static_overlay) = surface.static_overlay.as_ref()
-                && counted_static_overlays.insert(Arc::as_ptr(static_overlay))
-            {
-                software_buffers_kib = software_buffers_kib.saturating_add(static_overlay_kib);
-            }
             shm_pool_estimated_kib = shm_pool_estimated_kib.saturating_add(shm_kib);
             estimated_scratch_kib = estimated_scratch_kib.saturating_add(scratch_budget_kib);
 
@@ -139,8 +129,7 @@ impl CurtainApp {
                 .unwrap_or_else(|| format!("surface-{index}"));
             let software_buffer_count = u8::from(surface.background.is_some())
                 + u8::from(surface.scene_base.is_some())
-                + u8::from(surface.scratch_buffer.is_some())
-                + u8::from(surface.static_overlay.is_some());
+                + u8::from(surface.scratch_buffer.is_some());
 
             surfaces.push(SurfaceMemorySummary {
                 output,
@@ -155,7 +144,6 @@ impl CurtainApp {
                 has_background: surface.background.is_some(),
                 has_scene_base: surface.scene_base.is_some(),
                 has_scratch_buffer: surface.scratch_buffer.is_some(),
-                has_static_overlay: surface.static_overlay.is_some(),
             });
         }
 

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use veila_renderer::{
-    ClearColor, FrameSize, SoftwareBuffer,
+    FrameSize,
     background::{
         load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
         load_cached_render_variant,
@@ -110,54 +110,6 @@ impl CurtainApp {
                 .is_some_and(|buffer| buffer.size() == frame_size)
     }
 
-    pub(super) fn prepare_static_overlay(
-        &mut self,
-        index: usize,
-        size: SurfaceSize,
-    ) -> Result<bool> {
-        let frame_size = size.buffer;
-        let render_scale = size.scale.max(1) as u32;
-        let revision = self.ui_shell.static_scene_revision();
-        let needs_refresh = self.lock_surfaces[index]
-            .static_overlay
-            .as_ref()
-            .map(|buffer| buffer.size() != frame_size)
-            .unwrap_or(true)
-            || self.lock_surfaces[index].static_overlay_revision != revision;
-
-        if !needs_refresh {
-            return Ok(false);
-        }
-
-        if let Some(overlay) = self
-            .lock_surfaces
-            .iter()
-            .enumerate()
-            .find(|(candidate_index, surface)| {
-                *candidate_index != index
-                    && surface.static_overlay_revision == revision
-                    && surface
-                        .static_overlay
-                        .as_ref()
-                        .is_some_and(|buffer| buffer.size() == frame_size)
-            })
-            .and_then(|(_, surface)| surface.static_overlay.clone())
-        {
-            self.lock_surfaces[index].static_overlay = Some(overlay);
-            self.lock_surfaces[index].static_overlay_revision = revision;
-            return Ok(true);
-        }
-
-        let mut overlay = SoftwareBuffer::new(frame_size)?;
-        overlay.clear(ClearColor::rgba(0, 0, 0, 0));
-        self.ui_shell
-            .render_static_overlay_scaled(&mut overlay, render_scale);
-        self.lock_surfaces[index].static_overlay = Some(Arc::new(overlay));
-        self.lock_surfaces[index].static_overlay_revision = revision;
-
-        Ok(true)
-    }
-
     pub(super) fn prepare_scene_base(
         &mut self,
         index: usize,
@@ -193,6 +145,8 @@ impl CurtainApp {
         let mut buffer = background.clone();
         self.ui_shell
             .render_backdrops_scaled(&mut buffer, render_scale);
+        self.ui_shell
+            .render_static_overlay_scaled(&mut buffer, render_scale);
         self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
         self.lock_surfaces[index].scene_base_revision = revision;
         self.lock_surfaces[index].background = None;
@@ -241,12 +195,14 @@ impl CurtainApp {
 
         if let Some(variant) = self.backdrop_cache_variant_for_surface(scale) {
             if let Some(path) = selected_path.as_deref() {
-                if let Ok(Some(buffer)) = load_cached_render_variant(
+                if let Ok(Some(mut buffer)) = load_cached_render_variant(
                     path,
                     frame_size,
                     self.background_treatment,
                     &variant,
                 ) {
+                    self.ui_shell
+                        .render_static_overlay_scaled(&mut buffer, scale.max(1) as u32);
                     self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                     self.lock_surfaces[index].scene_base_revision = revision;
                     self.lock_surfaces[index].background = None;
@@ -254,13 +210,15 @@ impl CurtainApp {
                     return Ok(Some(true));
                 }
             } else if let Some(generated) = self.background_generated
-                && let Ok(Some(buffer)) = load_cached_generated_render_variant(
+                && let Ok(Some(mut buffer)) = load_cached_generated_render_variant(
                     generated,
                     frame_size,
                     self.background_treatment,
                     &variant,
                 )
             {
+                self.ui_shell
+                    .render_static_overlay_scaled(&mut buffer, scale.max(1) as u32);
                 self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                 self.lock_surfaces[index].scene_base_revision = revision;
                 self.lock_surfaces[index].background = None;

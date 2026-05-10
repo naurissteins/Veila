@@ -2,9 +2,7 @@
 pub(crate) struct RenderTimingSample {
     pub(crate) first_frame: bool,
     pub(crate) background_prepare_ms: u64,
-    pub(crate) static_overlay_prepare_ms: u64,
     pub(crate) background_restore_ms: u64,
-    pub(crate) static_overlay_blend_ms: u64,
     pub(crate) dynamic_overlay_ms: u64,
     pub(crate) shm_pool_prepare_ms: u64,
     pub(crate) commit_ms: u64,
@@ -22,9 +20,7 @@ pub(crate) struct RenderProfiler {
     frames_rendered: u64,
     first_frames: u64,
     background_prepare: StageTimingStats,
-    static_overlay_prepare: StageTimingStats,
     background_restore: StageTimingStats,
-    static_overlay_blend: StageTimingStats,
     dynamic_overlay: StageTimingStats,
     shm_pool_prepare: StageTimingStats,
     commit: StageTimingStats,
@@ -53,11 +49,7 @@ impl RenderProfiler {
             .first_frames
             .saturating_add(u64::from(sample.first_frame));
         self.background_prepare.record(sample.background_prepare_ms);
-        self.static_overlay_prepare
-            .record(sample.static_overlay_prepare_ms);
         self.background_restore.record(sample.background_restore_ms);
-        self.static_overlay_blend
-            .record(sample.static_overlay_blend_ms);
         self.dynamic_overlay.record(sample.dynamic_overlay_ms);
         self.shm_pool_prepare.record(sample.shm_pool_prepare_ms);
         self.commit.record(sample.commit_ms);
@@ -75,16 +67,8 @@ impl RenderProfiler {
                 self.background_prepare.average_ms(self.frames_rendered),
             ),
             (
-                "static_overlay_prepare_ms",
-                self.static_overlay_prepare.average_ms(self.frames_rendered),
-            ),
-            (
                 "background_restore_ms",
                 self.background_restore.average_ms(self.frames_rendered),
-            ),
-            (
-                "static_overlay_blend_ms",
-                self.static_overlay_blend.average_ms(self.frames_rendered),
             ),
             (
                 "dynamic_overlay_ms",
@@ -98,12 +82,7 @@ impl RenderProfiler {
         ];
         let max_stages = [
             ("background_prepare_ms", self.background_prepare.max_ms),
-            (
-                "static_overlay_prepare_ms",
-                self.static_overlay_prepare.max_ms,
-            ),
             ("background_restore_ms", self.background_restore.max_ms),
-            ("static_overlay_blend_ms", self.static_overlay_blend.max_ms),
             ("dynamic_overlay_ms", self.dynamic_overlay.max_ms),
             ("shm_pool_prepare_ms", self.shm_pool_prepare.max_ms),
             ("commit_ms", self.commit.max_ms),
@@ -126,14 +105,8 @@ impl RenderProfiler {
             total_max_ms = self.total.max_ms,
             background_prepare_avg_ms = self.background_prepare.average_ms(self.frames_rendered),
             background_prepare_max_ms = self.background_prepare.max_ms,
-            static_overlay_prepare_avg_ms =
-                self.static_overlay_prepare.average_ms(self.frames_rendered),
-            static_overlay_prepare_max_ms = self.static_overlay_prepare.max_ms,
             background_restore_avg_ms = self.background_restore.average_ms(self.frames_rendered),
             background_restore_max_ms = self.background_restore.max_ms,
-            static_overlay_blend_avg_ms =
-                self.static_overlay_blend.average_ms(self.frames_rendered),
-            static_overlay_blend_max_ms = self.static_overlay_blend.max_ms,
             dynamic_overlay_avg_ms = self.dynamic_overlay.average_ms(self.frames_rendered),
             dynamic_overlay_max_ms = self.dynamic_overlay.max_ms,
             shm_pool_prepare_avg_ms = self.shm_pool_prepare.average_ms(self.frames_rendered),
