@@ -4,13 +4,13 @@ use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
 use veila_renderer::{FrameSize, shm};
 
-use crate::state::{CurtainApp, RenderTimingSample};
+use crate::state::{CurtainApp, RenderTimingSample, SurfaceSize};
 
 impl CurtainApp {
-    pub(super) fn render_surface(
+    pub(crate) fn render_surface(
         &mut self,
         surface: &SessionLockSurface,
-        size: (u32, u32),
+        size: SurfaceSize,
         queue_handle: &QueueHandle<Self>,
     ) -> Result<()> {
         let Some(index) = self
@@ -24,14 +24,15 @@ impl CurtainApp {
         let timing_enabled = tracing::enabled!(tracing::Level::DEBUG);
         let total_started_at = timing_enabled.then(Instant::now);
         let first_frame = self.lock_surfaces[index].shm_pool.is_none();
-        let frame_size = FrameSize::new(size.0, size.1);
+        let frame_size = size.buffer;
+        let render_scale = size.scale.max(1) as u32;
         let revision = self.ui_shell.static_scene_revision();
         let ui_visible = self.ui_visible_on_surface(index);
         let background_started_at = timing_enabled.then(Instant::now);
         let background_refreshed =
             self.prepare_background(index, size, ui_visible.then_some(revision))?;
         let scene_base_cache_ready = if ui_visible {
-            self.try_prepare_scene_base_without_background(index, frame_size, revision)?
+            self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
         } else {
             None
         };
@@ -61,6 +62,7 @@ impl CurtainApp {
                 background_prepare_ms,
                 total_started_at,
                 timing_enabled,
+                size,
             );
         }
 
@@ -87,7 +89,8 @@ impl CurtainApp {
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
-        self.ui_shell.render_dynamic_overlay(&mut scratch_buffer);
+        self.ui_shell
+            .render_dynamic_overlay_scaled(&mut scratch_buffer, render_scale);
         let dynamic_overlay_ms = dynamic_overlay_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
@@ -106,7 +109,12 @@ impl CurtainApp {
             .shm_pool
             .as_mut()
             .expect("surface SHM pool should be initialized")
-            .commit_buffer(queue_handle, surface.wl_surface(), &scratch_buffer)
+            .commit_buffer(
+                queue_handle,
+                surface.wl_surface(),
+                &scratch_buffer,
+                size.scale,
+            )
             .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
         self.lock_surfaces[index].scratch_buffer = Some(scratch_buffer);
         commit_result?;
@@ -138,8 +146,11 @@ impl CurtainApp {
                 .unwrap_or_else(|| format!("surface-{index}"));
             tracing::debug!(
                 output,
+                logical_width = size.logical_width,
+                logical_height = size.logical_height,
                 width = frame_size.width,
                 height = frame_size.height,
+                buffer_scale = size.scale,
                 first_frame = sample.first_frame,
                 background_refreshed,
                 scene_base_refreshed,
@@ -172,6 +183,7 @@ impl CurtainApp {
         background_prepare_ms: u64,
         total_started_at: Option<Instant>,
         timing_enabled: bool,
+        size: SurfaceSize,
     ) -> Result<()> {
         let Some(background) = self.lock_surfaces[index].background.take() else {
             return Err(anyhow!("background buffer is unavailable"));
@@ -192,7 +204,7 @@ impl CurtainApp {
             .shm_pool
             .as_mut()
             .expect("surface SHM pool should be initialized")
-            .commit_buffer(queue_handle, surface.wl_surface(), &background)
+            .commit_buffer(queue_handle, surface.wl_surface(), &background, size.scale)
             .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
         self.lock_surfaces[index].background = Some(background);
         commit_result?;
@@ -224,8 +236,11 @@ impl CurtainApp {
                 .unwrap_or_else(|| format!("surface-{index}"));
             tracing::debug!(
                 output,
+                logical_width = size.logical_width,
+                logical_height = size.logical_height,
                 width = frame_size.width,
                 height = frame_size.height,
+                buffer_scale = size.scale,
                 first_frame = sample.first_frame,
                 background_refreshed,
                 scene_base_refreshed = false,

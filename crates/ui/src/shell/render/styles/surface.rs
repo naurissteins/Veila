@@ -14,6 +14,14 @@ use super::{
 };
 
 impl ShellState {
+    fn render_scale_i32(&self) -> i32 {
+        self.render_scale.max(1) as i32
+    }
+
+    fn scaled_px(&self, value: i32) -> i32 {
+        value.saturating_mul(self.render_scale_i32())
+    }
+
     pub(crate) fn input_style(&self) -> PillStyle {
         let selection_active = self.secret_selected;
         let base_border = if matches!(self.status, ShellStatus::Rejected { .. }) {
@@ -56,7 +64,13 @@ impl ShellState {
     }
 
     pub(crate) fn mask_style(&self) -> MaskedInputStyle {
-        MaskedInputStyle::new(self.theme.input_mask_color.unwrap_or(self.theme.foreground))
+        let mut style =
+            MaskedInputStyle::new(self.theme.input_mask_color.unwrap_or(self.theme.foreground));
+        let scale = self.render_scale_i32();
+        style.bullet_size = style.bullet_size.saturating_mul(scale);
+        style.spacing = style.spacing.saturating_mul(scale);
+        style.horizontal_padding = style.horizontal_padding.saturating_mul(scale);
+        style
     }
 
     pub(crate) fn avatar_style(&self) -> AvatarStyle {
@@ -103,7 +117,7 @@ impl ShellState {
         };
         let base = self.theme.eye_icon_color.unwrap_or(self.theme.foreground);
         let alpha = eye_icon_alpha(base.alpha, interaction_alpha);
-        IconStyle::new(base.with_alpha(alpha)).with_padding(4)
+        IconStyle::new(base.with_alpha(alpha)).with_padding(self.scaled_px(4))
     }
 
     pub(crate) fn caps_lock_icon_style(&self) -> IconStyle {
@@ -113,6 +127,6 @@ impl ShellState {
         } else {
             base.alpha
         };
-        IconStyle::new(base.with_alpha(alpha)).with_padding(4)
+        IconStyle::new(base.with_alpha(alpha)).with_padding(self.scaled_px(4))
     }
 }

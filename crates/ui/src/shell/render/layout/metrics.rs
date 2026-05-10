@@ -28,15 +28,18 @@ impl SceneMetrics {
         configured_avatar_size: Option<i32>,
     ) -> Self {
         let scene_width = ((width as f32) * 0.34) as i32;
+        let input_width_max = 560.max(width / 4);
+        let input_height_max = 96.max(height / 8);
+        let avatar_size_max = 160.max(width.min(height) / 4);
         let input_width = configured_input_width
             .unwrap_or_else(|| (((scene_width as f32) * 0.7) as i32).clamp(220, 320))
-            .clamp(180, 560);
+            .clamp(180, input_width_max);
         let input_height = configured_input_height
             .unwrap_or_else(|| (((height as f32) * 0.072) as i32).clamp(48, 58))
-            .clamp(40, 96);
+            .clamp(40, input_height_max);
         let avatar_size = configured_avatar_size
             .unwrap_or_else(|| (width.min(height) / 7).clamp(84, 108))
-            .clamp(56, 160);
+            .clamp(56, avatar_size_max);
         Self {
             center_x: width / 2,
             auth_center_x: width / 2,

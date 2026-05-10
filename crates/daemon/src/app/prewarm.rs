@@ -220,7 +220,8 @@ fn prewarm_wallpaper(
     match prewarm_source(&job.path) {
         Ok(status) => {
             let source_elapsed_ms = elapsed_ms(source_started_at);
-            let rendered = prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.sizes);
+            let rendered =
+                prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.buffer_sizes());
             let layered =
                 prewarm_layered_backgrounds(&job.path, fallback, treatment, backdrops, &job.sizes);
             Ok(PrewarmReport {
@@ -259,20 +260,21 @@ fn prewarm_layered_backgrounds(
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
-    sizes: &[FrameSize],
+    sizes: &[PrewarmSize],
 ) -> Option<LayeredPrewarmReport> {
     if backdrops.is_empty() || sizes.is_empty() {
         return None;
     }
 
-    let variant = backdrop_variant(backdrops);
     let started_at = Instant::now();
     let asset = BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?;
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
     for size in sizes.iter().copied() {
-        if load_cached_render_variant(path, size, treatment, &variant)
+        let backdrops = scaled_backdrop_specs(backdrops, size.scale);
+        let variant = backdrop_variant(&backdrops, size.scale);
+        if load_cached_render_variant(path, size.buffer, treatment, &variant)
             .ok()
             .flatten()
             .is_some()
@@ -281,9 +283,9 @@ fn prewarm_layered_backgrounds(
             continue;
         }
 
-        let mut buffer = asset.render(size).ok()?;
-        apply_backdrop_specs(backdrops, &mut buffer);
-        store_cached_render_variant(path, size, treatment, &buffer, &variant).ok()?;
+        let mut buffer = asset.render(size.buffer).ok()?;
+        apply_backdrop_specs(&backdrops, &mut buffer);
+        store_cached_render_variant(path, size.buffer, treatment, &buffer, &variant).ok()?;
         warmed_sizes += 1;
     }
 
@@ -299,14 +301,15 @@ fn prewarm_generated_backgrounds(
     generated: GeneratedBackground,
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
-    sizes: &[FrameSize],
+    sizes: &[PrewarmSize],
 ) -> Option<GeneratedPrewarmReport> {
     if sizes.is_empty() {
         return None;
     }
 
     let started_at = Instant::now();
-    let summary = prewarm_rendered_generated(generated, treatment, sizes).ok()?;
+    let buffer_sizes = unique_buffer_sizes(sizes);
+    let summary = prewarm_rendered_generated(generated, treatment, &buffer_sizes).ok()?;
     let rendered = RenderedPrewarmReport {
         elapsed_ms: elapsed_ms(started_at),
         probed_outputs: sizes.len(),
@@ -325,13 +328,12 @@ fn prewarm_generated_layered_backgrounds(
     generated: GeneratedBackground,
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
-    sizes: &[FrameSize],
+    sizes: &[PrewarmSize],
 ) -> Option<LayeredPrewarmReport> {
     if backdrops.is_empty() || sizes.is_empty() {
         return None;
     }
 
-    let variant = backdrop_variant(backdrops);
     let started_at = Instant::now();
     let asset = BackgroundAsset::load(
         None,
@@ -344,7 +346,9 @@ fn prewarm_generated_layered_backgrounds(
     let mut warmed_sizes = 0usize;
 
     for size in sizes.iter().copied() {
-        if load_cached_generated_render_variant(generated, size, treatment, &variant)
+        let backdrops = scaled_backdrop_specs(backdrops, size.scale);
+        let variant = backdrop_variant(&backdrops, size.scale);
+        if load_cached_generated_render_variant(generated, size.buffer, treatment, &variant)
             .ok()
             .flatten()
             .is_some()
@@ -353,9 +357,9 @@ fn prewarm_generated_layered_backgrounds(
             continue;
         }
 
-        let mut buffer = asset.render(size).ok()?;
-        apply_backdrop_specs(backdrops, &mut buffer);
-        store_cached_generated_render_variant(generated, size, treatment, &buffer, &variant)
+        let mut buffer = asset.render(size.buffer).ok()?;
+        apply_backdrop_specs(&backdrops, &mut buffer);
+        store_cached_generated_render_variant(generated, size.buffer, treatment, &buffer, &variant)
             .ok()?;
         warmed_sizes += 1;
     }
@@ -368,12 +372,22 @@ fn prewarm_generated_layered_backgrounds(
     })
 }
 
+fn unique_buffer_sizes(sizes: &[PrewarmSize]) -> Vec<FrameSize> {
+    let mut unique = Vec::new();
+    for size in sizes {
+        if !unique.contains(&size.buffer) {
+            unique.push(size.buffer);
+        }
+    }
+    unique
+}
+
 fn prewarm_jobs(
     background: &veila_common::config::BackgroundConfig,
     outputs: &[output_probe::ProbedOutput],
 ) -> Vec<PrewarmJob> {
     let mut jobs = Vec::new();
-    let all_sizes: Vec<_> = outputs.iter().map(|output| output.size).collect();
+    let all_sizes: Vec<_> = outputs.iter().map(PrewarmSize::from).collect();
 
     if background.slideshow_enabled() {
         if let Ok(Some(path)) = background.resolved_slideshow_initial_path() {
@@ -390,7 +404,7 @@ fn prewarm_jobs(
         let sizes: Vec<_> = outputs
             .iter()
             .filter(|output| output.name.as_deref() == Some(output_config.name.as_str()))
-            .map(|output| output.size)
+            .map(PrewarmSize::from)
             .collect();
         merge_prewarm_job(&mut jobs, output_config.path.clone(), &sizes);
     }
@@ -398,7 +412,36 @@ fn prewarm_jobs(
     jobs
 }
 
-fn merge_prewarm_job(jobs: &mut Vec<PrewarmJob>, path: PathBuf, sizes: &[FrameSize]) {
+fn scaled_backdrop_specs(
+    backdrops: &[BackdropPrewarmSpec],
+    scale: i32,
+) -> Vec<BackdropPrewarmSpec> {
+    let scale = scale.max(1);
+    backdrops
+        .iter()
+        .map(|backdrop| BackdropPrewarmSpec {
+            mode: backdrop.mode,
+            width: scale_i32(backdrop.width, scale),
+            height: scale_i32(backdrop.height, scale),
+            halign: backdrop.halign,
+            valign: backdrop.valign,
+            x: scale_i32(backdrop.x, scale),
+            y: scale_i32(backdrop.y, scale),
+            z: backdrop.z,
+            color: backdrop.color,
+            blur_strength: backdrop.blur_strength,
+            radius: scale_i32(backdrop.radius, scale),
+            border_color: backdrop.border_color,
+            border_width: scale_i32(backdrop.border_width, scale),
+        })
+        .collect()
+}
+
+fn scale_i32(value: i32, scale: i32) -> i32 {
+    value.saturating_mul(scale)
+}
+
+fn merge_prewarm_job(jobs: &mut Vec<PrewarmJob>, path: PathBuf, sizes: &[PrewarmSize]) {
     if let Some(job) = jobs.iter_mut().find(|job| job.path == path) {
         for size in sizes {
             if !job.sizes.contains(size) {
@@ -417,7 +460,7 @@ fn merge_prewarm_job(jobs: &mut Vec<PrewarmJob>, path: PathBuf, sizes: &[FrameSi
 fn generated_sizes(
     background: &veila_common::config::BackgroundConfig,
     outputs: &[output_probe::ProbedOutput],
-) -> Vec<FrameSize> {
+) -> Vec<PrewarmSize> {
     let mut sizes = Vec::with_capacity(outputs.len());
 
     for output in outputs {
@@ -427,10 +470,11 @@ fn generated_sizes(
                 .iter()
                 .any(|override_config| override_config.name == name)
         });
-        if overridden || sizes.contains(&output.size) {
+        let size = PrewarmSize::from(output);
+        if overridden || sizes.contains(&size) {
             continue;
         }
-        sizes.push(output.size);
+        sizes.push(size);
     }
 
     sizes
@@ -496,11 +540,11 @@ fn backdrop_prewarm_specs(config: &AppConfig) -> Vec<BackdropPrewarmSpec> {
     backdrops
 }
 
-fn backdrop_variant(backdrops: &[BackdropPrewarmSpec]) -> String {
+fn backdrop_variant(backdrops: &[BackdropPrewarmSpec], scale: i32) -> String {
+    use std::fmt::Write as _;
+
     let mut variant = String::from("backdrop:v1");
     for backdrop in backdrops {
-        use std::fmt::Write as _;
-
         let _ = write!(
             &mut variant,
             "|{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
@@ -518,6 +562,9 @@ fn backdrop_variant(backdrops: &[BackdropPrewarmSpec]) -> String {
             backdrop.border_color,
             backdrop.border_width,
         );
+    }
+    if scale > 1 {
+        let _ = write!(&mut variant, ":render-scale:{scale}");
     }
     variant
 }
@@ -651,7 +698,28 @@ struct PrewarmResult {
 
 struct PrewarmJob {
     path: PathBuf,
-    sizes: Vec<FrameSize>,
+    sizes: Vec<PrewarmSize>,
+}
+
+impl PrewarmJob {
+    fn buffer_sizes(&self) -> Vec<FrameSize> {
+        unique_buffer_sizes(&self.sizes)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PrewarmSize {
+    buffer: FrameSize,
+    scale: i32,
+}
+
+impl From<&output_probe::ProbedOutput> for PrewarmSize {
+    fn from(output: &output_probe::ProbedOutput) -> Self {
+        Self {
+            buffer: output.size,
+            scale: output.scale.max(1),
+        }
+    }
 }
 
 struct RenderedPrewarmReport {
@@ -699,8 +767,11 @@ struct BackgroundPrewarmInputs {
 #[cfg(test)]
 mod tests {
     use veila_common::AppConfig;
+    use veila_renderer::FrameSize;
 
-    use super::prewarm_inputs_changed;
+    use crate::app::output_probe::ProbedOutput;
+
+    use super::{PrewarmSize, generated_sizes, prewarm_inputs_changed, prewarm_jobs};
 
     #[test]
     fn detects_background_related_prewarm_changes() {
@@ -748,5 +819,57 @@ mod tests {
         .expect("next config");
 
         assert!(!prewarm_inputs_changed(&current, &next));
+    }
+
+    #[test]
+    fn prewarm_jobs_use_scaled_output_buffer_sizes() {
+        let config = AppConfig::from_toml_str(
+            r#"
+                [background]
+                mode = "file"
+                path = "/tmp/wallpaper.jpg"
+            "#,
+        )
+        .expect("config");
+        let outputs = vec![ProbedOutput {
+            name: Some(String::from("DP-1")),
+            size: FrameSize::new(3840, 2160),
+            scale: 2,
+        }];
+
+        let jobs = prewarm_jobs(&config.background, &outputs);
+
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(
+            jobs[0].sizes,
+            vec![PrewarmSize {
+                buffer: FrameSize::new(3840, 2160),
+                scale: 2
+            }]
+        );
+    }
+
+    #[test]
+    fn generated_prewarm_sizes_keep_scale_with_buffer_size() {
+        let config = AppConfig::from_toml_str(
+            r#"
+                [background]
+                mode = "gradient"
+            "#,
+        )
+        .expect("config");
+        let outputs = vec![ProbedOutput {
+            name: Some(String::from("DP-1")),
+            size: FrameSize::new(3840, 2160),
+            scale: 2,
+        }];
+
+        assert_eq!(
+            generated_sizes(&config.background, &outputs),
+            vec![PrewarmSize {
+                buffer: FrameSize::new(3840, 2160),
+                scale: 2
+            }]
+        );
     }
 }

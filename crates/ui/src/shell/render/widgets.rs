@@ -17,6 +17,7 @@ use super::model::SceneClockBlocks;
 const TOGGLE_HITBOX_SIZE: i32 = 28;
 const TOGGLE_RIGHT_INSET: i32 = 14;
 const CONTENT_GAP_TO_TOGGLE: i32 = 10;
+const INPUT_BASE_HEIGHT: i32 = 54;
 const CHIP_HORIZONTAL_PADDING: i32 = 10;
 const CHIP_VERTICAL_PADDING: i32 = 8;
 
@@ -249,11 +250,13 @@ pub(super) fn draw_weather_icon(
 }
 
 pub(super) fn input_toggle_hitbox(rect: Rect) -> Rect {
-    let size = TOGGLE_HITBOX_SIZE
-        .min(rect.height.saturating_sub(8))
-        .max(18);
+    let edge_padding = scaled_from_input_height(rect, 8);
+    let size = scaled_from_input_height(rect, TOGGLE_HITBOX_SIZE)
+        .min(rect.height.saturating_sub(edge_padding).max(1))
+        .max(scaled_from_input_height(rect, 18));
+    let right_inset = scaled_from_input_height(rect, TOGGLE_RIGHT_INSET);
     Rect::new(
-        rect.x + rect.width - size - TOGGLE_RIGHT_INSET,
+        rect.x + rect.width - size - right_inset,
         rect.y + (rect.height - size) / 2,
         size,
         size,
@@ -261,10 +264,15 @@ pub(super) fn input_toggle_hitbox(rect: Rect) -> Rect {
 }
 
 fn input_content_rect(rect: Rect, toggle_rect: Option<Rect>) -> Rect {
+    let content_gap = scaled_from_input_height(rect, CONTENT_GAP_TO_TOGGLE);
     let right_edge = toggle_rect
-        .map(|toggle_rect| toggle_rect.x - CONTENT_GAP_TO_TOGGLE)
+        .map(|toggle_rect| toggle_rect.x - content_gap)
         .unwrap_or(rect.x + rect.width);
     Rect::new(rect.x, rect.y, (right_edge - rect.x).max(0), rect.height)
+}
+
+fn scaled_from_input_height(rect: Rect, value: i32) -> i32 {
+    ((rect.height.max(1) * value + INPUT_BASE_HEIGHT / 2) / INPUT_BASE_HEIGHT).max(1)
 }
 
 fn draw_toggle_icon(
@@ -324,7 +332,7 @@ fn draw_spinner_icon(buffer: &mut SoftwareBuffer, hitbox: Rect, phase: u8, style
     let center_x = hitbox.x as f32 + hitbox.width as f32 / 2.0;
     let center_y = hitbox.y as f32 + hitbox.height as f32 / 2.0;
     let orbit_radius = (size * 0.3).max(4.0);
-    let dot_diameter = ((size * 0.18).round() as i32).clamp(2, 5);
+    let dot_diameter = ((size * 0.18).round() as i32).max(2);
     let dot_radius = dot_diameter / 2;
 
     for position in 0..8 {
@@ -351,4 +359,28 @@ fn draw_spinner_icon(buffer: &mut SoftwareBuffer, hitbox: Rect, phase: u8, style
 
 fn scaled_alpha(base_alpha: u8, multiplier: u8) -> u8 {
     ((u16::from(base_alpha) * u16::from(multiplier) + 127) / 255) as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{input_content_rect, input_toggle_hitbox};
+    use veila_renderer::shape::Rect;
+
+    #[test]
+    fn scales_input_toggle_hitbox_from_input_height() {
+        let hitbox = input_toggle_hitbox(Rect::new(0, 0, 620, 108));
+
+        assert_eq!(hitbox.width, 56);
+        assert_eq!(hitbox.height, 56);
+        assert_eq!(hitbox.x, 536);
+        assert_eq!(hitbox.y, 26);
+    }
+
+    #[test]
+    fn scales_content_gap_from_input_height() {
+        let rect = Rect::new(0, 0, 620, 108);
+        let content = input_content_rect(rect, Some(input_toggle_hitbox(rect)));
+
+        assert_eq!(content.width, 516);
+    }
 }

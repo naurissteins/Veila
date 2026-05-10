@@ -1,7 +1,5 @@
 use std::{collections::HashSet, sync::Arc};
 
-use veila_renderer::FrameSize;
-
 use crate::state::CurtainApp;
 
 struct SurfaceMemorySummary {
@@ -91,11 +89,11 @@ impl CurtainApp {
         let mut counted_static_overlays = HashSet::with_capacity(self.lock_surfaces.len());
 
         for (index, surface) in self.lock_surfaces.iter().enumerate() {
-            let Some((width, height)) = surface.size else {
+            let Some(size) = surface.size else {
                 continue;
             };
 
-            let frame_size = FrameSize::new(width, height);
+            let frame_size = size.buffer;
             let frame_kib = frame_size
                 .byte_len()
                 .map(|byte_len| (byte_len / 1024) as u64)
@@ -146,8 +144,8 @@ impl CurtainApp {
 
             surfaces.push(SurfaceMemorySummary {
                 output,
-                width,
-                height,
+                width: frame_size.width,
+                height: frame_size.height,
                 ui_visible,
                 software_buffer_count,
                 software_buffers_kib: software_total_kib,

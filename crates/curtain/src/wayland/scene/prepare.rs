@@ -9,16 +9,16 @@ use veila_renderer::{
     },
 };
 
-use crate::state::CurtainApp;
+use crate::state::{CurtainApp, SurfaceSize};
 
 impl CurtainApp {
     pub(super) fn prepare_background(
         &mut self,
         index: usize,
-        size: (u32, u32),
+        size: SurfaceSize,
         scene_base_revision: Option<u64>,
     ) -> Result<bool> {
-        let frame_size = FrameSize::new(size.0, size.1);
+        let frame_size = size.buffer;
         let selected_path = self
             .background_path_for_surface(index)
             .map(ToOwned::to_owned);
@@ -113,9 +113,10 @@ impl CurtainApp {
     pub(super) fn prepare_static_overlay(
         &mut self,
         index: usize,
-        size: (u32, u32),
+        size: SurfaceSize,
     ) -> Result<bool> {
-        let frame_size = FrameSize::new(size.0, size.1);
+        let frame_size = size.buffer;
+        let render_scale = size.scale.max(1) as u32;
         let revision = self.ui_shell.static_scene_revision();
         let needs_refresh = self.lock_surfaces[index]
             .static_overlay
@@ -149,7 +150,8 @@ impl CurtainApp {
 
         let mut overlay = SoftwareBuffer::new(frame_size)?;
         overlay.clear(ClearColor::rgba(0, 0, 0, 0));
-        self.ui_shell.render_static_overlay(&mut overlay);
+        self.ui_shell
+            .render_static_overlay_scaled(&mut overlay, render_scale);
         self.lock_surfaces[index].static_overlay = Some(Arc::new(overlay));
         self.lock_surfaces[index].static_overlay_revision = revision;
 
@@ -159,10 +161,11 @@ impl CurtainApp {
     pub(super) fn prepare_scene_base(
         &mut self,
         index: usize,
-        size: (u32, u32),
+        size: SurfaceSize,
         background_refreshed: bool,
     ) -> Result<bool> {
-        let frame_size = FrameSize::new(size.0, size.1);
+        let frame_size = size.buffer;
+        let render_scale = size.scale.max(1) as u32;
         let revision = self.ui_shell.static_scene_revision();
         let needs_refresh = background_refreshed
             || self.lock_surfaces[index]
@@ -178,7 +181,7 @@ impl CurtainApp {
         }
 
         if let Some(refreshed) =
-            self.try_prepare_scene_base_without_background(index, frame_size, revision)?
+            self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
         {
             return Ok(refreshed);
         }
@@ -188,7 +191,8 @@ impl CurtainApp {
         };
 
         let mut buffer = background.clone();
-        self.ui_shell.render_backdrops(&mut buffer);
+        self.ui_shell
+            .render_backdrops_scaled(&mut buffer, render_scale);
         self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
         self.lock_surfaces[index].scene_base_revision = revision;
         self.lock_surfaces[index].background = None;
@@ -201,6 +205,7 @@ impl CurtainApp {
         index: usize,
         frame_size: FrameSize,
         revision: u64,
+        scale: i32,
     ) -> Result<Option<bool>> {
         let selected_path = self
             .background_path_for_surface(index)
@@ -234,7 +239,7 @@ impl CurtainApp {
             return Ok(Some(true));
         }
 
-        if let Some(variant) = self.ui_shell.backdrop_cache_variant() {
+        if let Some(variant) = self.backdrop_cache_variant_for_surface(scale) {
             if let Some(path) = selected_path.as_deref() {
                 if let Ok(Some(buffer)) = load_cached_render_variant(
                     path,
@@ -265,5 +270,14 @@ impl CurtainApp {
         }
 
         Ok(None)
+    }
+
+    fn backdrop_cache_variant_for_surface(&self, scale: i32) -> Option<String> {
+        let variant = self.ui_shell.backdrop_cache_variant()?;
+        if scale <= 1 {
+            return Some(variant);
+        }
+
+        Some(format!("{variant}:render-scale:{scale}"))
     }
 }

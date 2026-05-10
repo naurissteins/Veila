@@ -200,6 +200,147 @@ impl Default for ShellTheme {
     }
 }
 
+impl ShellTheme {
+    pub(crate) fn scaled_for_render(&self, scale: u32) -> Self {
+        let scale = scale.max(1);
+        if scale == 1 {
+            return self.clone();
+        }
+
+        let mut theme = self.clone();
+        theme.input_font_size = scale_u32_opt(theme.input_font_size, scale);
+        theme.reveal_font_size = scale_u32_opt(theme.reveal_font_size, scale);
+        theme.input_position = theme
+            .input_position
+            .map(|position| scale_position(position, scale));
+        theme.input_width = scale_i32_opt(theme.input_width, scale);
+        theme.input_height = scale_i32_opt(theme.input_height, scale);
+        theme.input_radius = scale_i32(theme.input_radius, scale);
+        theme.input_border_width = scale_i32_opt(theme.input_border_width, scale);
+        theme.avatar_size = scale_i32_opt(theme.avatar_size, scale);
+        theme.avatar_offset_y = scale_i32_opt(theme.avatar_offset_y, scale);
+        theme.avatar_position = theme
+            .avatar_position
+            .map(|position| scale_position(position, scale));
+        theme.avatar_placeholder_padding = scale_i32_opt(theme.avatar_placeholder_padding, scale);
+        theme.avatar_ring_width = scale_i32_opt(theme.avatar_ring_width, scale);
+        theme.username_font_size = scale_u32_opt(theme.username_font_size, scale);
+        theme.username_offset_y = scale_i32_opt(theme.username_offset_y, scale);
+        theme.username_position = theme
+            .username_position
+            .map(|position| scale_position(position, scale));
+        theme.avatar_gap = scale_i32_opt(theme.avatar_gap, scale);
+        theme.username_gap = scale_i32_opt(theme.username_gap, scale);
+        theme.status_position = theme
+            .status_position
+            .map(|position| scale_position(position, scale));
+        theme.clock_gap = scale_i32_opt(theme.clock_gap, scale);
+        theme.clock_offset_x = scale_i32_opt(theme.clock_offset_x, scale);
+        theme.clock_offset_y = scale_i32_opt(theme.clock_offset_y, scale);
+        theme.clock_position = theme
+            .clock_position
+            .map(|position| scale_position(position, scale));
+        theme.clock_meridiem_font_size = scale_u32_opt(theme.clock_meridiem_font_size, scale);
+        theme.clock_meridiem_x = scale_i32_opt(theme.clock_meridiem_x, scale);
+        theme.clock_meridiem_y = scale_i32_opt(theme.clock_meridiem_y, scale);
+        theme.date_position = theme
+            .date_position
+            .map(|position| scale_position(position, scale));
+        theme.clock_font_size = scale_u32_opt(theme.clock_font_size, scale);
+        theme.date_font_size = scale_u32_opt(theme.date_font_size, scale);
+        theme.keyboard_position = theme
+            .keyboard_position
+            .map(|position| scale_position(position, scale));
+        theme.keyboard_background_size = scale_i32_opt(theme.keyboard_background_size, scale);
+        theme.keyboard_size = scale_u32_opt(theme.keyboard_size, scale);
+        theme.power_status_position = theme
+            .power_status_position
+            .map(|position| scale_position(position, scale));
+        theme.battery_position = theme
+            .battery_position
+            .map(|position| scale_position(position, scale));
+        theme.battery_background_size = scale_i32_opt(theme.battery_background_size, scale);
+        theme.battery_size = scale_i32_opt(theme.battery_size, scale);
+        theme.backdrops = theme
+            .backdrops
+            .into_iter()
+            .map(|backdrop| scale_backdrop(backdrop, scale))
+            .collect();
+        theme.grid = theme.grid.map(|grid| scale_grid(grid, scale));
+        theme.weather_icon_position = theme
+            .weather_icon_position
+            .map(|position| scale_position(position, scale));
+        theme.weather_icon_size = scale_i32_opt(theme.weather_icon_size, scale);
+        theme.weather_temperature_font_size =
+            scale_u32_opt(theme.weather_temperature_font_size, scale);
+        theme.weather_temperature_letter_spacing =
+            scale_u32_opt(theme.weather_temperature_letter_spacing, scale);
+        theme.weather_temperature_position = theme
+            .weather_temperature_position
+            .map(|position| scale_position(position, scale));
+        theme.weather_location_font_size = scale_u32_opt(theme.weather_location_font_size, scale);
+        theme.weather_location_position = theme
+            .weather_location_position
+            .map(|position| scale_position(position, scale));
+        theme.now_playing_artwork_position = theme
+            .now_playing_artwork_position
+            .map(|position| scale_position(position, scale));
+        theme.now_playing_artwork_size = scale_i32_opt(theme.now_playing_artwork_size, scale);
+        theme.now_playing_artwork_radius = scale_i32_opt(theme.now_playing_artwork_radius, scale);
+        theme.now_playing_artist_position = theme
+            .now_playing_artist_position
+            .map(|position| scale_position(position, scale));
+        theme.now_playing_artist_width = scale_i32_opt(theme.now_playing_artist_width, scale);
+        theme.now_playing_artist_font_size =
+            scale_u32_opt(theme.now_playing_artist_font_size, scale);
+        theme.now_playing_title_position = theme
+            .now_playing_title_position
+            .map(|position| scale_position(position, scale));
+        theme.now_playing_title_width = scale_i32_opt(theme.now_playing_title_width, scale);
+        theme.now_playing_title_font_size = scale_u32_opt(theme.now_playing_title_font_size, scale);
+        theme
+    }
+}
+
+fn scale_u32_opt(value: Option<u32>, scale: u32) -> Option<u32> {
+    value.map(|value| value.saturating_mul(scale))
+}
+
+fn scale_i32_opt(value: Option<i32>, scale: u32) -> Option<i32> {
+    value.map(|value| scale_i32(value, scale))
+}
+
+fn scale_i32(value: i32, scale: u32) -> i32 {
+    value.saturating_mul(scale as i32)
+}
+
+fn scale_position(position: WidgetPosition, scale: u32) -> WidgetPosition {
+    WidgetPosition {
+        x: scale_i32(position.x, scale),
+        y: scale_i32(position.y, scale),
+        ..position
+    }
+}
+
+fn scale_backdrop(mut backdrop: Backdrop, scale: u32) -> Backdrop {
+    backdrop.radius = scale_i32(backdrop.radius, scale);
+    backdrop.border_width = scale_i32(backdrop.border_width, scale);
+    backdrop.inset_top = scale_i32(backdrop.inset_top, scale);
+    backdrop.inset_bottom = scale_i32(backdrop.inset_bottom, scale);
+    backdrop.inset_left = scale_i32(backdrop.inset_left, scale);
+    backdrop.inset_right = scale_i32(backdrop.inset_right, scale);
+    backdrop.width = scale_i32(backdrop.width, scale);
+    backdrop.height = scale_i32(backdrop.height, scale);
+    backdrop.position = scale_position(backdrop.position, scale);
+    backdrop
+}
+
+fn scale_grid(mut grid: PreviewGrid, scale: u32) -> PreviewGrid {
+    grid.cell_size = scale_i32(grid.cell_size, scale);
+    grid.major_every = grid.major_every.max(1);
+    grid
+}
+
 fn resolve_position(
     position: WidgetPositionConfig,
     default_halign: HorizontalAlign,

@@ -37,12 +37,12 @@ impl CurtainApp {
                         }
 
                         let surface = &mut self.lock_surfaces[index];
-                        let Some((width, height)) = surface.size else {
+                        let Some(surface_size) = surface.size else {
                             surface.background = None;
                             continue;
                         };
 
-                        let size = FrameSize::new(width, height);
+                        let size = surface_size.buffer;
                         let Some(buffer) = buffers
                             .iter()
                             .find(|(candidate, _)| *candidate == size)
@@ -61,8 +61,8 @@ impl CurtainApp {
                         {
                             tracing::debug!(
                                 path = %path.display(),
-                                width,
-                                height,
+                                width = size.width,
+                                height = size.height,
                                 output_cached = true,
                                 "skipping redundant deferred background rerender"
                             );
@@ -135,8 +135,7 @@ impl CurtainApp {
             else {
                 continue;
             };
-            let (width, height) = surface.size?;
-            let size = FrameSize::new(width, height);
+            let size = surface.size?.buffer;
 
             if let Some(spec) = specs.iter_mut().find(|spec| spec.path == path) {
                 if !spec.sizes.contains(&size) {
@@ -166,11 +165,7 @@ impl CurtainApp {
         let sizes: Vec<_> = self
             .lock_surfaces
             .iter()
-            .filter_map(|surface| {
-                surface
-                    .size
-                    .map(|(width, height)| FrameSize::new(width, height))
-            })
+            .filter_map(|surface| surface.size.map(|size| size.buffer))
             .collect();
         if sizes.is_empty() {
             return;

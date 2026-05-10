@@ -25,6 +25,7 @@ impl SurfaceBufferPool {
         queue_handle: &QueueHandle<D>,
         surface: &WlSurface,
         buffer: &SoftwareBuffer,
+        buffer_scale: i32,
     ) -> Result<()>
     where
         D: Dispatch<wl_buffer::WlBuffer, ()> + 'static,
@@ -47,6 +48,7 @@ impl SurfaceBufferPool {
             (),
             queue_handle,
         );
+        surface.set_buffer_scale(buffer_scale.max(1));
         surface.attach(Some(&wl_buffer), 0, 0);
         surface.damage_buffer(0, 0, size.width as i32, size.height as i32);
         surface.commit();
@@ -65,7 +67,7 @@ pub fn commit_buffer<D>(
 where
     D: Dispatch<wl_buffer::WlBuffer, ()> + 'static,
 {
-    SurfaceBufferPool::new(shm, buffer.size())?.commit_buffer(queue_handle, surface, buffer)
+    SurfaceBufferPool::new(shm, buffer.size())?.commit_buffer(queue_handle, surface, buffer, 1)
 }
 
 fn required_pool_len(size: crate::FrameSize) -> Result<usize> {

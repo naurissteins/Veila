@@ -176,5 +176,6 @@ impl CurtainApp {
             .iter()
             .find(|entry| entry.surface.wl_surface() == surface)
             .and_then(|entry| entry.size)
+            .map(|size| (size.logical_width, size.logical_height))
     }
 }

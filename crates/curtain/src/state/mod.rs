@@ -63,7 +63,7 @@ pub(crate) use resume::ResumeInputState;
 pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
     pub(crate) surface: SessionLockSurface,
-    pub(crate) size: Option<(u32, u32)>,
+    pub(crate) size: Option<SurfaceSize>,
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) scene_base: Option<Arc<veila_renderer::SoftwareBuffer>>,
@@ -73,6 +73,30 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) static_overlay_revision: u64,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
+    pub(crate) preferred_scale: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SurfaceSize {
+    pub(crate) logical_width: u32,
+    pub(crate) logical_height: u32,
+    pub(crate) buffer: veila_renderer::FrameSize,
+    pub(crate) scale: i32,
+}
+
+impl SurfaceSize {
+    pub(crate) fn new(logical_width: u32, logical_height: u32, scale: i32) -> Self {
+        let scale = scale.max(1) as u32;
+        Self {
+            logical_width,
+            logical_height,
+            buffer: veila_renderer::FrameSize::new(
+                logical_width.saturating_mul(scale),
+                logical_height.saturating_mul(scale),
+            ),
+            scale: scale as i32,
+        }
+    }
 }
 
 pub(crate) struct CurtainApp {
@@ -352,6 +376,7 @@ impl CurtainApp {
             static_overlay_revision: 0,
             shm_pool: None,
             output_power,
+            preferred_scale: 1,
         });
         self.background_render_started = false;
 
@@ -618,4 +643,29 @@ fn to_layered_background(config: &BackgroundLayeredConfig) -> BackgroundLayered 
 fn blob_color(color: veila_common::RgbColor, opacity: u8) -> ClearColor {
     let alpha = ((u16::from(color.3) * u16::from(opacity.min(100)) + 50) / 100) as u8;
     ClearColor::rgba(color.0, color.1, color.2, alpha)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SurfaceSize;
+
+    #[test]
+    fn surface_size_tracks_logical_and_scaled_buffer_size() {
+        let size = SurfaceSize::new(1920, 1080, 2);
+
+        assert_eq!(size.logical_width, 1920);
+        assert_eq!(size.logical_height, 1080);
+        assert_eq!(size.buffer.width, 3840);
+        assert_eq!(size.buffer.height, 2160);
+        assert_eq!(size.scale, 2);
+    }
+
+    #[test]
+    fn surface_size_never_uses_zero_or_negative_scale() {
+        let size = SurfaceSize::new(800, 600, 0);
+
+        assert_eq!(size.buffer.width, 800);
+        assert_eq!(size.buffer.height, 600);
+        assert_eq!(size.scale, 1);
+    }
 }

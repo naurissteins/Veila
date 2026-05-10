@@ -93,6 +93,7 @@ pub struct ShellState {
     avatar: AvatarAsset,
     preview_grid_enabled: bool,
     text_layout_cache: RefCell<TextLayoutCache>,
+    render_scale: u32,
 }
 
 impl Default for ShellState {

@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
 };
 
-use crate::state::{CurtainApp, duration_ms_between, elapsed_ms, elapsed_us};
+use crate::state::{CurtainApp, SurfaceSize, duration_ms_between, elapsed_ms, elapsed_us};
 
 impl CurtainApp {
     pub(crate) fn configure_surface(
@@ -28,6 +28,7 @@ impl CurtainApp {
         let size = self.resolve_surface_size(index, configure.new_size);
         let was_unconfigured = self.lock_surfaces[index].size.is_none();
         self.lock_surfaces[index].size = Some(size);
+        self.log_surface_size(index, configure.new_size, size);
         if was_unconfigured && !self.first_surface_configured_logged {
             self.first_surface_configured_logged = true;
             self.first_surface_configured_at = Some(std::time::Instant::now());
@@ -117,12 +118,10 @@ impl CurtainApp {
         self.log_memory_snapshot("ready");
     }
 
-    pub(super) fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> (u32, u32) {
-        if requested.0 > 0 && requested.1 > 0 {
-            return requested;
-        }
-
-        if let Some(info) = self.output_state.info(&self.lock_surfaces[index].output)
+    pub(crate) fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> SurfaceSize {
+        let logical_size = if requested.0 > 0 && requested.1 > 0 {
+            requested
+        } else if let Some(info) = self.output_state.info(&self.lock_surfaces[index].output)
             && let Some((width, height)) = logical_size(&info)
         {
             tracing::warn!(
@@ -131,11 +130,55 @@ impl CurtainApp {
                 height,
                 "lock surface configure had zero dimension; falling back to output logical size"
             );
-            return (width as u32, height as u32);
-        }
+            (width as u32, height as u32)
+        } else {
+            tracing::warn!("lock surface configure had zero dimension; falling back to 1920x1080");
+            (1920, 1080)
+        };
 
-        tracing::warn!("lock surface configure had zero dimension; falling back to 1920x1080");
-        (1920, 1080)
+        SurfaceSize::new(logical_size.0, logical_size.1, self.surface_scale(index))
+    }
+
+    pub(super) fn surface_scale(&self, index: usize) -> i32 {
+        let output_scale = self
+            .output_state
+            .info(&self.lock_surfaces[index].output)
+            .map(|info| info.scale_factor)
+            .unwrap_or(1)
+            .max(1);
+        self.lock_surfaces[index]
+            .preferred_scale
+            .max(output_scale)
+            .max(1)
+    }
+
+    fn log_surface_size(&self, index: usize, requested: (u32, u32), size: SurfaceSize) {
+        let info = self.output_state.info(&self.lock_surfaces[index].output);
+        let output = info
+            .as_ref()
+            .and_then(|info| info.name.as_deref())
+            .unwrap_or("unknown");
+        let output_logical_width = info
+            .as_ref()
+            .and_then(|info| info.logical_size.map(|size| size.0));
+        let output_logical_height = info
+            .as_ref()
+            .and_then(|info| info.logical_size.map(|size| size.1));
+
+        tracing::debug!(
+            output,
+            requested_width = requested.0,
+            requested_height = requested.1,
+            logical_width = size.logical_width,
+            logical_height = size.logical_height,
+            buffer_width = size.buffer.width,
+            buffer_height = size.buffer.height,
+            buffer_scale = size.scale,
+            preferred_buffer_scale = self.lock_surfaces[index].preferred_scale,
+            output_logical_width,
+            output_logical_height,
+            "resolved session-lock surface size"
+        );
     }
 }
 

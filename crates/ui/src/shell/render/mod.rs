@@ -11,6 +11,8 @@ mod widgets;
 
 pub(super) use cache::TextLayoutCache;
 
+use std::cell::RefCell;
+
 use veila_common::BackdropMode;
 use veila_common::StatusDisplayMode;
 use veila_renderer::{
@@ -208,6 +210,19 @@ impl ShellState {
                 ),
             );
         }
+    }
+
+    pub fn render_backdrops_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+        let scale = scale.max(1);
+        if scale == 1 {
+            self.render_backdrops(buffer);
+            return;
+        }
+
+        let mut scaled = self.clone();
+        scaled.theme = self.theme.scaled_for_render(scale);
+        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
+        scaled.render_backdrops(buffer);
     }
 
     pub(super) fn backdrop_rect(

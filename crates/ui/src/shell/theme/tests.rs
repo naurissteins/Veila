@@ -768,3 +768,63 @@ fn avatar_background_falls_back_to_legacy_panel_color() {
 
     assert_eq!(theme.avatar_background, ClearColor::opaque(31, 39, 52));
 }
+
+#[test]
+fn render_scale_multiplies_theme_pixels_without_changing_colors() {
+    let theme = ShellTheme {
+        input_width: Some(310),
+        input_height: Some(54),
+        input_font_size: Some(18),
+        clock_font_size: Some(88),
+        input_position: Some(super::WidgetPosition {
+            halign: HorizontalAlign::Center,
+            valign: VerticalAlign::Bottom,
+            x: 12,
+            y: -24,
+            target: super::WidgetPositionTarget::Screen,
+        }),
+        backdrops: vec![super::Backdrop {
+            mode: BackdropMode::Blur,
+            show_when: BackdropShowWhen::Always,
+            color: ClearColor::rgba(20, 30, 40, 160),
+            blur_strength: 18,
+            radius: 24,
+            border_color: Some(ClearColor::opaque(255, 255, 255)),
+            border_width: 2,
+            full_width: false,
+            full_height: false,
+            inset_top: 10,
+            inset_bottom: 20,
+            inset_left: 30,
+            inset_right: 40,
+            width: 400,
+            height: 220,
+            position: super::WidgetPosition {
+                halign: HorizontalAlign::Right,
+                valign: VerticalAlign::Center,
+                x: -50,
+                y: 8,
+                target: super::WidgetPositionTarget::Screen,
+            },
+            z: 0,
+        }],
+        ..Default::default()
+    };
+
+    let scaled = theme.scaled_for_render(2);
+
+    assert_eq!(scaled.input_width, Some(620));
+    assert_eq!(scaled.input_height, Some(108));
+    assert_eq!(scaled.input_font_size, Some(36));
+    assert_eq!(scaled.clock_font_size, Some(176));
+    assert_eq!(
+        scaled
+            .input_position
+            .map(|position| (position.x, position.y)),
+        Some((24, -48))
+    );
+    assert_eq!(scaled.backdrops[0].width, 800);
+    assert_eq!(scaled.backdrops[0].height, 440);
+    assert_eq!(scaled.backdrops[0].radius, 48);
+    assert_eq!(scaled.backdrops[0].color, ClearColor::rgba(20, 30, 40, 160));
+}

@@ -63,6 +63,15 @@ fn uses_configured_input_height_when_present() {
 }
 
 #[test]
+fn preserves_scaled_configured_dimensions_on_hidpi_buffers() {
+    let metrics = SceneMetrics::from_frame(5120, 2880, Some(620), Some(108), Some(300));
+
+    assert_eq!(metrics.input_width, 620);
+    assert_eq!(metrics.input_height, 108);
+    assert_eq!(metrics.avatar_size, 300);
+}
+
+#[test]
 fn keeps_auth_close_to_hero_when_space_allows() {
     let anchors = role_anchors(
         720,

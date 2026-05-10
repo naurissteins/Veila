@@ -196,6 +196,17 @@ fn toggle_style_preserves_explicit_eye_icon_alpha_when_unset() {
 }
 
 #[test]
+fn toggle_style_scales_padding_for_hidpi_render() {
+    let shell = ShellState {
+        render_scale: 2,
+        ..ShellState::default()
+    };
+    let style = shell.toggle_style();
+
+    assert_eq!(style.padding, 8);
+}
+
+#[test]
 fn mask_style_uses_configured_input_mask_color() {
     let theme = ShellTheme {
         input_mask_color: Some(ClearColor::opaque(169, 196, 255)),
@@ -205,6 +216,19 @@ fn mask_style_uses_configured_input_mask_color() {
     let style = shell.mask_style();
 
     assert_eq!(style.bullet, ClearColor::opaque(169, 196, 255));
+}
+
+#[test]
+fn mask_style_scales_spacing_for_hidpi_render() {
+    let shell = ShellState {
+        render_scale: 2,
+        ..ShellState::default()
+    };
+    let style = shell.mask_style();
+
+    assert_eq!(style.bullet_size, 14);
+    assert_eq!(style.spacing, 32);
+    assert_eq!(style.horizontal_padding, 44);
 }
 
 #[test]
@@ -586,6 +610,17 @@ fn caps_lock_icon_style_uses_dedicated_override() {
     assert_eq!(style.color.green, 211);
     assert_eq!(style.color.blue, 122);
     assert_eq!(style.color.alpha, 163);
+}
+
+#[test]
+fn caps_lock_icon_style_scales_padding_for_hidpi_render() {
+    let shell = ShellState {
+        render_scale: 2,
+        ..ShellState::default()
+    };
+    let style = shell.caps_lock_icon_style();
+
+    assert_eq!(style.padding, 8);
 }
 
 #[test]

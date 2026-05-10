@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use veila_renderer::{
     FrameSize, SoftwareBuffer,
     shape::{Rect, fill_rect},
@@ -5,7 +7,7 @@ use veila_renderer::{
 
 use super::super::{ShellState, ShellStatus};
 use super::{
-    SceneLayout,
+    SceneLayout, TextLayoutCache,
     layout::{SceneMetrics, hero_block_x},
     model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
@@ -21,10 +23,18 @@ impl ShellState {
         self.render_overlay(buffer);
     }
 
+    pub fn render_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+        self.with_render_scale(scale, |shell| shell.render(buffer));
+    }
+
     pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
         self.render_backdrops(buffer);
         self.render_static_overlay(buffer);
         self.render_dynamic_overlay(buffer);
+    }
+
+    pub fn render_overlay_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+        self.with_render_scale(scale, |shell| shell.render_overlay(buffer));
     }
 
     pub fn render_static_overlay(&self, buffer: &mut SoftwareBuffer) {
@@ -47,6 +57,10 @@ impl ShellState {
             layout.anchors.footer_y,
             false,
         );
+    }
+
+    pub fn render_static_overlay_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+        self.with_render_scale(scale, |shell| shell.render_static_overlay(buffer));
     }
 
     pub fn render_dynamic_overlay(&self, buffer: &mut SoftwareBuffer) {
@@ -73,6 +87,24 @@ impl ShellState {
         self.render_now_playing_widget(buffer, &layout);
         self.render_top_right_indicators(buffer);
         self.render_preview_grid_overlay(buffer);
+    }
+
+    pub fn render_dynamic_overlay_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+        self.with_render_scale(scale, |shell| shell.render_dynamic_overlay(buffer));
+    }
+
+    fn with_render_scale(&self, scale: u32, render: impl FnOnce(&ShellState)) {
+        let scale = scale.max(1);
+        if scale == 1 {
+            render(self);
+            return;
+        }
+
+        let mut scaled = self.clone();
+        scaled.render_scale = scale;
+        scaled.theme = self.theme.scaled_for_render(scale);
+        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
+        render(&scaled);
     }
 
     fn render_role(

@@ -32,9 +32,11 @@ pub(super) fn current_outputs() -> Result<Vec<ProbedOutput>> {
         if let Some(info) = probe.output_state.info(&output)
             && let Some(size) = logical_size(&info)
         {
+            let scale = info.scale_factor.max(1);
             outputs.push(ProbedOutput {
                 name: info.name.clone(),
-                size,
+                size: scaled_size(size, scale),
+                scale,
             });
         }
     }
@@ -46,6 +48,7 @@ pub(super) fn current_outputs() -> Result<Vec<ProbedOutput>> {
 pub(super) struct ProbedOutput {
     pub(super) name: Option<String>,
     pub(super) size: FrameSize,
+    pub(super) scale: i32,
 }
 
 struct OutputProbe {
@@ -100,5 +103,35 @@ fn logical_size(info: &OutputInfo) -> Option<FrameSize> {
     }
 }
 
+fn scaled_size(size: FrameSize, scale: i32) -> FrameSize {
+    let scale = scale.max(1) as u32;
+    FrameSize::new(
+        size.width.saturating_mul(scale),
+        size.height.saturating_mul(scale),
+    )
+}
+
 smithay_client_toolkit::delegate_output!(OutputProbe);
 smithay_client_toolkit::delegate_registry!(OutputProbe);
+
+#[cfg(test)]
+mod tests {
+    use super::scaled_size;
+    use veila_renderer::FrameSize;
+
+    #[test]
+    fn output_probe_uses_physical_buffer_size_for_scaled_outputs() {
+        assert_eq!(
+            scaled_size(FrameSize::new(1920, 1080), 2),
+            FrameSize::new(3840, 2160)
+        );
+    }
+
+    #[test]
+    fn output_probe_clamps_invalid_scale_to_one() {
+        assert_eq!(
+            scaled_size(FrameSize::new(1920, 1080), 0),
+            FrameSize::new(1920, 1080)
+        );
+    }
+}

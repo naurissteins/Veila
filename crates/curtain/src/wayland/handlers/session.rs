@@ -107,10 +107,50 @@ impl CompositorHandler for CurtainApp {
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _surface: &wl_surface::WlSurface,
-        _new_factor: i32,
+        qh: &QueueHandle<Self>,
+        surface: &wl_surface::WlSurface,
+        new_factor: i32,
     ) {
+        let Some(index) = self
+            .lock_surfaces
+            .iter()
+            .position(|entry| entry.surface.wl_surface() == surface)
+        else {
+            return;
+        };
+        self.lock_surfaces[index].preferred_scale = new_factor.max(1);
+
+        let Some(previous) = self.lock_surfaces[index].size else {
+            tracing::debug!(
+                buffer_scale = new_factor.max(1),
+                "lock surface scale changed before configure"
+            );
+            return;
+        };
+
+        let size =
+            self.resolve_surface_size(index, (previous.logical_width, previous.logical_height));
+        if size == previous {
+            return;
+        }
+
+        tracing::debug!(
+            old_buffer_scale = previous.scale,
+            new_buffer_scale = size.scale,
+            logical_width = size.logical_width,
+            logical_height = size.logical_height,
+            buffer_width = size.buffer.width,
+            buffer_height = size.buffer.height,
+            "rerendering lock surface after scale change"
+        );
+        self.lock_surfaces[index].size = Some(size);
+        let lock_surface = self.lock_surfaces[index].surface.clone();
+        if let Err(error) = self.render_surface(&lock_surface, size, qh) {
+            self.failure_reason = Some(format!(
+                "failed to rerender scaled curtain surface: {error:#}"
+            ));
+            self.exit_requested = true;
+        }
     }
 
     fn transform_changed(

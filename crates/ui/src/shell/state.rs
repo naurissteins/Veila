@@ -218,6 +218,7 @@ impl ShellState {
             avatar: load_avatar(avatar_path),
             preview_grid_enabled: false,
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
+            render_scale: 1,
         }
     }
 
