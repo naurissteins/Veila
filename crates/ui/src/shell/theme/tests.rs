@@ -230,7 +230,7 @@ fn input_alpha_uses_rgba_values() {
             width: Some(198),
             color: Some(ConfigColor::rgba(200, 212, 236, 99)),
             font_family: Some("Prototype".to_owned()),
-            font_size: Some(1),
+            font_size: Some(10),
             font_weight: Some(500),
             font_style: Some(FontStyle::Italic),
             position: WidgetPositionConfig {
@@ -246,7 +246,7 @@ fn input_alpha_uses_rgba_values() {
             width: Some(198),
             color: Some(ConfigColor::rgba(248, 251, 255, 208)),
             font_family: Some("Geom".to_owned()),
-            font_size: Some(2),
+            font_size: Some(16),
             font_weight: Some(700),
             font_style: Some(FontStyle::Italic),
             position: WidgetPositionConfig {
@@ -519,8 +519,8 @@ fn input_alpha_uses_rgba_values() {
     assert!(theme.now_playing_artist_enabled);
     assert!(theme.now_playing_title_enabled);
     assert_eq!(theme.now_playing_artwork_opacity, Some(61));
-    assert_eq!(theme.now_playing_title_font_size, Some(2));
-    assert_eq!(theme.now_playing_artist_font_size, Some(1));
+    assert_eq!(theme.now_playing_title_font_size, Some(16));
+    assert_eq!(theme.now_playing_artist_font_size, Some(10));
     assert_eq!(theme.now_playing_title_width, Some(198));
     assert_eq!(theme.now_playing_artist_width, Some(198));
     assert_eq!(theme.now_playing_artwork_size, Some(64));

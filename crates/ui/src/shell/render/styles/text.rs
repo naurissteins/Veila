@@ -16,8 +16,8 @@ const MAX_WEATHER_TEMPERATURE_FONT_SIZE_PX: u32 = 512;
 const MAX_WEATHER_LOCATION_FONT_SIZE_PX: u32 = 512;
 const DEFAULT_CLOCK_FONT_FAMILY: &str = "Geom";
 const DEFAULT_KEYBOARD_FONT_FAMILY: &str = "Geom";
-const MAX_NOW_PLAYING_TITLE_SCALE: u32 = 4;
-const MAX_NOW_PLAYING_ARTIST_SCALE: u32 = 3;
+const MAX_NOW_PLAYING_TITLE_FONT_SIZE_PX: u32 = 512;
+const MAX_NOW_PLAYING_ARTIST_FONT_SIZE_PX: u32 = 512;
 const MAX_USERNAME_FONT_SIZE_PX: u32 = 512;
 const MAX_INPUT_FONT_SIZE_PX: u32 = 512;
 const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
@@ -314,7 +314,7 @@ impl ShellState {
             .theme
             .now_playing_title_color
             .unwrap_or(self.theme.foreground);
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             if base_color.alpha == u8::MAX {
                 base_color.with_alpha(175)
             } else {
@@ -322,8 +322,8 @@ impl ShellState {
             },
             self.theme
                 .now_playing_title_font_size
-                .unwrap_or(2)
-                .clamp(1, MAX_NOW_PLAYING_TITLE_SCALE),
+                .unwrap_or(16)
+                .clamp(1, MAX_NOW_PLAYING_TITLE_FONT_SIZE_PX),
         );
         let style = match self.theme.now_playing_title_font_weight {
             Some(weight) => style.with_font_weight(weight),
@@ -343,7 +343,7 @@ impl ShellState {
             .theme
             .now_playing_artist_color
             .unwrap_or(self.theme.muted);
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             if base_color.alpha == u8::MAX {
                 base_color.with_alpha(99)
             } else {
@@ -351,8 +351,8 @@ impl ShellState {
             },
             self.theme
                 .now_playing_artist_font_size
-                .unwrap_or(1)
-                .clamp(1, MAX_NOW_PLAYING_ARTIST_SCALE),
+                .unwrap_or(16)
+                .clamp(1, MAX_NOW_PLAYING_ARTIST_FONT_SIZE_PX),
         );
         self.apply_font_overrides(
             style,

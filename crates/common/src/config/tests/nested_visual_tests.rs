@@ -375,8 +375,8 @@ fn loads_nested_visual_tables_with_precedence_for_now_playing_and_palette() {
     );
     assert!(config.visuals.now_playing_artwork_enabled());
     assert_eq!(config.visuals.now_playing_artwork_opacity(), Some(61));
-    assert_eq!(config.visuals.now_playing_title_font_size(), Some(2));
-    assert_eq!(config.visuals.now_playing_artist_font_size(), Some(1));
+    assert_eq!(config.visuals.now_playing_title_font_size(), Some(16));
+    assert_eq!(config.visuals.now_playing_artist_font_size(), Some(10));
     assert_eq!(config.visuals.now_playing_title_width(), Some(198));
     assert_eq!(config.visuals.now_playing_artist_width(), Some(198));
     assert_eq!(config.visuals.now_playing_artwork_size(), Some(64));

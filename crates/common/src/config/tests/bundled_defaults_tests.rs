@@ -315,8 +315,8 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.now_playing_artist_font_style(),
         Some(FontStyle::Normal)
     );
-    assert_eq!(config.visuals.now_playing_title_font_size(), Some(2));
-    assert_eq!(config.visuals.now_playing_artist_font_size(), Some(2));
+    assert_eq!(config.visuals.now_playing_title_font_size(), Some(16));
+    assert_eq!(config.visuals.now_playing_artist_font_size(), Some(16));
     assert_eq!(config.visuals.now_playing_title_width(), Some(318));
     assert_eq!(config.visuals.now_playing_artist_width(), Some(318));
     assert_eq!(config.visuals.now_playing_artwork_size(), Some(44));

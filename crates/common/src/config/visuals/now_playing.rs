@@ -79,7 +79,7 @@ impl Default for NowPlayingVisualConfig {
                 width: Some(318),
                 color: Some(RgbColor::rgba(255, 255, 255, 99)),
                 font_family: Some(super::default_google_sans_flex_font_family()),
-                font_size: Some(2),
+                font_size: Some(16),
                 font_weight: Some(400),
                 font_style: Some(FontStyle::Normal),
                 position: WidgetPositionConfig {
@@ -95,7 +95,7 @@ impl Default for NowPlayingVisualConfig {
                 width: Some(318),
                 color: Some(RgbColor::rgba(255, 255, 255, 176)),
                 font_family: Some(super::default_google_sans_flex_font_family()),
-                font_size: Some(2),
+                font_size: Some(16),
                 font_weight: Some(400),
                 font_style: Some(FontStyle::Normal),
                 position: WidgetPositionConfig {

@@ -136,37 +136,40 @@ fade_duration_ms = 320
 size = 44
 radius = 8
 opacity = 90
-halign = "right"
-valign = "bottom"
-x = -388
-y = -48
+halign = "left"
+valign = "center"
+x = 10
+y = 0
+relative_to = "now_playing"
 
 [visuals.now_playing.artist]
 width = 318
 color = "rgba(255, 255, 255, 0.39)"
 font_family = "Google Sans Flex"
-font_size = 2
+font_size = 16
 font_weight = 400
-halign = "right"
-valign = "bottom"
-x = -58
-y = -72
+halign = "left"
+valign = "top"
+x = 65
+y = 10
+relative_to = "now_playing"
 
 [visuals.now_playing.title]
 width = 318
 color = "rgba(255, 255, 255, 0.69)"
 font_family = "Google Sans Flex"
-font_size = 2
+font_size = 16
 font_weight = 400
-halign = "right"
+halign = "left"
 valign = "bottom"
-x = -58
-y = -50
+x = 65
+y = -10
+relative_to = "now_playing"
 
 # Now playing backdrop
 [[visuals.backdrop]]
 enabled = true
-name = "now_playing_panel"
+name = "now_playing"
 show_when = "now_playing"
 mode = "blur"
 color = "rgba(255, 255, 255, 0.05)"

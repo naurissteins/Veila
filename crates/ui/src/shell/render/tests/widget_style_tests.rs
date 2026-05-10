@@ -99,8 +99,8 @@ fn now_playing_styles_use_configured_theme_values() {
         now_playing_artist_font_family: Some("Prototype".to_owned()),
         now_playing_title_font_weight: Some(700),
         now_playing_artist_font_weight: Some(500),
-        now_playing_title_font_size: Some(3),
-        now_playing_artist_font_size: Some(2),
+        now_playing_title_font_size: Some(22),
+        now_playing_artist_font_size: Some(16),
         now_playing_title_width: Some(220),
         ..ShellTheme::default()
     };
@@ -109,7 +109,8 @@ fn now_playing_styles_use_configured_theme_values() {
     let artist_style = shell.now_playing_artist_text_style();
 
     assert_eq!(title_style.color, ClearColor::rgba(248, 251, 255, 208));
-    assert_eq!(title_style.scale, 3);
+    assert_eq!(title_style.scale, 1);
+    assert_eq!(title_style.font_size_px, Some(22));
     assert_eq!(title_style.font_weight, Some(700));
     assert!(
         title_style
@@ -119,7 +120,8 @@ fn now_playing_styles_use_configured_theme_values() {
             .is_some_and(|debug| debug.contains("Geom"))
     );
     assert_eq!(artist_style.color, ClearColor::rgba(200, 212, 236, 99));
-    assert_eq!(artist_style.scale, 2);
+    assert_eq!(artist_style.scale, 1);
+    assert_eq!(artist_style.font_size_px, Some(16));
     assert_eq!(artist_style.font_weight, Some(500));
     assert_eq!(shell.theme.now_playing_title_width, Some(220));
     assert!(

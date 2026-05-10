@@ -1,4 +1,3 @@
-# Wallpaper source: https://unsplash.com/photos/landscape-photo-of-mountain-alps-vddccTqwal8
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
@@ -26,19 +25,20 @@ font_family = "Geom"
 font_weight = 600
 color = "rgba(255, 255, 255, 0.4)"
 font_size = 88
-halign = "left"
+halign = "center"
 valign = "top"
-x = 40
+x = 0
 y = 40
 
 [visuals.date]
 font_family = "Google Sans Flex"
 font_weight = 400
+font_size = 18
 color = "rgba(255, 255, 255, 0.4)"
-halign = "left"
+halign = "center"
 valign = "top"
-x = 40
-y = 156
+x = 0
+y = 140
 
 [visuals.input]
 background_color = "rgba(255, 255, 255, 0.08)"
@@ -51,10 +51,21 @@ font_weight = 400
 font_size = 16
 border_color = "rgba(255, 255, 255, 0.08)"
 border_width = 3
+halign = "center"
+valign = "bottom"
+x = 0
+y = -50
 
 [visuals.status]
+mode = "inline"
 rejected_color = "#FFD5D5"
 pending_color = "#ECECEC"
+
+[visuals.eye]
+color = "rgba(255, 255, 255, 0.72)"
+
+[visuals.caps_lock]
+color = "rgba(255, 255, 255, 0.52)"
 
 [visuals.placeholder]
 color = "rgba(255, 255, 255, 0.6)"
@@ -66,12 +77,20 @@ placeholder_padding = 28
 ring_color = "rgba(255, 255, 255, 0.15)"
 ring_width = 3
 icon_color = "#ffffff"
+halign = "center"
+valign = "bottom"
+x = 0
+y = -200
 
 [visuals.username]
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"
 font_size = 28
+halign = "center"
+valign = "bottom"
+x = 0
+y = -135
 
 [visuals.keyboard]
 background_size = 46
@@ -81,7 +100,7 @@ size = 2
 halign = "right"
 valign = "top"
 x = -24
-y = 13
+y = 21
 
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.05)"
@@ -91,13 +110,7 @@ size = 20
 halign = "right"
 valign = "top"
 x = -78
-y = 13
-
-[visuals.eye]
-color = "rgba(255, 255, 255, 0.72)"
-
-[visuals.caps_lock]
-color = "rgba(255, 255, 255, 0.52)"
+y = 21
 
 [visuals.weather.icon]
 size = 40
@@ -125,9 +138,8 @@ font_weight = 400
 color = "rgba(214, 227, 255, 0.58)"
 halign = "left"
 valign = "bottom"
-x = 30
-y = -34
-
+x = 40
+y = -44
 
 [visuals.now_playing]
 enabled = false
@@ -138,29 +150,50 @@ enabled = true
 size = 44
 radius = 8
 opacity = 90
-halign = "right"
-valign = "bottom"
-x = -384
-y = -48
+halign = "left"
+valign = "center"
+x = 10
+y = 0
+relative_to = "now_playing"
 
 [visuals.now_playing.artist]
 width = 318
 color = "rgba(255, 255, 255, 0.39)"
 font_family = "Google Sans Flex"
-font_size = 2
+font_size = 16
 font_weight = 400
-halign = "right"
-valign = "bottom"
-x = -58
-y = -80
+halign = "left"
+valign = "top"
+x = 65
+y = 10
+relative_to = "now_playing"
 
 [visuals.now_playing.title]
 width = 318
 color = "rgba(255, 255, 255, 0.69)"
 font_family = "Google Sans Flex"
-font_size = 2
+font_size = 16
 font_weight = 400
+halign = "left"
+valign = "bottom"
+x = 65
+y = -10
+relative_to = "now_playing"
+
+# Now playing backdrop
+[[visuals.backdrop]]
+enabled = true
+name = "now_playing"
+show_when = "now_playing"
+mode = "blur"
+color = "rgba(255, 255, 255, 0.02)"
+blur_strength = 12
+radius = 10
+border_color = "#FFFFFF18"
+width = 400
+height = 60
 halign = "right"
 valign = "bottom"
-x = -58
-y = -48
+x = -40
+y = -40
+z = 1
