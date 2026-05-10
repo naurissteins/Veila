@@ -1,13 +1,13 @@
 use tiny_skia::{Color, Pixmap};
 
-use crate::{ClearColor, SoftwareBuffer};
+use crate::{ClearColor, PixelBuffer};
 
 pub(crate) fn color(color: ClearColor) -> Color {
     Color::from_rgba8(color.red, color.green, color.blue, color.alpha)
 }
 
 pub(crate) fn draw_overlay(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     origin_x: i32,
     origin_y: i32,
     width: u32,
@@ -25,7 +25,7 @@ pub(crate) fn draw_overlay(
     blend_pixmap(buffer, origin_x, origin_y, &overlay);
 }
 
-fn blend_pixmap(buffer: &mut SoftwareBuffer, origin_x: i32, origin_y: i32, overlay: &Pixmap) {
+fn blend_pixmap(buffer: &mut impl PixelBuffer, origin_x: i32, origin_y: i32, overlay: &Pixmap) {
     let target_width = buffer.size().width as i32;
     let target_height = buffer.size().height as i32;
     let overlay_width = overlay.width() as i32;

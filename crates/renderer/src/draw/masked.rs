@@ -1,5 +1,5 @@
 use crate::{
-    ClearColor, SoftwareBuffer,
+    ClearColor, PixelBuffer,
     shape::{CircleStyle, Rect, draw_circle},
 };
 
@@ -26,7 +26,7 @@ impl MaskedInputStyle {
 
 /// Draws a masked input row with left-aligned bullets.
 pub fn draw_masked_input(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     rect: Rect,
     secret_len: usize,
     _focused: bool,

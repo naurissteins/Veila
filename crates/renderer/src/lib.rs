@@ -137,6 +137,45 @@ pub struct SoftwareBuffer {
     pixels: Vec<u8>,
 }
 
+/// Borrowed ARGB8888 software buffer view.
+pub struct SoftwareBufferView<'a> {
+    size: FrameSize,
+    pixels: &'a mut [u8],
+}
+
+/// Mutable ARGB8888 render target.
+pub trait PixelBuffer {
+    fn size(&self) -> FrameSize;
+    fn pixels(&self) -> &[u8];
+    fn pixels_mut(&mut self) -> &mut [u8];
+
+    fn clear(&mut self, color: ClearColor) {
+        let pixel = color.to_argb8888_bytes();
+        self.pixels_mut()
+            .chunks_exact_mut(4)
+            .for_each(|chunk| chunk.copy_from_slice(&pixel));
+    }
+
+    fn blend_from(&mut self, overlay: &impl PixelBuffer) -> Result<()> {
+        if self.size() != overlay.size() {
+            return Err(RendererError::BufferSizeMismatch {
+                target: self.size(),
+                overlay: overlay.size(),
+            });
+        }
+
+        for (dst, src) in self
+            .pixels_mut()
+            .chunks_exact_mut(4)
+            .zip(overlay.pixels().chunks_exact(4))
+        {
+            blend_pixel(dst, src);
+        }
+
+        Ok(())
+    }
+}
+
 impl SoftwareBuffer {
     /// Creates a new ARGB8888 buffer of the requested size.
     pub fn new(size: FrameSize) -> Result<Self> {
@@ -172,30 +211,12 @@ impl SoftwareBuffer {
 
     /// Fills the buffer with a single color.
     pub fn clear(&mut self, color: ClearColor) {
-        let pixel = color.to_argb8888_bytes();
-        self.pixels
-            .chunks_exact_mut(4)
-            .for_each(|chunk| chunk.copy_from_slice(&pixel));
+        PixelBuffer::clear(self, color);
     }
 
     /// Blends another ARGB8888 buffer over this one.
-    pub fn blend_from(&mut self, overlay: &Self) -> Result<()> {
-        if self.size != overlay.size {
-            return Err(RendererError::BufferSizeMismatch {
-                target: self.size,
-                overlay: overlay.size,
-            });
-        }
-
-        for (dst, src) in self
-            .pixels
-            .chunks_exact_mut(4)
-            .zip(overlay.pixels.chunks_exact(4))
-        {
-            blend_pixel(dst, src);
-        }
-
-        Ok(())
+    pub fn blend_from(&mut self, overlay: &impl PixelBuffer) -> Result<()> {
+        PixelBuffer::blend_from(self, overlay)
     }
 
     /// Returns the frame size for the buffer.
@@ -240,6 +261,47 @@ impl SoftwareBuffer {
             .ok_or(RendererError::InvalidFrameSize(self.size))?;
         image.save(path)?;
         Ok(())
+    }
+}
+
+impl PixelBuffer for SoftwareBuffer {
+    fn size(&self) -> FrameSize {
+        self.size
+    }
+
+    fn pixels(&self) -> &[u8] {
+        &self.pixels
+    }
+
+    fn pixels_mut(&mut self) -> &mut [u8] {
+        &mut self.pixels
+    }
+}
+
+impl<'a> SoftwareBufferView<'a> {
+    pub fn new(size: FrameSize, pixels: &'a mut [u8]) -> Result<Self> {
+        let Some(byte_len) = size.byte_len() else {
+            return Err(RendererError::InvalidFrameSize(size));
+        };
+        if pixels.len() != byte_len {
+            return Err(RendererError::InvalidFrameSize(size));
+        }
+
+        Ok(Self { size, pixels })
+    }
+}
+
+impl PixelBuffer for SoftwareBufferView<'_> {
+    fn size(&self) -> FrameSize {
+        self.size
+    }
+
+    fn pixels(&self) -> &[u8] {
+        self.pixels
+    }
+
+    fn pixels_mut(&mut self) -> &mut [u8] {
+        self.pixels
     }
 }
 

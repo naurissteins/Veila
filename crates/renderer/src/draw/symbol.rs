@@ -1,4 +1,4 @@
-use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
+use crate::{ClearColor, PixelBuffer, ShadowStyle};
 
 /// Small reusable bitmap symbols for lock UI state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +30,7 @@ pub fn measure_symbol(style: SymbolStyle) -> (u32, u32) {
 
 /// Draws a symbol into an ARGB8888 software buffer.
 pub fn draw_symbol(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     symbol: SymbolKind,
@@ -41,7 +41,7 @@ pub fn draw_symbol(
 
 /// Draws a symbol with a simple drop shadow.
 pub fn draw_symbol_with_shadow(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     symbol: SymbolKind,
@@ -60,7 +60,7 @@ pub fn draw_symbol_with_shadow(
 }
 
 fn draw_symbol_colored(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     symbol: SymbolKind,
@@ -103,7 +103,7 @@ fn bitmap(symbol: SymbolKind) -> &'static [u8; 8] {
     }
 }
 
-fn fill_scaled_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, scale: i32, pixel: &[u8; 4]) {
+fn fill_scaled_pixel(buffer: &mut impl PixelBuffer, x: i32, y: i32, scale: i32, pixel: &[u8; 4]) {
     let size = buffer.size();
     let left = x.clamp(0, size.width as i32);
     let top = y.clamp(0, size.height as i32);

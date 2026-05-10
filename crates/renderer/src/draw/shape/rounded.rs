@@ -1,12 +1,12 @@
 use tiny_skia::{FillRule, Paint, Path, PathBuilder, Stroke, Transform};
 
-use crate::{ClearColor, SoftwareBuffer};
+use crate::{ClearColor, PixelBuffer};
 
 use super::{CircleStyle, PillStyle, Rect};
 use crate::draw::skia::{color as skia_color, draw_overlay};
 
 /// Draws a modern pill surface using tiny-skia.
-pub fn draw_pill(buffer: &mut SoftwareBuffer, rect: Rect, style: PillStyle) {
+pub fn draw_pill(buffer: &mut impl PixelBuffer, rect: Rect, style: PillStyle) {
     if rect.is_empty() {
         return;
     }
@@ -75,7 +75,7 @@ pub fn draw_pill(buffer: &mut SoftwareBuffer, rect: Rect, style: PillStyle) {
 
 /// Draws a filled circle with optional border and shadow using tiny-skia.
 pub fn draw_circle(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     center_x: i32,
     center_y: i32,
     radius: i32,

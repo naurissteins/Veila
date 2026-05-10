@@ -1,5 +1,5 @@
 use crate::{
-    ClearColor, SoftwareBuffer,
+    ClearColor, PixelBuffer,
     shape::{Rect, fill_rect},
 };
 
@@ -87,7 +87,7 @@ pub struct PanelBodyLayout {
 
 /// Draws a simple panel header and returns content anchors.
 pub fn draw_panel_header(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     panel_rect: Rect,
     style: PanelHeaderStyle,
 ) -> PanelHeaderLayout {

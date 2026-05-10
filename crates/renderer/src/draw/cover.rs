@@ -3,7 +3,7 @@ use std::path::Path;
 use image::RgbaImage;
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
-use crate::{FrameSize, RendererError, Result, SoftwareBuffer};
+use crate::{FrameSize, PixelBuffer, RendererError, Result};
 
 use super::skia::draw_overlay;
 
@@ -22,7 +22,7 @@ impl CoverArtAsset {
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         left: i32,
         top: i32,
         width: u32,
@@ -41,7 +41,7 @@ impl CoverArtAsset {
 
 #[allow(clippy::too_many_arguments)]
 fn draw_cover_image(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     left: i32,
     top: i32,
     width: u32,

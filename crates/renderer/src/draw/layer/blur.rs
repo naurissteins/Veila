@@ -2,14 +2,14 @@ use std::time::Instant;
 
 use image::RgbaImage;
 
-use crate::{SoftwareBuffer, blur::blur_rgba, shape::Rect};
+use crate::{PixelBuffer, blur::blur_rgba, shape::Rect};
 
 use super::shapes::layer_mask;
 use super::{BackdropLayerShape, BackdropLayerStyle};
 
 const SLOW_LAYER_BLUR_MS: u64 = 4;
 
-pub fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
+pub fn blur_region(buffer: &mut impl PixelBuffer, rect: Rect, style: BackdropLayerStyle) {
     let width = rect.width.max(0) as u32;
     let height = rect.height.max(0) as u32;
     if width == 0 || height == 0 {
@@ -35,7 +35,7 @@ pub fn blur_region(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayer
     log_blur_timing(started_at, width, height, style, false);
 }
 
-fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> (Vec<u8>, bool) {
+fn extract_rgba_region(buffer: &impl PixelBuffer, rect: Rect) -> (Vec<u8>, bool) {
     let stride = buffer.size().width as usize * 4;
     let mut rgba = Vec::with_capacity(rect.width as usize * rect.height as usize * 4);
     let mut fully_opaque = true;
@@ -73,7 +73,7 @@ fn extract_rgba_region(buffer: &SoftwareBuffer, rect: Rect) -> (Vec<u8>, bool) {
 }
 
 fn write_rgba_region(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     rect: Rect,
     image: &RgbaImage,
     fully_opaque: bool,

@@ -3,7 +3,7 @@ use std::path::Path;
 use image::{RgbaImage, imageops::FilterType};
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
-use crate::{ClearColor, FrameSize, RendererError, Result, ShadowStyle, SoftwareBuffer};
+use crate::{ClearColor, FrameSize, PixelBuffer, RendererError, Result, ShadowStyle};
 
 use super::{
     icon::{AssetIcon, IconStyle, draw_icon},
@@ -84,7 +84,7 @@ impl AvatarAsset {
 
     pub fn draw(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         center_x: i32,
         top_y: i32,
         size: u32,
@@ -150,7 +150,13 @@ fn prepare_avatar_image(image: RgbaImage) -> RgbaImage {
     }
 }
 
-fn draw_avatar_image(buffer: &mut SoftwareBuffer, left: i32, top: i32, size: u32, image: &Pixmap) {
+fn draw_avatar_image(
+    buffer: &mut impl PixelBuffer,
+    left: i32,
+    top: i32,
+    size: u32,
+    image: &Pixmap,
+) {
     draw_overlay(buffer, left, top, size, size, |overlay| {
         let Some(mut mask) = Mask::new(size, size) else {
             return;
@@ -179,7 +185,7 @@ fn draw_avatar_image(buffer: &mut SoftwareBuffer, left: i32, top: i32, size: u32
 }
 
 fn draw_placeholder(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     left: i32,
     top: i32,
     size: u32,

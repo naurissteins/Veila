@@ -1,4 +1,4 @@
-use veila_renderer::SoftwareBuffer;
+use veila_renderer::PixelBuffer;
 
 use super::super::{ShellState, ShellStatus};
 use super::{
@@ -7,7 +7,7 @@ use super::{
 };
 
 impl ShellState {
-    pub(super) fn render_top_right_indicators(&self, buffer: &mut SoftwareBuffer) {
+    pub(super) fn render_top_right_indicators(&self, buffer: &mut impl PixelBuffer) {
         let power_block = (self.theme.power_status_enabled
             && matches!(self.status, ShellStatus::Idle))
         .then_some(self.power_status_text.as_deref())

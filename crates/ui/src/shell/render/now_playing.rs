@@ -1,4 +1,4 @@
-use veila_renderer::{FrameSize, SoftwareBuffer, shape::Rect, text::TextBlock};
+use veila_renderer::{FrameSize, PixelBuffer, shape::Rect, text::TextBlock};
 
 use super::super::{NowPlayingWidgetData, ShellState};
 use super::{NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout, TextLayoutCache};
@@ -6,7 +6,7 @@ use super::{NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout,
 impl ShellState {
     pub(super) fn render_now_playing_widget(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         _layout: &SceneLayout,
     ) {
         let fade_progress = self.now_playing_fade_progress();
@@ -36,7 +36,7 @@ impl ShellState {
 
     fn draw_now_playing_snapshot(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         now_playing: &NowPlayingWidgetData,
         opacity_scale: u8,
     ) {

@@ -16,7 +16,7 @@ use std::cell::RefCell;
 use veila_common::BackdropMode;
 use veila_common::StatusDisplayMode;
 use veila_renderer::{
-    SoftwareBuffer,
+    PixelBuffer,
     layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     shape::Rect,
 };
@@ -185,7 +185,7 @@ impl ShellState {
         }
     }
 
-    pub fn render_backdrops(&self, buffer: &mut SoftwareBuffer) {
+    pub fn render_backdrops(&self, buffer: &mut impl PixelBuffer) {
         for backdrop in &self.theme.backdrops {
             if !self.backdrop_visible(backdrop) {
                 continue;
@@ -212,7 +212,7 @@ impl ShellState {
         }
     }
 
-    pub fn render_backdrops_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+    pub fn render_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
         let scale = scale.max(1);
         if scale == 1 {
             self.render_backdrops(buffer);

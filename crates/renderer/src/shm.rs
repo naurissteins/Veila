@@ -6,7 +6,7 @@ use smithay_client_toolkit::{
     shm::{Shm, raw::RawPool},
 };
 
-use crate::{RendererError, Result, SoftwareBuffer};
+use crate::{FrameSize, RendererError, Result, SoftwareBuffer, SoftwareBufferView};
 
 #[derive(Debug)]
 pub struct SurfaceBufferPool {
@@ -38,6 +38,46 @@ impl SurfaceBufferPool {
         let byte_len = required_pool_len(size)?;
         self.pool.resize(byte_len)?;
         self.pool.mmap()[..byte_len].copy_from_slice(buffer.pixels());
+
+        let wl_buffer = self.pool.create_buffer(
+            0,
+            size.width as i32,
+            size.height as i32,
+            (size.width * 4) as i32,
+            wl_shm::Format::Argb8888,
+            (),
+            queue_handle,
+        );
+        surface.set_buffer_scale(buffer_scale.max(1));
+        surface.attach(Some(&wl_buffer), 0, 0);
+        surface.damage_buffer(0, 0, size.width as i32, size.height as i32);
+        surface.commit();
+        wl_buffer.destroy();
+
+        Ok(())
+    }
+
+    pub fn render_buffer<D>(
+        &mut self,
+        queue_handle: &QueueHandle<D>,
+        surface: &WlSurface,
+        size: FrameSize,
+        buffer_scale: i32,
+        render: impl FnOnce(&mut SoftwareBufferView<'_>) -> Result<()>,
+    ) -> Result<()>
+    where
+        D: Dispatch<wl_buffer::WlBuffer, ()> + 'static,
+    {
+        if size.is_empty() {
+            return Err(RendererError::EmptyFrame);
+        }
+
+        let byte_len = required_pool_len(size)?;
+        self.pool.resize(byte_len)?;
+        {
+            let mut buffer = SoftwareBufferView::new(size, &mut self.pool.mmap()[..byte_len])?;
+            render(&mut buffer)?;
+        }
 
         let wl_buffer = self.pool.create_buffer(
             0,

@@ -6,7 +6,7 @@ mod tests;
 
 use tiny_skia::{FillRule, Paint, Stroke, Transform};
 
-use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::Rect};
+use crate::{ClearColor, FrameSize, PixelBuffer, shape::Rect};
 
 use super::{
     shape::fill_rect,
@@ -71,7 +71,7 @@ impl BackdropLayerStyle {
     }
 }
 
-pub fn draw_backdrop_layer(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
+pub fn draw_backdrop_layer(buffer: &mut impl PixelBuffer, rect: Rect, style: BackdropLayerStyle) {
     if rect.is_empty() {
         return;
     }
@@ -105,7 +105,7 @@ pub fn draw_backdrop_layer(buffer: &mut SoftwareBuffer, rect: Rect, style: Backd
     }
 }
 
-fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
+fn fill_layer_shape(buffer: &mut impl PixelBuffer, rect: Rect, style: BackdropLayerStyle) {
     if matches!(style.shape, BackdropLayerShape::Panel) && style.radius <= 0 {
         fill_rect(buffer, rect, style.color);
         return;
@@ -136,7 +136,7 @@ fn fill_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLaye
     );
 }
 
-fn stroke_layer_shape(buffer: &mut SoftwareBuffer, rect: Rect, style: BackdropLayerStyle) {
+fn stroke_layer_shape(buffer: &mut impl PixelBuffer, rect: Rect, style: BackdropLayerStyle) {
     draw_overlay(
         buffer,
         rect.x,

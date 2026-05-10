@@ -2,7 +2,7 @@ use resvg::usvg;
 use tiny_skia::{FillRule, FilterQuality, Paint, Pixmap, PixmapPaint, Transform};
 
 use super::{IconRasterKey, IconRasterSource, ParsedIcon};
-use crate::{SoftwareBuffer, draw::skia::color as skia_color};
+use crate::{PixelBuffer, draw::skia::color as skia_color};
 
 pub(super) fn rasterize_icon(key: IconRasterKey, source: IconRasterSource) -> Vec<u8> {
     match source {
@@ -210,7 +210,7 @@ fn recolor_svg_pixels(pixels: &mut [u8], color: crate::ClearColor) {
 }
 
 pub(super) fn blend_icon_raster(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     origin_x: i32,
     origin_y: i32,
     width: u32,

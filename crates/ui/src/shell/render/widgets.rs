@@ -2,7 +2,7 @@ use std::f32::consts::{FRAC_PI_2, TAU};
 
 use veila_common::ClockStyle;
 use veila_renderer::{
-    ClearColor, SoftwareBuffer,
+    ClearColor, PixelBuffer,
     avatar::{AvatarAsset, AvatarStyle},
     icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon},
     masked::{MaskedInputStyle, draw_masked_input},
@@ -51,7 +51,7 @@ pub(super) enum InputRightAdornment {
 }
 
 pub(super) fn draw_centered_block(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     center_x: i32,
     y: i32,
     block: &TextBlock,
@@ -60,12 +60,12 @@ pub(super) fn draw_centered_block(
     block.draw(buffer, x, y);
 }
 
-pub(super) fn draw_block(buffer: &mut SoftwareBuffer, x: i32, y: i32, block: &TextBlock) {
+pub(super) fn draw_block(buffer: &mut impl PixelBuffer, x: i32, y: i32, block: &TextBlock) {
     block.draw(buffer, x, y);
 }
 
 pub(super) fn draw_clock_widget(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     clock: &SceneClockBlocks,
@@ -109,7 +109,7 @@ pub(super) fn draw_clock_widget(
 }
 
 pub(super) fn draw_chip_block(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     background: ClearColor,
@@ -150,7 +150,7 @@ pub(super) fn top_right_chip_diameter(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_icon_chip(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     background: ClearColor,
@@ -183,7 +183,7 @@ pub(super) fn draw_icon_chip(
 }
 
 pub(super) fn draw_avatar_widget(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     avatar: &AvatarAsset,
     center_x: i32,
     top_y: i32,
@@ -193,11 +193,11 @@ pub(super) fn draw_avatar_widget(
     avatar.draw(buffer, center_x, top_y, size, style);
 }
 
-pub(super) fn draw_input_shell(buffer: &mut SoftwareBuffer, rect: Rect, style: PillStyle) {
+pub(super) fn draw_input_shell(buffer: &mut impl PixelBuffer, rect: Rect, style: PillStyle) {
     draw_pill(buffer, rect, style);
 }
 
-pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidget) {
+pub(super) fn draw_input_content(buffer: &mut impl PixelBuffer, widget: &InputWidget) {
     let adornment_rect = (!matches!(widget.right_adornment, InputRightAdornment::None))
         .then(|| input_toggle_hitbox(widget.rect));
     let content_rect = input_content_rect(widget.rect, adornment_rect);
@@ -233,7 +233,7 @@ pub(super) fn draw_input_content(buffer: &mut SoftwareBuffer, widget: &InputWidg
 }
 
 pub(super) fn draw_weather_icon(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     icon: veila_renderer::icon::WeatherIcon,
@@ -276,7 +276,7 @@ fn scaled_from_input_height(rect: Rect, value: i32) -> i32 {
 }
 
 fn draw_toggle_icon(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     hitbox: Rect,
     reveal_secret: bool,
     hovered: bool,
@@ -304,7 +304,7 @@ fn draw_toggle_icon(
 }
 
 fn draw_input_right_adornment(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     hitbox: Rect,
     adornment: &InputRightAdornment,
 ) {
@@ -325,7 +325,7 @@ fn draw_input_right_adornment(
     }
 }
 
-fn draw_spinner_icon(buffer: &mut SoftwareBuffer, hitbox: Rect, phase: u8, style: IconStyle) {
+fn draw_spinner_icon(buffer: &mut impl PixelBuffer, hitbox: Rect, phase: u8, style: IconStyle) {
     const SEGMENT_ALPHAS: [u8; 8] = [255, 212, 176, 144, 112, 82, 56, 34];
 
     let size = hitbox.width.min(hitbox.height).max(12) as f32;

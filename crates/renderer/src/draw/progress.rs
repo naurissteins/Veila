@@ -1,5 +1,5 @@
 use crate::{
-    ClearColor, SoftwareBuffer,
+    ClearColor, PixelBuffer,
     shape::{Rect, fill_rect},
 };
 
@@ -46,7 +46,7 @@ impl ProgressBarStyle {
 
 /// Draws a simple rectangular progress bar.
 pub fn draw_progress_bar(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     rect: Rect,
     progress: Progress,
     style: ProgressBarStyle,

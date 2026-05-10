@@ -1,9 +1,9 @@
-use crate::{ClearColor, SoftwareBuffer};
+use crate::{ClearColor, PixelBuffer};
 
 use super::{BorderStyle, BoxStyle, Rect};
 
 /// Fills a rectangle.
-pub fn fill_rect(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor) {
+pub fn fill_rect(buffer: &mut impl PixelBuffer, rect: Rect, color: ClearColor) {
     if rect.is_empty() {
         return;
     }
@@ -37,7 +37,7 @@ pub fn fill_rect(buffer: &mut SoftwareBuffer, rect: Rect, color: ClearColor) {
 }
 
 /// Draws a border around a rectangle.
-pub fn stroke_rect(buffer: &mut SoftwareBuffer, rect: Rect, border: BorderStyle) {
+pub fn stroke_rect(buffer: &mut impl PixelBuffer, rect: Rect, border: BorderStyle) {
     if rect.is_empty() || border.thickness <= 0 {
         return;
     }
@@ -75,7 +75,7 @@ pub fn stroke_rect(buffer: &mut SoftwareBuffer, rect: Rect, border: BorderStyle)
 }
 
 /// Draws a filled box with an optional border.
-pub fn draw_box(buffer: &mut SoftwareBuffer, rect: Rect, style: BoxStyle) {
+pub fn draw_box(buffer: &mut impl PixelBuffer, rect: Rect, style: BoxStyle) {
     fill_rect(buffer, rect, style.fill);
 
     if let Some(border) = style.border {

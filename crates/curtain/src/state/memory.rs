@@ -11,7 +11,6 @@ struct SurfaceMemorySummary {
     software_buffers_kib: u64,
     shm_pool_estimated_kib: u64,
     estimated_persistent_kib: u64,
-    estimated_scratch_kib: u64,
     has_background: bool,
     has_scene_base: bool,
 }
@@ -21,7 +20,6 @@ struct CurtainMemorySummary {
     software_buffers_kib: u64,
     shm_pool_estimated_kib: u64,
     estimated_persistent_kib: u64,
-    estimated_scratch_kib: u64,
     ui_visible_surfaces: usize,
     surfaces: Vec<SurfaceMemorySummary>,
 }
@@ -37,7 +35,6 @@ impl CurtainApp {
             software_buffers_kib = summary.software_buffers_kib,
             shm_pool_estimated_kib = summary.shm_pool_estimated_kib,
             estimated_persistent_kib = summary.estimated_persistent_kib,
-            estimated_scratch_kib = summary.estimated_scratch_kib,
             "curtain memory summary"
         );
 
@@ -52,7 +49,6 @@ impl CurtainApp {
                 software_buffers_kib = surface.software_buffers_kib,
                 shm_pool_estimated_kib = surface.shm_pool_estimated_kib,
                 estimated_persistent_kib = surface.estimated_persistent_kib,
-                estimated_scratch_kib = surface.estimated_scratch_kib,
                 has_background = surface.has_background,
                 has_scene_base = surface.has_scene_base,
                 "curtain surface memory summary"
@@ -78,15 +74,9 @@ impl CurtainApp {
     fn memory_summary(&self) -> CurtainMemorySummary {
         let mut software_buffers_kib = 0_u64;
         let mut shm_pool_estimated_kib = 0_u64;
-        let mut estimated_scratch_kib = 0_u64;
         let mut ui_visible_surfaces = 0_usize;
         let mut surfaces = Vec::with_capacity(self.lock_surfaces.len());
         let mut counted_scene_bases = HashSet::with_capacity(self.lock_surfaces.len());
-        let scratch_buffers_kib = self
-            .scratch_buffers
-            .iter()
-            .map(|scratch| software_buffer_kib(Some(&scratch.buffer)))
-            .sum::<u64>();
 
         for (index, surface) in self.lock_surfaces.iter().enumerate() {
             let Some(size) = surface.size else {
@@ -105,16 +95,6 @@ impl CurtainApp {
             let scene_base_kib = software_buffer_kib(surface.scene_base.as_deref());
             let software_total_kib = background_kib + scene_base_kib;
             let shm_kib = u64::from(surface.shm_pool.is_some()) * frame_kib;
-            let scratch_budget_kib = if !self
-                .scratch_buffers
-                .iter()
-                .any(|scratch| scratch.buffer.size() == frame_size)
-                && (surface.background.is_some() || surface.scene_base.is_some())
-            {
-                frame_kib
-            } else {
-                0
-            };
 
             software_buffers_kib = software_buffers_kib.saturating_add(background_kib);
             if let Some(scene_base) = surface.scene_base.as_ref()
@@ -123,7 +103,6 @@ impl CurtainApp {
                 software_buffers_kib = software_buffers_kib.saturating_add(scene_base_kib);
             }
             shm_pool_estimated_kib = shm_pool_estimated_kib.saturating_add(shm_kib);
-            estimated_scratch_kib = estimated_scratch_kib.saturating_add(scratch_budget_kib);
 
             let output = self
                 .output_state
@@ -142,20 +121,16 @@ impl CurtainApp {
                 software_buffers_kib: software_total_kib,
                 shm_pool_estimated_kib: shm_kib,
                 estimated_persistent_kib: software_total_kib.saturating_add(shm_kib),
-                estimated_scratch_kib: scratch_budget_kib,
                 has_background: surface.background.is_some(),
                 has_scene_base: surface.scene_base.is_some(),
             });
         }
-
-        software_buffers_kib = software_buffers_kib.saturating_add(scratch_buffers_kib);
 
         CurtainMemorySummary {
             rss_kib: current_rss_kib(),
             software_buffers_kib,
             shm_pool_estimated_kib,
             estimated_persistent_kib: software_buffers_kib.saturating_add(shm_pool_estimated_kib),
-            estimated_scratch_kib,
             ui_visible_surfaces,
             surfaces,
         }

@@ -8,7 +8,7 @@ mod tests;
 
 use std::{cell::RefCell, thread_local};
 
-use crate::{ClearColor, SoftwareBuffer, shape::Rect};
+use crate::{ClearColor, PixelBuffer, shape::Rect};
 
 pub use battery::BatteryIcon;
 use battery::battery_svg;
@@ -70,7 +70,7 @@ impl IconStyle {
     }
 }
 
-pub fn draw_icon(buffer: &mut SoftwareBuffer, rect: Rect, icon: AssetIcon, style: IconStyle) {
+pub fn draw_icon(buffer: &mut impl PixelBuffer, rect: Rect, icon: AssetIcon, style: IconStyle) {
     if rect.is_empty() {
         return;
     }

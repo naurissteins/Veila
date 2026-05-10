@@ -1,6 +1,6 @@
 use cosmic_text::{Buffer, Wrap};
 
-use crate::SoftwareBuffer;
+use crate::PixelBuffer;
 
 use super::{
     ClearColor, TextStyle, context::FONT_CONTEXT, font_metrics, modulate_alpha, text_attrs,
@@ -8,7 +8,7 @@ use super::{
 };
 
 pub(super) fn draw_text_lines(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     lines: &[String],
@@ -54,7 +54,7 @@ pub(super) fn draw_text_lines(
     });
 }
 
-fn blend_pixel(buffer: &mut SoftwareBuffer, x: i32, y: i32, color: cosmic_text::Color) {
+fn blend_pixel(buffer: &mut impl PixelBuffer, x: i32, y: i32, color: cosmic_text::Color) {
     let size = buffer.size();
     if x < 0 || y < 0 || x >= size.width as i32 || y >= size.height as i32 {
         return;

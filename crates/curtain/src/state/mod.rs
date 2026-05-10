@@ -60,19 +60,6 @@ pub(crate) use profiler::{RenderProfiler, RenderTimingSample};
 pub(crate) use repeat::KeyRepeatState;
 pub(crate) use resume::ResumeInputState;
 
-pub(crate) struct ScratchBuffer {
-    pub(crate) buffer: veila_renderer::SoftwareBuffer,
-    pub(crate) final_frame_key: Option<FinalFrameKey>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct FinalFrameKey {
-    pub(crate) scene_base_ptr: usize,
-    pub(crate) frame_size: veila_renderer::FrameSize,
-    pub(crate) scene_revision: u64,
-    pub(crate) render_scale: u32,
-}
-
 pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
     pub(crate) surface: SessionLockSurface,
@@ -123,7 +110,6 @@ pub(crate) struct CurtainApp {
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
     pub(crate) pointer: Option<ThemedPointer>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
-    pub(crate) scratch_buffers: Vec<ScratchBuffer>,
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     control_socket: Option<PathBuf>,
@@ -277,7 +263,6 @@ impl CurtainApp {
             keyboard: None,
             pointer: None,
             lock_surfaces: Vec::new(),
-            scratch_buffers: Vec::new(),
             notify_socket: options.notify_socket,
             daemon_socket: options.daemon_socket,
             control_socket: options.control_socket,

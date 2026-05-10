@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use veila_renderer::{
-    FrameSize, SoftwareBuffer,
+    FrameSize, PixelBuffer,
     shape::{Rect, fill_rect},
 };
 
@@ -18,26 +18,26 @@ use super::{
 };
 
 impl ShellState {
-    pub fn render(&self, buffer: &mut SoftwareBuffer) {
+    pub fn render(&self, buffer: &mut impl PixelBuffer) {
         buffer.clear(self.theme.background);
         self.render_overlay(buffer);
     }
 
-    pub fn render_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+    pub fn render_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
         self.with_render_scale(scale, |shell| shell.render(buffer));
     }
 
-    pub fn render_overlay(&self, buffer: &mut SoftwareBuffer) {
+    pub fn render_overlay(&self, buffer: &mut impl PixelBuffer) {
         self.render_backdrops(buffer);
         self.render_static_overlay(buffer);
         self.render_dynamic_overlay(buffer);
     }
 
-    pub fn render_overlay_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+    pub fn render_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
         self.with_render_scale(scale, |shell| shell.render_overlay(buffer));
     }
 
-    pub fn render_static_overlay(&self, buffer: &mut SoftwareBuffer) {
+    pub fn render_static_overlay(&self, buffer: &mut impl PixelBuffer) {
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, false);
         self.render_floating_identity_widgets(buffer, &layout);
@@ -59,11 +59,11 @@ impl ShellState {
         );
     }
 
-    pub fn render_static_overlay_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+    pub fn render_static_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
         self.with_render_scale(scale, |shell| shell.render_static_overlay(buffer));
     }
 
-    pub fn render_dynamic_overlay(&self, buffer: &mut SoftwareBuffer) {
+    pub fn render_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, true);
         self.render_role(
@@ -89,7 +89,7 @@ impl ShellState {
         self.render_preview_grid_overlay(buffer);
     }
 
-    pub fn render_dynamic_overlay_scaled(&self, buffer: &mut SoftwareBuffer, scale: u32) {
+    pub fn render_dynamic_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
         self.with_render_scale(scale, |shell| shell.render_dynamic_overlay(buffer));
     }
 
@@ -109,7 +109,7 @@ impl ShellState {
 
     fn render_role(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         layout: &SceneLayout,
         role: LayoutRole,
         start_y: i32,
@@ -125,7 +125,7 @@ impl ShellState {
 
     fn render_identity_group(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         layout: &SceneLayout,
         dynamic: bool,
     ) {
@@ -142,7 +142,7 @@ impl ShellState {
 
     fn render_auth_or_input_group(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         layout: &SceneLayout,
         dynamic: bool,
     ) {
@@ -163,7 +163,7 @@ impl ShellState {
         }
     }
 
-    fn render_floating_header_widgets(&self, buffer: &mut SoftwareBuffer, layout: &SceneLayout) {
+    fn render_floating_header_widgets(&self, buffer: &mut impl PixelBuffer, layout: &SceneLayout) {
         if let Some(clock) = layout.floating_clock.as_ref() {
             let position = self
                 .theme
@@ -188,7 +188,11 @@ impl ShellState {
         }
     }
 
-    fn render_floating_identity_widgets(&self, buffer: &mut SoftwareBuffer, layout: &SceneLayout) {
+    fn render_floating_identity_widgets(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        layout: &SceneLayout,
+    ) {
         if layout.floating_avatar {
             let position = self
                 .theme
@@ -223,7 +227,7 @@ impl ShellState {
 
     fn render_floating_input_widgets(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         layout: &SceneLayout,
         dynamic: bool,
     ) {
@@ -243,7 +247,7 @@ impl ShellState {
         }
     }
 
-    fn render_floating_weather_widgets(&self, buffer: &mut SoftwareBuffer, layout: &SceneLayout) {
+    fn render_floating_weather_widgets(&self, buffer: &mut impl PixelBuffer, layout: &SceneLayout) {
         let Some(weather) = layout.floating_weather.as_ref() else {
             return;
         };
@@ -280,7 +284,7 @@ impl ShellState {
         }
     }
 
-    fn render_preview_grid_overlay(&self, buffer: &mut SoftwareBuffer) {
+    fn render_preview_grid_overlay(&self, buffer: &mut impl PixelBuffer) {
         if !self.preview_grid_enabled {
             return;
         }
@@ -329,7 +333,7 @@ impl ShellState {
 
     fn draw_grid_vertical_line(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         x: i32,
         height: i32,
         index: i32,
@@ -348,7 +352,7 @@ impl ShellState {
 
     fn draw_grid_horizontal_line(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         y: i32,
         width: i32,
         index: i32,
@@ -407,7 +411,7 @@ impl ShellState {
 
     fn render_section(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         metrics: SceneMetrics,
         section: &SceneSection,
         y: i32,
@@ -480,7 +484,7 @@ impl ShellState {
 
     fn render_input_widget(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         rect: Rect,
         placeholder: Option<veila_renderer::text::TextBlock>,
         dynamic: bool,

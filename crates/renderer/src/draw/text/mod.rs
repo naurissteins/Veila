@@ -7,7 +7,7 @@ mod tests;
 
 use cosmic_text::{FamilyOwned, Style as CosmicFontStyle};
 
-use crate::{ClearColor, ShadowStyle, SoftwareBuffer};
+use crate::{ClearColor, PixelBuffer, ShadowStyle};
 
 pub use context::{
     bundled_clock_font_family, bundled_clock_font_postscript_name, resolve_font_family,
@@ -117,7 +117,7 @@ impl TextStyle {
 }
 
 impl TextBlock {
-    pub fn draw(&self, buffer: &mut SoftwareBuffer, x: i32, y: i32) {
+    pub fn draw(&self, buffer: &mut impl PixelBuffer, x: i32, y: i32) {
         draw_text_lines(
             buffer,
             x,
@@ -130,7 +130,7 @@ impl TextBlock {
 
     pub fn draw_with_shadow(
         &self,
-        buffer: &mut SoftwareBuffer,
+        buffer: &mut impl PixelBuffer,
         x: i32,
         y: i32,
         shadow: ShadowStyle,
@@ -152,7 +152,7 @@ pub fn measure_text(text: &str, style: TextStyle) -> (u32, u32) {
     (block.width, block.height)
 }
 
-pub fn draw_text(buffer: &mut SoftwareBuffer, x: i32, y: i32, text: &str, style: TextStyle) {
+pub fn draw_text(buffer: &mut impl PixelBuffer, x: i32, y: i32, text: &str, style: TextStyle) {
     layout_text_block(text, style, None, cosmic_text::Wrap::None).draw(buffer, x, y);
 }
 
@@ -161,7 +161,7 @@ pub fn single_line_text_block(text: &str, style: TextStyle) -> TextBlock {
 }
 
 pub fn draw_text_with_shadow(
-    buffer: &mut SoftwareBuffer,
+    buffer: &mut impl PixelBuffer,
     x: i32,
     y: i32,
     text: &str,
