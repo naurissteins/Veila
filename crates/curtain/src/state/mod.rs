@@ -205,9 +205,9 @@ impl CurtainApp {
         let ui_shell = ShellState::new_with_username_and_widgets(
             theme,
             config.lock.user_hint.clone(),
-            config.lock.username.clone(),
+            config.visuals.username_text().map(str::to_owned),
             config.avatar_image_path().map(std::path::Path::to_path_buf),
-            config.lock.show_username,
+            config.visuals.username_enabled(),
             config.weather.normalized_location(),
             options.weather_snapshot.clone(),
             config.weather.unit,

@@ -12,7 +12,6 @@ radius = 80
 
 [lock]
 user_hint = "Password"
-show_username = true
 
 [battery]
 enabled = true
@@ -83,6 +82,8 @@ x = 0
 y = -120
 
 [visuals.username]
+enabled = true
+text = "Michelle"
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"

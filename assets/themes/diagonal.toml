@@ -7,7 +7,6 @@ tint = "rgba(255, 255, 255, 0.1)"
 
 [lock]
 user_hint = "Password"
-show_username = true
 
 [battery]
 enabled = true
@@ -84,6 +83,7 @@ x = 0
 y = -200
 
 [visuals.username]
+enabled = true
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"

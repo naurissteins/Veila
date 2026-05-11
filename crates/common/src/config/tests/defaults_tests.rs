@@ -20,8 +20,6 @@ fn parses_partial_config_with_defaults() {
         config.lock.log_file_path,
         std::path::PathBuf::from("~/.local/state/veila/veilad.log")
     );
-    assert!(config.lock.show_username);
-    assert!(config.lock.username.is_none());
     assert!(config.lock.user_hint.is_none());
     assert!(config.lock.avatar_path.is_none());
     assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
@@ -102,6 +100,8 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.avatar_icon_color().is_none());
     assert!(config.visuals.avatar_ring_color().is_none());
     assert!(config.visuals.avatar_ring_width().is_none());
+    assert!(config.visuals.username_enabled());
+    assert!(config.visuals.username_text().is_none());
     assert!(config.visuals.username_color().is_none());
     assert!(config.visuals.username_font_size().is_none());
     assert!(config.visuals.clock_font_family().is_none());

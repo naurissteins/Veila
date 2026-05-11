@@ -32,8 +32,8 @@ fn set_theme_in_config_preserves_existing_overrides() {
     fs::write(
         &path,
         r#"
-            [lock]
-            show_username = false
+            [visuals.username]
+            enabled = false
 
             [visuals.input]
             width = 420
@@ -45,11 +45,11 @@ fn set_theme_in_config_preserves_existing_overrides() {
 
     let raw = fs::read_to_string(&path).expect("written config");
     assert!(raw.contains("theme = \"normandy\""));
-    assert!(raw.contains("show_username = false"));
+    assert!(raw.contains("enabled = false"));
     assert!(raw.contains("width = 420"));
 
     let loaded = AppConfig::load(Some(&path)).expect("config should load");
-    assert!(!loaded.config.lock.show_username);
+    assert!(!loaded.config.visuals.username_enabled());
     assert_eq!(loaded.config.visuals.input_width(), Some(420));
     assert_eq!(
         loaded.config.visuals.clock_font_family(),
@@ -70,8 +70,8 @@ fn unset_theme_in_config_removes_only_theme_key() {
         r#"
             theme = "normandy"
 
-            [lock]
-            show_username = false
+            [visuals.username]
+            enabled = false
 
             [visuals.input]
             width = 420
@@ -86,11 +86,11 @@ fn unset_theme_in_config_removes_only_theme_key() {
 
     let raw = fs::read_to_string(&path).expect("written config");
     assert!(!raw.contains("theme ="));
-    assert!(raw.contains("show_username = false"));
+    assert!(raw.contains("enabled = false"));
     assert!(raw.contains("width = 420"));
 
     let loaded = AppConfig::load(Some(&path)).expect("config should load");
-    assert!(!loaded.config.lock.show_username);
+    assert!(!loaded.config.visuals.username_enabled());
     assert_eq!(loaded.config.visuals.input_width(), Some(420));
     assert_eq!(loaded.config.visuals.clock_font_family(), Some("Geom"));
 

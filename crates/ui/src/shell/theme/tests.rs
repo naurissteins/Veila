@@ -46,6 +46,7 @@ fn input_alpha_uses_rgba_values() {
     });
     config.visuals.username = Some(UsernameVisualConfig {
         enabled: Some(true),
+        text: None,
         font_family: Some(String::from("Geom")),
         font_weight: Some(600),
         font_style: Some(FontStyle::Italic),

@@ -7,7 +7,6 @@ dim_strength = 20
 
 [lock]
 user_hint = "Password"
-show_username = true
 
 [battery]
 enabled = true
@@ -88,6 +87,7 @@ y = -120
 relative_to = "auth_panel"
 
 [visuals.username]
+enabled = true
 font_family = "Google Sans Flex"
 font_weight = 400
 color = "rgba(255, 255, 255, 0.84)"

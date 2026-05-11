@@ -53,6 +53,8 @@ pub struct UsernameVisualConfig {
     #[serde(default)]
     pub enabled: Option<bool>,
     #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
     pub font_weight: Option<u16>,
@@ -70,6 +72,7 @@ impl Default for UsernameVisualConfig {
     fn default() -> Self {
         Self {
             enabled: Some(true),
+            text: None,
             font_family: Some(super::default_google_sans_flex_font_family()),
             font_weight: Some(400),
             font_style: Some(super::input::FontStyle::Normal),
@@ -161,6 +164,12 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|username| username.enabled)
             .unwrap_or(true)
+    }
+
+    pub fn username_text(&self) -> Option<&str> {
+        self.username
+            .as_ref()
+            .and_then(|username| username.text.as_deref())
     }
 
     pub fn username_font_family(&self) -> Option<&str> {

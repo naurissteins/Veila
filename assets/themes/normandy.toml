@@ -8,7 +8,6 @@ dim_strength = 34
 
 [lock]
 user_hint = "Password"
-show_username = false
 
 [battery]
 enabled = true
@@ -72,6 +71,9 @@ color = "rgba(255, 255, 255, 0.52)"
 color = "rgba(255, 255, 255, 0.6)"
 
 [visuals.avatar]
+enabled = false
+
+[visuals.username]
 enabled = false
 
 [visuals.keyboard]

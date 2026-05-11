@@ -18,8 +18,6 @@ fn loads_config_from_file() {
             [lock]
             acquire_timeout_seconds = 9
             auth_backoff_base_ms = 250
-            show_username = false
-            username = "anonymous"
             user_hint = "Type your password"
             avatar_path = "/tmp/avatar.png"
 
@@ -81,6 +79,8 @@ fn loads_config_from_file() {
             y = 32
 
             [visuals.username]
+            enabled = false
+            text = "anonymous"
             halign = "center"
             valign = "center"
             x = 0
@@ -112,8 +112,8 @@ fn loads_config_from_file() {
     assert_eq!(loaded.path.as_deref(), Some(path.as_path()));
     assert_eq!(loaded.config.lock.acquire_timeout_seconds, 9);
     assert_eq!(loaded.config.lock.auth_backoff_base_ms, 250);
-    assert!(!loaded.config.lock.show_username);
-    assert_eq!(loaded.config.lock.username.as_deref(), Some("anonymous"));
+    assert!(!loaded.config.visuals.username_enabled());
+    assert_eq!(loaded.config.visuals.username_text(), Some("anonymous"));
     assert_eq!(
         loaded.config.lock.avatar_path.as_deref(),
         Some(std::path::Path::new("/tmp/avatar.png"))

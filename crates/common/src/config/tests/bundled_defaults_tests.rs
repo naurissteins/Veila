@@ -13,8 +13,6 @@ fn first_run_defaults_match_bundled_theme() {
         config.lock.log_file_path,
         std::path::PathBuf::from("~/.local/state/veila/veilad.log")
     );
-    assert!(config.lock.show_username);
-    assert!(config.lock.username.is_none());
     assert_eq!(config.lock.user_hint.as_deref(), Some("Password"));
     assert!(config.lock.avatar_path.is_none());
     assert_eq!(config.background.effective_mode(), BackgroundMode::Radial);
@@ -92,6 +90,8 @@ fn first_run_defaults_match_bundled_theme() {
         config.visuals.username_color(),
         Some(RgbColor::rgba(255, 255, 255, 214))
     );
+    assert!(config.visuals.username_enabled());
+    assert!(config.visuals.username_text().is_none());
     assert_eq!(
         config.visuals.username_font_family(),
         Some("Google Sans Flex")

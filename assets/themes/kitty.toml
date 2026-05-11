@@ -7,7 +7,6 @@ dim_strength = 20
 
 [lock]
 user_hint = "Password"
-show_username = false
 
 [battery]
 enabled = true

@@ -30,10 +30,10 @@ pub(super) fn current_retry_seconds(retry_until: Instant) -> Option<u64> {
 }
 
 pub(super) fn username_text(
-    show_username: bool,
+    username_enabled: bool,
     username_override: Option<String>,
 ) -> Option<String> {
-    if !show_username {
+    if !username_enabled {
         return None;
     }
 

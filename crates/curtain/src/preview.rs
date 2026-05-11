@@ -90,7 +90,7 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
         config.lock.user_hint.clone(),
         preview_username,
         config.avatar_image_path().map(std::path::Path::to_path_buf),
-        config.lock.show_username,
+        config.visuals.username_enabled(),
         weather_location,
         weather_snapshot,
         config.weather.unit,
@@ -248,7 +248,7 @@ fn preview_username(options: &CurtainOptions, config: &AppConfig) -> Option<Stri
     options
         .preview_username
         .clone()
-        .or_else(|| config.lock.username.clone())
+        .or_else(|| config.visuals.username_text().map(str::to_owned))
 }
 
 fn preview_keyboard_layout_label(options: &CurtainOptions) -> Option<String> {
@@ -605,8 +605,8 @@ mod tests {
         };
         let config = AppConfig::from_toml_str(
             r#"
-                [lock]
-                username = "ns"
+                [visuals.username]
+                text = "ns"
             "#,
         )
         .expect("config");

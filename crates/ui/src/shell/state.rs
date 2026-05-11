@@ -87,14 +87,14 @@ impl ShellState {
         theme: ShellTheme,
         user_hint: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
     ) -> Self {
         Self::new_with_weather(
             theme,
             user_hint,
             None,
             avatar_path,
-            show_username,
+            username_enabled,
             None,
             None,
             WeatherUnit::default(),
@@ -108,14 +108,14 @@ impl ShellState {
         user_hint: Option<String>,
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
     ) -> Self {
         Self::new_with_weather(
             theme,
             user_hint,
             username_override,
             avatar_path,
-            show_username,
+            username_enabled,
             None,
             None,
             WeatherUnit::default(),
@@ -130,7 +130,7 @@ impl ShellState {
         user_hint: Option<String>,
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
@@ -141,7 +141,7 @@ impl ShellState {
             user_hint,
             username_override,
             avatar_path,
-            show_username,
+            username_enabled,
             weather_location,
             weather_snapshot,
             weather_unit,
@@ -156,7 +156,7 @@ impl ShellState {
         user_hint: Option<String>,
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
@@ -168,7 +168,7 @@ impl ShellState {
             user_hint,
             username_override,
             avatar_path,
-            show_username,
+            username_enabled,
             weather_location,
             weather_snapshot,
             weather_unit,
@@ -183,7 +183,7 @@ impl ShellState {
         user_hint: Option<String>,
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
@@ -211,7 +211,7 @@ impl ShellState {
                 .filter(|hint| !hint.trim().is_empty())
                 .unwrap_or_else(|| String::from("Type your password to unlock")),
             reveal_hint_text,
-            username_text: username_text(show_username, username_override),
+            username_text: username_text(username_enabled, username_override),
             weather: widget_data(weather_location, weather_snapshot, weather_unit),
             now_playing: now_playing_widget_data(now_playing_snapshot),
             now_playing_transition: None,
@@ -285,9 +285,9 @@ impl ShellState {
         theme: ShellTheme,
         user_hint: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
     ) {
-        self.apply_theme_with_username(theme, user_hint, None, avatar_path, show_username);
+        self.apply_theme_with_username(theme, user_hint, None, avatar_path, username_enabled);
     }
 
     pub fn apply_theme_with_username(
@@ -296,14 +296,14 @@ impl ShellState {
         user_hint: Option<String>,
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
     ) {
         self.apply_theme_with_username_and_weather(
             theme,
             user_hint,
             username_override,
             avatar_path,
-            show_username,
+            username_enabled,
             None,
             None,
             WeatherUnit::default(),
@@ -319,7 +319,7 @@ impl ShellState {
         user_hint: Option<String>,
         username_override: Option<String>,
         avatar_path: Option<PathBuf>,
-        show_username: bool,
+        username_enabled: bool,
         weather_location: Option<String>,
         weather_snapshot: Option<WeatherSnapshot>,
         weather_unit: WeatherUnit,
@@ -341,7 +341,7 @@ impl ShellState {
             self.reveal_toggle_hovered = false;
             self.reveal_toggle_pressed = false;
         }
-        self.username_text = username_text(show_username, username_override);
+        self.username_text = username_text(username_enabled, username_override);
         self.weather = widget_data(weather_location, weather_snapshot, weather_unit);
         self.battery = battery_widget_data(battery_snapshot);
         self.now_playing = now_playing_widget_data(now_playing_snapshot);
