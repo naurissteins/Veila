@@ -1,6 +1,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use crate::state::CurtainApp;
+use veila_renderer::shm::BUFFER_SLOTS;
 
 struct SurfaceMemorySummary {
     output: String,
@@ -94,7 +95,7 @@ impl CurtainApp {
             let background_kib = software_buffer_kib(surface.background.as_ref());
             let scene_base_kib = software_buffer_kib(surface.scene_base.as_deref());
             let software_total_kib = background_kib + scene_base_kib;
-            let shm_kib = u64::from(surface.shm_pool.is_some()) * frame_kib;
+            let shm_kib = u64::from(surface.shm_pool.is_some()) * frame_kib * BUFFER_SLOTS as u64;
 
             software_buffers_kib = software_buffers_kib.saturating_add(background_kib);
             if let Some(scene_base) = surface.scene_base.as_ref()
