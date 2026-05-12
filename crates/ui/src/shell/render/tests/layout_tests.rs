@@ -385,6 +385,51 @@ fn static_overlay_includes_custom_visual_layers() {
 }
 
 #[test]
+fn static_overlay_without_layers_omits_custom_visual_layers() {
+    let shell = ShellState::new(
+        ShellTheme {
+            background: ClearColor::rgba(0, 0, 0, 0),
+            avatar_enabled: false,
+            username_enabled: false,
+            clock_enabled: false,
+            date_enabled: false,
+            layers: vec![VisualLayer {
+                kind: LayerKind::Text,
+                text: String::from("."),
+                color: ClearColor::opaque(255, 255, 255),
+                background_color: Some(ClearColor::opaque(12, 34, 56)),
+                font_family: None,
+                font_weight: None,
+                font_style: None,
+                font_size: 1,
+                width: Some(40),
+                height: Some(20),
+                padding: 0,
+                radius: 0,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(120, 80)).expect("buffer");
+
+    shell.render_static_overlay_without_layers(&mut buffer);
+
+    let inside = &buffer.pixels()[(31 * 120 + 41) * 4..(31 * 120 + 41) * 4 + 4];
+    assert_eq!(inside, &[0, 0, 0, 0]);
+}
+
+#[test]
 fn icon_visual_layer_centers_visible_glyph_bounds() {
     let shell = ShellState::new(
         ShellTheme {

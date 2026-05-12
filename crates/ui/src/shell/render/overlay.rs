@@ -38,7 +38,17 @@ impl ShellState {
     }
 
     pub fn render_static_overlay(&self, buffer: &mut impl PixelBuffer) {
-        self.render_layers(buffer);
+        self.render_static_overlay_with_layers(buffer, true);
+    }
+
+    pub fn render_static_overlay_without_layers(&self, buffer: &mut impl PixelBuffer) {
+        self.render_static_overlay_with_layers(buffer, false);
+    }
+
+    fn render_static_overlay_with_layers(&self, buffer: &mut impl PixelBuffer, layers: bool) {
+        if layers {
+            self.render_layers(buffer);
+        }
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, false);
         self.render_floating_identity_widgets(buffer, &layout);
@@ -62,6 +72,16 @@ impl ShellState {
 
     pub fn render_static_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
         self.with_render_scale(scale, |shell| shell.render_static_overlay(buffer));
+    }
+
+    pub fn render_static_overlay_without_layers_scaled(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        scale: u32,
+    ) {
+        self.with_render_scale(scale, |shell| {
+            shell.render_static_overlay_without_layers(buffer);
+        });
     }
 
     pub fn render_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {

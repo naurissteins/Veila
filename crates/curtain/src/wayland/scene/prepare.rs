@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use veila_renderer::{
-    FrameSize,
+    FrameSize, PixelBuffer,
     background::{
         load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
         load_cached_render_variant,
@@ -145,10 +145,10 @@ impl CurtainApp {
         let mut buffer = background.clone();
         self.ui_shell
             .render_backdrops_scaled(&mut buffer, render_scale);
-        self.ui_shell
-            .render_static_overlay_scaled(&mut buffer, render_scale);
+        let has_layers = self.render_static_scene_overlay(&mut buffer, render_scale);
         self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
         self.lock_surfaces[index].scene_base_revision = revision;
+        self.lock_surfaces[index].scene_base_has_layers = has_layers;
         self.lock_surfaces[index].background = None;
 
         Ok(true)
@@ -171,7 +171,39 @@ impl CurtainApp {
             return Ok(Some(false));
         }
 
-        if let Some(buffer) = self
+        if let Some(variant) = self.static_scene_cache_variant_for_surface(scale) {
+            if let Some(path) = selected_path.as_deref() {
+                if let Ok(Some(buffer)) = load_cached_render_variant(
+                    path,
+                    frame_size,
+                    self.background_treatment,
+                    &variant,
+                ) {
+                    self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
+                    self.lock_surfaces[index].scene_base_revision = revision;
+                    self.lock_surfaces[index].scene_base_has_layers = true;
+                    self.lock_surfaces[index].background = None;
+                    self.lock_surfaces[index].background_path = selected_path;
+                    return Ok(Some(true));
+                }
+            } else if let Some(generated) = self.background_generated
+                && let Ok(Some(buffer)) = load_cached_generated_render_variant(
+                    generated,
+                    frame_size,
+                    self.background_treatment,
+                    &variant,
+                )
+            {
+                self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
+                self.lock_surfaces[index].scene_base_revision = revision;
+                self.lock_surfaces[index].scene_base_has_layers = true;
+                self.lock_surfaces[index].background = None;
+                self.lock_surfaces[index].background_path = None;
+                return Ok(Some(true));
+            }
+        }
+
+        if let Some((buffer, has_layers)) = self
             .lock_surfaces
             .iter()
             .enumerate()
@@ -184,10 +216,16 @@ impl CurtainApp {
                         .as_ref()
                         .is_some_and(|buffer| buffer.size() == frame_size)
             })
-            .and_then(|(_, surface)| surface.scene_base.clone())
+            .and_then(|(_, surface)| {
+                surface
+                    .scene_base
+                    .clone()
+                    .map(|buffer| (buffer, surface.scene_base_has_layers))
+            })
         {
             self.lock_surfaces[index].scene_base = Some(buffer);
             self.lock_surfaces[index].scene_base_revision = revision;
+            self.lock_surfaces[index].scene_base_has_layers = has_layers;
             self.lock_surfaces[index].background = None;
             self.lock_surfaces[index].background_path = selected_path;
             return Ok(Some(true));
@@ -201,10 +239,11 @@ impl CurtainApp {
                     self.background_treatment,
                     &variant,
                 ) {
-                    self.ui_shell
-                        .render_static_overlay_scaled(&mut buffer, scale.max(1) as u32);
+                    let has_layers =
+                        self.render_static_scene_overlay(&mut buffer, scale.max(1) as u32);
                     self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                     self.lock_surfaces[index].scene_base_revision = revision;
+                    self.lock_surfaces[index].scene_base_has_layers = has_layers;
                     self.lock_surfaces[index].background = None;
                     self.lock_surfaces[index].background_path = selected_path;
                     return Ok(Some(true));
@@ -217,10 +256,10 @@ impl CurtainApp {
                     &variant,
                 )
             {
-                self.ui_shell
-                    .render_static_overlay_scaled(&mut buffer, scale.max(1) as u32);
+                let has_layers = self.render_static_scene_overlay(&mut buffer, scale.max(1) as u32);
                 self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                 self.lock_surfaces[index].scene_base_revision = revision;
+                self.lock_surfaces[index].scene_base_has_layers = has_layers;
                 self.lock_surfaces[index].background = None;
                 self.lock_surfaces[index].background_path = None;
                 return Ok(Some(true));
@@ -237,5 +276,22 @@ impl CurtainApp {
         }
 
         Some(format!("{variant}:render-scale:{scale}"))
+    }
+
+    fn static_scene_cache_variant_for_surface(&self, scale: i32) -> Option<String> {
+        self.ui_shell
+            .static_scene_cache_variant(scale.max(1) as u32)
+    }
+
+    fn render_static_scene_overlay(&mut self, buffer: &mut impl PixelBuffer, scale: u32) -> bool {
+        if !self.ready_notified && self.ui_shell.has_visual_layers() {
+            self.ui_shell
+                .render_static_overlay_without_layers_scaled(buffer, scale);
+            self.pending_pre_ready_redraw = true;
+            return false;
+        }
+
+        self.ui_shell.render_static_overlay_scaled(buffer, scale);
+        self.ui_shell.has_visual_layers()
     }
 }

@@ -19,7 +19,6 @@ use veila_renderer::{
     PixelBuffer,
     layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     shape::{PillStyle, Rect, draw_pill},
-    text::measure_visible_text_bounds,
 };
 
 use self::{
@@ -241,7 +240,11 @@ impl ShellState {
                 matches!(layer.kind, LayerKind::Icon),
             );
             let icon_bounds = matches!(layer.kind, LayerKind::Icon)
-                .then(|| measure_visible_text_bounds(&layer.text, block.style.clone()))
+                .then(|| {
+                    self.text_layout_cache
+                        .borrow_mut()
+                        .custom_layer_visible_bounds(index, &layer.text, block.style.clone())
+                })
                 .flatten();
             let content_width = icon_bounds.map_or(block.width as i32, |bounds| bounds.width());
             let content_height = icon_bounds.map_or(block.height as i32, |bounds| bounds.height());

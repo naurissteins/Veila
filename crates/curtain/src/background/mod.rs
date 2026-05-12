@@ -73,6 +73,7 @@ impl CurtainApp {
                         surface.background_path = Some(path.clone());
                         surface.scene_base = None;
                         surface.scene_base_revision = 0;
+                        surface.scene_base_has_layers = false;
                         changed = true;
                     }
                     if changed {
@@ -186,6 +187,7 @@ impl CurtainApp {
             surface.background = None;
             surface.scene_base = None;
             surface.scene_base_revision = 0;
+            surface.scene_base_has_layers = false;
         }
     }
 

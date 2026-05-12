@@ -4,8 +4,8 @@ use std::{
 };
 
 use veila_common::{
-    AppConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig, HorizontalAlign, RgbColor,
-    VerticalAlign,
+    AppConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig, HorizontalAlign,
+    LayerVisualConfig, RgbColor, VerticalAlign,
     config::{
         BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundScaling as ConfigBackgroundScaling,
@@ -117,6 +117,7 @@ fn prewarm_inputs(config: &AppConfig) -> BackgroundPrewarmInputs {
     BackgroundPrewarmInputs {
         background: config.background.clone(),
         backdrop: config.visuals.backdrop.clone(),
+        layer: config.visuals.layer.clone(),
         panel: config.visuals.panel,
     }
 }
@@ -212,15 +213,20 @@ fn prewarm_backgrounds(
     scene: ScenePrewarmConfig,
 ) -> PrewarmResult {
     let outputs = output_probe::current_outputs().unwrap_or_default();
+    let scene_shell = scene.into_shell();
+    let static_scene = scene_shell
+        .static_scene_cache_variant(1)
+        .is_some()
+        .then_some(&scene_shell);
     let wallpapers = prewarm_jobs(&background, &outputs)
         .into_iter()
-        .map(|job| prewarm_wallpaper(job, fallback, treatment, &backdrops))
+        .map(|job| prewarm_wallpaper(job, fallback, treatment, &backdrops, static_scene))
         .collect();
     let generated = generated.and_then(|generated| {
         let sizes = generated_sizes(&background, &outputs);
-        prewarm_generated_backgrounds(generated, treatment, &backdrops, &sizes)
+        prewarm_generated_backgrounds(generated, treatment, &backdrops, &sizes, static_scene)
     });
-    let scene = prewarm_static_scene(scene, &outputs);
+    let scene = prewarm_static_scene(&scene_shell, &outputs);
 
     PrewarmResult {
         wallpapers,
@@ -234,6 +240,7 @@ fn prewarm_wallpaper(
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
+    static_scene: Option<&ShellState>,
 ) -> Result<PrewarmReport, (PathBuf, anyhow::Error)> {
     let source_started_at = Instant::now();
     match prewarm_source(&job.path) {
@@ -241,8 +248,14 @@ fn prewarm_wallpaper(
             let source_elapsed_ms = elapsed_ms(source_started_at);
             let rendered =
                 prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.buffer_sizes());
-            let layered =
-                prewarm_layered_backgrounds(&job.path, fallback, treatment, backdrops, &job.sizes);
+            let layered = prewarm_layered_backgrounds(
+                &job.path,
+                fallback,
+                treatment,
+                backdrops,
+                &job.sizes,
+                static_scene,
+            );
             Ok(PrewarmReport {
                 path: job.path,
                 source_status: status,
@@ -280,8 +293,9 @@ fn prewarm_layered_backgrounds(
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
     sizes: &[PrewarmSize],
+    static_scene: Option<&ShellState>,
 ) -> Option<LayeredPrewarmReport> {
-    if backdrops.is_empty() || sizes.is_empty() {
+    if sizes.is_empty() || (backdrops.is_empty() && static_scene.is_none()) {
         return None;
     }
 
@@ -293,19 +307,59 @@ fn prewarm_layered_backgrounds(
     for size in sizes.iter().copied() {
         let scaled_backdrops = scaled_backdrop_specs(backdrops, size.scale);
         let variant = backdrop_variant(backdrops, size.scale);
-        if load_cached_render_variant(path, size.buffer, treatment, &variant)
-            .ok()
-            .flatten()
-            .is_some()
-        {
-            cache_hits += 1;
-            continue;
+        let mut base_buffer = None;
+
+        if !backdrops.is_empty() {
+            if load_cached_render_variant(path, size.buffer, treatment, &variant)
+                .ok()
+                .flatten()
+                .is_some()
+            {
+                cache_hits += 1;
+            } else {
+                let mut buffer = asset.render(size.buffer).ok()?;
+                apply_backdrop_specs(&scaled_backdrops, &mut buffer);
+                store_cached_render_variant(path, size.buffer, treatment, &buffer, &variant)
+                    .ok()?;
+                warmed_sizes += 1;
+                base_buffer = Some(buffer);
+            }
         }
 
-        let mut buffer = asset.render(size.buffer).ok()?;
-        apply_backdrop_specs(&scaled_backdrops, &mut buffer);
-        store_cached_render_variant(path, size.buffer, treatment, &buffer, &variant).ok()?;
-        warmed_sizes += 1;
+        if let Some(scene) = static_scene
+            && let Some(scene_variant) = scene.static_scene_cache_variant(size.scale.max(1) as u32)
+        {
+            if load_cached_render_variant(path, size.buffer, treatment, &scene_variant)
+                .ok()
+                .flatten()
+                .is_some()
+            {
+                cache_hits += 1;
+                continue;
+            }
+
+            let mut buffer = match base_buffer.take() {
+                Some(buffer) => buffer,
+                None if !backdrops.is_empty() => {
+                    if let Some(buffer) =
+                        load_cached_render_variant(path, size.buffer, treatment, &variant)
+                            .ok()
+                            .flatten()
+                    {
+                        buffer
+                    } else {
+                        let mut buffer = asset.render(size.buffer).ok()?;
+                        apply_backdrop_specs(&scaled_backdrops, &mut buffer);
+                        buffer
+                    }
+                }
+                None => asset.render(size.buffer).ok()?,
+            };
+            scene.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
+            store_cached_render_variant(path, size.buffer, treatment, &buffer, &scene_variant)
+                .ok()?;
+            warmed_sizes += 1;
+        }
     }
 
     Some(LayeredPrewarmReport {
@@ -321,6 +375,7 @@ fn prewarm_generated_backgrounds(
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
     sizes: &[PrewarmSize],
+    static_scene: Option<&ShellState>,
 ) -> Option<GeneratedPrewarmReport> {
     if sizes.is_empty() {
         return None;
@@ -334,7 +389,8 @@ fn prewarm_generated_backgrounds(
         probed_outputs: sizes.len(),
         summary,
     };
-    let layered = prewarm_generated_layered_backgrounds(generated, treatment, backdrops, sizes);
+    let layered =
+        prewarm_generated_layered_backgrounds(generated, treatment, backdrops, sizes, static_scene);
 
     Some(GeneratedPrewarmReport {
         mode: generated.mode_name(),
@@ -348,8 +404,9 @@ fn prewarm_generated_layered_backgrounds(
     treatment: BackgroundTreatment,
     backdrops: &[BackdropPrewarmSpec],
     sizes: &[PrewarmSize],
+    static_scene: Option<&ShellState>,
 ) -> Option<LayeredPrewarmReport> {
-    if backdrops.is_empty() || sizes.is_empty() {
+    if sizes.is_empty() || (backdrops.is_empty() && static_scene.is_none()) {
         return None;
     }
 
@@ -367,20 +424,80 @@ fn prewarm_generated_layered_backgrounds(
     for size in sizes.iter().copied() {
         let scaled_backdrops = scaled_backdrop_specs(backdrops, size.scale);
         let variant = backdrop_variant(backdrops, size.scale);
-        if load_cached_generated_render_variant(generated, size.buffer, treatment, &variant)
+        let mut base_buffer = None;
+
+        if !backdrops.is_empty() {
+            if load_cached_generated_render_variant(generated, size.buffer, treatment, &variant)
+                .ok()
+                .flatten()
+                .is_some()
+            {
+                cache_hits += 1;
+            } else {
+                let mut buffer = asset.render(size.buffer).ok()?;
+                apply_backdrop_specs(&scaled_backdrops, &mut buffer);
+                store_cached_generated_render_variant(
+                    generated,
+                    size.buffer,
+                    treatment,
+                    &buffer,
+                    &variant,
+                )
+                .ok()?;
+                warmed_sizes += 1;
+                base_buffer = Some(buffer);
+            }
+        }
+
+        if let Some(scene) = static_scene
+            && let Some(scene_variant) = scene.static_scene_cache_variant(size.scale.max(1) as u32)
+        {
+            if load_cached_generated_render_variant(
+                generated,
+                size.buffer,
+                treatment,
+                &scene_variant,
+            )
             .ok()
             .flatten()
             .is_some()
-        {
-            cache_hits += 1;
-            continue;
-        }
+            {
+                cache_hits += 1;
+                continue;
+            }
 
-        let mut buffer = asset.render(size.buffer).ok()?;
-        apply_backdrop_specs(&scaled_backdrops, &mut buffer);
-        store_cached_generated_render_variant(generated, size.buffer, treatment, &buffer, &variant)
+            let mut buffer = match base_buffer.take() {
+                Some(buffer) => buffer,
+                None if !backdrops.is_empty() => {
+                    if let Some(buffer) = load_cached_generated_render_variant(
+                        generated,
+                        size.buffer,
+                        treatment,
+                        &variant,
+                    )
+                    .ok()
+                    .flatten()
+                    {
+                        buffer
+                    } else {
+                        let mut buffer = asset.render(size.buffer).ok()?;
+                        apply_backdrop_specs(&scaled_backdrops, &mut buffer);
+                        buffer
+                    }
+                }
+                None => asset.render(size.buffer).ok()?,
+            };
+            scene.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
+            store_cached_generated_render_variant(
+                generated,
+                size.buffer,
+                treatment,
+                &buffer,
+                &scene_variant,
+            )
             .ok()?;
-        warmed_sizes += 1;
+            warmed_sizes += 1;
+        }
     }
 
     Some(LayeredPrewarmReport {
@@ -392,7 +509,7 @@ fn prewarm_generated_layered_backgrounds(
 }
 
 fn prewarm_static_scene(
-    scene: ScenePrewarmConfig,
+    shell: &ShellState,
     outputs: &[output_probe::ProbedOutput],
 ) -> Option<ScenePrewarmReport> {
     if outputs.is_empty() {
@@ -400,7 +517,6 @@ fn prewarm_static_scene(
     }
 
     let started_at = Instant::now();
-    let shell = scene.into_shell();
     let sizes = unique_prewarm_sizes(outputs);
     let mut warmed_sizes = 0usize;
 
@@ -930,6 +1046,7 @@ struct ScenePrewarmReport {
 struct BackgroundPrewarmInputs {
     background: veila_common::config::BackgroundConfig,
     backdrop: Vec<BackdropVisualConfig>,
+    layer: Vec<LayerVisualConfig>,
     panel: RgbColor,
 }
 
@@ -991,6 +1108,34 @@ mod tests {
         .expect("next config");
 
         assert!(!prewarm_inputs_changed(&current, &next));
+    }
+
+    #[test]
+    fn detects_visual_layer_related_prewarm_changes() {
+        let current = AppConfig::from_toml_str(
+            r##"
+                [background]
+                mode = "gradient"
+
+                [[visuals.layer]]
+                kind = "icon"
+                text = "one"
+            "##,
+        )
+        .expect("current config");
+        let next = AppConfig::from_toml_str(
+            r##"
+                [background]
+                mode = "gradient"
+
+                [[visuals.layer]]
+                kind = "icon"
+                text = "two"
+            "##,
+        )
+        .expect("next config");
+
+        assert!(prewarm_inputs_changed(&current, &next));
     }
 
     #[test]

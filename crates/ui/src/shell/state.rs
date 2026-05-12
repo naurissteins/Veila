@@ -59,6 +59,25 @@ impl ShellState {
         Some(variant)
     }
 
+    pub fn has_visual_layers(&self) -> bool {
+        !self.theme.layers.is_empty()
+    }
+
+    pub fn static_scene_cache_variant(&self, scale: u32) -> Option<String> {
+        self.has_visual_layers().then(|| {
+            format!(
+                "static-scene:v1:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}",
+                scale.max(1),
+                self.theme,
+                self.hint_text,
+                self.reveal_hint_text,
+                self.username_text,
+                self.auth_revealed,
+                self.focused,
+            )
+        })
+    }
+
     pub(super) fn backdrop_visible(&self, backdrop: &crate::shell::theme::Backdrop) -> bool {
         match backdrop.show_when {
             veila_common::BackdropShowWhen::Always => true,

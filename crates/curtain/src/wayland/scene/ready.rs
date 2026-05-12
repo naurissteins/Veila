@@ -103,6 +103,7 @@ impl CurtainApp {
         }
 
         self.ready_notified = true;
+        self.refresh_scene_base_after_ready();
 
         if let Some(path) = self.notify_socket.as_deref() {
             if let Err(error) = notify_ready(path) {
@@ -125,6 +126,24 @@ impl CurtainApp {
         }
 
         self.log_memory_snapshot("ready");
+    }
+
+    fn refresh_scene_base_after_ready(&mut self) {
+        if !self.ui_shell.has_visual_layers()
+            || self
+                .lock_surfaces
+                .iter()
+                .all(|surface| surface.scene_base_has_layers)
+        {
+            return;
+        }
+
+        for surface in &mut self.lock_surfaces {
+            surface.scene_base = None;
+            surface.scene_base_revision = 0;
+            surface.scene_base_has_layers = false;
+        }
+        self.pending_pre_ready_redraw = true;
     }
 
     pub(crate) fn flush_pending_pre_ready_redraw(&mut self, queue_handle: &QueueHandle<Self>) {

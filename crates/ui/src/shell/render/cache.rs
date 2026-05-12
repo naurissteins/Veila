@@ -1,7 +1,10 @@
 use veila_common::ClockStyle;
 use veila_renderer::{
     icon::WeatherIcon,
-    text::{TextBlock, TextStyle, fit_single_line_text, fit_wrapped_text, single_line_text_block},
+    text::{
+        TextBlock, TextBounds, TextStyle, fit_single_line_text, fit_wrapped_text,
+        measure_visible_text_bounds, single_line_text_block,
+    },
 };
 
 use super::{
@@ -26,6 +29,7 @@ pub(crate) struct TextLayoutCache {
     pub(super) weather_temperature: CachedTextBlock,
     pub(super) weather_location: CachedTextBlock,
     pub(super) custom_layers: Vec<CachedTextBlock>,
+    pub(super) custom_layer_bounds: Vec<CachedTextBounds>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -228,6 +232,20 @@ impl TextLayoutCache {
             cache.resolve(text, style, max_width, 1)
         }
     }
+
+    pub(super) fn custom_layer_visible_bounds(
+        &mut self,
+        index: usize,
+        text: &str,
+        style: TextStyle,
+    ) -> Option<TextBounds> {
+        if self.custom_layer_bounds.len() <= index {
+            self.custom_layer_bounds
+                .resize_with(index + 1, CachedTextBounds::default);
+        }
+
+        self.custom_layer_bounds[index].resolve(text, style)
+    }
 }
 
 impl CachedTextBlock {
@@ -315,5 +333,37 @@ impl CachedTextBlock {
         self.key = Some(key);
         self.block = Some(block.clone());
         block
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct CachedTextBounds {
+    key: Option<CachedTextBoundsKey>,
+    bounds: Option<Option<TextBounds>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CachedTextBoundsKey {
+    text: String,
+    style: TextStyle,
+}
+
+impl CachedTextBounds {
+    fn resolve(&mut self, text: &str, style: TextStyle) -> Option<TextBounds> {
+        let key = CachedTextBoundsKey {
+            text: text.to_owned(),
+            style: style.clone(),
+        };
+
+        if self.key.as_ref() == Some(&key)
+            && let Some(bounds) = self.bounds
+        {
+            return bounds;
+        }
+
+        let bounds = measure_visible_text_bounds(text, style);
+        self.key = Some(key);
+        self.bounds = Some(bounds);
+        bounds
     }
 }
