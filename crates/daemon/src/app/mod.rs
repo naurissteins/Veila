@@ -1,4 +1,5 @@
 mod battery;
+mod cache;
 mod events;
 mod helpers;
 mod memory;
@@ -51,6 +52,7 @@ pub async fn run(
         AppConfig::load(options.config_path.as_deref()).context("failed to load daemon config")?,
     );
     prewarm::spawn_background_prewarm(runtime.loaded_config.path.as_deref());
+    cache::spawn_background_cache_pruner();
     let connection = logind::connect_system().await?;
     let manager_proxy = logind::ManagerProxy::new(&connection)
         .await

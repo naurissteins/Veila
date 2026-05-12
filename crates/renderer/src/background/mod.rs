@@ -18,6 +18,7 @@ pub use asset::{
     store_cached_generated_render, store_cached_generated_render_variant, store_cached_render,
     store_cached_render_variant,
 };
+pub use render_cache::{RenderCachePrunePolicy, RenderCachePruneReport, prune_render_cache};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceCacheStatus {

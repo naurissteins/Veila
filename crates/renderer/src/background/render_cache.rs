@@ -2,7 +2,7 @@ use std::{
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
-    time::UNIX_EPOCH,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use crate::{FrameSize, RendererError, Result, SoftwareBuffer};
@@ -11,10 +11,31 @@ use super::{BackgroundTreatment, GeneratedBackground};
 
 const CACHE_MAGIC: &[u8; 8] = b"KWYBG001";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RenderCachePrunePolicy {
+    pub max_bytes: u64,
+    pub max_age: Duration,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct RenderCachePruneReport {
+    pub scanned_files: usize,
+    pub removed_files: usize,
+    pub removed_bytes: u64,
+    pub retained_bytes: u64,
+}
+
 #[derive(Debug, Clone, Copy)]
 enum CacheSource<'a> {
     Path(&'a Path),
     Generated(GeneratedBackground),
+}
+
+#[derive(Debug)]
+struct PruneEntry {
+    path: PathBuf,
+    byte_len: u64,
+    modified: SystemTime,
 }
 
 pub(crate) fn load_cached_buffer(
@@ -205,6 +226,89 @@ fn cache_path(
     Ok(cache_root(cache_home)?.join(format!("{key:016x}.argb")))
 }
 
+pub fn prune_render_cache(policy: RenderCachePrunePolicy) -> Result<RenderCachePruneReport> {
+    prune_render_cache_at(policy, None, SystemTime::now())
+}
+
+fn prune_render_cache_at(
+    policy: RenderCachePrunePolicy,
+    cache_home: Option<&Path>,
+    now: SystemTime,
+) -> Result<RenderCachePruneReport> {
+    let root = cache_root(cache_home)?;
+    let entries = match fs::read_dir(&root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(RenderCachePruneReport::default());
+        }
+        Err(error) => return Err(RendererError::Io(error)),
+    };
+
+    let mut report = RenderCachePruneReport::default();
+    let mut retained = Vec::new();
+
+    for entry in entries {
+        let entry = entry.map_err(RendererError::Io)?;
+        let path = entry.path();
+        if path.extension().and_then(|extension| extension.to_str()) != Some("argb") {
+            continue;
+        }
+
+        let metadata = entry.metadata().map_err(RendererError::Io)?;
+        if !metadata.is_file() {
+            continue;
+        }
+
+        report.scanned_files += 1;
+        let byte_len = metadata.len();
+        let modified = metadata.modified().unwrap_or(UNIX_EPOCH);
+
+        if now
+            .duration_since(modified)
+            .is_ok_and(|age| age > policy.max_age)
+        {
+            remove_pruned_file(&path, byte_len, &mut report)?;
+        } else {
+            retained.push(PruneEntry {
+                path,
+                byte_len,
+                modified,
+            });
+        }
+    }
+
+    let mut retained_bytes = retained.iter().map(|entry| entry.byte_len).sum::<u64>();
+    retained.sort_by_key(|entry| entry.modified);
+
+    for entry in retained {
+        if retained_bytes <= policy.max_bytes {
+            break;
+        }
+
+        remove_pruned_file(&entry.path, entry.byte_len, &mut report)?;
+        retained_bytes = retained_bytes.saturating_sub(entry.byte_len);
+    }
+
+    report.retained_bytes = retained_bytes;
+    Ok(report)
+}
+
+fn remove_pruned_file(
+    path: &Path,
+    byte_len: u64,
+    report: &mut RenderCachePruneReport,
+) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => {
+            report.removed_files += 1;
+            report.removed_bytes = report.removed_bytes.saturating_add(byte_len);
+            Ok(())
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(RendererError::Io(error)),
+    }
+}
+
 fn cache_source_key(source: CacheSource<'_>, size: FrameSize) -> Result<String> {
     match source {
         CacheSource::Path(path) => {
@@ -369,13 +473,14 @@ mod tests {
         fs,
         io::{Read, Write},
         path::Path,
-        time::{SystemTime, UNIX_EPOCH},
+        time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
     use crate::{ClearColor, FrameSize, SoftwareBuffer};
 
     use super::{
-        super::BackgroundScaling, BackgroundTreatment, CacheSource, GeneratedBackground, cache_path,
+        super::BackgroundScaling, BackgroundTreatment, CacheSource, GeneratedBackground,
+        RenderCachePrunePolicy, cache_path, prune_render_cache_at,
     };
     use crate::background::BackgroundGradient;
 
@@ -573,6 +678,74 @@ mod tests {
         .expect("fit key");
 
         assert_ne!(fill, fit);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn prunes_oldest_render_cache_entries_to_size_limit() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("veila-render-prune-size-test-{unique}"));
+        let cache_dir = super::cache_root(Some(&root)).expect("cache root");
+        fs::create_dir_all(&cache_dir).expect("cache dir");
+
+        let old = cache_dir.join("old.argb");
+        let new = cache_dir.join("new.argb");
+        fs::write(&old, [1u8; 10]).expect("old file");
+        std::thread::sleep(Duration::from_millis(2));
+        fs::write(&new, [2u8; 10]).expect("new file");
+
+        let report = prune_render_cache_at(
+            RenderCachePrunePolicy {
+                max_bytes: 10,
+                max_age: Duration::from_secs(60),
+            },
+            Some(&root),
+            SystemTime::now(),
+        )
+        .expect("prune");
+
+        assert_eq!(report.scanned_files, 2);
+        assert_eq!(report.removed_files, 1);
+        assert_eq!(report.removed_bytes, 10);
+        assert_eq!(report.retained_bytes, 10);
+        assert!(!old.exists());
+        assert!(new.exists());
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn prunes_render_cache_entries_by_age() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("veila-render-prune-age-test-{unique}"));
+        let cache_dir = super::cache_root(Some(&root)).expect("cache root");
+        fs::create_dir_all(&cache_dir).expect("cache dir");
+
+        let expired = cache_dir.join("expired.argb");
+        fs::write(&expired, [1u8; 10]).expect("expired file");
+
+        let report = prune_render_cache_at(
+            RenderCachePrunePolicy {
+                max_bytes: 1024,
+                max_age: Duration::from_secs(60),
+            },
+            Some(&root),
+            SystemTime::now() + Duration::from_secs(61),
+        )
+        .expect("prune");
+
+        assert_eq!(report.scanned_files, 1);
+        assert_eq!(report.removed_files, 1);
+        assert_eq!(report.removed_bytes, 10);
+        assert_eq!(report.retained_bytes, 0);
+        assert!(!expired.exists());
 
         let _ = fs::remove_dir_all(root);
     }
