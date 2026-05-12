@@ -8,9 +8,7 @@ use veila_renderer::{
 
 use super::{
     super::ShellState,
-    color::{
-        avatar_background_color, avatar_ring_color, eye_icon_alpha, percent_to_alpha, styled_alpha,
-    },
+    color::{avatar_ring_color, eye_icon_alpha, percent_to_alpha, styled_alpha},
 };
 
 impl ShellState {
@@ -75,22 +73,14 @@ impl ShellState {
 
     pub(crate) fn avatar_style(&self) -> AvatarStyle {
         let ring_width = self.theme.avatar_ring_width.unwrap_or(2).clamp(0, 12);
-        let ring = if self.focused {
-            avatar_ring_color(
-                self.theme
-                    .avatar_ring_color
-                    .unwrap_or(self.theme.input_border),
-                108,
-            )
+        let ring = if let Some(ring_color) = self.theme.avatar_ring_color {
+            ring_color
+        } else if self.focused {
+            avatar_ring_color(self.theme.input_border, 108)
         } else {
-            avatar_ring_color(
-                self.theme
-                    .avatar_ring_color
-                    .unwrap_or(self.theme.foreground),
-                54,
-            )
+            avatar_ring_color(self.theme.foreground, 54)
         };
-        let background = avatar_background_color(self.theme.avatar_background);
+        let background = self.theme.avatar_background;
 
         let placeholder = self
             .theme

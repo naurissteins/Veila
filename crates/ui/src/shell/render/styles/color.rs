@@ -1,15 +1,5 @@
 use veila_renderer::ClearColor;
 
-pub(super) fn avatar_background_color(base: ClearColor) -> ClearColor {
-    let alpha = if base.alpha == u8::MAX {
-        104
-    } else {
-        base.alpha
-    };
-
-    base.with_alpha(alpha)
-}
-
 pub(super) fn avatar_ring_color(base: ClearColor, fallback_alpha: u8) -> ClearColor {
     let alpha = if base.alpha == u8::MAX {
         fallback_alpha

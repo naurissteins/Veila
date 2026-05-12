@@ -255,6 +255,23 @@ fn avatar_style_uses_configured_ring_color() {
 
     assert_eq!(
         style.ring.expect("avatar ring").color,
+        ClearColor::opaque(148, 178, 255)
+    );
+}
+
+#[test]
+fn avatar_style_softens_fallback_ring_color() {
+    let theme = ShellTheme {
+        avatar_ring_color: None,
+        avatar_ring_width: Some(1),
+        input_border: ClearColor::opaque(148, 178, 255),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.avatar_style();
+
+    assert_eq!(
+        style.ring.expect("avatar ring").color,
         ClearColor::rgba(148, 178, 255, 108)
     );
 }
@@ -297,7 +314,7 @@ fn avatar_style_preserves_explicit_background_alpha() {
 }
 
 #[test]
-fn avatar_style_uses_fallback_alpha_for_opaque_backgrounds() {
+fn avatar_style_preserves_opaque_backgrounds() {
     let theme = ShellTheme {
         avatar_background: ClearColor::opaque(24, 30, 42),
         ..ShellTheme::default()
@@ -305,7 +322,7 @@ fn avatar_style_uses_fallback_alpha_for_opaque_backgrounds() {
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.avatar_style();
 
-    assert_eq!(style.background.alpha, 104);
+    assert_eq!(style.background.alpha, 255);
 }
 
 #[test]
