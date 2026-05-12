@@ -4,6 +4,7 @@ mod grid;
 mod identity;
 mod indicators;
 mod input;
+mod layer;
 mod layout;
 mod now_playing;
 mod outputs;
@@ -23,6 +24,7 @@ pub use indicators::{
     StatusDisplayMode, StatusVisualConfig,
 };
 pub use input::{FontStyle, InputRevealMode, InputVisualConfig, InputVisualEntry};
+pub use layer::{LayerKind, LayerVisualConfig};
 pub use layout::{HorizontalAlign, PaletteVisualConfig, VerticalAlign, WidgetPositionConfig};
 pub use now_playing::{
     NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
@@ -160,6 +162,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub backdrop: Vec<BackdropVisualConfig>,
     #[serde(default)]
+    pub layer: Vec<LayerVisualConfig>,
+    #[serde(default)]
     pub now_playing: Option<NowPlayingVisualConfig>,
     #[serde(default)]
     pub outputs: Option<OutputVisualConfig>,
@@ -258,6 +262,7 @@ impl Default for VisualConfig {
                     relative_to: None,
                 },
             }],
+            layer: Vec::new(),
             now_playing: Some(NowPlayingVisualConfig::default()),
             outputs: Some(OutputVisualConfig::default()),
             palette: None,

@@ -296,6 +296,74 @@ fn parses_multiple_backdrops() {
 }
 
 #[test]
+fn parses_multiple_visual_layers() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [[visuals.layer]]
+            name = "lock_icon"
+            kind = "icon"
+            text = "\uf023"
+            font_family = "Symbols Nerd Font"
+            font_weight = 700
+            font_style = "normal"
+            font_size = 64
+            color = "#FFFFFFEE"
+            background_color = "#00000040"
+            width = 120
+            height = 120
+            padding = 16
+            radius = 28
+            halign = "center"
+            valign = "center"
+            y = -180
+            z = 20
+
+            [[visuals.layer]]
+            enabled = false
+            kind = "text"
+            text = "locked"
+            color = "#FFFFFFCC"
+            halign = "center"
+            valign = "bottom"
+            y = -90
+            z = 21
+        "##,
+    )
+    .expect("config should parse");
+
+    assert_eq!(config.visuals.layer.len(), 2);
+    assert_eq!(
+        config.visuals.layer[0],
+        LayerVisualConfig {
+            name: Some(String::from("lock_icon")),
+            enabled: None,
+            kind: Some(LayerKind::Icon),
+            text: Some(String::from("\u{f023}")),
+            font_family: Some(String::from("Symbols Nerd Font")),
+            font_weight: Some(700),
+            font_style: Some(FontStyle::Normal),
+            font_size: Some(64),
+            color: Some(RgbColor::rgba(255, 255, 255, 238)),
+            background_color: Some(RgbColor::rgba(0, 0, 0, 64)),
+            width: Some(120),
+            height: Some(120),
+            padding: Some(16),
+            radius: Some(28),
+            z: Some(20),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Center),
+                valign: Some(VerticalAlign::Center),
+                x: None,
+                y: Some(-180),
+                relative_to: None,
+            },
+        }
+    );
+    assert_eq!(config.visuals.layer[1].enabled, Some(false));
+    assert_eq!(config.visuals.layer[1].kind, Some(LayerKind::Text));
+}
+
+#[test]
 fn parses_widget_position_relative_to_named_backdrop() {
     let config = AppConfig::from_toml_str(
         r#"

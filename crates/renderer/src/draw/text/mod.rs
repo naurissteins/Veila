@@ -13,7 +13,25 @@ pub use context::{
     bundled_clock_font_family, bundled_clock_font_postscript_name, resolve_font_family,
 };
 use layout::{font_size, layout_text_block, line_height, scale_component};
-use raster::draw_text_lines;
+use raster::{draw_text_lines, visible_text_bounds};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TextBounds {
+    pub left: i32,
+    pub top: i32,
+    pub right: i32,
+    pub bottom: i32,
+}
+
+impl TextBounds {
+    pub const fn width(self) -> i32 {
+        self.right - self.left
+    }
+
+    pub const fn height(self) -> i32 {
+        self.bottom - self.top
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FontStyle {
@@ -150,6 +168,10 @@ impl TextBlock {
 pub fn measure_text(text: &str, style: TextStyle) -> (u32, u32) {
     let block = layout_text_block(text, style, None, cosmic_text::Wrap::None);
     (block.width, block.height)
+}
+
+pub fn measure_visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBounds> {
+    visible_text_bounds(text, style)
 }
 
 pub fn draw_text(buffer: &mut impl PixelBuffer, x: i32, y: i32, text: &str, style: TextStyle) {

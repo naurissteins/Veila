@@ -25,6 +25,7 @@ pub(crate) struct TextLayoutCache {
     pub(super) now_playing_artist: CachedTextBlock,
     pub(super) weather_temperature: CachedTextBlock,
     pub(super) weather_location: CachedTextBlock,
+    pub(super) custom_layers: Vec<CachedTextBlock>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -205,6 +206,27 @@ impl TextLayoutCache {
     ) -> TextBlock {
         self.now_playing_artist
             .resolve_single_line(artist, style, max_width)
+    }
+
+    pub(super) fn custom_layer_block(
+        &mut self,
+        index: usize,
+        text: &str,
+        style: TextStyle,
+        max_width: u32,
+        single_line: bool,
+    ) -> TextBlock {
+        if self.custom_layers.len() <= index {
+            self.custom_layers
+                .resize_with(index + 1, CachedTextBlock::default);
+        }
+
+        let cache = &mut self.custom_layers[index];
+        if single_line {
+            cache.resolve_single_line(text, style, max_width)
+        } else {
+            cache.resolve(text, style, max_width, 1)
+        }
     }
 }
 

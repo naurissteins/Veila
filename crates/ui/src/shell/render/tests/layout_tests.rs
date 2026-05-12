@@ -1,7 +1,7 @@
 use super::*;
-use crate::shell::theme::{Backdrop, WidgetPosition, WidgetPositionTarget};
+use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
 use veila_common::{
-    BackdropMode, BackdropShowWhen, NowPlayingSnapshot, StatusDisplayMode, WeatherUnit,
+    BackdropMode, BackdropShowWhen, LayerKind, NowPlayingSnapshot, StatusDisplayMode, WeatherUnit,
 };
 
 #[test]
@@ -297,6 +297,136 @@ fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
 }
 
 #[test]
+fn custom_visual_layer_renders_background_surface() {
+    let shell = ShellState::new(
+        ShellTheme {
+            background: ClearColor::rgba(0, 0, 0, 0),
+            layers: vec![VisualLayer {
+                kind: LayerKind::Text,
+                text: String::from("."),
+                color: ClearColor::opaque(255, 255, 255),
+                background_color: Some(ClearColor::opaque(10, 20, 30)),
+                font_family: None,
+                font_weight: None,
+                font_style: None,
+                font_size: 1,
+                width: Some(40),
+                height: Some(20),
+                padding: 0,
+                radius: 0,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(120, 80)).expect("buffer");
+
+    shell.render_layers(&mut buffer);
+
+    let inside = &buffer.pixels()[(31 * 120 + 41) * 4..(31 * 120 + 41) * 4 + 4];
+    let outside = &buffer.pixels()[(20 * 120 + 20) * 4..(20 * 120 + 20) * 4 + 4];
+    assert_eq!(inside, &[30, 20, 10, 255]);
+    assert_eq!(outside, &[0, 0, 0, 0]);
+}
+
+#[test]
+fn static_overlay_includes_custom_visual_layers() {
+    let shell = ShellState::new(
+        ShellTheme {
+            background: ClearColor::rgba(0, 0, 0, 0),
+            avatar_enabled: false,
+            username_enabled: false,
+            clock_enabled: false,
+            date_enabled: false,
+            layers: vec![VisualLayer {
+                kind: LayerKind::Text,
+                text: String::from("."),
+                color: ClearColor::opaque(255, 255, 255),
+                background_color: Some(ClearColor::opaque(12, 34, 56)),
+                font_family: None,
+                font_weight: None,
+                font_style: None,
+                font_size: 1,
+                width: Some(40),
+                height: Some(20),
+                padding: 0,
+                radius: 0,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(120, 80)).expect("buffer");
+
+    shell.render_static_overlay(&mut buffer);
+
+    let inside = &buffer.pixels()[(31 * 120 + 41) * 4..(31 * 120 + 41) * 4 + 4];
+    assert_eq!(inside, &[56, 34, 12, 255]);
+}
+
+#[test]
+fn icon_visual_layer_centers_visible_glyph_bounds() {
+    let shell = ShellState::new(
+        ShellTheme {
+            background: ClearColor::rgba(0, 0, 0, 0),
+            layers: vec![VisualLayer {
+                kind: LayerKind::Icon,
+                text: String::from("i"),
+                color: ClearColor::opaque(255, 255, 255),
+                background_color: None,
+                font_family: None,
+                font_weight: None,
+                font_style: None,
+                font_size: 48,
+                width: Some(120),
+                height: Some(120),
+                padding: 0,
+                radius: 0,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(120, 120)).expect("buffer");
+
+    shell.render_layers(&mut buffer);
+
+    let (left, right) = visible_alpha_x_bounds(&buffer).expect("visible glyph bounds");
+    let center = (left + right) / 2;
+    assert!((center - 60).abs() <= 1, "glyph center was {center}");
+}
+
+#[test]
 fn preview_grid_renders_centered_major_and_minor_lines() {
     let mut shell = ShellState::new(
         ShellTheme {
@@ -326,6 +456,24 @@ fn preview_grid_renders_centered_major_and_minor_lines() {
     assert_eq!(center, &[47, 47, 47, 255]);
     assert_eq!(minor, &[20, 20, 20, 255]);
     assert_eq!(background, &[0, 0, 0, 255]);
+}
+
+fn visible_alpha_x_bounds(buffer: &SoftwareBuffer) -> Option<(i32, i32)> {
+    let width = buffer.size().width as usize;
+    let mut left = width;
+    let mut right = 0usize;
+
+    for (index, pixel) in buffer.pixels().chunks_exact(4).enumerate() {
+        if pixel[3] == 0 {
+            continue;
+        }
+
+        let x = index % width;
+        left = left.min(x);
+        right = right.max(x + 1);
+    }
+
+    (left < right).then_some((left as i32, right as i32))
 }
 
 #[test]

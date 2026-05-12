@@ -6,8 +6,8 @@ use std::collections::HashMap;
 
 use veila_common::{
     AppConfig, BackdropMode, BackdropShowWhen, ClockAlignment, ClockFormat, ClockStyle, FontStyle,
-    GridVisualConfig, HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign,
-    WidgetPositionConfig,
+    GridVisualConfig, HorizontalAlign, InputRevealMode, LayerKind, StatusDisplayMode,
+    VerticalAlign, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -46,6 +46,24 @@ pub struct Backdrop {
     pub inset_right: i32,
     pub width: i32,
     pub height: i32,
+    pub position: WidgetPosition,
+    pub z: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VisualLayer {
+    pub kind: LayerKind,
+    pub text: String,
+    pub color: ClearColor,
+    pub background_color: Option<ClearColor>,
+    pub font_family: Option<String>,
+    pub font_weight: Option<u16>,
+    pub font_style: Option<FontStyle>,
+    pub font_size: u32,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub padding: i32,
+    pub radius: i32,
     pub position: WidgetPosition,
     pub z: i32,
 }
@@ -138,6 +156,7 @@ pub struct ShellTheme {
     pub battery_background_size: Option<i32>,
     pub battery_size: Option<i32>,
     pub backdrops: Vec<Backdrop>,
+    pub layers: Vec<VisualLayer>,
     pub grid: Option<PreviewGrid>,
     pub weather_enabled: bool,
     pub weather_icon_enabled: bool,
@@ -266,6 +285,11 @@ impl ShellTheme {
             .into_iter()
             .map(|backdrop| scale_backdrop(backdrop, scale))
             .collect();
+        theme.layers = theme
+            .layers
+            .into_iter()
+            .map(|layer| scale_visual_layer(layer, scale))
+            .collect();
         theme.grid = theme.grid.map(|grid| scale_grid(grid, scale));
         theme.weather_icon_position = theme
             .weather_icon_position
@@ -333,6 +357,16 @@ fn scale_backdrop(mut backdrop: Backdrop, scale: u32) -> Backdrop {
     backdrop.height = scale_i32(backdrop.height, scale);
     backdrop.position = scale_position(backdrop.position, scale);
     backdrop
+}
+
+fn scale_visual_layer(mut layer: VisualLayer, scale: u32) -> VisualLayer {
+    layer.font_size = layer.font_size.saturating_mul(scale);
+    layer.width = scale_i32_opt(layer.width, scale);
+    layer.height = scale_i32_opt(layer.height, scale);
+    layer.padding = scale_i32(layer.padding, scale);
+    layer.radius = scale_i32(layer.radius, scale);
+    layer.position = scale_position(layer.position, scale);
+    layer
 }
 
 fn scale_grid(mut grid: PreviewGrid, scale: u32) -> PreviewGrid {
@@ -550,6 +584,55 @@ fn resolve_grid(config: &AppConfig) -> Option<PreviewGrid> {
     })
 }
 
+fn resolve_layers(
+    config: &AppConfig,
+    named_backdrops: &HashMap<String, usize>,
+) -> Vec<VisualLayer> {
+    let mut layers = config
+        .visuals
+        .layer
+        .iter()
+        .filter(|layer| layer.enabled.unwrap_or(true))
+        .filter_map(|layer| {
+            let text = layer.text.as_deref().unwrap_or_default().trim();
+            if text.is_empty() {
+                return None;
+            }
+
+            Some(VisualLayer {
+                kind: layer.kind.unwrap_or_default(),
+                text: text.to_owned(),
+                color: to_color(layer.color.unwrap_or(config.visuals.foreground_color())),
+                background_color: layer.background_color.map(to_color),
+                font_family: layer.font_family.clone(),
+                font_weight: layer.font_weight,
+                font_style: layer.font_style,
+                font_size: u32::from(layer.font_size.unwrap_or(24)).clamp(1, 512),
+                width: layer.width.map(|width| i32::from(width).max(1)),
+                height: layer.height.map(|height| i32::from(height).max(1)),
+                padding: i32::from(layer.padding.unwrap_or(0)).clamp(0, 512),
+                radius: i32::from(layer.radius.unwrap_or(0)).clamp(0, 512),
+                position: resolve_position(
+                    layer.position.clone(),
+                    HorizontalAlign::Center,
+                    VerticalAlign::Center,
+                    named_backdrops,
+                )
+                .unwrap_or(WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                z: i32::from(layer.z.unwrap_or(0)),
+            })
+        })
+        .collect::<Vec<_>>();
+    layers.sort_by_key(|layer| layer.z);
+    layers
+}
+
 fn resolve_now_playing_artwork_position(
     config: &AppConfig,
     named_backdrops: &HashMap<String, usize>,
@@ -625,6 +708,7 @@ fn resolve_username_position(
 impl ShellTheme {
     pub fn from_config(config: &AppConfig) -> Self {
         let (backdrops, named_backdrops) = resolve_backdrops(config);
+        let layers = resolve_layers(config, &named_backdrops);
         let clock_position = resolve_clock_position(config, &named_backdrops);
         let date_position = resolve_date_position(config, &named_backdrops);
         let avatar_position = resolve_avatar_position(config, &named_backdrops);
@@ -742,6 +826,7 @@ impl ShellTheme {
             battery_background_size: config.visuals.battery_background_size().map(i32::from),
             battery_size: config.visuals.battery_size().map(i32::from),
             backdrops,
+            layers,
             grid,
             weather_enabled: config.visuals.weather_enabled(),
             weather_icon_enabled: config.visuals.weather_icon_enabled(),

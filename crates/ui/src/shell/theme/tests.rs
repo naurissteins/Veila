@@ -2,10 +2,10 @@ use veila_common::{
     AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
     BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateVisualConfig,
     EyeVisualConfig, FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode,
-    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, NowPlayingArtworkVisualConfig,
-    NowPlayingTextVisualConfig, NowPlayingVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
-    StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerKind, LayerVisualConfig,
+    NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode,
+    RevealVisualConfig, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
     WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
     WeatherVisualConfig, WidgetPositionConfig,
 };
@@ -141,7 +141,7 @@ fn input_alpha_uses_rgba_values() {
         major_color: Some(ConfigColor::rgba(255, 255, 255, 44)),
     });
     config.visuals.backdrop = vec![BackdropVisualConfig {
-        name: None,
+        name: Some(String::from("panel")),
         enabled: Some(true),
         show_when: Some(BackdropShowWhen::NowPlaying),
         mode: Some(BackdropMode::Blur),
@@ -165,6 +165,30 @@ fn input_alpha_uses_rgba_values() {
             x: Some(-12),
             y: Some(16),
             relative_to: None,
+        },
+    }];
+    config.visuals.layer = vec![LayerVisualConfig {
+        name: Some(String::from("lock_icon")),
+        enabled: Some(true),
+        kind: Some(LayerKind::Icon),
+        text: Some(String::from("\u{f023}")),
+        font_family: Some(String::from("Symbols Nerd Font")),
+        font_weight: Some(700),
+        font_style: Some(FontStyle::Italic),
+        font_size: Some(64),
+        color: Some(ConfigColor::rgba(255, 255, 255, 238)),
+        background_color: Some(ConfigColor::rgba(0, 0, 0, 64)),
+        width: Some(120),
+        height: Some(120),
+        padding: Some(16),
+        radius: Some(28),
+        z: Some(20),
+        position: WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Center),
+            valign: Some(VerticalAlign::Center),
+            x: Some(0),
+            y: Some(-180),
+            relative_to: Some(String::from("panel")),
         },
     }];
     config.visuals.weather = Some(WeatherVisualConfig {
@@ -433,6 +457,36 @@ fn input_alpha_uses_rgba_values() {
         }
     );
     assert_eq!(theme.backdrops[0].z, 2);
+    assert_eq!(theme.layers.len(), 1);
+    assert_eq!(theme.layers[0].kind, LayerKind::Icon);
+    assert_eq!(theme.layers[0].text, "\u{f023}");
+    assert_eq!(
+        theme.layers[0].font_family.as_deref(),
+        Some("Symbols Nerd Font")
+    );
+    assert_eq!(theme.layers[0].font_weight, Some(700));
+    assert_eq!(theme.layers[0].font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.layers[0].font_size, 64);
+    assert_eq!(theme.layers[0].color, ClearColor::rgba(255, 255, 255, 238));
+    assert_eq!(
+        theme.layers[0].background_color,
+        Some(ClearColor::rgba(0, 0, 0, 64))
+    );
+    assert_eq!(theme.layers[0].width, Some(120));
+    assert_eq!(theme.layers[0].height, Some(120));
+    assert_eq!(theme.layers[0].padding, 16);
+    assert_eq!(theme.layers[0].radius, 28);
+    assert_eq!(theme.layers[0].z, 20);
+    assert_eq!(
+        theme.layers[0].position,
+        super::WidgetPosition {
+            halign: HorizontalAlign::Center,
+            valign: VerticalAlign::Center,
+            x: 0,
+            y: -180,
+            target: super::WidgetPositionTarget::Backdrop(0),
+        }
+    );
     assert_eq!(
         theme.grid,
         Some(crate::shell::PreviewGrid {
@@ -811,6 +865,28 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
             },
             z: 0,
         }],
+        layers: vec![super::VisualLayer {
+            kind: LayerKind::Text,
+            text: String::from("locked"),
+            color: ClearColor::opaque(255, 255, 255),
+            background_color: Some(ClearColor::rgba(0, 0, 0, 64)),
+            font_family: Some(String::from("Geom")),
+            font_weight: Some(500),
+            font_style: Some(FontStyle::Normal),
+            font_size: 24,
+            width: Some(120),
+            height: Some(48),
+            padding: 10,
+            radius: 12,
+            position: super::WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Center,
+                x: 8,
+                y: -16,
+                target: super::WidgetPositionTarget::Screen,
+            },
+            z: 4,
+        }],
         ..Default::default()
     };
 
@@ -830,4 +906,13 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     assert_eq!(scaled.backdrops[0].height, 440);
     assert_eq!(scaled.backdrops[0].radius, 48);
     assert_eq!(scaled.backdrops[0].color, ClearColor::rgba(20, 30, 40, 160));
+    assert_eq!(scaled.layers[0].font_size, 48);
+    assert_eq!(scaled.layers[0].width, Some(240));
+    assert_eq!(scaled.layers[0].height, Some(96));
+    assert_eq!(scaled.layers[0].padding, 20);
+    assert_eq!(scaled.layers[0].radius, 24);
+    assert_eq!(
+        (scaled.layers[0].position.x, scaled.layers[0].position.y),
+        (16, -32)
+    );
 }

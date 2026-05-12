@@ -21,6 +21,7 @@ const MAX_NOW_PLAYING_ARTIST_FONT_SIZE_PX: u32 = 512;
 const MAX_USERNAME_FONT_SIZE_PX: u32 = 512;
 const MAX_INPUT_FONT_SIZE_PX: u32 = 512;
 const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
+const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
@@ -361,6 +362,24 @@ impl ShellState {
             self.theme.now_playing_artist_font_style,
         )
         .with_line_spacing(0)
+    }
+
+    pub(crate) fn custom_layer_text_style(
+        &self,
+        layer: &crate::shell::theme::VisualLayer,
+    ) -> TextStyle {
+        let style = TextStyle::new_px(
+            layer.color,
+            layer.font_size.clamp(1, MAX_CUSTOM_LAYER_FONT_SIZE_PX),
+        )
+        .with_line_spacing(0);
+
+        self.apply_font_overrides(
+            style,
+            self.resolved_font_family(layer.font_family.as_deref()),
+            layer.font_weight,
+            layer.font_style,
+        )
     }
 
     fn resolved_font_family(&self, family: Option<&str>) -> Option<String> {

@@ -3,8 +3,8 @@ use cosmic_text::{Buffer, Wrap};
 use crate::PixelBuffer;
 
 use super::{
-    ClearColor, TextStyle, context::FONT_CONTEXT, font_metrics, modulate_alpha, text_attrs,
-    text_color,
+    ClearColor, TextBounds, TextStyle, context::FONT_CONTEXT, font_metrics, modulate_alpha,
+    text_attrs, text_color,
 };
 
 pub(super) fn draw_text_lines(
@@ -52,6 +52,56 @@ pub(super) fn draw_text_lines(
             },
         );
     });
+}
+
+pub(super) fn visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBounds> {
+    if text.is_empty() {
+        return None;
+    }
+
+    FONT_CONTEXT.with(|context| {
+        let mut context = context.borrow_mut();
+        let super::context::FontContext {
+            font_system,
+            swash_cache,
+        } = &mut *context;
+        let mut cosmic_buffer = Buffer::new(font_system, font_metrics(&style));
+        cosmic_buffer.set_wrap(font_system, Wrap::None);
+        cosmic_buffer.set_size(font_system, None, None);
+        let attrs = text_attrs(&style);
+        cosmic_buffer.set_text(font_system, text, &attrs, cosmic_text::Shaping::Advanced);
+        cosmic_buffer.shape_until_scroll(font_system, true);
+
+        let mut bounds: Option<TextBounds> = None;
+        cosmic_buffer.draw(
+            font_system,
+            swash_cache,
+            text_color(style.color),
+            |pixel_x, pixel_y, width, height, pixel_color| {
+                if pixel_color.a() == 0 || width == 0 || height == 0 {
+                    return;
+                }
+
+                let next = TextBounds {
+                    left: pixel_x,
+                    top: pixel_y,
+                    right: pixel_x + width as i32,
+                    bottom: pixel_y + height as i32,
+                };
+                bounds = Some(match bounds {
+                    Some(current) => TextBounds {
+                        left: current.left.min(next.left),
+                        top: current.top.min(next.top),
+                        right: current.right.max(next.right),
+                        bottom: current.bottom.max(next.bottom),
+                    },
+                    None => next,
+                });
+            },
+        );
+
+        bounds
+    })
 }
 
 fn blend_pixel(buffer: &mut impl PixelBuffer, x: i32, y: i32, color: cosmic_text::Color) {

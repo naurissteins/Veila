@@ -38,6 +38,7 @@ impl ShellState {
     }
 
     pub fn render_static_overlay(&self, buffer: &mut impl PixelBuffer) {
+        self.render_layers(buffer);
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, false);
         self.render_floating_identity_widgets(buffer, &layout);
