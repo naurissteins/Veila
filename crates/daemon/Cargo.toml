@@ -18,6 +18,7 @@ path = "src/bin/veila.rs"
 [dependencies]
 veila-common = { path = "../common" }
 veila-renderer = { path = "../renderer" }
+veila-ui = { path = "../ui" }
 anyhow = { workspace = true }
 futures-util = { workspace = true }
 nix = { workspace = true }

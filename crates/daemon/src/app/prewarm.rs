@@ -12,7 +12,7 @@ use veila_common::{
     },
 };
 use veila_renderer::{
-    ClearColor, FrameSize,
+    ClearColor, FrameSize, SoftwareBuffer,
     background::{
         BackgroundAsset, BackgroundGradient, BackgroundLayered, BackgroundLayeredBase,
         BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
@@ -24,6 +24,7 @@ use veila_renderer::{
     draw::layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     shape::Rect,
 };
+use veila_ui::{ShellState, ShellTheme};
 
 use crate::app::output_probe;
 
@@ -62,10 +63,11 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
     let generated = background_generated(&config.background);
     let treatment = background_treatment(&config.background);
     let backdrops = backdrop_prewarm_specs(&config);
+    let scene = ScenePrewarmConfig::from_config(&config);
     let started_at = Instant::now();
     let rss_kib_before = memory::current_rss_kib();
     let join_result = tokio::task::spawn_blocking(move || {
-        prewarm_backgrounds(background, generated, fallback, treatment, backdrops)
+        prewarm_backgrounds(background, generated, fallback, treatment, backdrops, scene)
     })
     .await;
 
@@ -86,6 +88,9 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
             }
             if let Some(report) = result.generated {
                 log_generated_prewarm_report(report, started_at, true);
+            }
+            if let Some(report) = result.scene {
+                log_scene_prewarm_report(report, true);
             }
             tracing::debug!(
                 prewarm_helper = true,
@@ -188,12 +193,23 @@ fn log_generated_prewarm_report(
     );
 }
 
+fn log_scene_prewarm_report(report: ScenePrewarmReport, prewarm_helper: bool) {
+    tracing::info!(
+        prewarm_helper,
+        elapsed_ms = report.elapsed_ms,
+        probed_outputs = report.probed_outputs,
+        warmed_sizes = report.warmed_sizes,
+        "static scene prewarm finished"
+    );
+}
+
 fn prewarm_backgrounds(
     background: veila_common::config::BackgroundConfig,
     generated: Option<GeneratedBackground>,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     backdrops: Vec<BackdropPrewarmSpec>,
+    scene: ScenePrewarmConfig,
 ) -> PrewarmResult {
     let outputs = output_probe::current_outputs().unwrap_or_default();
     let wallpapers = prewarm_jobs(&background, &outputs)
@@ -204,10 +220,12 @@ fn prewarm_backgrounds(
         let sizes = generated_sizes(&background, &outputs);
         prewarm_generated_backgrounds(generated, treatment, &backdrops, &sizes)
     });
+    let scene = prewarm_static_scene(scene, &outputs);
 
     PrewarmResult {
         wallpapers,
         generated,
+        scene,
     }
 }
 
@@ -373,6 +391,32 @@ fn prewarm_generated_layered_backgrounds(
     })
 }
 
+fn prewarm_static_scene(
+    scene: ScenePrewarmConfig,
+    outputs: &[output_probe::ProbedOutput],
+) -> Option<ScenePrewarmReport> {
+    if outputs.is_empty() {
+        return None;
+    }
+
+    let started_at = Instant::now();
+    let shell = scene.into_shell();
+    let sizes = unique_prewarm_sizes(outputs);
+    let mut warmed_sizes = 0usize;
+
+    for size in &sizes {
+        let mut buffer = SoftwareBuffer::solid(size.buffer, ClearColor::opaque(0, 0, 0)).ok()?;
+        shell.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
+        warmed_sizes += 1;
+    }
+
+    Some(ScenePrewarmReport {
+        elapsed_ms: elapsed_ms(started_at),
+        probed_outputs: outputs.len(),
+        warmed_sizes,
+    })
+}
+
 fn unique_buffer_sizes(sizes: &[PrewarmSize]) -> Vec<FrameSize> {
     let mut unique = Vec::new();
     for size in sizes {
@@ -381,6 +425,17 @@ fn unique_buffer_sizes(sizes: &[PrewarmSize]) -> Vec<FrameSize> {
         }
     }
     unique
+}
+
+fn unique_prewarm_sizes(outputs: &[output_probe::ProbedOutput]) -> Vec<PrewarmSize> {
+    let mut sizes = Vec::new();
+    for output in outputs {
+        let size = PrewarmSize::from(output);
+        if !sizes.contains(&size) {
+            sizes.push(size);
+        }
+    }
+    sizes
 }
 
 fn prewarm_jobs(
@@ -754,6 +809,7 @@ struct PrewarmReport {
 struct PrewarmResult {
     wallpapers: Vec<Result<PrewarmReport, (PathBuf, anyhow::Error)>>,
     generated: Option<GeneratedPrewarmReport>,
+    scene: Option<ScenePrewarmReport>,
 }
 
 struct PrewarmJob {
@@ -822,6 +878,51 @@ struct LayeredPrewarmReport {
     elapsed_ms: u64,
     probed_outputs: usize,
     cache_hits: usize,
+    warmed_sizes: usize,
+}
+
+struct ScenePrewarmConfig {
+    theme: ShellTheme,
+    input_placeholder: Option<String>,
+    username_override: Option<String>,
+    avatar_path: Option<PathBuf>,
+    username_enabled: bool,
+    weather_location: Option<String>,
+    weather_unit: veila_common::WeatherUnit,
+}
+
+impl ScenePrewarmConfig {
+    fn from_config(config: &AppConfig) -> Self {
+        Self {
+            theme: ShellTheme::from_config(config),
+            input_placeholder: Some(config.visuals.input_placeholder()),
+            username_override: config.visuals.username_text().map(str::to_owned),
+            avatar_path: config.avatar_image_path().map(Path::to_path_buf),
+            username_enabled: config.visuals.username_enabled(),
+            weather_location: config.weather.normalized_location(),
+            weather_unit: config.weather.unit,
+        }
+    }
+
+    fn into_shell(self) -> ShellState {
+        ShellState::new_with_username_and_widgets(
+            self.theme,
+            self.input_placeholder,
+            self.username_override,
+            self.avatar_path,
+            self.username_enabled,
+            self.weather_location,
+            None,
+            self.weather_unit,
+            None,
+            None,
+        )
+    }
+}
+
+struct ScenePrewarmReport {
+    elapsed_ms: u64,
+    probed_outputs: usize,
     warmed_sizes: usize,
 }
 

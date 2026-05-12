@@ -2017,6 +2017,7 @@ dependencies = [
  "ureq",
  "veila-common",
  "veila-renderer",
+ "veila-ui",
  "zbus",
 ]
 
