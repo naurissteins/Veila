@@ -15,6 +15,7 @@ pub enum BackdropMode {
 pub enum BackdropShowWhen {
     #[default]
     Always,
+    Battery,
     NowPlaying,
 }
 

@@ -86,6 +86,7 @@ impl ShellState {
     pub(super) fn backdrop_visible(&self, backdrop: &crate::shell::theme::Backdrop) -> bool {
         match backdrop.show_when {
             veila_common::BackdropShowWhen::Always => true,
+            veila_common::BackdropShowWhen::Battery => self.battery_data_available(),
             veila_common::BackdropShowWhen::NowPlaying => self.now_playing_widget_visible(),
         }
     }
@@ -105,6 +106,10 @@ impl ShellState {
                     .as_ref()
                     .and_then(|transition| transition.previous.as_ref())
                     .is_some())
+    }
+
+    pub(super) fn battery_data_available(&self) -> bool {
+        self.battery.is_some()
     }
 
     pub fn new(

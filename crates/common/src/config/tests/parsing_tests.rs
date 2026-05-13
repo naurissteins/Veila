@@ -237,7 +237,7 @@ fn parses_multiple_backdrops() {
 
             [[visuals.backdrop]]
             enabled = true
-            show_when = "always"
+            show_when = "battery"
             mode = "solid"
             color = "#101820A0"
             width = 300
@@ -284,7 +284,7 @@ fn parses_multiple_backdrops() {
     );
     assert_eq!(
         config.visuals.backdrop[1].show_when,
-        Some(BackdropShowWhen::Always)
+        Some(BackdropShowWhen::Battery)
     );
     assert_eq!(config.visuals.backdrop[1].mode, Some(BackdropMode::Solid));
     assert_eq!(config.visuals.backdrop[1].inset_top, None);

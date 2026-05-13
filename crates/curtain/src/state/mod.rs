@@ -208,6 +208,8 @@ impl CurtainApp {
             .or_else(|| config.background.resolved_path());
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
+        let battery_snapshot =
+            effective_battery_snapshot(&config, options.battery_snapshot.clone());
         let mut ui_shell = ShellState::new_with_avatar_and_widgets(
             theme,
             Some(config.visuals.input_placeholder()),
@@ -216,7 +218,7 @@ impl CurtainApp {
             config.weather.normalized_location(),
             options.weather_snapshot.clone(),
             config.weather.unit,
-            options.battery_snapshot.clone(),
+            battery_snapshot,
             options.now_playing_snapshot.clone(),
             cached_avatar,
         );
@@ -653,9 +655,17 @@ fn blob_color(color: veila_common::RgbColor, opacity: u8) -> ClearColor {
     ClearColor::rgba(color.0, color.1, color.2, alpha)
 }
 
+pub(crate) fn effective_battery_snapshot(
+    config: &AppConfig,
+    runtime_snapshot: Option<BatterySnapshot>,
+) -> Option<BatterySnapshot> {
+    config.battery.mock_snapshot().or(runtime_snapshot)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::SurfaceSize;
+    use super::{SurfaceSize, effective_battery_snapshot};
+    use veila_common::{AppConfig, BatterySnapshot};
 
     #[test]
     fn surface_size_tracks_logical_and_scaled_buffer_size() {
@@ -675,5 +685,45 @@ mod tests {
         assert_eq!(size.buffer.width, 800);
         assert_eq!(size.buffer.height, 600);
         assert_eq!(size.scale, 1);
+    }
+
+    #[test]
+    fn effective_battery_snapshot_prefers_config_mock() {
+        let mut config = AppConfig::default();
+        config.battery.mock_percent = Some(64);
+        config.battery.mock_charging = Some(true);
+
+        assert_eq!(
+            effective_battery_snapshot(
+                &config,
+                Some(BatterySnapshot {
+                    percent: 12,
+                    charging: false,
+                }),
+            ),
+            Some(BatterySnapshot {
+                percent: 64,
+                charging: true,
+            })
+        );
+    }
+
+    #[test]
+    fn effective_battery_snapshot_uses_runtime_snapshot_without_mock() {
+        let config = AppConfig::default();
+
+        assert_eq!(
+            effective_battery_snapshot(
+                &config,
+                Some(BatterySnapshot {
+                    percent: 72,
+                    charging: false,
+                }),
+            ),
+            Some(BatterySnapshot {
+                percent: 72,
+                charging: false,
+            })
+        );
     }
 }
