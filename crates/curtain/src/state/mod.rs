@@ -134,6 +134,8 @@ pub(crate) struct CurtainApp {
     pub(crate) now_playing_snapshot: Option<NowPlayingSnapshot>,
     pub(crate) remote_power_status: Option<LockPowerStatusSnapshot>,
     pub(crate) ui_shell: ShellState,
+    pub(crate) avatar_path: Option<PathBuf>,
+    pub(crate) avatar_load_started: bool,
     pub(crate) lock_wait_timeout: Duration,
     pub(crate) startup_started_at: Instant,
     lock_started_at: Instant,
@@ -203,17 +205,19 @@ impl CurtainApp {
             .as_ref()
             .map(|slideshow| slideshow.current_path().to_path_buf())
             .or_else(|| config.background.resolved_path());
-        let ui_shell = ShellState::new_with_username_and_widgets(
+        let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
+        let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
+        let ui_shell = ShellState::new_with_avatar_and_widgets(
             theme,
             Some(config.visuals.input_placeholder()),
             config.visuals.username_text().map(str::to_owned),
-            config.avatar_image_path().map(std::path::Path::to_path_buf),
             config.visuals.username_enabled(),
             config.weather.normalized_location(),
             options.weather_snapshot.clone(),
             config.weather.unit,
             options.battery_snapshot.clone(),
             options.now_playing_snapshot.clone(),
+            cached_avatar,
         );
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
         let screen_off_delay = config
@@ -288,6 +292,8 @@ impl CurtainApp {
             now_playing_snapshot: options.now_playing_snapshot,
             remote_power_status: None,
             ui_shell,
+            avatar_path,
+            avatar_load_started: false,
             lock_wait_timeout,
             startup_started_at,
             lock_started_at: Instant::now(),

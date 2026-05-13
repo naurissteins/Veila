@@ -3,7 +3,7 @@ use std::{cell::RefCell, path::PathBuf};
 use veila_common::{
     BatterySnapshot, InputRevealMode, NowPlayingSnapshot, WeatherSnapshot, WeatherUnit,
 };
-use veila_renderer::ClearColor;
+use veila_renderer::{ClearColor, avatar::AvatarAsset};
 
 use super::{
     ClockState, NowPlayingTransition, ShellState, ShellStatus, ShellTheme, TextLayoutCache,
@@ -66,7 +66,7 @@ impl ShellState {
     pub fn static_scene_cache_variant(&self, scale: u32) -> Option<String> {
         self.has_visual_layers().then(|| {
             format!(
-                "static-scene:v1:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}",
+                "static-scene:v1:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
                 scale.max(1),
                 self.theme,
                 self.hint_text,
@@ -74,6 +74,7 @@ impl ShellState {
                 self.username_text,
                 self.auth_revealed,
                 self.focused,
+                self.avatar.cache_key(),
             )
         })
     }
@@ -197,6 +198,59 @@ impl ShellState {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub fn new_with_avatar_and_widgets(
+        theme: ShellTheme,
+        input_placeholder: Option<String>,
+        username_override: Option<String>,
+        username_enabled: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
+        now_playing_snapshot: Option<NowPlayingSnapshot>,
+        avatar: AvatarAsset,
+    ) -> Self {
+        Self::new_with_weather_and_avatar(
+            theme,
+            input_placeholder,
+            username_override,
+            username_enabled,
+            weather_location,
+            weather_snapshot,
+            weather_unit,
+            battery_snapshot,
+            now_playing_snapshot,
+            avatar,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_placeholder_avatar_and_widgets(
+        theme: ShellTheme,
+        input_placeholder: Option<String>,
+        username_override: Option<String>,
+        username_enabled: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
+        now_playing_snapshot: Option<NowPlayingSnapshot>,
+    ) -> Self {
+        Self::new_with_avatar_and_widgets(
+            theme,
+            input_placeholder,
+            username_override,
+            username_enabled,
+            weather_location,
+            weather_snapshot,
+            weather_unit,
+            battery_snapshot,
+            now_playing_snapshot,
+            AvatarAsset::placeholder(),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn new_with_weather(
         theme: ShellTheme,
         input_placeholder: Option<String>,
@@ -208,6 +262,33 @@ impl ShellState {
         weather_unit: WeatherUnit,
         battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
+    ) -> Self {
+        Self::new_with_weather_and_avatar(
+            theme,
+            input_placeholder,
+            username_override,
+            username_enabled,
+            weather_location,
+            weather_snapshot,
+            weather_unit,
+            battery_snapshot,
+            now_playing_snapshot,
+            load_avatar(avatar_path),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn new_with_weather_and_avatar(
+        theme: ShellTheme,
+        input_placeholder: Option<String>,
+        username_override: Option<String>,
+        username_enabled: bool,
+        weather_location: Option<String>,
+        weather_snapshot: Option<WeatherSnapshot>,
+        weather_unit: WeatherUnit,
+        battery_snapshot: Option<BatterySnapshot>,
+        now_playing_snapshot: Option<NowPlayingSnapshot>,
+        avatar: AvatarAsset,
     ) -> Self {
         let reveal_hint_text = theme.input_reveal_hint.clone();
         Self {
@@ -234,11 +315,16 @@ impl ShellState {
             weather: widget_data(weather_location, weather_snapshot, weather_unit),
             now_playing: now_playing_widget_data(now_playing_snapshot),
             now_playing_transition: None,
-            avatar: load_avatar(avatar_path),
+            avatar,
             preview_grid_enabled: false,
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
             render_scale: 1,
         }
+    }
+
+    pub fn set_avatar(&mut self, avatar: AvatarAsset) {
+        self.avatar = avatar;
+        self.bump_static_scene_revision();
     }
 
     pub fn set_focus(&mut self, focused: bool) {

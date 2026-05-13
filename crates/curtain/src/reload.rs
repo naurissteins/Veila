@@ -84,11 +84,14 @@ impl CurtainApp {
         if self.outputs_powered_off() && self.screen_off.enabled() {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::Off);
         }
+        let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
+        self.avatar_path = avatar_path.clone();
+        self.avatar_load_started = false;
         self.ui_shell.apply_theme_with_username_and_weather(
             theme,
             Some(config.visuals.input_placeholder()),
             config.visuals.username_text().map(str::to_owned),
-            config.avatar_image_path().map(std::path::Path::to_path_buf),
+            avatar_path,
             config.visuals.username_enabled(),
             config.weather.normalized_location(),
             self.weather_snapshot.clone(),

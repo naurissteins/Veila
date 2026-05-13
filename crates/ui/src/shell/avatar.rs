@@ -7,12 +7,26 @@ use veila_renderer::avatar::AvatarAsset;
 
 use super::ShellState;
 
-pub(super) fn load_avatar(avatar_path: Option<PathBuf>) -> AvatarAsset {
+pub fn load_avatar(avatar_path: Option<PathBuf>) -> AvatarAsset {
     for path in avatar_candidates(avatar_path) {
         match AvatarAsset::load(&path) {
             Ok(avatar) => return avatar,
             Err(error) => {
                 tracing::warn!(path = %path.display(), "failed to load avatar image: {error}")
+            }
+        }
+    }
+
+    AvatarAsset::placeholder()
+}
+
+pub fn load_cached_avatar(avatar_path: Option<PathBuf>) -> AvatarAsset {
+    for path in avatar_candidates(avatar_path) {
+        match AvatarAsset::load_cached(&path) {
+            Ok(Some(avatar)) => return avatar,
+            Ok(None) => {}
+            Err(error) => {
+                tracing::debug!(path = %path.display(), "failed to load cached avatar image: {error}")
             }
         }
     }

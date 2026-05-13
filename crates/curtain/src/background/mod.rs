@@ -4,7 +4,7 @@ mod slideshow;
 pub(crate) use loader::BackgroundEvent;
 pub(crate) use slideshow::BackgroundSlideshow;
 
-use loader::{spawn_loader, spawn_preloader};
+use loader::{spawn_avatar_loader, spawn_loader, spawn_preloader};
 use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_renderer::FrameSize;
 
@@ -90,6 +90,19 @@ impl CurtainApp {
                         self.background_asset = asset;
                     }
                 }
+                BackgroundEvent::AvatarReady {
+                    path,
+                    asset,
+                    elapsed_ms,
+                } => {
+                    if self.avatar_path != path {
+                        continue;
+                    }
+                    tracing::info!(elapsed_ms, "loaded deferred curtain avatar image");
+                    self.ui_shell.set_avatar(asset);
+                    self.avatar_load_started = false;
+                    self.render_all_surfaces(queue_handle);
+                }
                 BackgroundEvent::Failed { error, elapsed_ms } => {
                     tracing::warn!(
                         elapsed_ms,
@@ -98,6 +111,15 @@ impl CurtainApp {
                 }
             }
         }
+    }
+
+    pub(crate) fn maybe_start_avatar_load(&mut self) {
+        if self.avatar_load_started || !self.ready_notified {
+            return;
+        }
+
+        self.avatar_load_started = true;
+        spawn_avatar_loader(self.avatar_path.clone(), self.background_sender.clone());
     }
 
     pub(crate) fn maybe_start_background_render(&mut self) {

@@ -7,6 +7,7 @@ use std::{
 
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
+    avatar::AvatarAsset,
     background::{BackgroundAsset, BackgroundTreatment, load_cached_render, store_cached_render},
 };
 
@@ -21,6 +22,11 @@ pub(crate) enum BackgroundEvent {
     AssetReady {
         path: PathBuf,
         asset: BackgroundAsset,
+        elapsed_ms: u128,
+    },
+    AvatarReady {
+        path: Option<PathBuf>,
+        asset: AvatarAsset,
         elapsed_ms: u128,
     },
     Failed {
@@ -79,6 +85,18 @@ pub(crate) fn spawn_loader(
                 });
             }
         }
+    });
+}
+
+pub(crate) fn spawn_avatar_loader(path: Option<PathBuf>, sender: Sender<BackgroundEvent>) {
+    thread::spawn(move || {
+        let started_at = Instant::now();
+        let asset = veila_ui::load_avatar(path.clone());
+        let _ = sender.send(BackgroundEvent::AvatarReady {
+            path,
+            asset,
+            elapsed_ms: started_at.elapsed().as_millis(),
+        });
     });
 }
 

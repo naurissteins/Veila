@@ -1,4 +1,11 @@
-use std::path::Path;
+use std::{
+    collections::hash_map::DefaultHasher,
+    fs,
+    hash::{Hash, Hasher},
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    time::UNIX_EPOCH,
+};
 
 use image::{RgbaImage, imageops::FilterType};
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
@@ -11,7 +18,8 @@ use super::{
     skia::draw_overlay,
 };
 
-const MAX_PREPARED_AVATAR_SIZE: u32 = 1024;
+const MAX_PREPARED_AVATAR_SIZE: u32 = 512;
+const AVATAR_CACHE_MAGIC: &[u8; 8] = b"VEILAVA1";
 
 #[derive(Debug, Clone)]
 pub enum AvatarAsset {
@@ -72,14 +80,39 @@ impl AvatarStyle {
 
 impl AvatarAsset {
     pub fn load(path: &Path) -> Result<Self> {
+        if let Some(cached) = Self::load_cached(path)? {
+            return Ok(cached);
+        }
+
         let image = image::open(path)?.to_rgba8();
         let image = prepare_avatar_image(image);
         let pixmap = rgba_to_pixmap(image)?;
+        let _ = store_cached_avatar(path, &pixmap);
         Ok(Self::Image(pixmap))
+    }
+
+    pub fn load_cached(path: &Path) -> Result<Option<Self>> {
+        load_cached_avatar(path).map(|avatar| avatar.map(Self::Image))
     }
 
     pub const fn placeholder() -> Self {
         Self::Placeholder
+    }
+
+    pub fn cache_key(&self) -> String {
+        match self {
+            Self::Placeholder => String::from("placeholder"),
+            Self::Image(image) => {
+                let mut hasher = DefaultHasher::new();
+                image.data().hash(&mut hasher);
+                format!(
+                    "image:{}x{}:{:016x}",
+                    image.width(),
+                    image.height(),
+                    hasher.finish()
+                )
+            }
+        }
     }
 
     pub fn draw(
@@ -224,6 +257,118 @@ fn rgba_to_pixmap(image: RgbaImage) -> Result<Pixmap> {
     )))
 }
 
+fn load_cached_avatar(path: &Path) -> Result<Option<Pixmap>> {
+    load_cached_avatar_at(path, None)
+}
+
+fn load_cached_avatar_at(path: &Path, cache_home: Option<&Path>) -> Result<Option<Pixmap>> {
+    let cache_path = avatar_cache_path(path, cache_home)?;
+    let Ok(mut file) = fs::File::open(&cache_path) else {
+        return Ok(None);
+    };
+
+    let mut header = [0u8; 16];
+    file.read_exact(&mut header)?;
+    if &header[..8] != AVATAR_CACHE_MAGIC {
+        return Ok(None);
+    }
+
+    let width = u32::from_le_bytes(header[8..12].try_into().expect("width slice"));
+    let height = u32::from_le_bytes(header[12..16].try_into().expect("height slice"));
+    let size = tiny_skia::IntSize::from_wh(width, height).ok_or(
+        RendererError::InvalidFrameSize(FrameSize::new(width, height)),
+    )?;
+    let Some(byte_len) = FrameSize::new(width, height).byte_len() else {
+        return Err(RendererError::InvalidFrameSize(FrameSize::new(
+            width, height,
+        )));
+    };
+
+    let mut data = vec![0; byte_len];
+    file.read_exact(&mut data)?;
+    Pixmap::from_vec(data, size)
+        .ok_or(RendererError::InvalidFrameSize(FrameSize::new(
+            width, height,
+        )))
+        .map(Some)
+}
+
+fn store_cached_avatar(path: &Path, pixmap: &Pixmap) -> Result<()> {
+    store_cached_avatar_at(path, pixmap, None)
+}
+
+fn store_cached_avatar_at(path: &Path, pixmap: &Pixmap, cache_home: Option<&Path>) -> Result<()> {
+    let cache_path = avatar_cache_path(path, cache_home)?;
+    let Some(cache_dir) = cache_path.parent() else {
+        return Err(RendererError::Io(std::io::Error::other(
+            "avatar cache path has no parent",
+        )));
+    };
+    fs::create_dir_all(cache_dir)?;
+
+    let temp_path = cache_dir.join(format!(
+        ".{}.tmp",
+        cache_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("avatar")
+    ));
+    let mut file = fs::File::create(&temp_path)?;
+    file.write_all(AVATAR_CACHE_MAGIC)?;
+    file.write_all(&pixmap.width().to_le_bytes())?;
+    file.write_all(&pixmap.height().to_le_bytes())?;
+    file.write_all(pixmap.data())?;
+    file.flush()?;
+    fs::rename(&temp_path, &cache_path)?;
+
+    Ok(())
+}
+
+fn avatar_cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
+    let metadata = fs::metadata(path)?;
+    let modified = metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| duration.as_secs())
+        .unwrap_or_default();
+    let key = stable_hash(format!(
+        "{}:{}:{}:{}",
+        path.display(),
+        metadata.len(),
+        modified,
+        MAX_PREPARED_AVATAR_SIZE,
+    ));
+
+    Ok(avatar_cache_root(cache_home)?.join(format!("{key:016x}.rgba")))
+}
+
+fn avatar_cache_root(cache_home: Option<&Path>) -> Result<PathBuf> {
+    let base = cache_home
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from))
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+        .ok_or_else(|| {
+            RendererError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "failed to resolve XDG cache directory",
+            ))
+        })?;
+
+    Ok(base.join("veila").join("avatars"))
+}
+
+fn stable_hash(input: String) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+
+    for byte in input.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+
+    hash
+}
+
 fn premultiply(channel: u8, alpha: u8) -> u8 {
     ((u16::from(channel) * u16::from(alpha) + 127) / 255) as u8
 }
@@ -233,8 +378,8 @@ mod tests {
     use image::{Rgba, RgbaImage};
 
     use super::{
-        AvatarAsset, AvatarStyle, MAX_PREPARED_AVATAR_SIZE, prepare_avatar_image, rgba_to_pixmap,
-        style_placeholder_padding,
+        AvatarAsset, AvatarStyle, MAX_PREPARED_AVATAR_SIZE, load_cached_avatar_at,
+        prepare_avatar_image, rgba_to_pixmap, store_cached_avatar_at, style_placeholder_padding,
     };
     use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::BorderStyle};
 
@@ -263,6 +408,32 @@ mod tests {
 
         assert_eq!(prepared.width(), 240);
         assert_eq!(prepared.height(), 240);
+    }
+
+    #[test]
+    fn round_trips_cached_avatar_pixmap() {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("veila-avatar-cache-test-{unique}"));
+        std::fs::create_dir_all(&root).expect("cache root");
+
+        let avatar_path = root.join("avatar.png");
+        std::fs::write(&avatar_path, b"stub").expect("avatar file");
+        let image = RgbaImage::from_pixel(2, 2, Rgba([120, 80, 40, 255]));
+        let pixmap = rgba_to_pixmap(image).expect("pixmap");
+
+        store_cached_avatar_at(&avatar_path, &pixmap, Some(&root)).expect("store");
+        let cached = load_cached_avatar_at(&avatar_path, Some(&root))
+            .expect("load")
+            .expect("cached avatar");
+
+        assert_eq!(cached.width(), pixmap.width());
+        assert_eq!(cached.height(), pixmap.height());
+        assert_eq!(cached.data(), pixmap.data());
+
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

@@ -11,6 +11,7 @@ mod tests;
 mod theme;
 mod weather;
 
+pub use avatar::{load_avatar, load_cached_avatar};
 pub use theme::ShellTheme;
 
 use std::{cell::RefCell, time::Instant};
