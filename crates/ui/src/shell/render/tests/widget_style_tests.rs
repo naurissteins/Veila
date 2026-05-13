@@ -92,6 +92,25 @@ fn weather_styles_use_configured_font_size_px() {
 }
 
 #[test]
+fn weather_styles_preserve_opaque_configured_colors() {
+    let theme = ShellTheme {
+        weather_temperature_color: Some(ClearColor::opaque(249, 226, 175)),
+        weather_location_color: Some(ClearColor::opaque(249, 226, 175)),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+
+    assert_eq!(
+        shell.weather_temperature_text_style().color,
+        ClearColor::opaque(249, 226, 175)
+    );
+    assert_eq!(
+        shell.weather_location_text_style().color,
+        ClearColor::opaque(249, 226, 175)
+    );
+}
+
+#[test]
 fn now_playing_styles_use_configured_theme_values() {
     let theme = ShellTheme {
         now_playing_title_color: Some(ClearColor::rgba(248, 251, 255, 208)),

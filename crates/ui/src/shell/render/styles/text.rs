@@ -261,11 +261,7 @@ impl ShellState {
             .weather_temperature_color
             .unwrap_or(self.theme.foreground);
         let style = TextStyle::new_px(
-            if base_color.alpha == u8::MAX {
-                base_color.with_alpha(116)
-            } else {
-                base_color
-            },
+            base_color,
             self.theme
                 .weather_temperature_font_size
                 .unwrap_or(40)
@@ -296,15 +292,7 @@ impl ShellState {
             .theme
             .weather_location_color
             .unwrap_or(self.theme.muted);
-        let style = TextStyle::new_px(
-            if base_color.alpha == u8::MAX {
-                base_color.with_alpha(92)
-            } else {
-                base_color
-            },
-            location_font_size,
-        )
-        .with_line_spacing(0);
+        let style = TextStyle::new_px(base_color, location_font_size).with_line_spacing(0);
 
         self.apply_font_overrides(
             style,
