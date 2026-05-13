@@ -160,7 +160,7 @@ impl Default for KeyboardVisualConfig {
             background_size: Some(46),
             radius: Some(23),
             color: Some(RgbColor::rgba(255, 255, 255, 173)),
-            size: Some(2),
+            size: Some(16),
             position: WidgetPositionConfig {
                 halign: Some(super::HorizontalAlign::Right),
                 valign: Some(super::VerticalAlign::Top),

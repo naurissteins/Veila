@@ -22,16 +22,20 @@ const MAX_USERNAME_FONT_SIZE_PX: u32 = 512;
 const MAX_INPUT_FONT_SIZE_PX: u32 = 512;
 const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
 const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
+const MAX_KEYBOARD_FONT_SIZE_PX: u32 = 512;
 
 impl ShellState {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
-        let style = TextStyle::new(
+        let style = TextStyle::new_px(
             secondary_text_color(
                 self.theme.keyboard_color.unwrap_or(self.theme.foreground),
                 None,
                 228,
             ),
-            self.theme.keyboard_size.unwrap_or(2).clamp(1, 6),
+            self.theme
+                .keyboard_size
+                .unwrap_or(16)
+                .clamp(1, MAX_KEYBOARD_FONT_SIZE_PX),
         )
         .with_font_weight(600)
         .with_line_spacing(0);

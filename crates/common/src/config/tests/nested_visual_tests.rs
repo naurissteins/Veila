@@ -254,7 +254,7 @@ fn loads_nested_visual_tables_with_precedence_for_backdrop_and_widgets() {
         config.visuals.keyboard_color(),
         Some(RgbColor::rgba(232, 238, 249, 173))
     );
-    assert_eq!(config.visuals.keyboard_size(), Some(3));
+    assert_eq!(config.visuals.keyboard_size(), Some(18));
     assert_eq!(
         config.visuals.keyboard_position(),
         WidgetPositionConfig {

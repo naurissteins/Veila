@@ -218,7 +218,7 @@ impl Default for VisualConfig {
             battery_background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             keyboard_background_size: Some(46),
             battery_background_size: Some(46),
-            keyboard_size: Some(2),
+            keyboard_size: Some(16),
             battery_size: Some(20),
             status_color: None,
             input_mask_color: Some(RgbColor::rgb(255, 255, 255)),

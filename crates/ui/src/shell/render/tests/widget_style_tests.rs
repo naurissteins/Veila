@@ -3,13 +3,14 @@ use super::*;
 #[test]
 fn keyboard_layout_style_uses_configured_size() {
     let theme = ShellTheme {
-        keyboard_size: Some(3),
+        keyboard_size: Some(24),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let style = shell.keyboard_layout_text_style();
 
-    assert_eq!(style.scale, 3);
+    assert_eq!(style.font_size_px, Some(24));
+    assert_eq!(style.scale, 1);
     assert_eq!(style.line_spacing, 0);
 }
 

@@ -103,7 +103,7 @@ fn input_alpha_uses_rgba_values() {
         background_size: Some(42),
         radius: Some(12),
         color: Some(ConfigColor::rgba(232, 238, 249, 173)),
-        size: Some(3),
+        size: Some(18),
         position: WidgetPositionConfig {
             halign: Some(HorizontalAlign::Right),
             valign: Some(VerticalAlign::Top),
@@ -392,7 +392,7 @@ fn input_alpha_uses_rgba_values() {
         theme.keyboard_color,
         Some(ClearColor::rgba(232, 238, 249, 173))
     );
-    assert_eq!(theme.keyboard_size, Some(3));
+    assert_eq!(theme.keyboard_size, Some(18));
     assert_eq!(
         theme.keyboard_position,
         Some(super::WidgetPosition {
@@ -842,6 +842,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
         avatar_radius: Some(18),
         input_font_size: Some(18),
         clock_font_size: Some(88),
+        keyboard_size: Some(16),
         keyboard_background_size: Some(42),
         keyboard_radius: Some(12),
         battery_background_size: Some(44),
@@ -910,6 +911,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     assert_eq!(scaled.avatar_radius, Some(36));
     assert_eq!(scaled.input_font_size, Some(36));
     assert_eq!(scaled.clock_font_size, Some(176));
+    assert_eq!(scaled.keyboard_size, Some(32));
     assert_eq!(scaled.keyboard_background_size, Some(84));
     assert_eq!(scaled.keyboard_radius, Some(24));
     assert_eq!(scaled.battery_background_size, Some(88));
