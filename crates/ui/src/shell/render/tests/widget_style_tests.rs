@@ -154,6 +154,25 @@ fn now_playing_styles_use_configured_theme_values() {
 }
 
 #[test]
+fn now_playing_styles_preserve_opaque_configured_colors() {
+    let theme = ShellTheme {
+        now_playing_title_color: Some(ClearColor::opaque(249, 226, 175)),
+        now_playing_artist_color: Some(ClearColor::opaque(203, 166, 247)),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+
+    assert_eq!(
+        shell.now_playing_title_text_style().color,
+        ClearColor::opaque(249, 226, 175)
+    );
+    assert_eq!(
+        shell.now_playing_artist_text_style().color,
+        ClearColor::opaque(203, 166, 247)
+    );
+}
+
+#[test]
 fn now_playing_blocks_stay_single_line_and_truncate() {
     let mut cache = TextLayoutCache::default();
     let title = cache.now_playing_title_block(

@@ -308,11 +308,7 @@ impl ShellState {
             .now_playing_title_color
             .unwrap_or(self.theme.foreground);
         let style = TextStyle::new_px(
-            if base_color.alpha == u8::MAX {
-                base_color.with_alpha(175)
-            } else {
-                base_color
-            },
+            base_color,
             self.theme
                 .now_playing_title_font_size
                 .unwrap_or(16)
@@ -337,11 +333,7 @@ impl ShellState {
             .now_playing_artist_color
             .unwrap_or(self.theme.muted);
         let style = TextStyle::new_px(
-            if base_color.alpha == u8::MAX {
-                base_color.with_alpha(99)
-            } else {
-                base_color
-            },
+            base_color,
             self.theme
                 .now_playing_artist_font_size
                 .unwrap_or(16)

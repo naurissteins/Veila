@@ -3,6 +3,8 @@ use veila_renderer::{FrameSize, PixelBuffer, shape::Rect, text::TextBlock};
 use super::super::{NowPlayingWidgetData, ShellState};
 use super::{NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout, TextLayoutCache};
 
+const NOW_PLAYING_TEXT_WIDTH_CAP: i32 = 640;
+
 impl ShellState {
     pub(super) fn render_now_playing_widget(
         &self,
@@ -38,10 +40,10 @@ impl ShellState {
         &self,
         buffer: &mut impl PixelBuffer,
         now_playing: &NowPlayingWidgetData,
-        opacity_scale: u8,
+        fade_percent: u8,
     ) {
         let Some(layout) =
-            self.now_playing_snapshot_layout(buffer.size(), now_playing, opacity_scale)
+            self.now_playing_snapshot_layout(buffer.size(), now_playing, fade_percent)
         else {
             return;
         };
@@ -71,7 +73,7 @@ impl ShellState {
         &self,
         size: FrameSize,
         now_playing: &'a NowPlayingWidgetData,
-        opacity_scale: u8,
+        fade_percent: u8,
     ) -> Option<NowPlayingSnapshotLayout<'a>> {
         let mut text_layout_cache = self.text_layout_cache.borrow_mut();
         let title = if self.theme.now_playing_title_enabled {
@@ -79,20 +81,20 @@ impl ShellState {
                 size,
                 &mut text_layout_cache,
                 &now_playing.title,
-                opacity_scale,
+                fade_percent,
             )
         } else {
             None
         };
         let artist = if self.theme.now_playing_artist_enabled {
             now_playing.artist.as_deref().and_then(|artist| {
-                self.now_playing_artist_part(size, &mut text_layout_cache, artist, opacity_scale)
+                self.now_playing_artist_part(size, &mut text_layout_cache, artist, fade_percent)
             })
         } else {
             None
         };
         let artwork = (self.theme.now_playing_artwork_enabled)
-            .then(|| self.now_playing_artwork_part(size, now_playing, opacity_scale))
+            .then(|| self.now_playing_artwork_part(size, now_playing, fade_percent))
             .flatten();
 
         if artwork.is_none() && artist.is_none() && title.is_none() {
@@ -110,7 +112,7 @@ impl ShellState {
         &self,
         size: FrameSize,
         now_playing: &'a NowPlayingWidgetData,
-        opacity_scale: u8,
+        fade_percent: u8,
     ) -> Option<NowPlayingArtworkPart<'a>> {
         let asset = now_playing.artwork.as_ref()?;
         let position = self.theme.now_playing_artwork_position?;
@@ -129,10 +131,7 @@ impl ShellState {
                 .now_playing_artwork_radius
                 .unwrap_or(8)
                 .clamp(0, 80),
-            opacity: combine_optional_opacity(
-                self.theme.now_playing_artwork_opacity,
-                opacity_scale,
-            ),
+            opacity: combine_optional_fade(self.theme.now_playing_artwork_opacity, fade_percent),
         })
     }
 
@@ -141,21 +140,17 @@ impl ShellState {
         size: FrameSize,
         text_layout_cache: &mut TextLayoutCache,
         artist: &str,
-        opacity_scale: u8,
+        fade_percent: u8,
     ) -> Option<NowPlayingTextPart> {
         let position = self.theme.now_playing_artist_position?;
-        let box_width = self
-            .theme
-            .now_playing_artist_width
-            .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH as i32)
-            .clamp(NOW_PLAYING_MIN_TEXT_WIDTH, 640);
-        let block = apply_block_opacity(
+        let box_width = self.now_playing_text_width(self.theme.now_playing_artist_width);
+        let block = apply_text_fade(
             text_layout_cache.now_playing_artist_block(
                 artist,
                 self.now_playing_artist_text_style(),
                 box_width as u32,
             ),
-            opacity_scale,
+            fade_percent,
         );
         let rect = self.positioned_rect(size, position, box_width, block.height as i32);
 
@@ -170,21 +165,17 @@ impl ShellState {
         size: FrameSize,
         text_layout_cache: &mut TextLayoutCache,
         title: &str,
-        opacity_scale: u8,
+        fade_percent: u8,
     ) -> Option<NowPlayingTextPart> {
         let position = self.theme.now_playing_title_position?;
-        let box_width = self
-            .theme
-            .now_playing_title_width
-            .unwrap_or(NOW_PLAYING_MAX_TEXT_WIDTH as i32)
-            .clamp(NOW_PLAYING_MIN_TEXT_WIDTH, 640);
-        let block = apply_block_opacity(
+        let box_width = self.now_playing_text_width(self.theme.now_playing_title_width);
+        let block = apply_text_fade(
             text_layout_cache.now_playing_title_block(
                 title,
                 self.now_playing_title_text_style(),
                 box_width as u32,
             ),
-            opacity_scale,
+            fade_percent,
         );
         let rect = self.positioned_rect(size, position, box_width, block.height as i32);
 
@@ -192,6 +183,17 @@ impl ShellState {
             rect: Rect::new(rect.x, rect.y, block.width as i32, block.height as i32),
             block,
         })
+    }
+
+    fn now_playing_text_width(&self, configured_width: Option<i32>) -> i32 {
+        let scale = self.render_scale.max(1) as i32;
+        let default_width = (NOW_PLAYING_MAX_TEXT_WIDTH as i32).saturating_mul(scale);
+        let min_width = NOW_PLAYING_MIN_TEXT_WIDTH.saturating_mul(scale);
+        let max_width = NOW_PLAYING_TEXT_WIDTH_CAP.saturating_mul(scale);
+
+        configured_width
+            .unwrap_or(default_width)
+            .clamp(min_width, max_width)
     }
 }
 
@@ -216,15 +218,15 @@ struct NowPlayingTextPart {
     block: TextBlock,
 }
 
-fn apply_block_opacity(mut block: TextBlock, opacity_scale: u8) -> TextBlock {
+fn apply_text_fade(mut block: TextBlock, fade_percent: u8) -> TextBlock {
     block.style.color = block.style.color.with_alpha(
-        ((u16::from(block.style.color.alpha) * u16::from(opacity_scale.min(100))) / 100) as u8,
+        ((u16::from(block.style.color.alpha) * u16::from(fade_percent.min(100))) / 100) as u8,
     );
     block
 }
 
-fn combine_optional_opacity(base: Option<u8>, scale: u8) -> Option<u8> {
-    Some(((u16::from(base.unwrap_or(100).min(100)) * u16::from(scale.min(100))) / 100) as u8)
+fn combine_optional_fade(base: Option<u8>, fade_percent: u8) -> Option<u8> {
+    Some(((u16::from(base.unwrap_or(100).min(100)) * u16::from(fade_percent.min(100))) / 100) as u8)
 }
 
 #[cfg(test)]
@@ -268,5 +270,77 @@ mod tests {
 
         assert!(layout.title.is_none());
         assert!(layout.artist.is_some());
+    }
+
+    #[test]
+    fn fallback_title_width_scales_with_output_scale() {
+        let title = "VHS DREAMS '88 | 2 Hour Synthwave, Chillwave & Retrowave Mix";
+        let theme = ShellTheme {
+            now_playing_enabled: true,
+            now_playing_artist_enabled: false,
+            now_playing_title_enabled: true,
+            now_playing_title_width: None,
+            now_playing_title_font_size: Some(16),
+            ..ShellTheme::default()
+        };
+        let shell = ShellState::new_with_username_and_widgets(
+            theme.clone(),
+            None,
+            None,
+            None,
+            true,
+            None,
+            None,
+            WeatherUnit::default(),
+            None,
+            Some(NowPlayingSnapshot {
+                title: title.to_owned(),
+                artist: None,
+                artwork_path: None,
+                fetched_at_unix: 0,
+            }),
+        );
+        let mut scaled_shell = ShellState::new_with_username_and_widgets(
+            theme.scaled_for_render(2),
+            None,
+            None,
+            None,
+            true,
+            None,
+            None,
+            WeatherUnit::default(),
+            None,
+            Some(NowPlayingSnapshot {
+                title: title.to_owned(),
+                artist: None,
+                artwork_path: None,
+                fetched_at_unix: 0,
+            }),
+        );
+        scaled_shell.render_scale = 2;
+
+        let title_line = shell
+            .now_playing_snapshot_layout(
+                FrameSize::new(2560, 1440),
+                shell.now_playing.as_ref().expect("now playing snapshot"),
+                100,
+            )
+            .and_then(|layout| layout.title)
+            .and_then(|title| title.block.lines.into_iter().next())
+            .expect("title should render");
+        let scaled_title_line = scaled_shell
+            .now_playing_snapshot_layout(
+                FrameSize::new(5120, 2880),
+                scaled_shell
+                    .now_playing
+                    .as_ref()
+                    .expect("now playing snapshot"),
+                100,
+            )
+            .and_then(|layout| layout.title)
+            .and_then(|title| title.block.lines.into_iter().next())
+            .expect("scaled title should render");
+
+        assert_eq!(title_line, scaled_title_line);
     }
 }
