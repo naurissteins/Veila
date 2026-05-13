@@ -38,6 +38,7 @@ fn input_alpha_uses_rgba_values() {
         enabled: Some(true),
         image_path: None,
         size: Some(92),
+        radius: Some(18),
         background_color: Some(ConfigColor::rgba(24, 30, 42, 92)),
         placeholder_padding: Some(14),
         ring_color: Some(ConfigColor::rgb(148, 178, 255)),
@@ -319,6 +320,7 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.input_height, Some(54));
     assert_eq!(theme.input_border_width, Some(3));
     assert_eq!(theme.avatar_size, Some(92));
+    assert_eq!(theme.avatar_radius, Some(18));
     assert_eq!(theme.avatar_offset_y, Some(0));
     assert_eq!(theme.avatar_position, None);
     assert_eq!(theme.avatar_placeholder_padding, Some(14));
@@ -837,6 +839,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     let theme = ShellTheme {
         input_width: Some(310),
         input_height: Some(54),
+        avatar_radius: Some(18),
         input_font_size: Some(18),
         clock_font_size: Some(88),
         keyboard_background_size: Some(42),
@@ -904,6 +907,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
 
     assert_eq!(scaled.input_width, Some(620));
     assert_eq!(scaled.input_height, Some(108));
+    assert_eq!(scaled.avatar_radius, Some(36));
     assert_eq!(scaled.input_font_size, Some(36));
     assert_eq!(scaled.clock_font_size, Some(176));
     assert_eq!(scaled.keyboard_background_size, Some(84));

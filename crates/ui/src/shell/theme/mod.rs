@@ -94,6 +94,7 @@ pub struct ShellTheme {
     pub input_radius: i32,
     pub input_border_width: Option<i32>,
     pub avatar_size: Option<i32>,
+    pub avatar_radius: Option<i32>,
     pub avatar_offset_y: Option<i32>,
     pub avatar_position: Option<WidgetPosition>,
     pub avatar_placeholder_padding: Option<i32>,
@@ -240,6 +241,7 @@ impl ShellTheme {
         theme.input_radius = scale_i32(theme.input_radius, scale);
         theme.input_border_width = scale_i32_opt(theme.input_border_width, scale);
         theme.avatar_size = scale_i32_opt(theme.avatar_size, scale);
+        theme.avatar_radius = scale_i32_opt(theme.avatar_radius, scale);
         theme.avatar_offset_y = scale_i32_opt(theme.avatar_offset_y, scale);
         theme.avatar_position = theme
             .avatar_position
@@ -761,6 +763,10 @@ impl ShellTheme {
             input_radius: i32::from(config.visuals.input_radius()),
             input_border_width: config.visuals.input_border_width().map(i32::from),
             avatar_size: config.visuals.avatar_size().map(i32::from),
+            avatar_radius: config
+                .visuals
+                .avatar_radius()
+                .map(|radius| i32::from(radius).clamp(0, 320)),
             avatar_offset_y: Some(0),
             avatar_position,
             avatar_placeholder_padding: config.visuals.avatar_placeholder_padding().map(i32::from),

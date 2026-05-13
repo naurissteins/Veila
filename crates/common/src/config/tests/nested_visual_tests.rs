@@ -67,6 +67,7 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         Some(RgbColor::rgba(255, 255, 255, 15))
     );
     assert_eq!(config.visuals.avatar_size(), Some(192));
+    assert_eq!(config.visuals.avatar_radius(), Some(24));
     assert_eq!(
         config.visuals.avatar_position(),
         WidgetPositionConfig {

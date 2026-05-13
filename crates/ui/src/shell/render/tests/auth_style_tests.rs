@@ -148,6 +148,18 @@ fn avatar_style_uses_configured_placeholder_padding() {
 }
 
 #[test]
+fn avatar_style_uses_configured_radius() {
+    let theme = ShellTheme {
+        avatar_radius: Some(18),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let style = shell.avatar_style();
+
+    assert_eq!(style.radius, Some(18));
+}
+
+#[test]
 fn avatar_style_uses_configured_icon_color() {
     let theme = ShellTheme {
         avatar_icon_color: Some(ClearColor::opaque(232, 238, 249)),

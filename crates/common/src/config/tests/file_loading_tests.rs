@@ -37,6 +37,7 @@ fn loads_config_from_file() {
             [visuals]
             avatar_background_color = "rgba(24, 30, 42, 0.82)"
             avatar_size = 92
+            avatar_radius = 18
             avatar_placeholder_padding = 12
             avatar_icon_color = "#E8EEF9"
             avatar_ring_color = "#94B2FF"
@@ -182,6 +183,7 @@ fn loads_config_from_file() {
     assert_eq!(loaded.config.visuals.input_radius(), 20);
     assert_eq!(loaded.config.visuals.input_border_width(), Some(3));
     assert_eq!(loaded.config.visuals.avatar_size(), Some(92));
+    assert_eq!(loaded.config.visuals.avatar_radius(), Some(18));
     assert_eq!(loaded.config.visuals.avatar_placeholder_padding(), Some(12));
     assert_eq!(
         loaded.config.visuals.avatar_icon_color(),

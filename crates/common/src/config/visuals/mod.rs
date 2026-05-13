@@ -68,6 +68,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub avatar_size: Option<u16>,
     #[serde(default)]
+    pub avatar_radius: Option<u16>,
+    #[serde(default)]
     pub avatar_placeholder_padding: Option<u16>,
     #[serde(default)]
     pub avatar_icon_color: Option<RgbColor>,
@@ -190,6 +192,7 @@ impl Default for VisualConfig {
             input_radius: 10,
             input_border_width: Some(0),
             avatar_size: Some(150),
+            avatar_radius: None,
             avatar_placeholder_padding: Some(28),
             avatar_icon_color: Some(RgbColor::rgb(255, 255, 255)),
             avatar_ring_color: Some(RgbColor::rgb(148, 178, 255)),

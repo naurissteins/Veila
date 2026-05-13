@@ -96,6 +96,7 @@ fn parses_partial_config_with_defaults() {
     assert!(config.visuals.avatar_image_path().is_none());
     assert!(config.avatar_image_path().is_none());
     assert!(config.visuals.avatar_size().is_none());
+    assert!(config.visuals.avatar_radius().is_none());
     assert!(config.visuals.avatar_placeholder_padding().is_none());
     assert!(config.visuals.avatar_icon_color().is_none());
     assert!(config.visuals.avatar_ring_color().is_none());

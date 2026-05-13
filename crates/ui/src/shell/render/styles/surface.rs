@@ -88,6 +88,9 @@ impl ShellState {
             .unwrap_or(self.theme.foreground)
             .with_alpha(224);
         let mut style = AvatarStyle::new(background, placeholder);
+        if let Some(radius) = self.theme.avatar_radius {
+            style = style.with_radius(radius);
+        }
         if ring_width > 0 {
             style = style.with_ring(BorderStyle::new(ring, ring_width));
         }

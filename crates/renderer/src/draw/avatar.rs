@@ -14,7 +14,7 @@ use crate::{ClearColor, FrameSize, PixelBuffer, RendererError, Result, ShadowSty
 
 use super::{
     icon::{AssetIcon, IconStyle, draw_icon},
-    shape::{BorderStyle, CircleStyle, draw_circle},
+    shape::{BorderStyle, CircleStyle, PillStyle, Rect, draw_circle, draw_pill},
     skia::draw_overlay,
 };
 
@@ -31,6 +31,7 @@ pub enum AvatarAsset {
 pub struct AvatarStyle {
     pub background: ClearColor,
     pub placeholder: ClearColor,
+    pub radius: Option<i32>,
     pub placeholder_padding: Option<i32>,
     pub ring: Option<BorderStyle>,
     pub shadow: Option<ShadowStyle>,
@@ -41,6 +42,7 @@ impl AvatarStyle {
         Self {
             background,
             placeholder,
+            radius: None,
             placeholder_padding: None,
             ring: None,
             shadow: None,
@@ -51,6 +53,7 @@ impl AvatarStyle {
         Self {
             background: self.background,
             placeholder: self.placeholder,
+            radius: self.radius,
             placeholder_padding: Some(placeholder_padding),
             ring: self.ring,
             shadow: self.shadow,
@@ -61,6 +64,7 @@ impl AvatarStyle {
         Self {
             background: self.background,
             placeholder: self.placeholder,
+            radius: self.radius,
             placeholder_padding: self.placeholder_padding,
             ring: Some(ring),
             shadow: self.shadow,
@@ -71,9 +75,21 @@ impl AvatarStyle {
         Self {
             background: self.background,
             placeholder: self.placeholder,
+            radius: self.radius,
             placeholder_padding: self.placeholder_padding,
             ring: self.ring,
             shadow: Some(shadow),
+        }
+    }
+
+    pub const fn with_radius(self, radius: i32) -> Self {
+        Self {
+            background: self.background,
+            placeholder: self.placeholder,
+            radius: Some(radius),
+            placeholder_padding: self.placeholder_padding,
+            ring: self.ring,
+            shadow: self.shadow,
         }
     }
 }
@@ -127,29 +143,54 @@ impl AvatarAsset {
             return;
         }
 
-        let radius = (size as i32 / 2).max(1);
-        let center_y = top_y + radius;
-        let mut circle_style = CircleStyle::new(style.background);
-        if let Some(shadow) = style.shadow {
-            circle_style = circle_style.with_shadow(shadow);
+        let size_i32 = size as i32;
+        let radius = resolved_avatar_radius(size_i32, style.radius);
+        let left = center_x - size_i32 / 2;
+        if radius >= size_i32 / 2 {
+            let mut circle_style = CircleStyle::new(style.background);
+            if let Some(shadow) = style.shadow {
+                circle_style = circle_style.with_shadow(shadow);
+            }
+            if let Some(ring) = style.ring {
+                circle_style = circle_style.with_border(ring);
+            }
+            draw_circle(
+                buffer,
+                center_x,
+                top_y + size_i32 / 2,
+                size_i32 / 2,
+                circle_style,
+            );
+        } else {
+            let rect = Rect::new(left, top_y, size_i32, size_i32);
+            let mut avatar_style = PillStyle::new(style.background).with_radius(radius);
+            if let Some(shadow) = style.shadow {
+                avatar_style = avatar_style.with_shadow(shadow);
+            }
+            if let Some(ring) = style.ring {
+                avatar_style = avatar_style.with_border(ring);
+            }
+            draw_pill(buffer, rect, avatar_style);
         }
-        if let Some(ring) = style.ring {
-            circle_style = circle_style.with_border(ring);
-        }
-        draw_circle(buffer, center_x, center_y, radius, circle_style);
 
         let inset = style
             .ring
             .map(|ring| ring.thickness.max(0) * 2)
             .unwrap_or(0);
-        let content_size = (size as i32 - inset * 2).max(1) as u32;
+        let content_size = (size_i32 - inset * 2).max(1) as u32;
+        let content_radius = (radius - inset).clamp(0, content_size as i32 / 2);
         let content_top = top_y + inset;
         let content_left = center_x - content_size as i32 / 2;
 
         match self {
-            Self::Image(image) => {
-                draw_avatar_image(buffer, content_left, content_top, content_size, image)
-            }
+            Self::Image(image) => draw_avatar_image(
+                buffer,
+                content_left,
+                content_top,
+                content_size,
+                content_radius,
+                image,
+            ),
             Self::Placeholder => draw_placeholder(
                 buffer,
                 content_left,
@@ -188,18 +229,22 @@ fn draw_avatar_image(
     left: i32,
     top: i32,
     size: u32,
+    radius: i32,
     image: &Pixmap,
 ) {
     draw_overlay(buffer, left, top, size, size, |overlay| {
         let Some(mut mask) = Mask::new(size, size) else {
             return;
         };
-        let Some(circle) =
+        let shape = if radius >= size as i32 / 2 {
             PathBuilder::from_circle(size as f32 / 2.0, size as f32 / 2.0, size as f32 / 2.0)
-        else {
+        } else {
+            rounded_rect_path(size as f32, size as f32, radius as f32)
+        };
+        let Some(shape) = shape else {
             return;
         };
-        mask.fill_path(&circle, FillRule::Winding, true, Transform::identity());
+        mask.fill_path(&shape, FillRule::Winding, true, Transform::identity());
 
         let paint = PixmapPaint {
             quality: FilterQuality::Bicubic,
@@ -215,6 +260,43 @@ fn draw_avatar_image(
 
         overlay.draw_pixmap(0, 0, image.as_ref(), &paint, transform, Some(&mask));
     });
+}
+
+fn resolved_avatar_radius(size: i32, configured_radius: Option<i32>) -> i32 {
+    configured_radius
+        .unwrap_or(size / 2)
+        .clamp(0, (size / 2).max(0))
+}
+
+fn rounded_rect_path(width: f32, height: f32, radius: f32) -> Option<tiny_skia::Path> {
+    if width <= 0.0 || height <= 0.0 {
+        return None;
+    }
+
+    let right = width;
+    let bottom = height;
+    let radius = radius.max(0.0).min(width.min(height) / 2.0);
+    let mut builder = PathBuilder::new();
+
+    if radius <= 0.0 {
+        builder.move_to(0.0, 0.0);
+        builder.line_to(right, 0.0);
+        builder.line_to(right, bottom);
+        builder.line_to(0.0, bottom);
+    } else {
+        builder.move_to(radius, 0.0);
+        builder.line_to(right - radius, 0.0);
+        builder.quad_to(right, 0.0, right, radius);
+        builder.line_to(right, bottom - radius);
+        builder.quad_to(right, bottom, right - radius, bottom);
+        builder.line_to(radius, bottom);
+        builder.quad_to(0.0, bottom, 0.0, bottom - radius);
+        builder.line_to(0.0, radius);
+        builder.quad_to(0.0, 0.0, radius, 0.0);
+    }
+
+    builder.close();
+    builder.finish()
 }
 
 fn draw_placeholder(
@@ -379,7 +461,8 @@ mod tests {
 
     use super::{
         AvatarAsset, AvatarStyle, MAX_PREPARED_AVATAR_SIZE, load_cached_avatar_at,
-        prepare_avatar_image, rgba_to_pixmap, store_cached_avatar_at, style_placeholder_padding,
+        prepare_avatar_image, resolved_avatar_radius, rgba_to_pixmap, store_cached_avatar_at,
+        style_placeholder_padding,
     };
     use crate::{ClearColor, FrameSize, SoftwareBuffer, shape::BorderStyle};
 
@@ -459,5 +542,13 @@ mod tests {
         assert_eq!(style_placeholder_padding(96, None), 9);
         assert_eq!(style_placeholder_padding(96, Some(12)), 12);
         assert_eq!(style_placeholder_padding(96, Some(80)), 32);
+    }
+
+    #[test]
+    fn avatar_radius_defaults_to_circle_and_clamps_to_half_size() {
+        assert_eq!(resolved_avatar_radius(96, None), 48);
+        assert_eq!(resolved_avatar_radius(96, Some(18)), 18);
+        assert_eq!(resolved_avatar_radius(96, Some(80)), 48);
+        assert_eq!(resolved_avatar_radius(96, Some(-4)), 0);
     }
 }

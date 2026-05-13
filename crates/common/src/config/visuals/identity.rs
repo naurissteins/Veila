@@ -13,6 +13,8 @@ pub struct AvatarVisualConfig {
     #[serde(default)]
     pub size: Option<u16>,
     #[serde(default)]
+    pub radius: Option<u16>,
+    #[serde(default)]
     pub background_color: Option<RgbColor>,
     #[serde(default)]
     pub placeholder_padding: Option<u16>,
@@ -32,6 +34,7 @@ impl Default for AvatarVisualConfig {
             enabled: Some(true),
             image_path: None,
             size: Some(150),
+            radius: None,
             background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             placeholder_padding: Some(28),
             ring_color: Some(RgbColor::rgb(148, 178, 255)),
@@ -115,6 +118,13 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|avatar| avatar.size)
             .or(self.avatar_size)
+    }
+
+    pub fn avatar_radius(&self) -> Option<u16> {
+        self.avatar
+            .as_ref()
+            .and_then(|avatar| avatar.radius)
+            .or(self.avatar_radius)
     }
 
     pub fn avatar_placeholder_padding(&self) -> Option<u16> {

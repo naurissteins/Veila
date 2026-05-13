@@ -29,6 +29,7 @@ border_color = "#DDDDDD1F"
 
             [visuals.avatar]
             size = 192
+            radius = 24
             halign = "left"
             valign = "center"
             x = 36

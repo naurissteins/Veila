@@ -76,6 +76,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(config.visuals.avatar_image_path().is_none());
     assert!(config.avatar_image_path().is_none());
     assert_eq!(config.visuals.avatar_size(), Some(150));
+    assert!(config.visuals.avatar_radius().is_none());
     assert_eq!(config.visuals.avatar_placeholder_padding(), Some(28));
     assert_eq!(
         config.visuals.avatar_icon_color(),
