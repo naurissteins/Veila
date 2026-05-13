@@ -53,6 +53,7 @@ use crate::{
     background::{BackgroundEvent, BackgroundSlideshow},
     ipc::auth::AuthEvent,
     ipc::control::{ControlEvent, spawn_listener},
+    keyboard_cache::load_keyboard_layout_label,
 };
 
 pub(crate) use power::ScreenOffState;
@@ -207,7 +208,7 @@ impl CurtainApp {
             .or_else(|| config.background.resolved_path());
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
-        let ui_shell = ShellState::new_with_avatar_and_widgets(
+        let mut ui_shell = ShellState::new_with_avatar_and_widgets(
             theme,
             Some(config.visuals.input_placeholder()),
             config.visuals.username_text().map(str::to_owned),
@@ -219,6 +220,9 @@ impl CurtainApp {
             options.now_playing_snapshot.clone(),
             cached_avatar,
         );
+        if ui_shell.keyboard_enabled() {
+            ui_shell.set_keyboard_layout_label(load_keyboard_layout_label());
+        }
         let lock_wait_timeout = Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
         let screen_off_delay = config
             .lock

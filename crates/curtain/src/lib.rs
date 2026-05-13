@@ -5,6 +5,7 @@
 mod app;
 mod background;
 mod ipc;
+mod keyboard_cache;
 mod preview;
 mod reload;
 mod state;

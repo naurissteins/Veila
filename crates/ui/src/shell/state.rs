@@ -63,6 +63,10 @@ impl ShellState {
         !self.theme.layers.is_empty()
     }
 
+    pub fn keyboard_enabled(&self) -> bool {
+        self.theme.keyboard_enabled
+    }
+
     pub fn static_scene_cache_variant(&self, scale: u32) -> Option<String> {
         self.has_visual_layers().then(|| {
             format!(

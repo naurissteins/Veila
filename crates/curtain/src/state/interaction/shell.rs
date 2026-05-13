@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surface};
 use veila_ui::{ShellAction, ShellKey};
 
-use crate::ipc::auth::submit_password;
+use crate::{ipc::auth::submit_password, keyboard_cache::store_keyboard_layout_label};
 
 use super::super::CurtainApp;
 
@@ -67,6 +67,10 @@ impl CurtainApp {
         label: Option<String>,
         queue_handle: &QueueHandle<Self>,
     ) {
+        if let Some(label) = label.as_deref() {
+            store_keyboard_layout_label(label);
+        }
+
         if self.ui_shell.set_keyboard_layout_label(label) {
             self.render_all_surfaces(queue_handle);
         }
