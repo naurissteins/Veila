@@ -124,11 +124,13 @@ pub(super) fn draw_chip_block(
     let x = x.clamp(0, max_x);
     let y = y.clamp(0, max_y);
 
-    draw_pill(
-        buffer,
-        Rect::new(x, y, chip_diameter, chip_diameter),
-        chip_style(background, radius),
-    );
+    if chip_background_enabled(background_size) {
+        draw_pill(
+            buffer,
+            Rect::new(x, y, chip_diameter, chip_diameter),
+            chip_style(background, radius),
+        );
+    }
     block.draw(
         buffer,
         x + (chip_diameter - block.width as i32) / 2,
@@ -141,12 +143,13 @@ pub(super) fn top_right_chip_diameter(
     content_width: i32,
     content_height: i32,
 ) -> i32 {
-    background_size
-        .unwrap_or_else(|| {
-            (content_width + CHIP_HORIZONTAL_PADDING * 2)
-                .max(content_height + CHIP_VERTICAL_PADDING * 2)
-        })
-        .clamp(20, 160)
+    match background_size {
+        Some(size) if size <= 0 => content_width.max(content_height).clamp(1, 160),
+        Some(size) => size.clamp(20, 160),
+        None => (content_width + CHIP_HORIZONTAL_PADDING * 2)
+            .max(content_height + CHIP_VERTICAL_PADDING * 2)
+            .clamp(20, 160),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -167,13 +170,16 @@ pub(super) fn draw_icon_chip(
     let x = x.clamp(0, max_x);
     let y = y.clamp(0, max_y);
 
-    draw_pill(
-        buffer,
-        Rect::new(x, y, chip_diameter, chip_diameter),
-        chip_style(background, radius),
-    );
+    let background_enabled = chip_background_enabled(background_size);
+    if background_enabled {
+        draw_pill(
+            buffer,
+            Rect::new(x, y, chip_diameter, chip_diameter),
+            chip_style(background, radius),
+        );
+    }
 
-    let icon_extent = icon_size.clamp(12, chip_diameter.saturating_sub(8));
+    let icon_extent = icon_chip_extent(background_enabled, chip_diameter, icon_size);
     let icon_x = x + (chip_diameter - icon_extent) / 2;
     let icon_y = y + (chip_diameter - icon_extent) / 2;
     draw_icon(
@@ -182,6 +188,18 @@ pub(super) fn draw_icon_chip(
         AssetIcon::Battery(icon),
         icon_style.with_padding(0),
     );
+}
+
+fn chip_background_enabled(background_size: Option<i32>) -> bool {
+    background_size.is_none_or(|size| size > 0)
+}
+
+fn icon_chip_extent(background_enabled: bool, chip_diameter: i32, icon_size: i32) -> i32 {
+    if background_enabled {
+        icon_size.clamp(12, chip_diameter.saturating_sub(8))
+    } else {
+        icon_size.clamp(12, 96)
+    }
 }
 
 fn chip_style(background: ClearColor, radius: Option<i32>) -> PillStyle {
@@ -372,7 +390,9 @@ fn scaled_alpha(base_alpha: u8, multiplier: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{input_content_rect, input_toggle_hitbox};
+    use super::{
+        icon_chip_extent, input_content_rect, input_toggle_hitbox, top_right_chip_diameter,
+    };
     use veila_renderer::shape::Rect;
 
     #[test]
@@ -391,5 +411,23 @@ mod tests {
         let content = input_content_rect(rect, Some(input_toggle_hitbox(rect)));
 
         assert_eq!(content.width, 516);
+    }
+
+    #[test]
+    fn disabled_chip_background_uses_content_extent() {
+        assert_eq!(top_right_chip_diameter(Some(0), 34, 12), 34);
+        assert_eq!(top_right_chip_diameter(Some(0), 20, 20), 20);
+    }
+
+    #[test]
+    fn disabled_icon_chip_background_keeps_configured_icon_size() {
+        assert_eq!(icon_chip_extent(false, 20, 20), 20);
+        assert_eq!(icon_chip_extent(false, 24, 32), 32);
+    }
+
+    #[test]
+    fn enabled_icon_chip_background_fits_icon_inside_chip() {
+        assert_eq!(icon_chip_extent(true, 20, 20), 12);
+        assert_eq!(icon_chip_extent(true, 46, 20), 20);
     }
 }
