@@ -145,6 +145,7 @@ pub struct ShellTheme {
     pub keyboard_position: Option<WidgetPosition>,
     pub keyboard_background_color: ClearColor,
     pub keyboard_background_size: Option<i32>,
+    pub keyboard_radius: Option<i32>,
     pub keyboard_color: Option<ClearColor>,
     pub keyboard_size: Option<u32>,
     pub power_status_enabled: bool,
@@ -154,6 +155,7 @@ pub struct ShellTheme {
     pub battery_color: Option<ClearColor>,
     pub battery_background_color: ClearColor,
     pub battery_background_size: Option<i32>,
+    pub battery_radius: Option<i32>,
     pub battery_size: Option<i32>,
     pub backdrops: Vec<Backdrop>,
     pub layers: Vec<VisualLayer>,
@@ -271,6 +273,7 @@ impl ShellTheme {
             .keyboard_position
             .map(|position| scale_position(position, scale));
         theme.keyboard_background_size = scale_i32_opt(theme.keyboard_background_size, scale);
+        theme.keyboard_radius = scale_i32_opt(theme.keyboard_radius, scale);
         theme.keyboard_size = scale_u32_opt(theme.keyboard_size, scale);
         theme.power_status_position = theme
             .power_status_position
@@ -279,6 +282,7 @@ impl ShellTheme {
             .battery_position
             .map(|position| scale_position(position, scale));
         theme.battery_background_size = scale_i32_opt(theme.battery_background_size, scale);
+        theme.battery_radius = scale_i32_opt(theme.battery_radius, scale);
         theme.battery_size = scale_i32_opt(theme.battery_size, scale);
         theme.backdrops = theme
             .backdrops
@@ -811,6 +815,10 @@ impl ShellTheme {
                 .map(to_color)
                 .unwrap_or_else(|| ClearColor::rgba(18, 22, 30, 82)),
             keyboard_background_size: config.visuals.keyboard_background_size().map(i32::from),
+            keyboard_radius: config
+                .visuals
+                .keyboard_radius()
+                .map(|radius| i32::from(radius).clamp(0, 160)),
             keyboard_color: config.visuals.keyboard_color().map(to_color),
             keyboard_size: config.visuals.keyboard_size().map(u32::from),
             power_status_enabled: config.visuals.power_status_enabled(),
@@ -824,6 +832,10 @@ impl ShellTheme {
                 .map(to_color)
                 .unwrap_or_else(|| ClearColor::rgba(18, 22, 30, 82)),
             battery_background_size: config.visuals.battery_background_size().map(i32::from),
+            battery_radius: config
+                .visuals
+                .battery_radius()
+                .map(|radius| i32::from(radius).clamp(0, 160)),
             battery_size: config.visuals.battery_size().map(i32::from),
             backdrops,
             layers,

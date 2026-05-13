@@ -143,6 +143,8 @@ pub struct KeyboardVisualConfig {
     #[serde(default)]
     pub background_size: Option<u16>,
     #[serde(default)]
+    pub radius: Option<u16>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub size: Option<u16>,
@@ -156,6 +158,7 @@ impl Default for KeyboardVisualConfig {
             enabled: Some(true),
             background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             background_size: Some(46),
+            radius: Some(23),
             color: Some(RgbColor::rgba(255, 255, 255, 173)),
             size: Some(2),
             position: WidgetPositionConfig {
@@ -178,6 +181,8 @@ pub struct BatteryVisualConfig {
     #[serde(default)]
     pub background_size: Option<u16>,
     #[serde(default)]
+    pub radius: Option<u16>,
+    #[serde(default)]
     pub color: Option<RgbColor>,
     #[serde(default)]
     pub size: Option<u16>,
@@ -191,6 +196,7 @@ impl Default for BatteryVisualConfig {
             enabled: Some(true),
             background_color: Some(RgbColor::rgba(255, 255, 255, 10)),
             background_size: Some(46),
+            radius: Some(23),
             color: Some(RgbColor::rgba(255, 255, 255, 173)),
             size: Some(20),
             position: WidgetPositionConfig {
@@ -379,6 +385,10 @@ impl super::VisualConfig {
             .or(self.keyboard_background_size)
     }
 
+    pub fn keyboard_radius(&self) -> Option<u16> {
+        self.keyboard.as_ref().and_then(|keyboard| keyboard.radius)
+    }
+
     pub fn keyboard_size(&self) -> Option<u16> {
         self.keyboard
             .as_ref()
@@ -419,6 +429,10 @@ impl super::VisualConfig {
             .as_ref()
             .and_then(|battery| battery.background_size)
             .or(self.battery_background_size)
+    }
+
+    pub fn battery_radius(&self) -> Option<u16> {
+        self.battery.as_ref().and_then(|battery| battery.radius)
     }
 
     pub fn battery_size(&self) -> Option<u16> {

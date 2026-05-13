@@ -114,6 +114,7 @@ pub(super) fn draw_chip_block(
     y: i32,
     background: ClearColor,
     background_size: Option<i32>,
+    radius: Option<i32>,
     block: &TextBlock,
 ) {
     let chip_diameter =
@@ -126,7 +127,7 @@ pub(super) fn draw_chip_block(
     draw_pill(
         buffer,
         Rect::new(x, y, chip_diameter, chip_diameter),
-        PillStyle::new(background).with_radius(chip_diameter / 2),
+        chip_style(background, radius),
     );
     block.draw(
         buffer,
@@ -155,6 +156,7 @@ pub(super) fn draw_icon_chip(
     y: i32,
     background: ClearColor,
     background_size: Option<i32>,
+    radius: Option<i32>,
     icon: BatteryIcon,
     icon_style: IconStyle,
     icon_size: i32,
@@ -168,7 +170,7 @@ pub(super) fn draw_icon_chip(
     draw_pill(
         buffer,
         Rect::new(x, y, chip_diameter, chip_diameter),
-        PillStyle::new(background).with_radius(chip_diameter / 2),
+        chip_style(background, radius),
     );
 
     let icon_extent = icon_size.clamp(12, chip_diameter.saturating_sub(8));
@@ -180,6 +182,13 @@ pub(super) fn draw_icon_chip(
         AssetIcon::Battery(icon),
         icon_style.with_padding(0),
     );
+}
+
+fn chip_style(background: ClearColor, radius: Option<i32>) -> PillStyle {
+    radius.map_or_else(
+        || PillStyle::new(background),
+        |radius| PillStyle::new(background).with_radius(radius),
+    )
 }
 
 pub(super) fn draw_avatar_widget(

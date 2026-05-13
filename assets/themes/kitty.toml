@@ -78,6 +78,7 @@ enabled = false
 
 [visuals.keyboard]
 background_size = 46
+radius = 23
 background_color = "rgba(255, 255, 255, 0.1)"
 color = "rgba(255, 255, 255, 0.9)"
 size = 2
@@ -89,6 +90,7 @@ y = 21
 [visuals.battery]
 background_color = "rgba(255, 255, 255, 0.1)"
 background_size = 46
+radius = 23
 color = "rgba(255, 255, 255, 0.9)"
 size = 20
 halign = "right"

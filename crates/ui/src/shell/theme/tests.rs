@@ -99,6 +99,7 @@ fn input_alpha_uses_rgba_values() {
         enabled: Some(true),
         background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
         background_size: Some(42),
+        radius: Some(12),
         color: Some(ConfigColor::rgba(232, 238, 249, 173)),
         size: Some(3),
         position: WidgetPositionConfig {
@@ -113,6 +114,7 @@ fn input_alpha_uses_rgba_values() {
         enabled: Some(true),
         background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
         background_size: Some(42),
+        radius: Some(14),
         color: Some(ConfigColor::rgba(255, 255, 255, 184)),
         size: Some(18),
         position: WidgetPositionConfig {
@@ -381,6 +383,7 @@ fn input_alpha_uses_rgba_values() {
         ClearColor::rgba(18, 22, 30, 82)
     );
     assert_eq!(theme.keyboard_background_size, Some(42));
+    assert_eq!(theme.keyboard_radius, Some(12));
     assert_eq!(
         theme.keyboard_color,
         Some(ClearColor::rgba(232, 238, 249, 173))
@@ -405,6 +408,7 @@ fn input_alpha_uses_rgba_values() {
         Some(ClearColor::rgba(255, 255, 255, 184))
     );
     assert_eq!(theme.battery_background_size, Some(42));
+    assert_eq!(theme.battery_radius, Some(14));
     assert_eq!(theme.battery_size, Some(18));
     assert_eq!(
         theme.battery_position,
@@ -833,6 +837,10 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
         input_height: Some(54),
         input_font_size: Some(18),
         clock_font_size: Some(88),
+        keyboard_background_size: Some(42),
+        keyboard_radius: Some(12),
+        battery_background_size: Some(44),
+        battery_radius: Some(14),
         input_position: Some(super::WidgetPosition {
             halign: HorizontalAlign::Center,
             valign: VerticalAlign::Bottom,
@@ -896,6 +904,10 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     assert_eq!(scaled.input_height, Some(108));
     assert_eq!(scaled.input_font_size, Some(36));
     assert_eq!(scaled.clock_font_size, Some(176));
+    assert_eq!(scaled.keyboard_background_size, Some(84));
+    assert_eq!(scaled.keyboard_radius, Some(24));
+    assert_eq!(scaled.battery_background_size, Some(88));
+    assert_eq!(scaled.battery_radius, Some(28));
     assert_eq!(
         scaled
             .input_position

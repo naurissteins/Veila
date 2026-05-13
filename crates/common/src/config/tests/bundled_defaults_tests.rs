@@ -149,6 +149,7 @@ fn first_run_defaults_match_bundled_theme() {
         Some(RgbColor::rgba(255, 255, 255, 173))
     );
     assert_eq!(config.visuals.keyboard_background_size(), Some(46));
+    assert_eq!(config.visuals.keyboard_radius(), Some(23));
     assert_eq!(config.visuals.keyboard_size(), Some(2));
     assert_eq!(
         config.visuals.keyboard_position(),
@@ -169,6 +170,7 @@ fn first_run_defaults_match_bundled_theme() {
         Some(RgbColor::rgba(255, 255, 255, 173))
     );
     assert_eq!(config.visuals.battery_background_size(), Some(46));
+    assert_eq!(config.visuals.battery_radius(), Some(23));
     assert_eq!(config.visuals.battery_size(), Some(20));
     assert_eq!(
         config.visuals.battery_position(),

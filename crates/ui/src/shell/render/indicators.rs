@@ -53,6 +53,7 @@ impl ShellState {
                 rect.y,
                 self.theme.keyboard_background_color,
                 self.theme.keyboard_background_size,
+                self.theme.keyboard_radius,
                 block,
             );
         }
@@ -74,6 +75,7 @@ impl ShellState {
                 rect.y,
                 self.theme.keyboard_background_color,
                 self.theme.keyboard_background_size,
+                self.theme.keyboard_radius,
                 block,
             );
         }
@@ -102,6 +104,7 @@ impl ShellState {
                 rect.y,
                 self.theme.battery_background_color,
                 self.theme.battery_background_size,
+                self.theme.battery_radius,
                 battery.icon,
                 icon_style,
                 battery_icon_size,

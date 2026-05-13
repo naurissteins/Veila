@@ -161,6 +161,8 @@ fn loads_nested_visual_tables_with_precedence_for_auth_and_header_entries() {
         config.visuals.eye_icon_color(),
         Some(RgbColor::rgba(255, 255, 255, 184))
     );
+    assert_eq!(config.visuals.keyboard_radius(), Some(12));
+    assert_eq!(config.visuals.battery_radius(), Some(14));
 }
 
 #[test]
@@ -245,6 +247,7 @@ fn loads_nested_visual_tables_with_precedence_for_backdrop_and_widgets() {
         Some(RgbColor::rgba(18, 22, 30, 82))
     );
     assert_eq!(config.visuals.keyboard_background_size(), Some(42));
+    assert_eq!(config.visuals.keyboard_radius(), Some(12));
     assert_eq!(
         config.visuals.keyboard_color(),
         Some(RgbColor::rgba(232, 238, 249, 173))
@@ -269,6 +272,7 @@ fn loads_nested_visual_tables_with_precedence_for_backdrop_and_widgets() {
         Some(RgbColor::rgba(255, 255, 255, 184))
     );
     assert_eq!(config.visuals.battery_background_size(), Some(42));
+    assert_eq!(config.visuals.battery_radius(), Some(14));
     assert_eq!(config.visuals.battery_size(), Some(18));
     assert_eq!(
         config.visuals.battery_position(),

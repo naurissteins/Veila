@@ -105,6 +105,7 @@ halign = "right"
             [visuals.keyboard]
             background_color = "rgba(18, 22, 30, 0.32)"
             background_size = 42
+            radius = 12
             color = "#E8EEF9AD"
             size = 3
             halign = "right"
@@ -115,6 +116,7 @@ halign = "right"
             [visuals.battery]
             background_color = "rgba(18, 22, 30, 0.32)"
             background_size = 42
+            radius = 14
             color = "#FFFFFFB8"
             size = 18
             halign = "right"
