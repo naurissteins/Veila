@@ -110,7 +110,7 @@ fn battery_svg_icons_follow_style_color() {
         icon: AssetIcon::Battery(BatteryIcon::Full),
         width: 48,
         height: 48,
-        color: ClearColor::opaque(255, 255, 255),
+        color: ClearColor::opaque(249, 226, 175),
         padding: 0,
     };
     let pixels = rasterize_icon(key, icon_source(key.icon));
@@ -118,8 +118,24 @@ fn battery_svg_icons_follow_style_color() {
     assert!(
         pixels
             .chunks_exact(4)
-            .any(|pixel| { pixel[3] > 0 && pixel[0] > 220 && pixel[1] > 220 && pixel[2] > 220 })
+            .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] > 200 && pixel[2] < 200 })
     );
+}
+
+#[test]
+fn battery_svg_color_blends_into_argb_buffer_without_swapping_channels() {
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(48, 48)).expect("buffer");
+
+    draw_icon(
+        &mut buffer,
+        Rect::new(0, 0, 48, 48),
+        AssetIcon::Battery(BatteryIcon::Full),
+        IconStyle::new(ClearColor::opaque(249, 226, 175)).with_padding(0),
+    );
+
+    assert!(buffer.pixels().chunks_exact(4).any(|pixel| {
+        pixel[3] > 220 && pixel[2] > pixel[0].saturating_add(35) && pixel[1] > 190
+    }));
 }
 
 #[test]
@@ -136,7 +152,7 @@ fn caps_lock_svg_icon_follows_style_color() {
     assert!(
         pixels
             .chunks_exact(4)
-            .any(|pixel| { pixel[3] > 0 && pixel[0] < 150 && pixel[1] > 180 && pixel[2] > 220 })
+            .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] > 180 && pixel[2] < 150 })
     );
 }
 

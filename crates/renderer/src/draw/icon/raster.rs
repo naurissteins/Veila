@@ -203,9 +203,9 @@ fn recolor_svg_pixels(pixels: &mut [u8], color: crate::ClearColor) {
             continue;
         }
 
-        pixel[0] = ((u16::from(color.blue) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[0] = ((u16::from(color.red) * u16::from(alpha) + 127) / 255) as u8;
         pixel[1] = ((u16::from(color.green) * u16::from(alpha) + 127) / 255) as u8;
-        pixel[2] = ((u16::from(color.red) * u16::from(alpha) + 127) / 255) as u8;
+        pixel[2] = ((u16::from(color.blue) * u16::from(alpha) + 127) / 255) as u8;
     }
 }
 
