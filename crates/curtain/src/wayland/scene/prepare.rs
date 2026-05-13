@@ -144,7 +144,7 @@ impl CurtainApp {
 
         let mut buffer = background.clone();
         self.ui_shell
-            .render_backdrops_scaled(&mut buffer, render_scale);
+            .render_static_backdrops_scaled(&mut buffer, render_scale);
         let has_layers = self.render_static_scene_overlay(&mut buffer, render_scale);
         self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
         self.lock_surfaces[index].scene_base_revision = revision;

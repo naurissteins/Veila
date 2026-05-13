@@ -28,7 +28,7 @@ impl ShellState {
     }
 
     pub fn render_overlay(&self, buffer: &mut impl PixelBuffer) {
-        self.render_backdrops(buffer);
+        self.render_static_backdrops(buffer);
         self.render_static_overlay(buffer);
         self.render_dynamic_overlay(buffer);
     }
@@ -85,6 +85,7 @@ impl ShellState {
     }
 
     pub fn render_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
+        self.render_dynamic_backdrops(buffer);
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, true);
         self.render_role(

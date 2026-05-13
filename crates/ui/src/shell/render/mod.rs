@@ -13,8 +13,8 @@ pub(super) use cache::TextLayoutCache;
 
 use std::cell::RefCell;
 
-use veila_common::StatusDisplayMode;
 use veila_common::{BackdropMode, LayerKind};
+use veila_common::{BackdropShowWhen, StatusDisplayMode};
 use veila_renderer::{
     PixelBuffer,
     layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
@@ -186,8 +186,45 @@ impl ShellState {
     }
 
     pub fn render_backdrops(&self, buffer: &mut impl PixelBuffer) {
+        self.render_backdrops_matching(buffer, |_| true);
+    }
+
+    pub fn render_static_backdrops(&self, buffer: &mut impl PixelBuffer) {
+        self.render_backdrops_matching(buffer, |show_when| show_when == BackdropShowWhen::Always);
+    }
+
+    pub fn render_dynamic_backdrops(&self, buffer: &mut impl PixelBuffer) {
+        self.render_backdrops_matching(buffer, |show_when| show_when != BackdropShowWhen::Always);
+    }
+
+    pub fn render_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
+        let scale = scale.max(1);
+        if scale == 1 {
+            self.render_backdrops(buffer);
+            return;
+        }
+
+        let mut scaled = self.clone();
+        scaled.theme = self.theme.scaled_for_render(scale);
+        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
+        scaled.render_backdrops(buffer);
+    }
+
+    pub fn render_static_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
+        self.with_scaled_theme(scale, |shell| shell.render_static_backdrops(buffer));
+    }
+
+    pub fn render_dynamic_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
+        self.with_scaled_theme(scale, |shell| shell.render_dynamic_backdrops(buffer));
+    }
+
+    fn render_backdrops_matching(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        matches_show_when: impl Fn(BackdropShowWhen) -> bool,
+    ) {
         for backdrop in &self.theme.backdrops {
-            if !self.backdrop_visible(backdrop) {
+            if !matches_show_when(backdrop.show_when) || !self.backdrop_visible(backdrop) {
                 continue;
             }
             let rect = self.backdrop_rect(buffer.size(), backdrop.clone());
@@ -212,17 +249,17 @@ impl ShellState {
         }
     }
 
-    pub fn render_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
+    fn with_scaled_theme(&self, scale: u32, render: impl FnOnce(&ShellState)) {
         let scale = scale.max(1);
         if scale == 1 {
-            self.render_backdrops(buffer);
+            render(self);
             return;
         }
 
         let mut scaled = self.clone();
         scaled.theme = self.theme.scaled_for_render(scale);
         scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
-        scaled.render_backdrops(buffer);
+        render(&scaled);
     }
 
     pub fn render_layers(&self, buffer: &mut impl PixelBuffer) {

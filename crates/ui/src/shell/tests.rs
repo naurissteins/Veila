@@ -4,8 +4,8 @@ use std::{
 };
 
 use veila_common::{
-    BackdropMode, BackdropShowWhen, BatterySnapshot, NowPlayingSnapshot, WeatherCondition,
-    WeatherSnapshot, WeatherUnit,
+    BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot,
+    WeatherCondition, WeatherSnapshot, WeatherUnit,
 };
 use veila_common::{
     ClockFormat, DateFormat, HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign,
@@ -14,7 +14,7 @@ use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellKey, ShellState, ShellStatus, ShellTheme};
-use crate::shell::theme::{Backdrop, WidgetPosition, WidgetPositionTarget};
+use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
 
 #[test]
 fn edits_and_submits_password_text() {
@@ -857,7 +857,7 @@ fn updating_now_playing_snapshot_starts_transition_without_static_scene_revision
 }
 
 #[test]
-fn conditional_now_playing_backdrop_appearing_bumps_static_scene_revision() {
+fn conditional_now_playing_backdrop_appearing_keeps_static_scene_revision() {
     let mut shell = ShellState::new(
         ShellTheme {
             now_playing_enabled: true,
@@ -901,7 +901,82 @@ fn conditional_now_playing_backdrop_appearing_bumps_static_scene_revision() {
         fetched_at_unix: 1,
     }));
 
-    assert!(shell.static_scene_revision() > original);
+    assert_eq!(shell.static_scene_revision(), original);
+}
+
+#[test]
+fn static_scene_cache_variant_ignores_conditional_backdrop_visibility() {
+    let mut shell = ShellState::new(
+        ShellTheme {
+            now_playing_enabled: true,
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Solid,
+                show_when: BackdropShowWhen::NowPlaying,
+                color: veila_renderer::ClearColor::opaque(0, 0, 0),
+                blur_strength: 0,
+                radius: 0,
+                border_color: None,
+                border_width: 0,
+                full_width: false,
+                full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
+                width: 120,
+                height: 80,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            layers: vec![VisualLayer {
+                kind: LayerKind::Text,
+                text: String::from("test"),
+                color: veila_renderer::ClearColor::opaque(255, 255, 255),
+                background_color: None,
+                font_family: None,
+                font_weight: None,
+                font_style: None,
+                font_size: 16,
+                width: None,
+                height: None,
+                padding: 0,
+                radius: 0,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let hidden_variant = shell
+        .static_scene_cache_variant(1)
+        .expect("static scene variant");
+
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: Some(String::from("Artist")),
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+
+    let visible_variant = shell
+        .static_scene_cache_variant(1)
+        .expect("static scene variant");
+    assert_eq!(visible_variant, hidden_variant);
 }
 
 #[test]
@@ -922,7 +997,7 @@ fn now_playing_transition_clears_after_fade_duration() {
 }
 
 #[test]
-fn conditional_now_playing_backdrop_disappearing_after_fade_bumps_static_scene_revision() {
+fn conditional_now_playing_backdrop_disappearing_after_fade_keeps_static_scene_revision() {
     let mut shell = ShellState::new_with_username_and_widgets(
         ShellTheme {
             now_playing_enabled: true,
@@ -975,7 +1050,7 @@ fn conditional_now_playing_backdrop_disappearing_after_fade_bumps_static_scene_r
     thread::sleep(Duration::from_millis(20));
 
     assert!(shell.advance_animated_state());
-    assert!(shell.static_scene_revision() > after_clear);
+    assert_eq!(shell.static_scene_revision(), after_clear);
 }
 
 #[test]

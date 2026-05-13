@@ -21,7 +21,7 @@ impl ShellState {
 
         let mut variant = String::from("backdrop:v1");
         for backdrop in &self.theme.backdrops {
-            let visible = self.backdrop_visible(backdrop);
+            let visible = backdrop.show_when == veila_common::BackdropShowWhen::Always;
             let border = backdrop
                 .border_color
                 .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
@@ -89,13 +89,6 @@ impl ShellState {
             veila_common::BackdropShowWhen::Battery => self.battery_data_available(),
             veila_common::BackdropShowWhen::NowPlaying => self.now_playing_widget_visible(),
         }
-    }
-
-    pub(super) fn has_conditional_now_playing_backdrop(&self) -> bool {
-        self.theme
-            .backdrops
-            .iter()
-            .any(|backdrop| backdrop.show_when == veila_common::BackdropShowWhen::NowPlaying)
     }
 
     pub(super) fn now_playing_widget_visible(&self) -> bool {
@@ -380,18 +373,11 @@ impl ShellState {
             return;
         }
 
-        let was_visible = self.now_playing_widget_visible();
-
         self.now_playing_transition = Some(NowPlayingTransition {
             previous: self.now_playing.clone(),
             started_at: std::time::Instant::now(),
         });
         self.now_playing = next;
-        if self.has_conditional_now_playing_backdrop()
-            && was_visible != self.now_playing_widget_visible()
-        {
-            self.bump_static_scene_revision();
-        }
     }
 
     pub fn apply_theme(

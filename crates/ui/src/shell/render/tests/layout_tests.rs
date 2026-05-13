@@ -298,6 +298,142 @@ fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
 }
 
 #[test]
+fn static_backdrops_skip_conditional_now_playing_backdrop() {
+    let shell = ShellState::new_with_username_and_widgets(
+        ShellTheme {
+            now_playing_enabled: true,
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Solid,
+                show_when: BackdropShowWhen::NowPlaying,
+                color: ClearColor::opaque(255, 0, 0),
+                blur_strength: 0,
+                radius: 0,
+                border_color: None,
+                border_width: 0,
+                full_width: false,
+                full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
+                width: 120,
+                height: 80,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::default(),
+        None,
+        Some(NowPlayingSnapshot {
+            title: String::from("Track"),
+            artist: Some(String::from("Artist")),
+            artwork_path: None,
+            fetched_at_unix: 0,
+        }),
+    );
+
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(200, 120)).expect("buffer");
+    buffer.clear(ClearColor::opaque(0, 0, 0));
+    shell.render_static_backdrops(&mut buffer);
+
+    let center = &buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
+    assert_eq!(center, &[0, 0, 0, 255]);
+}
+
+#[test]
+fn dynamic_overlay_draws_conditional_backdrop_when_visual_layers_exist() {
+    let shell = ShellState::new_with_username_and_widgets(
+        ShellTheme {
+            now_playing_enabled: true,
+            backdrops: vec![Backdrop {
+                mode: BackdropMode::Solid,
+                show_when: BackdropShowWhen::NowPlaying,
+                color: ClearColor::opaque(255, 0, 0),
+                blur_strength: 0,
+                radius: 0,
+                border_color: None,
+                border_width: 0,
+                full_width: false,
+                full_height: false,
+                inset_top: 0,
+                inset_bottom: 0,
+                inset_left: 0,
+                inset_right: 0,
+                width: 120,
+                height: 80,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            layers: vec![VisualLayer {
+                kind: LayerKind::Text,
+                text: String::from("test"),
+                color: ClearColor::opaque(255, 255, 255),
+                background_color: None,
+                font_family: None,
+                font_weight: None,
+                font_style: None,
+                font_size: 1,
+                width: None,
+                height: None,
+                padding: 0,
+                radius: 0,
+                position: WidgetPosition {
+                    halign: HorizontalAlign::Left,
+                    valign: VerticalAlign::Top,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                },
+                z: 0,
+            }],
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        None,
+        true,
+        None,
+        None,
+        WeatherUnit::default(),
+        None,
+        Some(NowPlayingSnapshot {
+            title: String::from("Track"),
+            artist: Some(String::from("Artist")),
+            artwork_path: None,
+            fetched_at_unix: 0,
+        }),
+    );
+
+    let mut buffer = SoftwareBuffer::new(FrameSize::new(200, 120)).expect("buffer");
+    buffer.clear(ClearColor::opaque(0, 0, 0));
+    shell.render_static_backdrops(&mut buffer);
+    shell.render_static_overlay(&mut buffer);
+    shell.render_dynamic_overlay(&mut buffer);
+
+    let center = &buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
+    assert_eq!(center, &[0, 0, 255, 255]);
+}
+
+#[test]
 fn conditional_battery_backdrop_renders_only_when_battery_data_exists() {
     let theme = ShellTheme {
         battery_enabled: true,

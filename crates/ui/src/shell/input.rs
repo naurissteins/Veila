@@ -124,13 +124,7 @@ impl ShellState {
         if let Some(transition) = self.now_playing_transition.as_ref() {
             changed = true;
             if transition.started_at.elapsed() >= fade_duration {
-                let was_visible = self.now_playing_widget_visible();
                 self.now_playing_transition = None;
-                if self.has_conditional_now_playing_backdrop()
-                    && was_visible != self.now_playing_widget_visible()
-                {
-                    self.bump_static_scene_revision();
-                }
             }
         }
         if let ShellStatus::Pending {
