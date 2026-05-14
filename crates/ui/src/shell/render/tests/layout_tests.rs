@@ -554,6 +554,82 @@ fn conditional_battery_backdrop_follows_battery_data_not_icon_visibility() {
 }
 
 #[test]
+fn conditional_weather_backdrop_renders_only_when_widget_is_visible() {
+    let theme = ShellTheme {
+        weather_enabled: true,
+        backdrops: vec![Backdrop {
+            mode: BackdropMode::Solid,
+            show_when: BackdropShowWhen::Weather,
+            color: ClearColor::opaque(255, 0, 0),
+            blur_strength: 0,
+            radius: 0,
+            border_color: None,
+            border_width: 0,
+            full_width: false,
+            full_height: false,
+            inset_top: 0,
+            inset_bottom: 0,
+            inset_left: 0,
+            inset_right: 0,
+            width: 120,
+            height: 80,
+            position: WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Center,
+                x: 0,
+                y: 0,
+                target: WidgetPositionTarget::Screen,
+            },
+            z: 0,
+        }],
+        ..ShellTheme::default()
+    };
+
+    let hidden = ShellState::new_with_username_and_widgets(
+        theme.clone(),
+        None,
+        None,
+        None,
+        true,
+        Some(String::from("Riga")),
+        None,
+        WeatherUnit::default(),
+        None,
+        None,
+    );
+    let visible = ShellState::new_with_username_and_widgets(
+        theme,
+        None,
+        None,
+        None,
+        true,
+        Some(String::from("Riga")),
+        Some(WeatherSnapshot {
+            temperature_celsius: 7,
+            condition: WeatherCondition::Rain,
+            fetched_at_unix: 0,
+        }),
+        WeatherUnit::Celsius,
+        None,
+        None,
+    );
+
+    let mut hidden_buffer = SoftwareBuffer::new(FrameSize::new(200, 120)).expect("buffer");
+    hidden_buffer.clear(ClearColor::opaque(0, 0, 0));
+    hidden.render_backdrops(&mut hidden_buffer);
+
+    let mut visible_buffer = SoftwareBuffer::new(FrameSize::new(200, 120)).expect("buffer");
+    visible_buffer.clear(ClearColor::opaque(0, 0, 0));
+    visible.render_backdrops(&mut visible_buffer);
+
+    let hidden_center = &hidden_buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
+    let visible_center = &visible_buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
+
+    assert_eq!(hidden_center, &[0, 0, 0, 255]);
+    assert_eq!(visible_center, &[0, 0, 255, 255]);
+}
+
+#[test]
 fn custom_visual_layer_renders_background_surface() {
     let shell = ShellState::new(
         ShellTheme {

@@ -88,7 +88,12 @@ impl ShellState {
             veila_common::BackdropShowWhen::Always => true,
             veila_common::BackdropShowWhen::Battery => self.battery_data_available(),
             veila_common::BackdropShowWhen::NowPlaying => self.now_playing_widget_visible(),
+            veila_common::BackdropShowWhen::Weather => self.weather_widget_visible(),
         }
+    }
+
+    pub(super) fn weather_widget_visible(&self) -> bool {
+        self.theme.weather_enabled && self.weather.is_some()
     }
 
     pub(super) fn now_playing_widget_visible(&self) -> bool {

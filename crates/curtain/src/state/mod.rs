@@ -208,6 +208,9 @@ impl CurtainApp {
             .or_else(|| config.background.resolved_path());
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
+        let weather_location = effective_weather_location(&config);
+        let weather_snapshot =
+            effective_weather_snapshot(&config, options.weather_snapshot.clone());
         let battery_snapshot =
             effective_battery_snapshot(&config, options.battery_snapshot.clone());
         let mut ui_shell = ShellState::new_with_avatar_and_widgets(
@@ -215,8 +218,8 @@ impl CurtainApp {
             Some(config.visuals.input_placeholder()),
             config.visuals.username_text().map(str::to_owned),
             config.visuals.username_enabled(),
-            config.weather.normalized_location(),
-            options.weather_snapshot.clone(),
+            weather_location,
+            weather_snapshot,
             config.weather.unit,
             battery_snapshot,
             options.now_playing_snapshot.clone(),
@@ -662,10 +665,28 @@ pub(crate) fn effective_battery_snapshot(
     config.battery.mock_snapshot().or(runtime_snapshot)
 }
 
+pub(crate) fn effective_weather_location(config: &AppConfig) -> Option<String> {
+    config
+        .weather
+        .enabled
+        .then(|| config.weather.normalized_location())
+        .flatten()
+}
+
+pub(crate) fn effective_weather_snapshot(
+    config: &AppConfig,
+    runtime_snapshot: Option<WeatherSnapshot>,
+) -> Option<WeatherSnapshot> {
+    config.weather.enabled.then_some(runtime_snapshot).flatten()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{SurfaceSize, effective_battery_snapshot};
-    use veila_common::{AppConfig, BatterySnapshot};
+    use super::{
+        SurfaceSize, effective_battery_snapshot, effective_weather_location,
+        effective_weather_snapshot,
+    };
+    use veila_common::{AppConfig, BatterySnapshot, WeatherCondition, WeatherSnapshot};
 
     #[test]
     fn surface_size_tracks_logical_and_scaled_buffer_size() {
@@ -724,6 +745,47 @@ mod tests {
                 percent: 72,
                 charging: false,
             })
+        );
+    }
+
+    #[test]
+    fn effective_weather_data_is_hidden_when_weather_is_disabled() {
+        let mut config = AppConfig::default();
+        config.weather.enabled = false;
+        config.weather.location = Some(String::from("Riga"));
+
+        assert_eq!(effective_weather_location(&config), None);
+        assert_eq!(
+            effective_weather_snapshot(
+                &config,
+                Some(WeatherSnapshot {
+                    temperature_celsius: 7,
+                    condition: WeatherCondition::Rain,
+                    fetched_at_unix: 0,
+                }),
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn effective_weather_data_uses_runtime_snapshot_when_enabled() {
+        let mut config = AppConfig::default();
+        config.weather.enabled = true;
+        config.weather.location = Some(String::from("Riga"));
+        let snapshot = WeatherSnapshot {
+            temperature_celsius: 7,
+            condition: WeatherCondition::Rain,
+            fetched_at_unix: 0,
+        };
+
+        assert_eq!(
+            effective_weather_location(&config),
+            Some(String::from("Riga"))
+        );
+        assert_eq!(
+            effective_weather_snapshot(&config, Some(snapshot.clone())),
+            Some(snapshot)
         );
     }
 }

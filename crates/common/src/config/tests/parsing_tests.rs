@@ -247,11 +247,18 @@ fn parses_multiple_backdrops() {
             x = 24
             y = 32
             z = 0
+
+            [[visuals.backdrop]]
+            enabled = true
+            show_when = "weather"
+            mode = "solid"
+            width = 260
+            height = 120
         "##,
     )
     .expect("config should parse");
 
-    assert_eq!(config.visuals.backdrop.len(), 2);
+    assert_eq!(config.visuals.backdrop.len(), 3);
     assert_eq!(
         config.visuals.backdrop[0],
         BackdropVisualConfig {
@@ -293,6 +300,10 @@ fn parses_multiple_backdrops() {
     assert_eq!(config.visuals.backdrop[1].inset_right, None);
     assert_eq!(config.visuals.backdrop[1].width, Some(300));
     assert_eq!(config.visuals.backdrop[1].height, Some(180));
+    assert_eq!(
+        config.visuals.backdrop[2].show_when,
+        Some(BackdropShowWhen::Weather)
+    );
 }
 
 #[test]

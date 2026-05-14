@@ -7,7 +7,10 @@ use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_powe
 
 use crate::{
     background::BackgroundSlideshow,
-    state::{CurtainApp, background_generated, background_treatment, effective_battery_snapshot},
+    state::{
+        CurtainApp, background_generated, background_treatment, effective_battery_snapshot,
+        effective_weather_location, effective_weather_snapshot,
+    },
 };
 
 impl CurtainApp {
@@ -93,8 +96,8 @@ impl CurtainApp {
             config.visuals.username_text().map(str::to_owned),
             avatar_path,
             config.visuals.username_enabled(),
-            config.weather.normalized_location(),
-            self.weather_snapshot.clone(),
+            effective_weather_location(&config),
+            effective_weather_snapshot(&config, self.weather_snapshot.clone()),
             config.weather.unit,
             effective_battery_snapshot(&config, self.battery_snapshot.clone()),
             self.now_playing_snapshot.clone(),

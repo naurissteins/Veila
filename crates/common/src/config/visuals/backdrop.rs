@@ -17,6 +17,7 @@ pub enum BackdropShowWhen {
     Always,
     Battery,
     NowPlaying,
+    Weather,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
