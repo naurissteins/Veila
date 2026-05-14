@@ -18,6 +18,7 @@ pub struct DaemonOptions {
     pub list_themes: bool,
     pub status: bool,
     pub health: bool,
+    pub doctor: bool,
     pub version: bool,
     pub reload_config: bool,
     pub background_prewarm_only: bool,
@@ -98,6 +99,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if arg == "--doctor" {
+                options.doctor = true;
+                continue;
+            }
+
             if arg == "--version" {
                 options.version = true;
                 continue;
@@ -165,6 +171,7 @@ fn apply_control_positionals(options: &mut DaemonOptions, positional: &[String])
         "lock" => expect_no_extra_args(command, &positional[1..], || options.lock_now = true),
         "status" => expect_no_extra_args(command, &positional[1..], || options.status = true),
         "health" => expect_no_extra_args(command, &positional[1..], || options.health = true),
+        "doctor" => expect_no_extra_args(command, &positional[1..], || options.doctor = true),
         "reload" => {
             expect_no_extra_args(command, &positional[1..], || options.reload_config = true)
         }
@@ -369,6 +376,14 @@ mod tests {
     }
 
     #[test]
+    fn parses_doctor_argument() {
+        let options = DaemonOptions::parse_args(["veilad".to_string(), "--doctor".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.doctor);
+    }
+
+    #[test]
     fn parses_version_argument() {
         let options = DaemonOptions::parse_args(["veilad".to_string(), "--version".to_string()])
             .expect("arguments should parse");
@@ -415,6 +430,15 @@ mod tests {
                 .expect("arguments should parse");
 
         assert!(options.reload_config);
+    }
+
+    #[test]
+    fn parses_control_doctor_command() {
+        let options =
+            DaemonOptions::parse_control_args(["veila".to_string(), "doctor".to_string()])
+                .expect("arguments should parse");
+
+        assert!(options.doctor);
     }
 
     #[test]
