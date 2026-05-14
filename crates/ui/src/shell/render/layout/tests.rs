@@ -49,6 +49,20 @@ fn uses_configured_avatar_size_when_present() {
 }
 
 #[test]
+fn preserves_large_configured_avatar_size_on_1080p() {
+    let metrics = SceneMetrics::from_frame(1920, 1080, None, None, Some(450));
+
+    assert_eq!(metrics.avatar_size, 450);
+}
+
+#[test]
+fn clamps_configured_avatar_size_to_viewport_safety_limit() {
+    let metrics = SceneMetrics::from_frame(1920, 1080, None, None, Some(1200));
+
+    assert_eq!(metrics.avatar_size, 864);
+}
+
+#[test]
 fn uses_configured_input_width_when_present() {
     let metrics = SceneMetrics::from_frame(1280, 720, Some(280), None, None);
 

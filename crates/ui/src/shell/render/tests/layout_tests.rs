@@ -739,6 +739,7 @@ fn preview_grid_renders_centered_major_and_minor_lines() {
                 major_every: 4,
                 major_color: ClearColor::rgba(255, 255, 255, 38),
             }),
+            avatar_enabled: false,
             ..ShellTheme::default()
         },
         None,
@@ -755,7 +756,7 @@ fn preview_grid_renders_centered_major_and_minor_lines() {
     let minor = &buffer.pixels()[(5 * 200 + 140) * 4..(5 * 200 + 140) * 4 + 4];
     let background = &buffer.pixels()[(19 * 200 + 119) * 4..(19 * 200 + 119) * 4 + 4];
 
-    assert_eq!(center, &[47, 47, 47, 255]);
+    assert_eq!(center, &[38, 38, 38, 255]);
     assert_eq!(minor, &[20, 20, 20, 255]);
     assert_eq!(background, &[0, 0, 0, 255]);
 }
