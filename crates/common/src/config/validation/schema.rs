@@ -175,6 +175,7 @@ const LOCK: &[KeyRule] = &[
     key("auth_backoff_base_ms", Schema::Any),
     key("auth_backoff_max_seconds", Schema::Any),
     key("screen_off_seconds", Schema::Any),
+    key("power_off_secondary_outputs", Schema::Any),
     key("suspend_seconds", Schema::Any),
     key("suspend_only_on_battery", Schema::Any),
     key("skip_suspend_while_media_playing", Schema::Any),

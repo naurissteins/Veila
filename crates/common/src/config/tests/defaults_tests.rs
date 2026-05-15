@@ -56,6 +56,7 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(config.background.blur_strength, 0);
     assert_eq!(config.background.dim_strength, 34);
     assert!(config.background.tint.is_none());
+    assert!(!config.lock.power_off_secondary_outputs);
     assert!(!config.weather.enabled);
     assert!(config.weather.location.is_none());
     assert!(config.weather.clone().coordinates().is_none());

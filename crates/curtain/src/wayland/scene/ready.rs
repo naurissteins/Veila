@@ -146,6 +146,7 @@ impl CurtainApp {
 
         self.log_memory_snapshot("ready");
         self.maybe_start_avatar_load();
+        self.maybe_power_off_secondary_outputs();
     }
 
     fn refresh_scene_base_after_ready(&mut self) {

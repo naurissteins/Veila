@@ -124,6 +124,7 @@ impl CurtainApp {
             tracing::info!("woke locked outputs on deliberate input activity");
         }
         self.render_all_surfaces(queue_handle);
+        self.maybe_power_off_secondary_outputs();
         true
     }
 
@@ -151,7 +152,7 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
     ) -> Option<wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1::ZwlrOutputPowerV1>
     {
-        if !self.screen_off.enabled() {
+        if !self.output_power_control_enabled() {
             return None;
         }
 
@@ -168,6 +169,50 @@ impl CurtainApp {
 
             output_power.set_mode(mode);
             requested = true;
+        }
+        if requested && mode == zwlr_output_power_v1::Mode::On {
+            self.secondary_outputs_powered_off = false;
+        }
+        requested
+    }
+
+    pub(crate) fn maybe_power_off_secondary_outputs(&mut self) {
+        if self.secondary_outputs_powered_off
+            || !self.ready_notified
+            || !self.session_locked
+            || !self.secondary_output_power_enabled()
+        {
+            return;
+        }
+
+        if self.set_secondary_outputs_power_mode(zwlr_output_power_v1::Mode::Off) {
+            self.secondary_outputs_powered_off = true;
+            tracing::info!("powered off secondary locked outputs");
+        } else if self.output_power_manager.get().is_err() {
+            tracing::warn!(
+                "output power management is unavailable; secondary locked outputs stay on"
+            );
+        }
+    }
+
+    pub(crate) fn output_power_control_enabled(&self) -> bool {
+        self.screen_off.enabled() || self.secondary_output_power_enabled()
+    }
+
+    pub(crate) fn secondary_output_power_enabled(&self) -> bool {
+        self.power_off_secondary_outputs
+            && matches!(self.ui_output_mode, veila_common::OutputUiMode::Single)
+    }
+
+    fn set_secondary_outputs_power_mode(&mut self, mode: zwlr_output_power_v1::Mode) -> bool {
+        let mut requested = false;
+        for index in 0..self.lock_surfaces.len() {
+            if !self.output_role_for_surface(index).renders_shell()
+                && let Some(output_power) = self.lock_surfaces[index].output_power.as_ref()
+            {
+                output_power.set_mode(mode);
+                requested = true;
+            }
         }
         requested
     }

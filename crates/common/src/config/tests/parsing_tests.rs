@@ -486,6 +486,19 @@ fn parses_lock_screen_off_seconds() {
 }
 
 #[test]
+fn parses_power_off_secondary_outputs() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            power_off_secondary_outputs = true
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.lock.power_off_secondary_outputs);
+}
+
+#[test]
 fn parses_lock_suspend_seconds() {
     let config = AppConfig::from_toml_str(
         r#"

@@ -30,6 +30,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.background.dim_strength, 0);
     assert!(config.background.tint.is_none());
     assert!(!config.lock.suspend_only_on_battery);
+    assert!(!config.lock.power_off_secondary_outputs);
     assert!(!config.weather.enabled);
     assert!(config.weather.location.is_none());
     assert!(config.weather.clone().coordinates().is_none());

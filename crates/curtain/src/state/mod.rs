@@ -151,6 +151,8 @@ pub(crate) struct CurtainApp {
     pub(crate) background_color: ClearColor,
     pub(crate) ui_output_mode: OutputUiMode,
     pub(crate) ui_output_name: Option<String>,
+    pub(crate) power_off_secondary_outputs: bool,
+    pub(crate) secondary_outputs_powered_off: bool,
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
     pub(crate) battery_snapshot: Option<BatterySnapshot>,
     pub(crate) now_playing_snapshot: Option<NowPlayingSnapshot>,
@@ -304,12 +306,17 @@ impl CurtainApp {
             .screen_off_seconds
             .filter(|seconds| *seconds > 0)
             .map(Duration::from_secs);
+        let power_off_secondary_outputs =
+            !emergency_active && config.lock.power_off_secondary_outputs;
         let output_power_manager = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
 
-        if screen_off_delay.is_some() && output_power_manager.get().is_err() {
+        if (screen_off_delay.is_some() || power_off_secondary_outputs)
+            && output_power_manager.get().is_err()
+        {
             tracing::warn!(
                 screen_off_seconds = config.lock.screen_off_seconds,
-                "output power management is unavailable; locked screen-off timer is disabled"
+                power_off_secondary_outputs,
+                "output power management is unavailable; locked output power features are disabled"
             );
         }
 
@@ -378,6 +385,8 @@ impl CurtainApp {
             } else {
                 config.visuals.ui_output_name().map(str::to_owned)
             },
+            power_off_secondary_outputs,
+            secondary_outputs_powered_off: false,
             weather_snapshot: options.weather_snapshot,
             battery_snapshot: options.battery_snapshot,
             now_playing_snapshot: options.now_playing_snapshot,
@@ -485,6 +494,13 @@ impl CurtainApp {
                 .and_then(|entry| entry.output_power.as_ref())
         {
             output_power.set_mode(zwlr_output_power_v1::Mode::Off);
+        } else if self.secondary_outputs_powered_off {
+            let index = self.lock_surfaces.len().saturating_sub(1);
+            if self.output_role_for_surface(index) == OutputRole::SecondaryCurtain
+                && let Some(output_power) = self.lock_surfaces[index].output_power.as_ref()
+            {
+                output_power.set_mode(zwlr_output_power_v1::Mode::Off);
+            }
         }
 
         Ok(())
@@ -551,8 +567,13 @@ impl CurtainApp {
             BackgroundTreatment::default(),
         )
         .context("failed to prepare emergency fallback background")?;
+        if self.secondary_outputs_powered_off {
+            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
+        }
         self.ui_output_mode = OutputUiMode::All;
         self.ui_output_name = None;
+        self.power_off_secondary_outputs = false;
+        self.secondary_outputs_powered_off = false;
         self.pending_pre_ready_redraw = true;
 
         for surface in &mut self.lock_surfaces {
@@ -594,8 +615,9 @@ impl CurtainApp {
             return Ok(());
         }
 
-        if self.outputs_powered_off() {
+        if self.outputs_powered_off() || self.secondary_outputs_powered_off {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
+            self.secondary_outputs_powered_off = false;
         }
 
         if let Some(session_lock) = self.session_lock.take()

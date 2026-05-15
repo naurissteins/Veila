@@ -21,6 +21,8 @@ pub struct LockConfig {
     #[serde(default)]
     pub screen_off_seconds: Option<u64>,
     #[serde(default)]
+    pub power_off_secondary_outputs: bool,
+    #[serde(default)]
     pub suspend_seconds: Option<u64>,
     #[serde(default)]
     pub suspend_only_on_battery: bool,
@@ -41,6 +43,7 @@ impl Default for LockConfig {
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
             screen_off_seconds: None,
+            power_off_secondary_outputs: false,
             suspend_seconds: None,
             suspend_only_on_battery: false,
             skip_suspend_while_media_playing: false,

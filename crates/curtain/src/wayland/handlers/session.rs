@@ -9,6 +9,7 @@ use smithay_client_toolkit::{
         SessionLock, SessionLockHandler, SessionLockSurface, SessionLockSurfaceConfigure,
     },
 };
+use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 
 use crate::state::{CurtainApp, duration_ms_between, elapsed_ms, elapsed_us};
 
@@ -103,6 +104,12 @@ impl OutputHandler for CurtainApp {
             }
         }
         self.lock_surfaces.retain(|entry| entry.output != output);
+        if self.secondary_outputs_powered_off {
+            if self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On) {
+                tracing::info!("woke remaining locked outputs after output topology changed");
+            }
+            self.maybe_power_off_secondary_outputs();
+        }
     }
 }
 

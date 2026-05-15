@@ -54,6 +54,7 @@ impl CurtainApp {
         self.slideshow = slideshow;
         self.ui_output_mode = config.visuals.output_ui_mode();
         self.ui_output_name = config.visuals.ui_output_name().map(str::to_owned);
+        self.power_off_secondary_outputs = config.lock.power_off_secondary_outputs;
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
         let screen_off_delay = config
@@ -62,16 +63,23 @@ impl CurtainApp {
             .filter(|seconds| *seconds > 0)
             .map(std::time::Duration::from_secs);
         let should_wake_outputs = self.outputs_powered_off() && screen_off_delay.is_none();
+        let should_wake_secondary_outputs = self.secondary_outputs_powered_off;
         self.screen_off
             .set_delay(screen_off_delay, std::time::Instant::now());
-        if self.screen_off.enabled() && self.output_power_manager.get().is_err() {
+        if self.output_power_control_enabled() && self.output_power_manager.get().is_err() {
             tracing::warn!(
                 screen_off_seconds = config.lock.screen_off_seconds,
-                "output power management is unavailable; locked screen-off timer is disabled"
+                power_off_secondary_outputs = self.power_off_secondary_outputs,
+                "output power management is unavailable; locked output power features are disabled"
             );
         }
+        if (should_wake_outputs || should_wake_secondary_outputs)
+            && !self.output_power_control_enabled()
+        {
+            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
+        }
         for index in 0..self.lock_surfaces.len() {
-            if self.screen_off.enabled() {
+            if self.output_power_control_enabled() {
                 if self.lock_surfaces[index].output_power.is_none() {
                     let output = self.lock_surfaces[index].output.clone();
                     self.lock_surfaces[index].output_power =
@@ -86,6 +94,9 @@ impl CurtainApp {
         }
         if self.outputs_powered_off() && self.screen_off.enabled() {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::Off);
+        }
+        if should_wake_secondary_outputs {
+            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         self.avatar_path = avatar_path.clone();
@@ -123,6 +134,7 @@ impl CurtainApp {
         );
 
         self.render_all_surfaces(queue_handle);
+        self.maybe_power_off_secondary_outputs();
         self.maybe_start_background_render();
     }
 }
