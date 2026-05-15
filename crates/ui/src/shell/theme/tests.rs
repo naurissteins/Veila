@@ -162,6 +162,7 @@ fn input_alpha_uses_rgba_values() {
         inset_right: Some(26),
         width: Some(520),
         height: Some(420),
+        rotate: Some(-15),
         z: Some(2),
         position: WidgetPositionConfig {
             halign: Some(HorizontalAlign::Right),
@@ -454,6 +455,7 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.backdrops[0].inset_right, 26);
     assert_eq!(theme.backdrops[0].width, 520);
     assert_eq!(theme.backdrops[0].height, 420);
+    assert_eq!(theme.backdrops[0].rotate, 345);
     assert_eq!(
         theme.backdrops[0].position,
         super::WidgetPosition {
@@ -870,6 +872,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
             inset_right: 40,
             width: 400,
             height: 220,
+            rotate: 15,
             position: super::WidgetPosition {
                 halign: HorizontalAlign::Right,
                 valign: VerticalAlign::Center,
@@ -925,6 +928,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     assert_eq!(scaled.backdrops[0].width, 800);
     assert_eq!(scaled.backdrops[0].height, 440);
     assert_eq!(scaled.backdrops[0].radius, 48);
+    assert_eq!(scaled.backdrops[0].rotate, 15);
     assert_eq!(scaled.backdrops[0].color, ClearColor::rgba(20, 30, 40, 160));
     assert_eq!(scaled.layers[0].font_size, 48);
     assert_eq!(scaled.layers[0].width, Some(240));

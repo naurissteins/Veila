@@ -140,6 +140,7 @@ halign = "right"
             border_width = 2
             width = 520
             height = 420
+            rotate = 12
             halign = "right"
             valign = "bottom"
             x = -12

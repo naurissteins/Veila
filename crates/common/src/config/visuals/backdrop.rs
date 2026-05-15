@@ -57,6 +57,8 @@ pub struct BackdropVisualConfig {
     #[serde(default)]
     pub height: Option<u16>,
     #[serde(default)]
+    pub rotate: Option<i16>,
+    #[serde(default)]
     pub z: Option<i16>,
     #[serde(flatten)]
     pub position: WidgetPositionConfig,
@@ -82,6 +84,7 @@ impl Default for BackdropVisualConfig {
             inset_right: Some(0),
             width: Some(560),
             height: Some(600),
+            rotate: Some(0),
             z: Some(0),
             position: WidgetPositionConfig {
                 halign: Some(super::HorizontalAlign::Center),

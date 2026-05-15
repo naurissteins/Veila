@@ -5,11 +5,16 @@ use image::RgbaImage;
 use crate::{PixelBuffer, blur::blur_rgba, shape::Rect};
 
 use super::shapes::layer_mask;
-use super::{BackdropLayerShape, BackdropLayerStyle};
+use super::{BackdropLayerShape, BackdropLayerStyle, LayerSurface};
 
 const SLOW_LAYER_BLUR_MS: u64 = 4;
 
-pub fn blur_region(buffer: &mut impl PixelBuffer, rect: Rect, style: BackdropLayerStyle) {
+pub fn blur_region(
+    buffer: &mut impl PixelBuffer,
+    surface: LayerSurface,
+    style: BackdropLayerStyle,
+) {
+    let rect = surface.bounds;
     let width = rect.width.max(0) as u32;
     let height = rect.height.max(0) as u32;
     if width == 0 || height == 0 {
@@ -24,13 +29,16 @@ pub fn blur_region(buffer: &mut impl PixelBuffer, rect: Rect, style: BackdropLay
     };
     let blurred = blur_rgba(&region, style.blur_radius, 24);
 
-    if matches!(style.shape, BackdropLayerShape::Panel) && style.radius <= 0 {
+    if surface.rotate_degrees == 0
+        && matches!(style.shape, BackdropLayerShape::Panel)
+        && style.radius <= 0
+    {
         write_rgba_region(buffer, rect, &blurred, fully_opaque);
         log_blur_timing(started_at, width, height, style, fully_opaque);
         return;
     }
 
-    let rgba = apply_shape_mask(region, blurred, style, rect.width, rect.height);
+    let rgba = apply_shape_mask(region, blurred, style, surface);
     write_rgba_region(buffer, rect, &rgba, false);
     log_blur_timing(started_at, width, height, style, false);
 }
@@ -108,10 +116,11 @@ fn apply_shape_mask(
     original: RgbaImage,
     blurred: RgbaImage,
     style: BackdropLayerStyle,
-    width: i32,
-    height: i32,
+    surface: LayerSurface,
 ) -> RgbaImage {
-    let Some(mask) = layer_mask(width as u32, height as u32, style) else {
+    let width = surface.bounds.width;
+    let height = surface.bounds.height;
+    let Some(mask) = layer_mask(surface, style) else {
         return blurred;
     };
     let mut output = original;

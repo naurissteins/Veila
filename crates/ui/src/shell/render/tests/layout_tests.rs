@@ -25,6 +25,7 @@ fn backdrop_rect_supports_center_and_right_alignment() {
                 inset_right: 0,
                 width: 520,
                 height: 420,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Center,
                     valign: VerticalAlign::Bottom,
@@ -58,6 +59,7 @@ fn backdrop_rect_supports_center_and_right_alignment() {
                 inset_right: 0,
                 width: 520,
                 height: 600,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Right,
                     valign: VerticalAlign::Top,
@@ -108,6 +110,7 @@ fn backdrop_rect_supports_full_width_and_height() {
                 inset_right: 0,
                 width: 520,
                 height: 420,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Right,
                     valign: VerticalAlign::Bottom,
@@ -152,6 +155,7 @@ fn backdrop_rect_applies_full_height_insets() {
                 inset_right: 0,
                 width: 540,
                 height: 420,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Left,
                     valign: VerticalAlign::Center,
@@ -196,6 +200,7 @@ fn widget_position_can_center_inside_backdrop_rect() {
                 inset_right: 0,
                 width: 540,
                 height: 420,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Right,
                     valign: VerticalAlign::Center,
@@ -251,6 +256,7 @@ fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
             inset_right: 0,
             width: 120,
             height: 80,
+            rotate: 0,
             position: WidgetPosition {
                 halign: HorizontalAlign::Center,
                 valign: VerticalAlign::Center,
@@ -318,6 +324,7 @@ fn static_backdrops_skip_conditional_now_playing_backdrop() {
                 inset_right: 0,
                 width: 120,
                 height: 80,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Center,
                     valign: VerticalAlign::Center,
@@ -374,6 +381,7 @@ fn dynamic_overlay_draws_conditional_backdrop_when_visual_layers_exist() {
                 inset_right: 0,
                 width: 120,
                 height: 80,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Center,
                     valign: VerticalAlign::Center,
@@ -453,6 +461,7 @@ fn conditional_battery_backdrop_renders_only_when_battery_data_exists() {
             inset_right: 0,
             width: 120,
             height: 80,
+            rotate: 0,
             position: WidgetPosition {
                 halign: HorizontalAlign::Center,
                 valign: VerticalAlign::Center,
@@ -517,6 +526,7 @@ fn conditional_battery_backdrop_follows_battery_data_not_icon_visibility() {
             inset_right: 0,
             width: 120,
             height: 80,
+            rotate: 0,
             position: WidgetPosition {
                 halign: HorizontalAlign::Center,
                 valign: VerticalAlign::Center,
@@ -573,6 +583,7 @@ fn conditional_weather_backdrop_renders_only_when_widget_is_visible() {
             inset_right: 0,
             width: 120,
             height: 80,
+            rotate: 0,
             position: WidgetPosition {
                 halign: HorizontalAlign::Center,
                 valign: VerticalAlign::Center,

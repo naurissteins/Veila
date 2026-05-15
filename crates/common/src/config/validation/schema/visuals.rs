@@ -269,6 +269,7 @@ const BACKDROP: &[KeyRule] = &[
     key("inset_right", Schema::Any),
     key("width", Schema::Any),
     key("height", Schema::Any),
+    key("rotate", Schema::Any),
     key("z", Schema::Any),
     key("halign", Schema::Any),
     key("valign", Schema::Any),

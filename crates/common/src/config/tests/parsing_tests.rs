@@ -229,6 +229,7 @@ fn parses_multiple_backdrops() {
             inset_right = 26
             width = 520
             height = 420
+            rotate = -12
             halign = "right"
             valign = "bottom"
             x = -12
@@ -279,6 +280,7 @@ fn parses_multiple_backdrops() {
             inset_right: Some(26),
             width: Some(520),
             height: Some(420),
+            rotate: Some(-12),
             z: Some(2),
             position: WidgetPositionConfig {
                 halign: Some(HorizontalAlign::Right),

@@ -1,7 +1,7 @@
 use image::RgbaImage;
-use tiny_skia::{FillRule, Paint, PathBuilder, Transform};
+use tiny_skia::{FillRule, Paint, PathBuilder};
 
-use super::{BackdropLayerAlignment, BackdropLayerShape, BackdropLayerStyle};
+use super::{BackdropLayerAlignment, BackdropLayerShape, BackdropLayerStyle, LayerSurface};
 
 pub fn layer_path(width: i32, height: i32, style: BackdropLayerStyle) -> Option<tiny_skia::Path> {
     match style.shape {
@@ -10,19 +10,15 @@ pub fn layer_path(width: i32, height: i32, style: BackdropLayerStyle) -> Option<
     }
 }
 
-pub fn layer_mask(width: u32, height: u32, style: BackdropLayerStyle) -> Option<RgbaImage> {
+pub fn layer_mask(surface: LayerSurface, style: BackdropLayerStyle) -> Option<RgbaImage> {
+    let width = surface.bounds.width.max(1) as u32;
+    let height = surface.bounds.height.max(1) as u32;
     let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
-    let path = layer_path(width as i32, height as i32, style)?;
+    let path = layer_path(surface.rect.width, surface.rect.height, style)?;
     let mut paint = Paint::default();
     paint.set_color_rgba8(255, 255, 255, 255);
     paint.anti_alias = true;
-    pixmap.fill_path(
-        &path,
-        &paint,
-        FillRule::Winding,
-        Transform::identity(),
-        None,
-    );
+    pixmap.fill_path(&path, &paint, FillRule::Winding, surface.transform(), None);
     RgbaImage::from_raw(width, height, pixmap.take())
 }
 

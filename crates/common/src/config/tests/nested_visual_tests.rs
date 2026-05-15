@@ -233,6 +233,7 @@ fn loads_nested_visual_tables_with_precedence_for_backdrop_and_widgets() {
     assert_eq!(config.visuals.backdrop[0].border_width, Some(2));
     assert_eq!(config.visuals.backdrop[0].width, Some(520));
     assert_eq!(config.visuals.backdrop[0].height, Some(420));
+    assert_eq!(config.visuals.backdrop[0].rotate, Some(12));
     assert_eq!(
         config.visuals.backdrop[0].position,
         WidgetPositionConfig {

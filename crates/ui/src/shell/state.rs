@@ -19,14 +19,14 @@ impl ShellState {
             return None;
         }
 
-        let mut variant = String::from("backdrop:v1");
+        let mut variant = String::from("backdrop:v2");
         for backdrop in &self.theme.backdrops {
             let visible = backdrop.show_when == veila_common::BackdropShowWhen::Always;
             let border = backdrop
                 .border_color
                 .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
             variant.push_str(&format!(
-                ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
                 backdrop.mode,
                 backdrop.show_when as u8,
                 visible as u8,
@@ -42,6 +42,7 @@ impl ShellState {
                 backdrop.inset_right,
                 backdrop.width,
                 backdrop.height,
+                backdrop.rotate,
                 backdrop.z,
                 backdrop.color.red,
                 backdrop.color.green,
@@ -70,7 +71,7 @@ impl ShellState {
     pub fn static_scene_cache_variant(&self, scale: u32) -> Option<String> {
         self.has_visual_layers().then(|| {
             format!(
-                "static-scene:v1:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+                "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
                 scale.max(1),
                 self.theme,
                 self.hint_text,

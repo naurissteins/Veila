@@ -30,6 +30,39 @@ fn draws_solid_backdrop_layer() {
 }
 
 #[test]
+fn rotated_solid_backdrop_layer_uses_rotated_bounds() {
+    let mut buffer =
+        SoftwareBuffer::solid(FrameSize::new(8, 6), ClearColor::opaque(0, 0, 0)).unwrap();
+
+    draw_backdrop_layer(
+        &mut buffer,
+        Rect::new(2, 2, 4, 2),
+        BackdropLayerStyle::new(
+            BackdropLayerMode::Solid,
+            BackdropLayerShape::Panel,
+            ClearColor::opaque(255, 0, 0),
+            0,
+            0,
+            None,
+            0,
+        )
+        .with_rotation(90),
+    );
+
+    let pixel_offset = |x: usize, y: usize| (y * 8 + x) * 4;
+    let rotated_top = pixel_offset(4, 1);
+    let original_left = pixel_offset(2, 2);
+    assert_eq!(
+        &buffer.pixels()[rotated_top..rotated_top + 4],
+        &[0, 0, 255, 255]
+    );
+    assert_eq!(
+        &buffer.pixels()[original_left..original_left + 4],
+        &[0, 0, 0, 255]
+    );
+}
+
+#[test]
 fn blur_backdrop_layer_changes_region_pixels() {
     let mut buffer =
         SoftwareBuffer::solid(FrameSize::new(4, 4), ClearColor::opaque(0, 0, 0)).unwrap();

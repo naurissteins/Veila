@@ -244,7 +244,8 @@ impl ShellState {
                     backdrop.radius,
                     backdrop.border_color,
                     backdrop.border_width,
-                ),
+                )
+                .with_rotation(backdrop.rotate),
             );
         }
     }

@@ -877,6 +877,7 @@ fn conditional_now_playing_backdrop_appearing_keeps_static_scene_revision() {
                 inset_right: 0,
                 width: 120,
                 height: 80,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Center,
                     valign: VerticalAlign::Center,
@@ -925,6 +926,7 @@ fn static_scene_cache_variant_ignores_conditional_backdrop_visibility() {
                 inset_right: 0,
                 width: 120,
                 height: 80,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Center,
                     valign: VerticalAlign::Center,
@@ -980,6 +982,45 @@ fn static_scene_cache_variant_ignores_conditional_backdrop_visibility() {
 }
 
 #[test]
+fn backdrop_cache_variant_includes_rotation() {
+    let mut theme = ShellTheme {
+        backdrops: vec![Backdrop {
+            mode: BackdropMode::Solid,
+            show_when: BackdropShowWhen::Always,
+            color: veila_renderer::ClearColor::opaque(0, 0, 0),
+            blur_strength: 0,
+            radius: 0,
+            border_color: None,
+            border_width: 0,
+            full_width: false,
+            full_height: false,
+            inset_top: 0,
+            inset_bottom: 0,
+            inset_left: 0,
+            inset_right: 0,
+            width: 120,
+            height: 80,
+            rotate: 0,
+            position: WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Center,
+                x: 0,
+                y: 0,
+                target: WidgetPositionTarget::Screen,
+            },
+            z: 0,
+        }],
+        ..ShellTheme::default()
+    };
+    let unrotated = ShellState::new(theme.clone(), None, None, true).backdrop_cache_variant();
+
+    theme.backdrops[0].rotate = 12;
+    let rotated = ShellState::new(theme, None, None, true).backdrop_cache_variant();
+
+    assert_ne!(unrotated, rotated);
+}
+
+#[test]
 fn now_playing_transition_clears_after_fade_duration() {
     let mut shell = ShellState::default();
     shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
@@ -1018,6 +1059,7 @@ fn conditional_now_playing_backdrop_disappearing_after_fade_keeps_static_scene_r
                 inset_right: 0,
                 width: 120,
                 height: 80,
+                rotate: 0,
                 position: WidgetPosition {
                     halign: HorizontalAlign::Center,
                     valign: VerticalAlign::Center,

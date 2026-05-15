@@ -46,6 +46,7 @@ pub struct Backdrop {
     pub inset_right: i32,
     pub width: i32,
     pub height: i32,
+    pub rotate: i16,
     pub position: WidgetPosition,
     pub z: i32,
 }
@@ -538,6 +539,7 @@ fn resolve_backdrops(config: &AppConfig) -> (Vec<Backdrop>, HashMap<String, usiz
                     inset_right: i32::from(backdrop.inset_right.unwrap_or(0)).clamp(0, 4_096),
                     width: i32::from(backdrop.width.unwrap_or(560)).max(1),
                     height: i32::from(backdrop.height.unwrap_or(600)).max(1),
+                    rotate: normalize_rotation(backdrop.rotate.unwrap_or(0)),
                     position: WidgetPosition {
                         halign: backdrop.position.halign.unwrap_or(HorizontalAlign::Center),
                         valign: backdrop.position.valign.unwrap_or(VerticalAlign::Top),
@@ -566,6 +568,10 @@ fn resolve_backdrops(config: &AppConfig) -> (Vec<Backdrop>, HashMap<String, usiz
             .collect(),
         named_backdrops,
     )
+}
+
+fn normalize_rotation(degrees: i16) -> i16 {
+    degrees.rem_euclid(360)
 }
 
 fn resolve_grid(config: &AppConfig) -> Option<PreviewGrid> {

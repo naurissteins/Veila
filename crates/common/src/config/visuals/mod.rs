@@ -258,6 +258,7 @@ impl Default for VisualConfig {
                 inset_right: None,
                 width: Some(400),
                 height: Some(60),
+                rotate: Some(0),
                 z: Some(0),
                 position: WidgetPositionConfig {
                     halign: Some(HorizontalAlign::Right),

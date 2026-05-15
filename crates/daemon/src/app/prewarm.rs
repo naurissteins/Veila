@@ -607,6 +607,7 @@ fn scaled_backdrop_specs(
             inset_bottom: scale_i32(backdrop.inset_bottom, scale),
             inset_left: scale_i32(backdrop.inset_left, scale),
             inset_right: scale_i32(backdrop.inset_right, scale),
+            rotate: backdrop.rotate,
             z: backdrop.z,
             color: backdrop.color,
             blur_strength: backdrop.blur_strength,
@@ -689,7 +690,8 @@ fn apply_backdrop_specs(
                 backdrop.radius,
                 backdrop.border_color,
                 backdrop.border_width,
-            ),
+            )
+            .with_rotation(backdrop.rotate),
         );
     }
 }
@@ -721,6 +723,7 @@ fn backdrop_prewarm_specs(config: &AppConfig) -> Vec<BackdropPrewarmSpec> {
             valign: backdrop.position.valign.unwrap_or(VerticalAlign::Top),
             x: i32::from(backdrop.position.x.unwrap_or(0)),
             y: i32::from(backdrop.position.y.unwrap_or(0)),
+            rotate: normalize_rotation(backdrop.rotate.unwrap_or(0)),
             z: i32::from(backdrop.z.unwrap_or(0)),
         })
         .collect::<Vec<_>>();
@@ -731,14 +734,14 @@ fn backdrop_prewarm_specs(config: &AppConfig) -> Vec<BackdropPrewarmSpec> {
 fn backdrop_variant(backdrops: &[BackdropPrewarmSpec], scale: i32) -> String {
     use std::fmt::Write as _;
 
-    let mut variant = String::from("backdrop:v1");
+    let mut variant = String::from("backdrop:v2");
     for backdrop in backdrops {
         let border = backdrop
             .border_color
             .unwrap_or_else(|| ClearColor::rgba(0, 0, 0, 0));
         let _ = write!(
             &mut variant,
-            ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+            ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
             backdrop.mode,
             backdrop.show_when as u8,
             backdrop.visible as u8,
@@ -754,6 +757,7 @@ fn backdrop_variant(backdrops: &[BackdropPrewarmSpec], scale: i32) -> String {
             backdrop.inset_right,
             backdrop.width,
             backdrop.height,
+            backdrop.rotate,
             backdrop.z,
             backdrop.color.red,
             backdrop.color.green,
@@ -773,6 +777,10 @@ fn backdrop_variant(backdrops: &[BackdropPrewarmSpec], scale: i32) -> String {
         let _ = write!(&mut variant, ":render-scale:{scale}");
     }
     variant
+}
+
+fn normalize_rotation(degrees: i16) -> i16 {
+    degrees.rem_euclid(360)
 }
 
 fn anchored_block_x(frame_width: i32, width: i32, halign: HorizontalAlign, x: i32) -> i32 {
@@ -982,6 +990,7 @@ struct BackdropPrewarmSpec {
     inset_bottom: i32,
     inset_left: i32,
     inset_right: i32,
+    rotate: i16,
     z: i32,
     color: ClearColor,
     blur_strength: u8,
@@ -1208,6 +1217,7 @@ mod tests {
             inset_bottom: 36,
             inset_left: 0,
             inset_right: 0,
+            rotate: 0,
             z: 0,
             color: ClearColor::rgba(0, 0, 0, 26),
             blur_strength: 12,
@@ -1240,6 +1250,7 @@ mod tests {
             inset_bottom: 36,
             inset_left: 0,
             inset_right: 0,
+            rotate: 12,
             z: 0,
             color: ClearColor::rgba(0, 0, 0, 26),
             blur_strength: 12,
@@ -1250,7 +1261,7 @@ mod tests {
 
         assert_eq!(
             backdrop_variant(&[backdrop], 2),
-            "backdrop:v1:Blur:0:1:Left:1:0:0:0:1:24:36:0:0:540:600:0:0:0:0:26:12:0:1:255:255:255:24:render-scale:2"
+            "backdrop:v2:Blur:0:1:Left:1:0:0:0:1:24:36:0:0:540:600:12:0:0:0:0:26:12:0:1:255:255:255:24:render-scale:2"
         );
     }
 }
