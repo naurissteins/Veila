@@ -49,6 +49,20 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     let acquire_lock_elapsed_ms = elapsed_ms(acquire_lock_started_at);
     let acquire_lock_elapsed_us = elapsed_us(acquire_lock_started_at);
 
+    app.latency_timings.wayland_connect_ms = wayland_connect_elapsed_ms;
+    app.latency_timings.wayland_connect_us = wayland_connect_elapsed_us;
+    app.latency_timings.registry_ms = registry_elapsed_ms;
+    app.latency_timings.registry_us = registry_elapsed_us;
+    app.latency_timings.event_loop_ms = event_loop_elapsed_ms;
+    app.latency_timings.event_loop_us = event_loop_elapsed_us;
+    app.latency_timings.app_init_ms = app_init_elapsed_ms;
+    app.latency_timings.app_init_us = app_init_elapsed_us;
+    app.latency_timings.lock_request_ms = acquire_lock_elapsed_ms;
+    app.latency_timings.lock_request_us = acquire_lock_elapsed_us;
+    app.latency_timings.startup_prepared_ms = elapsed_ms(startup_started_at);
+    app.latency_timings.startup_prepared_us = elapsed_us(startup_started_at);
+    app.latency_timings.surface_count = app.lock_surfaces.len();
+
     tracing::info!(
         wayland_connect_elapsed_ms,
         wayland_connect_elapsed_us,

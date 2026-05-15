@@ -72,6 +72,9 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
     if options.force_emergency_ui && !options.lock_now {
         bail!("--force-emergency-ui can only be used with --lock-now");
     }
+    if options.latency_report.is_enabled() && !options.lock_now {
+        bail!("--latency-report can only be used with --lock-now");
+    }
 
     let daemon_socket_path = ipc::daemon_socket_path();
     if options.current_theme {
@@ -148,6 +151,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                     &veila_common::ipc::DaemonControlMessage::LockNow {
                         wait_ready: options.wait_ready,
                         force_emergency_ui: options.force_emergency_ui,
+                        latency_report: options.latency_report,
                     },
                 )
                 .await?;
@@ -195,6 +199,9 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
     if options.force_emergency_ui && !options.lock_now {
         bail!("--force-emergency-ui can only be used with `veila lock`");
     }
+    if options.latency_report.is_enabled() && !options.lock_now {
+        bail!("--latency-report can only be used with `veila lock`");
+    }
 
     let daemon_socket_path = ipc::daemon_socket_path();
     if options.version {
@@ -232,11 +239,16 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
             &daemon_socket_path,
             options.wait_ready,
             options.force_emergency_ui,
+            options.latency_report,
         )
         .await?;
         if options.wait_ready {
             println!("lock_ready=true");
-            println!("already_active={}", already_active.unwrap_or(false));
+            let (already_active, latency_report) = already_active.unwrap_or((false, None));
+            println!("already_active={already_active}");
+            if let Some(latency_report) = latency_report {
+                print_latency_report(&latency_report, options.latency_report.is_verbose());
+            }
         } else {
             println!("lock_requested=true");
         }
@@ -301,6 +313,8 @@ Legacy control:
       --lock-now             Trigger an immediate lock
       --wait-ready           Return only after the secure lock is active
       --force-emergency-ui   Lock with the built-in emergency unlock prompt
+      --latency-report[=verbose]
+                             Print startup timing details after --wait-ready
       --reload-config        Ask a running daemon to reload config from disk
       --status               Print daemon runtime status
       --health               Print daemon build and platform info
@@ -339,6 +353,8 @@ General:
       --version              Print the local Veila version
       --config=<path>        Use a specific config file for theme/config commands
       --force-emergency-ui   Combine with `lock` to test the emergency unlock prompt
+      --latency-report[=verbose]
+                             Combine with `lock --wait-ready` to print startup timings
 
 Commands:
   lock [--wait-ready]        Ask the running daemon to lock now
@@ -361,4 +377,141 @@ Notes:
   `--wait-ready` can be combined with `veila lock` to block until the secure lock is active.
 "
     );
+}
+
+fn print_latency_report(report: &veila_common::ipc::LockLatencyReport, verbose: bool) {
+    println!("latency_report=true");
+    println!("daemon_config_load_ms={}", report.daemon_config_load_ms);
+    println!("daemon_socket_setup_ms={}", report.socket_setup_ms);
+    println!("curtain_spawn_ms={}", report.curtain_spawn_ms);
+    println!("curtain_ready_wait_ms={}", report.curtain_ready_wait_ms);
+    println!("activation_total_ms={}", report.activation_total_ms);
+    if verbose {
+        println!("latency_report_mode=verbose");
+        println!("daemon_config_load_us={}", report.daemon_config_load_us);
+        println!("daemon_socket_setup_us={}", report.socket_setup_us);
+        println!("curtain_spawn_us={}", report.curtain_spawn_us);
+        println!("curtain_ready_wait_us={}", report.curtain_ready_wait_us);
+        println!("activation_total_us={}", report.activation_total_us);
+    }
+
+    let Some(curtain) = report.curtain.as_ref() else {
+        println!("curtain_report=unavailable");
+        return;
+    };
+
+    println!("curtain_report=ok");
+    println!("curtain_wayland_connect_ms={}", curtain.wayland_connect_ms);
+    if verbose {
+        println!("curtain_wayland_connect_us={}", curtain.wayland_connect_us);
+    }
+    println!("curtain_registry_ms={}", curtain.registry_ms);
+    if verbose {
+        println!("curtain_registry_us={}", curtain.registry_us);
+    }
+    println!("curtain_event_loop_ms={}", curtain.event_loop_ms);
+    if verbose {
+        println!("curtain_event_loop_us={}", curtain.event_loop_us);
+    }
+    println!("curtain_app_init_ms={}", curtain.app_init_ms);
+    if verbose {
+        println!("curtain_app_init_us={}", curtain.app_init_us);
+    }
+    println!("curtain_lock_request_ms={}", curtain.lock_request_ms);
+    if verbose {
+        println!("curtain_lock_request_us={}", curtain.lock_request_us);
+    }
+    println!(
+        "curtain_startup_prepared_ms={}",
+        curtain.startup_prepared_ms
+    );
+    if verbose {
+        println!(
+            "curtain_startup_prepared_us={}",
+            curtain.startup_prepared_us
+        );
+    }
+    println!(
+        "first_surface_configured_ms={}",
+        optional_ms(curtain.first_surface_configured_ms)
+    );
+    if verbose {
+        println!(
+            "first_surface_configured_us={}",
+            optional_us(curtain.first_surface_configured_us)
+        );
+    }
+    println!(
+        "all_surfaces_configured_ms={}",
+        optional_ms(curtain.all_surfaces_configured_ms)
+    );
+    if verbose {
+        println!(
+            "all_surfaces_configured_us={}",
+            optional_us(curtain.all_surfaces_configured_us)
+        );
+    }
+    println!(
+        "session_locked_ms={}",
+        optional_ms(curtain.session_locked_ms)
+    );
+    if verbose {
+        println!(
+            "session_locked_us={}",
+            optional_us(curtain.session_locked_us)
+        );
+    }
+    println!("first_frame_ms={}", optional_ms(curtain.first_frame_ms));
+    if verbose {
+        println!("first_frame_us={}", optional_us(curtain.first_frame_us));
+    }
+    println!(
+        "ready_notified_ms={}",
+        optional_ms(curtain.ready_notified_ms)
+    );
+    if verbose {
+        println!(
+            "ready_notified_us={}",
+            optional_us(curtain.ready_notified_us)
+        );
+        print_verbose_latency_summary(report);
+    }
+    println!("surface_count={}", curtain.surface_count);
+}
+
+fn optional_ms(value: Option<u64>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| String::from("none"))
+}
+
+fn optional_us(value: Option<u64>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| String::from("none"))
+}
+
+fn print_verbose_latency_summary(report: &veila_common::ipc::LockLatencyReport) {
+    let Some(curtain) = report.curtain.as_ref() else {
+        return;
+    };
+
+    if let (Some(first_frame_us), Some(session_locked_us)) =
+        (curtain.first_frame_us, curtain.session_locked_us)
+    {
+        println!(
+            "first_frame_to_session_locked_us={}",
+            session_locked_us.saturating_sub(first_frame_us)
+        );
+    }
+
+    if let (Some(configured_us), Some(session_locked_us)) = (
+        curtain.all_surfaces_configured_us,
+        curtain.session_locked_us,
+    ) {
+        println!(
+            "all_surfaces_to_session_locked_us={}",
+            session_locked_us.saturating_sub(configured_us)
+        );
+    }
 }

@@ -1,6 +1,6 @@
 use std::{path::Path, process::ExitStatus};
 
-use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, ipc::LatencyReportMode};
 
 use crate::{
     adapters::{logind, process},
@@ -24,6 +24,9 @@ pub(crate) async fn handle_lock_signal(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
+    latency_report: LatencyReportMode,
+    daemon_config_load_ms: u64,
+    daemon_config_load_us: u64,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
     suspend_state: &mut LockedSuspendState,
@@ -37,6 +40,7 @@ pub(crate) async fn handle_lock_signal(
         auth_results,
         auth_sender,
         auth_state,
+        active_latency_report,
     } = slots;
 
     if state.is_active() {
@@ -44,6 +48,7 @@ pub(crate) async fn handle_lock_signal(
         return;
     }
 
+    *active_latency_report = latency_report;
     if let Err(error) = activate_and_log(
         trigger,
         session_proxy,
@@ -54,6 +59,9 @@ pub(crate) async fn handle_lock_signal(
         battery_snapshot,
         now_playing_snapshot,
         force_emergency_ui,
+        latency_report,
+        daemon_config_load_ms,
+        daemon_config_load_us,
         ActiveRuntime::new(
             curtain,
             auth_listener,
@@ -87,6 +95,7 @@ pub(crate) async fn handle_unlock_signal(
         auth_results,
         auth_sender,
         auth_state,
+        active_latency_report: _,
     } = slots;
 
     if !state.is_active() {
@@ -127,6 +136,9 @@ pub(crate) async fn handle_curtain_exit(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
+    latency_report: LatencyReportMode,
+    daemon_config_load_ms: u64,
+    daemon_config_load_us: u64,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
     suspend_state: &mut LockedSuspendState,
@@ -140,6 +152,7 @@ pub(crate) async fn handle_curtain_exit(
         auth_results,
         auth_sender,
         auth_state,
+        active_latency_report,
     } = slots;
 
     tracing::warn!(?status, state = %state, "curtain exited");
@@ -159,6 +172,7 @@ pub(crate) async fn handle_curtain_exit(
         *state = LockState::Unlocked;
         tracing::error!("curtain exited while the session should be locked; attempting restart");
 
+        *active_latency_report = latency_report;
         if let Err(error) = activate_and_log(
             "restart",
             session_proxy,
@@ -169,6 +183,9 @@ pub(crate) async fn handle_curtain_exit(
             battery_snapshot,
             now_playing_snapshot,
             force_emergency_ui,
+            latency_report,
+            daemon_config_load_ms,
+            daemon_config_load_us,
             ActiveRuntime::new(
                 curtain,
                 auth_listener,

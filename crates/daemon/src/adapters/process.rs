@@ -16,7 +16,7 @@ use tokio::{
 };
 use veila_common::{
     BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
-    ipc::{CurtainControlMessage, LockPowerStatusSnapshot, encode_message},
+    ipc::{CurtainControlMessage, LatencyReportMode, LockPowerStatusSnapshot, encode_message},
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -30,6 +30,7 @@ pub async fn spawn_curtain(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
+    latency_report: LatencyReportMode,
 ) -> Result<Child> {
     let binary = curtain_binary_path()?;
     let mut command = Command::new(&binary);
@@ -66,6 +67,15 @@ pub async fn spawn_curtain(
     }
     if force_emergency_ui {
         command.arg("--force-emergency-ui");
+    }
+    match latency_report {
+        LatencyReportMode::Disabled => {}
+        LatencyReportMode::Basic => {
+            command.arg("--latency-report");
+        }
+        LatencyReportMode::Verbose => {
+            command.arg("--latency-report=verbose");
+        }
     }
 
     tracing::info!(binary = %binary.display(), "spawning curtain");

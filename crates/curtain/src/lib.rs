@@ -15,7 +15,8 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, ipc::decode_message,
+    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot,
+    ipc::{LatencyReportMode, decode_message},
 };
 
 /// Returns the component identifier used by logs and process supervision.
@@ -29,6 +30,7 @@ pub struct CurtainOptions {
     pub help: bool,
     pub lock: bool,
     pub force_emergency_ui: bool,
+    pub latency_report: LatencyReportMode,
     pub notify_socket: Option<PathBuf>,
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
@@ -81,6 +83,11 @@ impl CurtainOptions {
 
             if arg == "--force-emergency-ui" {
                 options.force_emergency_ui = true;
+                continue;
+            }
+
+            if let Some(mode) = parse_latency_report_arg(&arg)? {
+                options.latency_report = mode;
                 continue;
             }
 
@@ -267,6 +274,22 @@ fn parse_option_value(
     Ok(Some(value))
 }
 
+fn parse_latency_report_arg(arg: &str) -> Result<Option<LatencyReportMode>> {
+    if arg == "--latency-report" {
+        return Ok(Some(LatencyReportMode::Basic));
+    }
+
+    let Some(mode) = arg.strip_prefix("--latency-report=") else {
+        return Ok(None);
+    };
+
+    match mode {
+        "basic" => Ok(Some(LatencyReportMode::Basic)),
+        "verbose" => Ok(Some(LatencyReportMode::Verbose)),
+        _ => bail!("unknown latency report mode: {mode}"),
+    }
+}
+
 /// Starts the secure curtain process.
 pub fn run(options: CurtainOptions) -> Result<()> {
     if options.help {
@@ -302,6 +325,7 @@ General:
   -h, --help                         Show this help text
       --lock                         Start a real lock session when running directly
       --force-emergency-ui           Use the built-in emergency unlock prompt
+      --latency-report[=verbose]     Send startup timing details to the daemon
       --config=<path>                Use a specific config file
       --notify-socket=<path>         Notify socket for curtain readiness
       --daemon-socket=<path>         Daemon auth IPC socket
@@ -421,7 +445,8 @@ impl CurtainOptions {
 #[cfg(test)]
 mod tests {
     use veila_common::{
-        BatterySnapshot, NowPlayingSnapshot, WeatherCondition, ipc::encode_message,
+        BatterySnapshot, NowPlayingSnapshot, WeatherCondition,
+        ipc::{LatencyReportMode, encode_message},
     };
 
     use super::{CurtainOptions, PreviewClockTime};
@@ -435,6 +460,7 @@ mod tests {
             "--control-socket=/tmp/veila-control.sock".to_string(),
             "--config=/tmp/veila.toml".to_string(),
             "--force-emergency-ui".to_string(),
+            "--latency-report".to_string(),
             "--preview-png=/tmp/veila-preview.png".to_string(),
             "--preview-size=1920x1080".to_string(),
             "--preview-artwork=/tmp/cover.png".to_string(),
@@ -472,6 +498,7 @@ mod tests {
             Some(std::path::Path::new("/tmp/veila.toml"))
         );
         assert!(options.force_emergency_ui);
+        assert_eq!(options.latency_report, LatencyReportMode::Basic);
         assert_eq!(
             options.preview_png.as_deref(),
             Some(std::path::Path::new("/tmp/veila-preview.png"))
@@ -507,6 +534,18 @@ mod tests {
                 minute: 54
             })
         );
+    }
+
+    #[test]
+    fn parses_verbose_latency_report_argument() {
+        let options = CurtainOptions::parse_args([
+            "veila-curtain".to_string(),
+            "--lock".to_string(),
+            "--latency-report=verbose".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert_eq!(options.latency_report, LatencyReportMode::Verbose);
     }
 
     #[test]

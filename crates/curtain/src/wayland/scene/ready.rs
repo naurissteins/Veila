@@ -32,6 +32,10 @@ impl CurtainApp {
         if was_unconfigured && !self.first_surface_configured_logged {
             self.first_surface_configured_logged = true;
             self.first_surface_configured_at = Some(std::time::Instant::now());
+            self.latency_timings.first_surface_configured_ms =
+                self.first_surface_configured_at.map(elapsed_ms);
+            self.latency_timings.first_surface_configured_us =
+                self.first_surface_configured_at.map(elapsed_us);
             tracing::info!(
                 startup_elapsed_ms = elapsed_ms(self.startup_started_at),
                 startup_elapsed_us = elapsed_us(self.startup_started_at),
@@ -45,6 +49,10 @@ impl CurtainApp {
             self.all_surfaces_configured_logged = true;
             let all_surfaces_configured_at = std::time::Instant::now();
             self.all_surfaces_configured_at = Some(all_surfaces_configured_at);
+            self.latency_timings.all_surfaces_configured_ms =
+                Some(elapsed_ms(self.startup_started_at));
+            self.latency_timings.all_surfaces_configured_us =
+                Some(elapsed_us(self.startup_started_at));
             tracing::info!(
                 surfaces = self.lock_surfaces.len(),
                 startup_elapsed_ms = elapsed_ms(self.startup_started_at),
@@ -108,9 +116,16 @@ impl CurtainApp {
 
         self.ready_notified = true;
         self.refresh_scene_base_after_ready();
+        self.latency_timings.ready_notified_ms = Some(elapsed_ms(self.startup_started_at));
+        self.latency_timings.ready_notified_us = Some(elapsed_us(self.startup_started_at));
+        self.latency_timings.surface_count = self.lock_surfaces.len();
 
         if let Some(path) = self.notify_socket.as_deref() {
-            if let Err(error) = notify_ready(path) {
+            let report = self
+                .latency_report
+                .is_enabled()
+                .then_some(&self.latency_timings);
+            if let Err(error) = notify_ready(path, report) {
                 tracing::warn!(?path, "failed to notify ready state: {error:#}");
             } else {
                 let ready_notified_at = std::time::Instant::now();
@@ -233,15 +248,27 @@ fn logical_size(info: &OutputInfo) -> Option<(i32, i32)> {
     }
 }
 
-fn notify_ready(path: &Path) -> Result<()> {
+fn notify_ready(
+    path: &Path,
+    report: Option<&veila_common::ipc::CurtainLatencyReport>,
+) -> Result<()> {
     use std::io::Write as _;
     use std::os::unix::net::UnixStream;
 
     let mut stream = UnixStream::connect(path)
         .with_context(|| format!("failed to connect to notify socket {}", path.display()))?;
-    stream
-        .write_all(&[1u8])
-        .with_context(|| format!("failed to write readiness byte to {}", path.display()))?;
+    if let Some(report) = report {
+        let mut payload =
+            veila_common::ipc::encode_message(report).context("failed to encode latency report")?;
+        payload.push('\n');
+        stream
+            .write_all(payload.as_bytes())
+            .with_context(|| format!("failed to write readiness report to {}", path.display()))?;
+    } else {
+        stream
+            .write_all(&[1u8])
+            .with_context(|| format!("failed to write readiness byte to {}", path.display()))?;
+    }
 
     Ok(())
 }

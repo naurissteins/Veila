@@ -19,6 +19,7 @@ pub(crate) async fn shutdown_runtime(
         auth_results,
         auth_sender,
         auth_state,
+        active_latency_report: _,
     } = slots;
 
     if let Err(error) = deactivate_lock(

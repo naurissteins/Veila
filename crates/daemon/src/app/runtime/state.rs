@@ -11,6 +11,7 @@ use crate::{
     adapters::logind,
     domain::auth::{AuthPolicy, AuthState},
 };
+use veila_common::ipc::LockLatencyReport;
 
 use super::auth::AuthResult;
 
@@ -21,6 +22,7 @@ pub(crate) struct LockActivation {
     pub(super) control_socket_path: PathBuf,
     pub(super) auth_results: UnboundedReceiver<AuthResult>,
     pub(super) auth_sender: UnboundedSender<AuthResult>,
+    pub(crate) latency_report: Option<LockLatencyReport>,
 }
 
 pub(crate) struct ActiveRuntime<'a> {

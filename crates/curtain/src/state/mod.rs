@@ -32,7 +32,7 @@ use veila_common::{
         BackgroundConfig, BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundOutputConfig, BackgroundScaling as ConfigBackgroundScaling,
     },
-    ipc::LockPowerStatusSnapshot,
+    ipc::{CurtainLatencyReport, LatencyReportMode, LockPowerStatusSnapshot},
 };
 use veila_renderer::{
     ClearColor,
@@ -148,6 +148,8 @@ pub(crate) struct CurtainApp {
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
     pub(crate) ready_notified: bool,
+    pub(crate) latency_report: LatencyReportMode,
+    pub(crate) latency_timings: CurtainLatencyReport,
     pub(crate) first_surface_configured_logged: bool,
     pub(crate) first_surface_configured_at: Option<Instant>,
     pub(crate) all_surfaces_configured_logged: bool,
@@ -169,6 +171,7 @@ pub(crate) struct CurtainApp {
     pub(crate) post_ready_nonfirst_renders: u32,
     pub(crate) post_ready_memory_logged: bool,
     pub(crate) pending_pre_ready_redraw: bool,
+    pub(crate) first_frame_committed_at: Option<Instant>,
 }
 
 impl CurtainApp {
@@ -371,6 +374,8 @@ impl CurtainApp {
             session_finished: false,
             exit_requested: false,
             ready_notified: false,
+            latency_report: options.latency_report,
+            latency_timings: CurtainLatencyReport::default(),
             first_surface_configured_logged: false,
             first_surface_configured_at: None,
             all_surfaces_configured_logged: false,
@@ -392,6 +397,7 @@ impl CurtainApp {
             post_ready_nonfirst_renders: 0,
             post_ready_memory_logged: false,
             pending_pre_ready_redraw: false,
+            first_frame_committed_at: None,
             lock_acquisition_started: false,
         })
     }

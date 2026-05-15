@@ -16,6 +16,8 @@ impl SessionLockHandler for CurtainApp {
     fn locked(&mut self, _conn: &Connection, qh: &QueueHandle<Self>, _session_lock: SessionLock) {
         let session_locked_at = std::time::Instant::now();
         self.session_locked_at = Some(session_locked_at);
+        self.latency_timings.session_locked_ms = Some(elapsed_ms(self.startup_started_at));
+        self.latency_timings.session_locked_us = Some(elapsed_us(self.startup_started_at));
         tracing::info!(
             startup_elapsed_ms = elapsed_ms(self.startup_started_at),
             startup_elapsed_us = elapsed_us(self.startup_started_at),

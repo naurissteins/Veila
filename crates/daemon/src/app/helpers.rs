@@ -4,7 +4,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow};
 use nix::unistd::{Uid, User};
 use veila_common::ipc::{
-    DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
+    DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LatencyReportMode,
+    LiveReloadStatus,
 };
 use veila_common::{AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot, WeatherSnapshot};
 
@@ -39,11 +40,14 @@ pub(super) async fn activate_and_install(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
+    latency_report: LatencyReportMode,
+    daemon_config_load_ms: u64,
+    daemon_config_load_us: u64,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,
-) -> Result<()> {
+) -> Result<Option<veila_common::ipc::LockLatencyReport>> {
     let activation = activate_lock(
         trigger,
         session_proxy,
@@ -54,12 +58,16 @@ pub(super) async fn activate_and_install(
         battery_snapshot,
         now_playing_snapshot,
         force_emergency_ui,
+        latency_report,
+        daemon_config_load_ms,
+        daemon_config_load_us,
     )
     .await?;
+    let latency_report = activation.latency_report.clone();
     runtime.install_activation(activation);
     *auth_state = AuthState::new(auth_policy);
     suspend_state.arm(Instant::now());
-    Ok(())
+    Ok(latency_report)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -73,13 +81,16 @@ pub(super) async fn activate_and_log(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
+    latency_report: LatencyReportMode,
+    daemon_config_load_ms: u64,
+    daemon_config_load_us: u64,
     runtime: ActiveRuntime<'_>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,
-) -> Result<()> {
+) -> Result<Option<veila_common::ipc::LockLatencyReport>> {
     let started_at = Instant::now();
-    activate_and_install(
+    let report = activate_and_install(
         trigger,
         session_proxy,
         state,
@@ -89,6 +100,9 @@ pub(super) async fn activate_and_log(
         battery_snapshot,
         now_playing_snapshot,
         force_emergency_ui,
+        latency_report,
+        daemon_config_load_ms,
+        daemon_config_load_us,
         runtime,
         auth_policy,
         auth_state,
@@ -100,7 +114,7 @@ pub(super) async fn activate_and_log(
         activation_elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
         "lock timing summary"
     );
-    Ok(())
+    Ok(report)
 }
 
 pub(super) fn current_username() -> Result<String> {

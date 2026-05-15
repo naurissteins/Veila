@@ -48,6 +48,7 @@ pub async fn run(
     mut control_listener: UnixListener,
     daemon_control_socket_path: PathBuf,
 ) -> Result<()> {
+    let config_load_started_at = std::time::Instant::now();
     let loaded_config = match AppConfig::load(options.config_path.as_deref()) {
         Ok(loaded_config) => loaded_config,
         Err(error) => {
@@ -60,7 +61,15 @@ pub async fn run(
             }
         }
     };
-    let mut runtime = AppRuntime::new(loaded_config);
+    let daemon_config_load_ms = config_load_started_at
+        .elapsed()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64;
+    let daemon_config_load_us = config_load_started_at
+        .elapsed()
+        .as_micros()
+        .min(u128::from(u64::MAX)) as u64;
+    let mut runtime = AppRuntime::new(loaded_config, daemon_config_load_ms, daemon_config_load_us);
     prewarm::spawn_background_prewarm(runtime.loaded_config.path.as_deref());
     cache::spawn_background_cache_pruner();
     let connection = logind::connect_system().await?;
@@ -97,12 +106,16 @@ pub async fn run(
         session_id_override = options.session_id.as_deref().unwrap_or("none"),
         manual_lock = options.lock_now,
         force_emergency_ui = options.force_emergency_ui,
+        latency_report = ?options.latency_report,
+        daemon_config_load_ms,
+        daemon_config_load_us,
         config = runtime.loaded_config.path.as_deref().map(|path| path.display().to_string()).unwrap_or_else(|| "defaults".to_string()),
         "veilad ready"
     );
 
     if options.lock_now {
         tracing::info!("manual lock requested via --lock-now");
+        runtime.active_latency_report = options.latency_report;
         let now_playing_snapshot = runtime.now_playing.current_snapshot();
         let initial_background_path = runtime.select_initial_background_path();
         activate_and_log(
@@ -115,6 +128,9 @@ pub async fn run(
             runtime.battery.current_snapshot().as_ref(),
             now_playing_snapshot.as_ref(),
             options.force_emergency_ui,
+            options.latency_report,
+            runtime.daemon_config_load_ms,
+            runtime.daemon_config_load_us,
             ActiveRuntime::new(
                 &mut runtime.curtain,
                 &mut runtime.auth_listener,
@@ -139,6 +155,8 @@ pub async fn run(
                 let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let initial_background_path = runtime.select_initial_background_path();
+                let daemon_config_load_ms = runtime.daemon_config_load_ms;
+                let daemon_config_load_us = runtime.daemon_config_load_us;
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_lock_signal(
                     "logind",
@@ -149,6 +167,9 @@ pub async fn run(
                     battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
                     options.force_emergency_ui,
+                    options.latency_report,
+                    daemon_config_load_ms,
+                    daemon_config_load_us,
                     slots,
                     auth_policy,
                     suspend_state,
@@ -207,6 +228,8 @@ pub async fn run(
                 let battery_snapshot = runtime.battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let initial_background_path = runtime.select_initial_background_path();
+                let daemon_config_load_ms = runtime.daemon_config_load_ms;
+                let daemon_config_load_us = runtime.daemon_config_load_us;
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_curtain_exit(
                     result?,
@@ -217,6 +240,9 @@ pub async fn run(
                     battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
                     options.force_emergency_ui,
+                    options.latency_report,
+                    daemon_config_load_ms,
+                    daemon_config_load_us,
                     slots,
                     auth_policy,
                     suspend_state,
@@ -232,6 +258,7 @@ pub async fn run(
                     &runtime.auth_sender,
                     &mut runtime.auth_state,
                     &mut runtime.suspend_state,
+                    runtime.active_latency_report,
                     result?,
                 ).await?;
             }
@@ -256,6 +283,8 @@ pub async fn run(
                 let weather_snapshot = weather.current_snapshot();
                 let battery_snapshot = battery.current_snapshot();
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
+                let daemon_config_load_ms = runtime.daemon_config_load_ms;
+                let daemon_config_load_us = runtime.daemon_config_load_us;
                 let (
                     loaded_config,
                     last_reload_result,
@@ -283,6 +312,8 @@ pub async fn run(
                     suspend_state,
                     slots,
                     auth_policy,
+                    daemon_config_load_ms,
+                    daemon_config_load_us,
                 ).await? {
                     break;
                 }

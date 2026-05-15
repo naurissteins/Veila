@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
-use veila_common::ipc::{ClientMessage, DaemonMessage};
+use veila_common::ipc::{ClientMessage, DaemonMessage, LatencyReportMode};
 
 use crate::{
     adapters::{ipc, pam},
@@ -29,6 +29,7 @@ pub(crate) async fn handle_client_message(
     auth_state: &mut AuthState,
     auth_sender: &Option<UnboundedSender<AuthResult>>,
     suspend_state: &mut LockedSuspendState,
+    latency_report: LatencyReportMode,
     mut stream: UnixStream,
     message: ClientMessage,
 ) -> Result<()> {
@@ -52,15 +53,16 @@ pub(crate) async fn handle_client_message(
                     let failed_attempts = auth_state.next_failed_attempts();
 
                     auth_state.start_attempt();
-                    tokio::spawn(run_auth_attempt(
+                    tokio::spawn(run_auth_attempt(AuthAttempt {
                         attempt_id,
                         started_at,
                         failed_attempts,
-                        username.to_string(),
+                        username: username.to_string(),
                         secret,
                         stream,
                         sender,
-                    ));
+                        latency_report,
+                    }));
                 }
                 AuthAdmission::Busy => {
                     ipc::write_daemon_message(
@@ -89,24 +91,57 @@ pub(crate) async fn handle_client_message(
     Ok(())
 }
 
-async fn run_auth_attempt(
+struct AuthAttempt {
     attempt_id: u64,
     started_at: Instant,
     failed_attempts: u8,
     username: String,
     secret: String,
-    mut stream: UnixStream,
+    stream: UnixStream,
     sender: UnboundedSender<AuthResult>,
-) {
+    latency_report: LatencyReportMode,
+}
+
+async fn run_auth_attempt(attempt: AuthAttempt) {
+    let AuthAttempt {
+        attempt_id,
+        started_at,
+        failed_attempts,
+        username,
+        secret,
+        mut stream,
+        sender,
+        latency_report,
+    } = attempt;
     let auth_started_at = Instant::now();
+    let worker_start_delay_ms = auth_started_at
+        .saturating_duration_since(started_at)
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64;
+    let worker_start_delay_us = auth_started_at
+        .saturating_duration_since(started_at)
+        .as_micros()
+        .min(u128::from(u64::MAX)) as u64;
     let result = tokio::task::spawn_blocking(move || pam::authenticate(&username, &secret)).await;
     let elapsed_ms = auth_started_at
         .elapsed()
         .as_millis()
         .min(u128::from(u64::MAX)) as u64;
+    let elapsed_us = auth_started_at
+        .elapsed()
+        .as_micros()
+        .min(u128::from(u64::MAX)) as u64;
 
     match result {
         Ok(Ok(())) => {
+            log_auth_latency_report(
+                latency_report,
+                attempt_id,
+                worker_start_delay_ms,
+                worker_start_delay_us,
+                elapsed_ms,
+                elapsed_us,
+            );
             tracing::info!(attempt_id, elapsed_ms, "authentication accepted");
             if let Err(write_error) = ipc::write_daemon_message(
                 &mut stream,
@@ -123,6 +158,14 @@ async fn run_auth_attempt(
             });
         }
         Ok(Err(error)) => {
+            log_auth_latency_report(
+                latency_report,
+                attempt_id,
+                worker_start_delay_ms,
+                worker_start_delay_us,
+                elapsed_ms,
+                elapsed_us,
+            );
             tracing::info!(attempt_id, elapsed_ms, "authentication rejected: {error}");
             if let Err(write_error) = ipc::write_daemon_message(
                 &mut stream,
@@ -143,6 +186,14 @@ async fn run_auth_attempt(
             });
         }
         Err(error) => {
+            log_auth_latency_report(
+                latency_report,
+                attempt_id,
+                worker_start_delay_ms,
+                worker_start_delay_us,
+                elapsed_ms,
+                elapsed_us,
+            );
             tracing::error!(
                 attempt_id,
                 elapsed_ms,
@@ -167,4 +218,26 @@ async fn run_auth_attempt(
             });
         }
     }
+}
+
+fn log_auth_latency_report(
+    enabled: LatencyReportMode,
+    attempt_id: u64,
+    worker_start_delay_ms: u64,
+    worker_start_delay_us: u64,
+    pam_elapsed_ms: u64,
+    pam_elapsed_us: u64,
+) {
+    if !enabled.is_enabled() {
+        return;
+    }
+
+    tracing::info!(
+        attempt_id,
+        worker_start_delay_ms,
+        worker_start_delay_us = enabled.is_verbose().then_some(worker_start_delay_us),
+        pam_elapsed_ms,
+        pam_elapsed_us = enabled.is_verbose().then_some(pam_elapsed_us),
+        "auth latency report"
+    );
 }

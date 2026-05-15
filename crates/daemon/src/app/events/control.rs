@@ -43,6 +43,8 @@ pub(crate) async fn handle_control_connection(
     suspend_state: &mut crate::app::suspend::LockedSuspendState,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
+    daemon_config_load_ms: u64,
+    daemon_config_load_us: u64,
 ) -> Result<bool> {
     let RuntimeSlots {
         state,
@@ -53,6 +55,7 @@ pub(crate) async fn handle_control_connection(
         auth_results,
         auth_sender,
         auth_state,
+        active_latency_report,
     } = slots;
 
     let Some(message) = ipc::read_daemon_control_message(&mut stream).await? else {
@@ -63,7 +66,9 @@ pub(crate) async fn handle_control_connection(
         DaemonControlMessage::LockNow {
             wait_ready,
             force_emergency_ui,
+            latency_report,
         } => {
+            *active_latency_report = latency_report;
             if !state.is_active() {
                 let initial_background_path =
                     select_initial_background_path(&loaded_config.config, background_selection);
@@ -77,6 +82,9 @@ pub(crate) async fn handle_control_connection(
                     battery_snapshot,
                     now_playing_snapshot,
                     force_emergency_ui,
+                    latency_report,
+                    daemon_config_load_ms,
+                    daemon_config_load_us,
                     ActiveRuntime::new(
                         curtain,
                         auth_listener,
@@ -91,10 +99,11 @@ pub(crate) async fn handle_control_connection(
                 )
                 .await
                 {
-                    Ok(()) => (
+                    Ok(latency_report) => (
                         if wait_ready {
                             DaemonControlResponse::Locked {
                                 already_active: false,
+                                latency_report: latency_report.map(Box::new),
                             }
                         } else {
                             DaemonControlResponse::Accepted
@@ -126,6 +135,7 @@ pub(crate) async fn handle_control_connection(
                     if wait_ready {
                         DaemonControlResponse::Locked {
                             already_active: true,
+                            latency_report: None,
                         }
                     } else {
                         DaemonControlResponse::Accepted

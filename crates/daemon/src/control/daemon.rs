@@ -1,5 +1,6 @@
 use anyhow::{Result, bail};
 use time::{OffsetDateTime, UtcOffset};
+use veila_common::ipc::LatencyReportMode;
 
 use crate::adapters::ipc;
 
@@ -25,7 +26,8 @@ pub(super) async fn lock_running_daemon(
     daemon_socket_path: &std::path::Path,
     wait_ready: bool,
     force_emergency_ui: bool,
-) -> Result<Option<bool>> {
+    latency_report: LatencyReportMode,
+) -> Result<Option<(bool, Option<veila_common::ipc::LockLatencyReport>)>> {
     ensure_running_daemon(daemon_socket_path)?;
 
     let response = ipc::send_daemon_control_message(
@@ -33,15 +35,17 @@ pub(super) async fn lock_running_daemon(
         &veila_common::ipc::DaemonControlMessage::LockNow {
             wait_ready,
             force_emergency_ui,
+            latency_report,
         },
     )
     .await?;
 
     match response {
         veila_common::ipc::DaemonControlResponse::Accepted if !wait_ready => Ok(None),
-        veila_common::ipc::DaemonControlResponse::Locked { already_active } if wait_ready => {
-            Ok(Some(already_active))
-        }
+        veila_common::ipc::DaemonControlResponse::Locked {
+            already_active,
+            latency_report,
+        } if wait_ready => Ok(Some((already_active, latency_report.map(|report| *report)))),
         veila_common::ipc::DaemonControlResponse::Error { reason } => bail!(reason),
         _ => bail!("daemon returned an unexpected response to lock"),
     }

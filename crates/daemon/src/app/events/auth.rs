@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 use tokio::net::UnixStream;
+use veila_common::ipc::LatencyReportMode;
 
 use crate::{
     adapters::{ipc, logind},
@@ -19,6 +20,7 @@ pub(crate) async fn handle_auth_connection(
     auth_sender: &Option<tokio::sync::mpsc::UnboundedSender<AuthResult>>,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,
+    latency_report: LatencyReportMode,
     mut stream: UnixStream,
 ) -> Result<()> {
     if let Some(message) = ipc::read_client_message(&mut stream).await?
@@ -27,6 +29,7 @@ pub(crate) async fn handle_auth_connection(
             auth_state,
             auth_sender,
             suspend_state,
+            latency_report,
             stream,
             message,
         )
@@ -54,6 +57,7 @@ pub(crate) async fn handle_auth_result(
         auth_results,
         auth_sender,
         auth_state,
+        active_latency_report: _,
     } = slots;
 
     match result {

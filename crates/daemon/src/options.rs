@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Result, bail};
+use veila_common::ipc::LatencyReportMode;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DaemonOptions {
@@ -14,6 +15,7 @@ pub struct DaemonOptions {
     pub unset_theme: bool,
     pub lock_now: bool,
     pub force_emergency_ui: bool,
+    pub latency_report: LatencyReportMode,
     pub wait_ready: bool,
     pub stop: bool,
     pub list_themes: bool,
@@ -81,13 +83,13 @@ impl DaemonOptions {
                 continue;
             }
 
-            if arg == "--wait-ready" {
-                options.wait_ready = true;
+            if let Some(mode) = parse_latency_report_arg(&arg)? {
+                options.latency_report = mode;
                 continue;
             }
 
-            if arg == "--force-emergency-ui" {
-                options.force_emergency_ui = true;
+            if arg == "--wait-ready" {
+                options.wait_ready = true;
                 continue;
             }
 
@@ -172,6 +174,11 @@ impl DaemonOptions {
                 continue;
             }
 
+            if let Some(mode) = parse_latency_report_arg(&arg)? {
+                options.latency_report = mode;
+                continue;
+            }
+
             if arg.starts_with("--") {
                 bail!("unknown veila option: {arg}");
             }
@@ -181,6 +188,22 @@ impl DaemonOptions {
 
         apply_control_positionals(&mut options, &positional)?;
         Ok(options)
+    }
+}
+
+fn parse_latency_report_arg(arg: &str) -> Result<Option<LatencyReportMode>> {
+    if arg == "--latency-report" {
+        return Ok(Some(LatencyReportMode::Basic));
+    }
+
+    let Some(mode) = arg.strip_prefix("--latency-report=") else {
+        return Ok(None);
+    };
+
+    match mode {
+        "basic" => Ok(Some(LatencyReportMode::Basic)),
+        "verbose" => Ok(Some(LatencyReportMode::Verbose)),
+        _ => bail!("unknown latency report mode: {mode}"),
     }
 }
 
@@ -252,6 +275,7 @@ fn expect_no_extra_args(command: &str, args: &[String], apply: impl FnOnce()) ->
 #[cfg(test)]
 mod tests {
     use super::DaemonOptions;
+    use veila_common::ipc::LatencyReportMode;
 
     #[test]
     fn parses_config_argument() {
@@ -307,11 +331,25 @@ mod tests {
             "veilad".to_string(),
             "--lock-now".to_string(),
             "--force-emergency-ui".to_string(),
+            "--latency-report".to_string(),
         ])
         .expect("arguments should parse");
 
         assert!(options.lock_now);
         assert!(options.force_emergency_ui);
+        assert_eq!(options.latency_report, LatencyReportMode::Basic);
+    }
+
+    #[test]
+    fn parses_verbose_latency_report_argument() {
+        let options = DaemonOptions::parse_args([
+            "veilad".to_string(),
+            "--lock-now".to_string(),
+            "--latency-report=verbose".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert_eq!(options.latency_report, LatencyReportMode::Verbose);
     }
 
     #[test]
@@ -455,6 +493,7 @@ mod tests {
             "veila".to_string(),
             "--wait-ready".to_string(),
             "--force-emergency-ui".to_string(),
+            "--latency-report".to_string(),
             "lock".to_string(),
         ])
         .expect("arguments should parse");
@@ -462,6 +501,22 @@ mod tests {
         assert!(options.lock_now);
         assert!(options.wait_ready);
         assert!(options.force_emergency_ui);
+        assert_eq!(options.latency_report, LatencyReportMode::Basic);
+    }
+
+    #[test]
+    fn parses_control_lock_command_with_verbose_latency_report() {
+        let options = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "--wait-ready".to_string(),
+            "--latency-report=verbose".to_string(),
+            "lock".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.lock_now);
+        assert!(options.wait_ready);
+        assert_eq!(options.latency_report, LatencyReportMode::Verbose);
     }
 
     #[test]

@@ -2,6 +2,7 @@ use std::{path::Path, process::ExitStatus, time::Instant};
 
 use anyhow::{Context, Result, anyhow};
 use tokio::{
+    io::{AsyncBufReadExt, BufReader},
     net::UnixStream,
     process::Child,
     sync::mpsc::unbounded_channel,
@@ -15,7 +16,10 @@ use crate::{
         lock_state::LockState,
     },
 };
-use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{
+    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    ipc::{CurtainLatencyReport, LatencyReportMode, LockLatencyReport},
+};
 
 use super::state::{ActiveRuntime, LockActivation, reset_runtime, update_locked_hint};
 
@@ -30,6 +34,9 @@ pub(crate) async fn activate_lock(
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
+    latency_report: LatencyReportMode,
+    daemon_config_load_ms: u64,
+    daemon_config_load_us: u64,
 ) -> Result<LockActivation> {
     let activation_started_at = Instant::now();
     *state = LockState::Locking;
@@ -41,6 +48,7 @@ pub(crate) async fn activate_lock(
     let notify_listener = ipc::bind_listener(&notify_path).await?;
     let auth_listener = ipc::bind_listener(&auth_socket_path).await?;
     let socket_setup_elapsed_ms = elapsed_ms(socket_setup_started_at);
+    let socket_setup_elapsed_us = elapsed_us(socket_setup_started_at);
 
     let spawn_started_at = Instant::now();
     let mut child = process::spawn_curtain(
@@ -53,9 +61,11 @@ pub(crate) async fn activate_lock(
         battery_snapshot,
         now_playing_snapshot,
         force_emergency_ui,
+        latency_report,
     )
     .await?;
     let spawn_elapsed_ms = elapsed_ms(spawn_started_at);
+    let spawn_elapsed_us = elapsed_us(spawn_started_at);
     let (auth_sender, auth_results) = unbounded_channel();
     let ready_wait_started_at = Instant::now();
     let ready_result = tokio::select! {
@@ -65,15 +75,38 @@ pub(crate) async fn activate_lock(
         ),
     };
     let ready_wait_elapsed_ms = elapsed_ms(ready_wait_started_at);
+    let ready_wait_elapsed_us = elapsed_us(ready_wait_started_at);
     let _ = std::fs::remove_file(&notify_path);
 
     match ready_result {
-        ReadyResult::Ready(Ok(Ok((_stream, _addr)))) => {
+        ReadyResult::Ready(Ok(Ok((stream, _addr)))) => {
+            let curtain_latency_report = if latency_report.is_enabled() {
+                read_curtain_latency_report(stream).await
+            } else {
+                None
+            };
             *state = LockState::Locked;
             let locked_hint_started_at = Instant::now();
             update_locked_hint(session_proxy, true).await;
             let locked_hint_elapsed_ms = elapsed_ms(locked_hint_started_at);
             let activation_elapsed_ms = elapsed_ms(activation_started_at);
+            let activation_elapsed_us = elapsed_us(activation_started_at);
+            let latency_report = latency_report.is_enabled().then_some(LockLatencyReport {
+                daemon_config_load_ms,
+                daemon_config_load_us,
+                socket_setup_ms: socket_setup_elapsed_ms,
+                socket_setup_us: socket_setup_elapsed_us,
+                curtain_spawn_ms: spawn_elapsed_ms,
+                curtain_spawn_us: spawn_elapsed_us,
+                curtain_ready_wait_ms: ready_wait_elapsed_ms,
+                curtain_ready_wait_us: ready_wait_elapsed_us,
+                activation_total_ms: activation_elapsed_ms,
+                activation_total_us: activation_elapsed_us,
+                curtain: curtain_latency_report,
+            });
+            if let Some(report) = latency_report.as_ref() {
+                log_latency_report(report);
+            }
             tracing::info!(
                 trigger,
                 socket_setup_elapsed_ms,
@@ -90,6 +123,7 @@ pub(crate) async fn activate_lock(
                 control_socket_path,
                 auth_results,
                 auth_sender,
+                latency_report,
             })
         }
         ReadyResult::Ready(Ok(Err(error))) => {
@@ -123,6 +157,69 @@ If you ran `cargo run -p veila-daemon` after changing curtain startup arguments 
 
 fn elapsed_ms(started_at: Instant) -> u64 {
     started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
+}
+
+fn elapsed_us(started_at: Instant) -> u64 {
+    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
+}
+
+async fn read_curtain_latency_report(stream: UnixStream) -> Option<CurtainLatencyReport> {
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    match reader.read_line(&mut line).await {
+        Ok(0) => None,
+        Ok(_) => match veila_common::ipc::decode_message(line.trim_end()) {
+            Ok(report) => Some(report),
+            Err(error) => {
+                tracing::warn!("failed to decode curtain latency report: {error:#}");
+                None
+            }
+        },
+        Err(error) => {
+            tracing::warn!("failed to read curtain latency report: {error:#}");
+            None
+        }
+    }
+}
+
+fn log_latency_report(report: &LockLatencyReport) {
+    let curtain = report.curtain.as_ref();
+    tracing::info!(
+        daemon_config_load_ms = report.daemon_config_load_ms,
+        daemon_config_load_us = report.daemon_config_load_us,
+        socket_setup_ms = report.socket_setup_ms,
+        socket_setup_us = report.socket_setup_us,
+        curtain_spawn_ms = report.curtain_spawn_ms,
+        curtain_spawn_us = report.curtain_spawn_us,
+        curtain_ready_wait_ms = report.curtain_ready_wait_ms,
+        curtain_ready_wait_us = report.curtain_ready_wait_us,
+        activation_total_ms = report.activation_total_ms,
+        activation_total_us = report.activation_total_us,
+        curtain_wayland_connect_ms = curtain.map(|report| report.wayland_connect_ms),
+        curtain_wayland_connect_us = curtain.map(|report| report.wayland_connect_us),
+        curtain_registry_ms = curtain.map(|report| report.registry_ms),
+        curtain_registry_us = curtain.map(|report| report.registry_us),
+        curtain_event_loop_ms = curtain.map(|report| report.event_loop_ms),
+        curtain_event_loop_us = curtain.map(|report| report.event_loop_us),
+        curtain_app_init_ms = curtain.map(|report| report.app_init_ms),
+        curtain_app_init_us = curtain.map(|report| report.app_init_us),
+        curtain_lock_request_ms = curtain.map(|report| report.lock_request_ms),
+        curtain_lock_request_us = curtain.map(|report| report.lock_request_us),
+        curtain_startup_prepared_ms = curtain.map(|report| report.startup_prepared_ms),
+        curtain_startup_prepared_us = curtain.map(|report| report.startup_prepared_us),
+        first_surface_configured_ms = curtain.and_then(|report| report.first_surface_configured_ms),
+        first_surface_configured_us = curtain.and_then(|report| report.first_surface_configured_us),
+        all_surfaces_configured_ms = curtain.and_then(|report| report.all_surfaces_configured_ms),
+        all_surfaces_configured_us = curtain.and_then(|report| report.all_surfaces_configured_us),
+        session_locked_ms = curtain.and_then(|report| report.session_locked_ms),
+        session_locked_us = curtain.and_then(|report| report.session_locked_us),
+        first_frame_ms = curtain.and_then(|report| report.first_frame_ms),
+        first_frame_us = curtain.and_then(|report| report.first_frame_us),
+        ready_notified_ms = curtain.and_then(|report| report.ready_notified_ms),
+        ready_notified_us = curtain.and_then(|report| report.ready_notified_us),
+        surface_count = curtain.map(|report| report.surface_count),
+        "lock latency report"
+    );
 }
 
 pub(crate) async fn deactivate_lock(

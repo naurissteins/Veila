@@ -10,7 +10,7 @@ use tokio::{
 };
 use veila_common::LoadedConfig;
 use veila_common::config::BackgroundSlideshowOrder;
-use veila_common::ipc::LockPowerStatusSnapshot;
+use veila_common::ipc::{LatencyReportMode, LockPowerStatusSnapshot};
 
 use crate::domain::{
     auth::{AuthPolicy, AuthState},
@@ -27,6 +27,8 @@ use super::{
 
 pub(super) struct AppRuntime {
     pub(super) loaded_config: LoadedConfig,
+    pub(super) daemon_config_load_ms: u64,
+    pub(super) daemon_config_load_us: u64,
     pub(super) last_reload_result: Option<String>,
     pub(super) last_reload_unix_ms: Option<u64>,
     pub(super) auth_policy: AuthPolicy,
@@ -41,6 +43,7 @@ pub(super) struct AppRuntime {
     pub(super) auth_results: Option<UnboundedReceiver<AuthResult>>,
     pub(super) auth_sender: Option<UnboundedSender<AuthResult>>,
     pub(super) auth_state: AuthState,
+    pub(super) active_latency_report: LatencyReportMode,
     pub(super) background_selection: Option<BackgroundSelectionState>,
     pub(super) suspend_state: LockedSuspendState,
     pub(super) last_power_status_snapshot: Option<LockPowerStatusSnapshot>,
@@ -48,7 +51,11 @@ pub(super) struct AppRuntime {
 }
 
 impl AppRuntime {
-    pub(super) fn new(loaded_config: LoadedConfig) -> Self {
+    pub(super) fn new(
+        loaded_config: LoadedConfig,
+        daemon_config_load_ms: u64,
+        daemon_config_load_us: u64,
+    ) -> Self {
         let auth_policy = AuthPolicy::new(
             Duration::from_millis(loaded_config.config.lock.auth_backoff_base_ms),
             Duration::from_secs(loaded_config.config.lock.auth_backoff_max_seconds),
@@ -63,6 +70,8 @@ impl AppRuntime {
 
         Self {
             loaded_config,
+            daemon_config_load_ms,
+            daemon_config_load_us,
             last_reload_result: None,
             last_reload_unix_ms: None,
             auth_policy,
@@ -77,6 +86,7 @@ impl AppRuntime {
             auth_results: None,
             auth_sender: None,
             auth_state: AuthState::new(auth_policy),
+            active_latency_report: LatencyReportMode::Disabled,
             background_selection: None,
             suspend_state: LockedSuspendState::new(
                 suspend_delay,
@@ -105,6 +115,7 @@ impl AppRuntime {
             auth_results: &mut self.auth_results,
             auth_sender: &mut self.auth_sender,
             auth_state: &mut self.auth_state,
+            active_latency_report: &mut self.active_latency_report,
         }
     }
 
@@ -126,6 +137,7 @@ impl AppRuntime {
             auth_results,
             auth_sender,
             auth_state,
+            active_latency_report,
             ..
         } = self;
 
@@ -141,6 +153,7 @@ impl AppRuntime {
                 auth_results,
                 auth_sender,
                 auth_state,
+                active_latency_report,
             },
         )
     }
@@ -171,6 +184,7 @@ impl AppRuntime {
             auth_results,
             auth_sender,
             auth_state,
+            active_latency_report,
             ..
         } = self;
 
@@ -190,6 +204,7 @@ impl AppRuntime {
                 auth_results,
                 auth_sender,
                 auth_state,
+                active_latency_report,
             },
         )
     }
@@ -288,6 +303,7 @@ pub(super) struct RuntimeSlots<'a> {
     pub(super) auth_results: &'a mut Option<UnboundedReceiver<AuthResult>>,
     pub(super) auth_sender: &'a mut Option<UnboundedSender<AuthResult>>,
     pub(super) auth_state: &'a mut AuthState,
+    pub(super) active_latency_report: &'a mut LatencyReportMode,
 }
 
 impl<'a>
@@ -300,6 +316,7 @@ impl<'a>
         &'a mut Option<UnboundedReceiver<AuthResult>>,
         &'a mut Option<UnboundedSender<AuthResult>>,
         &'a mut AuthState,
+        &'a mut LatencyReportMode,
     )> for RuntimeSlots<'a>
 {
     fn from(
@@ -312,6 +329,7 @@ impl<'a>
             auth_results,
             auth_sender,
             auth_state,
+            active_latency_report,
         ): (
             &'a mut LockState,
             &'a mut Option<Child>,
@@ -321,6 +339,7 @@ impl<'a>
             &'a mut Option<UnboundedReceiver<AuthResult>>,
             &'a mut Option<UnboundedSender<AuthResult>>,
             &'a mut AuthState,
+            &'a mut LatencyReportMode,
         ),
     ) -> Self {
         Self {
@@ -332,6 +351,7 @@ impl<'a>
             auth_results,
             auth_sender,
             auth_state,
+            active_latency_report,
         }
     }
 }

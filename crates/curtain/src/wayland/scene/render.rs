@@ -136,6 +136,7 @@ impl CurtainApp {
         }
         .map_err(|error| anyhow!("failed to render and commit software buffer: {error}"));
         commit_result?;
+        self.note_first_frame_committed(first_frame);
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -221,6 +222,7 @@ impl CurtainApp {
             .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
         self.lock_surfaces[index].background = Some(background);
         commit_result?;
+        self.note_first_frame_committed(first_frame);
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -268,5 +270,19 @@ impl CurtainApp {
         self.note_memory_after_render(first_frame);
 
         Ok(())
+    }
+
+    fn note_first_frame_committed(&mut self, first_frame: bool) {
+        if !first_frame || self.first_frame_committed_at.is_some() {
+            return;
+        }
+
+        let committed_at = Instant::now();
+        self.first_frame_committed_at = Some(committed_at);
+        let elapsed = committed_at.saturating_duration_since(self.startup_started_at);
+        self.latency_timings.first_frame_ms =
+            Some(elapsed.as_millis().min(u128::from(u64::MAX)) as u64);
+        self.latency_timings.first_frame_us =
+            Some(elapsed.as_micros().min(u128::from(u64::MAX)) as u64);
     }
 }
