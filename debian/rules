@@ -41,6 +41,8 @@ override_dh_auto_install:
 
 	install -D -m644 assets/systemd/veilad.service \
 		$(CURDIR)/debian/veila/usr/lib/systemd/user/veilad.service
+	install -D -m644 assets/systemd/veila-idle.service \
+		$(CURDIR)/debian/veila/usr/lib/systemd/user/veila-idle.service
 	install -D -m644 debian/veila.pam $(CURDIR)/debian/veila/etc/pam.d/veila
 	install -D -m644 README.md $(CURDIR)/debian/veila/usr/share/doc/veila/README.md
 	install -D -m644 LICENSE $(CURDIR)/debian/veila/usr/share/doc/veila/copyright

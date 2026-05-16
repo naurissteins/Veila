@@ -8,7 +8,7 @@ Type=simple
 ExecStart=/usr/bin/veilad
 Restart=on-failure
 RestartSec=2
-PassEnvironment=XDG_SESSION_ID
+PassEnvironment=WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET
 
 [Install]
 WantedBy=graphical-session.target

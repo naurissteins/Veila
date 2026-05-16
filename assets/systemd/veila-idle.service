@@ -1,0 +1,17 @@
+[Unit]
+Description=Veila idle and sleep lock monitor
+After=graphical-session.target veilad.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=VEILA_IDLE_LOCK_AFTER=300
+Environment=VEILA_IDLE_SLEEP_FLAG=--lock-before-sleep
+EnvironmentFile=-%h/.config/veila/idle.env
+ExecStart=/usr/bin/veila idle --lock-after=${VEILA_IDLE_LOCK_AFTER} $VEILA_IDLE_SLEEP_FLAG
+Restart=on-failure
+RestartSec=2
+PassEnvironment=WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET
+
+[Install]
+WantedBy=graphical-session.target

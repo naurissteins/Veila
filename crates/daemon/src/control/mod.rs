@@ -295,7 +295,12 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
     }
 
     if options.idle {
-        run_idle_monitor(&daemon_socket_path, options.idle_lock_after_seconds).await?;
+        run_idle_monitor(
+            &daemon_socket_path,
+            options.idle_lock_after_seconds,
+            options.idle_lock_before_sleep,
+        )
+        .await?;
         return Ok(());
     }
 
@@ -374,6 +379,7 @@ Commands:
   reload                     Ask the running daemon to reload config from disk
   stop                       Stop the running daemon
   idle [--lock-after=N]      Lock after compositor-reported idle time
+       [--lock-before-sleep] Also lock on logind PrepareForSleep
 
 Themes:
   theme list                 List bundled themes
@@ -386,6 +392,7 @@ Notes:
   This command never starts the daemon. Start it with `veilad`, a user service, or your compositor config.
   `--wait-ready` can be combined with `veila lock` to block until the secure lock is active.
   `veila idle` defaults to 300 seconds when --lock-after is omitted.
+  `veila idle --lock-before-sleep` uses a logind delay inhibitor while preparing the lock.
 "
     );
 }

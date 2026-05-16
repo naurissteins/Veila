@@ -1,5 +1,8 @@
 use anyhow::Context;
-use zbus::{proxy, zvariant::OwnedObjectPath};
+use zbus::{
+    proxy,
+    zvariant::{OwnedFd, OwnedObjectPath},
+};
 
 #[proxy(
     interface = "org.freedesktop.login1.Manager",
@@ -9,6 +12,7 @@ use zbus::{proxy, zvariant::OwnedObjectPath};
 pub trait Manager {
     fn get_session(&self, session_id: &str) -> zbus::Result<OwnedObjectPath>;
     fn get_session_by_pid(&self, pid: u32) -> zbus::Result<OwnedObjectPath>;
+    fn inhibit(&self, what: &str, who: &str, why: &str, mode: &str) -> zbus::Result<OwnedFd>;
     fn list_sessions(&self) -> zbus::Result<Vec<(String, u32, String, String, OwnedObjectPath)>>;
     fn suspend(&self, interactive: bool) -> zbus::Result<()>;
 

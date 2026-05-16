@@ -28,6 +28,7 @@ pub struct DaemonOptions {
     pub background_prewarm_only: bool,
     pub idle: bool,
     pub idle_lock_after_seconds: Option<u64>,
+    pub idle_lock_before_sleep: bool,
 }
 
 impl DaemonOptions {
@@ -249,6 +250,12 @@ fn apply_idle_positionals(options: &mut DaemonOptions, args: &[String]) -> Resul
             };
             options.idle_lock_after_seconds = Some(parse_nonzero_seconds(value, "--lock-after")?);
             index += 2;
+            continue;
+        }
+
+        if arg == "--lock-before-sleep" {
+            options.idle_lock_before_sleep = true;
+            index += 1;
             continue;
         }
 
@@ -601,6 +608,34 @@ mod tests {
 
         assert!(options.idle);
         assert_eq!(options.idle_lock_after_seconds, Some(60));
+    }
+
+    #[test]
+    fn parses_control_idle_command_with_lock_before_sleep() {
+        let options = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "idle".to_string(),
+            "--lock-before-sleep".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.idle);
+        assert!(options.idle_lock_before_sleep);
+    }
+
+    #[test]
+    fn parses_control_idle_command_with_combined_options() {
+        let options = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "idle".to_string(),
+            "--lock-after=120".to_string(),
+            "--lock-before-sleep".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.idle);
+        assert_eq!(options.idle_lock_after_seconds, Some(120));
+        assert!(options.idle_lock_before_sleep);
     }
 
     #[test]
