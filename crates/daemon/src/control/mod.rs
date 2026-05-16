@@ -76,7 +76,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         bail!("--latency-report can only be used with --lock-now");
     }
 
-    let daemon_socket_path = ipc::daemon_socket_path();
+    let daemon_socket_path = ipc::daemon_socket_path()?;
     if options.current_theme {
         print_current_theme(options.config_path.as_deref())?;
         return Ok(());
@@ -203,7 +203,7 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         bail!("--latency-report can only be used with `veila lock`");
     }
 
-    let daemon_socket_path = ipc::daemon_socket_path();
+    let daemon_socket_path = ipc::daemon_socket_path()?;
     if options.version {
         print_version_info();
         return Ok(());

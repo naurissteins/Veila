@@ -17,6 +17,7 @@ veila-renderer = { path = "../renderer" }
 veila-ui = { path = "../ui" }
 anyhow = { workspace = true }
 calloop = { workspace = true }
+nix = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

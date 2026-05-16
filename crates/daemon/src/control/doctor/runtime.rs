@@ -3,7 +3,17 @@ use crate::adapters::{ipc, logind};
 use super::{CheckStatus, DoctorSummary};
 
 pub(super) async fn check_daemon(summary: &mut DoctorSummary) {
-    let daemon_socket = ipc::daemon_socket_path();
+    let daemon_socket = match ipc::daemon_socket_path() {
+        Ok(path) => path,
+        Err(error) => {
+            summary.record(
+                "daemon",
+                CheckStatus::Warning,
+                format!("failed to resolve daemon socket path: {error}"),
+            );
+            return;
+        }
+    };
     println!("daemon.socket={}", daemon_socket.display());
 
     if !daemon_socket.exists() {

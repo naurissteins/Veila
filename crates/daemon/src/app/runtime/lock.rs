@@ -2,7 +2,6 @@ use std::{path::Path, process::ExitStatus, time::Instant};
 
 use anyhow::{Context, Result, anyhow};
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
     net::UnixStream,
     process::Child,
     sync::mpsc::unbounded_channel,
@@ -39,19 +38,18 @@ pub(crate) async fn activate_lock(
     daemon_config_load_us: u64,
 ) -> Result<LockActivation> {
     let activation_started_at = Instant::now();
-    *state = LockState::Locking;
 
     let socket_setup_started_at = Instant::now();
-    let notify_path = process::notify_socket_path();
-    let auth_socket_path = ipc::auth_socket_path();
-    let control_socket_path = process::control_socket_path();
+    let notify_path = process::notify_socket_path()?;
+    let auth_socket_path = ipc::auth_socket_path()?;
+    let control_socket_path = process::control_socket_path()?;
     let notify_listener = ipc::bind_listener(&notify_path).await?;
     let auth_listener = ipc::bind_listener(&auth_socket_path).await?;
     let socket_setup_elapsed_ms = elapsed_ms(socket_setup_started_at);
     let socket_setup_elapsed_us = elapsed_us(socket_setup_started_at);
 
     let spawn_started_at = Instant::now();
-    let mut child = process::spawn_curtain(
+    let mut child = match process::spawn_curtain(
         &notify_path,
         &auth_socket_path,
         &control_socket_path,
@@ -63,7 +61,18 @@ pub(crate) async fn activate_lock(
         force_emergency_ui,
         latency_report,
     )
-    .await?;
+    .await
+    {
+        Ok(child) => child,
+        Err(error) => {
+            let _ = std::fs::remove_file(&notify_path);
+            let _ = std::fs::remove_file(&auth_socket_path);
+            let _ = std::fs::remove_file(&control_socket_path);
+            *state = LockState::Unlocked;
+            return Err(error);
+        }
+    };
+    *state = LockState::Locking;
     let spawn_elapsed_ms = elapsed_ms(spawn_started_at);
     let spawn_elapsed_us = elapsed_us(spawn_started_at);
     let (auth_sender, auth_results) = unbounded_channel();
@@ -164,11 +173,10 @@ fn elapsed_us(started_at: Instant) -> u64 {
 }
 
 async fn read_curtain_latency_report(stream: UnixStream) -> Option<CurtainLatencyReport> {
-    let mut reader = BufReader::new(stream);
-    let mut line = String::new();
-    match reader.read_line(&mut line).await {
-        Ok(0) => None,
-        Ok(_) => match veila_common::ipc::decode_message(line.trim_end()) {
+    let mut stream = stream;
+    match ipc::read_ipc_line(&mut stream, "curtain latency report").await {
+        Ok(None) => None,
+        Ok(Some(line)) => match veila_common::ipc::decode_message(&line) {
             Ok(report) => Some(report),
             Err(error) => {
                 tracing::warn!("failed to decode curtain latency report: {error:#}");

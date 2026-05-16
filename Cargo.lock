@@ -866,6 +866,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -1985,6 +1986,7 @@ version = "0.3.2"
 dependencies = [
  "anyhow",
  "calloop",
+ "nix",
  "serde",
  "serde_json",
  "smithay-client-toolkit",

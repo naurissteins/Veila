@@ -2,7 +2,7 @@ use std::{
     io::Write,
     os::unix::net::UnixStream,
     path::{Path, PathBuf},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
 
 use anyhow::{Context, Result};
@@ -18,6 +18,8 @@ use veila_common::{
     BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
     ipc::{CurtainControlMessage, LatencyReportMode, LockPowerStatusSnapshot, encode_message},
 };
+
+use super::ipc;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_curtain(
@@ -213,24 +215,12 @@ pub async fn spawn_background_prewarm_helper(config_path: Option<&Path>) -> Resu
         .with_context(|| format!("failed to spawn '{}'", binary.display()))
 }
 
-pub fn notify_socket_path() -> PathBuf {
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_micros())
-        .unwrap_or_default();
-    std::env::temp_dir().join(format!("veila-curtain-{stamp}.sock"))
+pub fn notify_socket_path() -> Result<PathBuf> {
+    ipc::transient_socket_path("curtain")
 }
 
-pub fn control_socket_path() -> PathBuf {
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_micros())
-        .unwrap_or_default();
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::temp_dir());
-
-    runtime_dir.join(format!("veila-control-{stamp}.sock"))
+pub fn control_socket_path() -> Result<PathBuf> {
+    ipc::transient_socket_path("control")
 }
 
 fn curtain_binary_path() -> Result<PathBuf> {

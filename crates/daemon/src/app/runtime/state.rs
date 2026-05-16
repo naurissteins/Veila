@@ -8,7 +8,7 @@ use tokio::{
 };
 
 use crate::{
-    adapters::logind,
+    adapters::{ipc, logind},
     domain::auth::{AuthPolicy, AuthState},
 };
 use veila_common::ipc::LockLatencyReport;
@@ -116,11 +116,7 @@ pub(crate) async fn accept_auth_connection(
     auth_listener: &mut Option<UnixListener>,
 ) -> Result<UnixStream> {
     match auth_listener.as_mut() {
-        Some(listener) => listener
-            .accept()
-            .await
-            .map(|(stream, _)| stream)
-            .context("failed to accept auth connection"),
+        Some(listener) => ipc::accept_verified(listener, "auth").await,
         None => pending().await,
     }
 }
@@ -128,11 +124,7 @@ pub(crate) async fn accept_auth_connection(
 pub(crate) async fn accept_control_connection(
     control_listener: &mut UnixListener,
 ) -> Result<UnixStream> {
-    control_listener
-        .accept()
-        .await
-        .map(|(stream, _)| stream)
-        .context("failed to accept daemon control connection")
+    ipc::accept_verified(control_listener, "daemon control").await
 }
 
 pub(crate) async fn receive_auth_result(
