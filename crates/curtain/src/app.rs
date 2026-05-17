@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use calloop::signals::{Signal, Signals};
 use smithay_client_toolkit::reexports::client::{Connection, globals::registry_queue_init};
 
@@ -93,7 +93,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         event_queue,
     )
     .insert(loop_handle)
-    .context("failed to insert Wayland source into event loop")?;
+    .map_err(|error| anyhow!("failed to insert Wayland source into event loop: {error}"))?;
 
     while !app.can_stop() {
         event_loop

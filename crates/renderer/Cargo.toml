@@ -7,11 +7,19 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+gpu = ["dep:pollster", "dep:raw-window-handle", "dep:wayland-client", "dep:wgpu"]
+
 [dependencies]
 cosmic-text = { workspace = true }
 image = { workspace = true }
+pollster = { workspace = true, optional = true }
+raw-window-handle = { workspace = true, optional = true }
 resvg = { workspace = true }
 smithay-client-toolkit = { workspace = true }
 thiserror = { workspace = true }
 tiny-skia = { workspace = true }
 tracing = { workspace = true }
+wayland-client = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }

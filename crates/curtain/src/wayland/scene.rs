@@ -1,3 +1,5 @@
+#[path = "scene/commit.rs"]
+mod commit;
 #[path = "scene/prepare.rs"]
 mod prepare;
 #[path = "scene/ready.rs"]

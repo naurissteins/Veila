@@ -11,6 +11,10 @@ repository.workspace = true
 name = "veila-curtain"
 path = "src/main.rs"
 
+[features]
+default = []
+gpu = ["veila-renderer/gpu"]
+
 [dependencies]
 veila-common = { path = "../common" }
 veila-renderer = { path = "../renderer" }

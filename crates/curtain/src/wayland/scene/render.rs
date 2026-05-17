@@ -2,9 +2,11 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
-use veila_renderer::{PixelBuffer, copy_rect_from, shm};
+use veila_renderer::{PixelBuffer, copy_rect_from};
 
 use crate::state::{CurtainApp, DirtyRenderTimingSample, RenderTimingSample, SurfaceSize};
+
+use super::commit::prepare_frame_backend;
 
 impl CurtainApp {
     pub(crate) fn render_surface_with_emergency_fallback(
@@ -40,7 +42,7 @@ impl CurtainApp {
 
         let timing_enabled = tracing::enabled!(tracing::Level::DEBUG);
         let total_started_at = timing_enabled.then(Instant::now);
-        let first_frame = self.lock_surfaces[index].shm_pool.is_none();
+        let first_frame = self.lock_surfaces[index].frame_backend.is_none();
         let frame_size = size.buffer;
         let render_scale = size.scale.max(1) as u32;
         let revision = self.ui_shell.static_scene_revision();
@@ -101,12 +103,16 @@ impl CurtainApp {
         let background_restore_ms = background_restore_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
-        let shm_pool_started_at = timing_enabled.then(Instant::now);
-        if self.lock_surfaces[index].shm_pool.is_none() {
-            self.lock_surfaces[index].shm_pool =
-                Some(shm::SurfaceBufferPool::new(&self.shm, frame_size)?);
-        }
-        let shm_pool_prepare_ms = shm_pool_started_at
+        let frame_backend_started_at = timing_enabled.then(Instant::now);
+        let frame_backend_context = self.frame_backend_context();
+        prepare_frame_backend(
+            &self.shm,
+            frame_backend_context,
+            self.frame_backend_preference,
+            &mut self.lock_surfaces[index].frame_backend,
+            frame_size,
+        )?;
+        let frame_backend_prepare_ms = frame_backend_started_at
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
 
@@ -118,9 +124,9 @@ impl CurtainApp {
         let commit_result = {
             let lock_surface = &mut self.lock_surfaces[index];
             lock_surface
-                .shm_pool
+                .frame_backend
                 .as_mut()
-                .expect("surface SHM pool should be initialized")
+                .expect("surface frame backend should be initialized")
                 .render_buffer(
                     queue_handle,
                     surface.wl_surface(),
@@ -147,7 +153,7 @@ impl CurtainApp {
                 background_prepare_ms,
                 background_restore_ms,
                 dynamic_overlay_ms,
-                shm_pool_prepare_ms,
+                frame_backend_prepare_ms,
                 commit_ms: commit_started_at
                     .map(|commit_started_at| {
                         commit_started_at
@@ -180,7 +186,7 @@ impl CurtainApp {
                 background_prepare_ms = sample.background_prepare_ms,
                 background_restore_ms = sample.background_restore_ms,
                 dynamic_overlay_ms = sample.dynamic_overlay_ms,
-                shm_pool_prepare_ms = sample.shm_pool_prepare_ms,
+                frame_backend_prepare_ms = sample.frame_backend_prepare_ms,
                 commit_ms = sample.commit_ms,
                 total_ms = sample.total_ms,
                 "rendered curtain frame"
@@ -214,7 +220,7 @@ impl CurtainApp {
         };
         if scene_base.size() != frame_size
             || self.lock_surfaces[index].scene_base_revision != revision
-            || self.lock_surfaces[index].shm_pool.is_none()
+            || self.lock_surfaces[index].frame_backend.is_none()
         {
             return self.render_surface(surface, size, queue_handle);
         }
@@ -236,9 +242,9 @@ impl CurtainApp {
             let lock_surface = &mut self.lock_surfaces[index];
             let mut damaged = dirty_rect;
             lock_surface
-                .shm_pool
+                .frame_backend
                 .as_mut()
-                .expect("surface SHM pool should be initialized")
+                .expect("surface frame backend should be initialized")
                 .render_buffer_region(
                     queue_handle,
                     surface.wl_surface(),
@@ -314,103 +320,7 @@ impl CurtainApp {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn commit_background_only(
-        &mut self,
-        index: usize,
-        surface: &SessionLockSurface,
-        queue_handle: &QueueHandle<Self>,
-        first_frame: bool,
-        background_refreshed: bool,
-        background_prepare_ms: u64,
-        total_started_at: Option<Instant>,
-        timing_enabled: bool,
-        size: SurfaceSize,
-        output_role: &'static str,
-    ) -> Result<()> {
-        let Some(background) = self.lock_surfaces[index].background.take() else {
-            return Err(anyhow!("background buffer is unavailable"));
-        };
-
-        let frame_size = background.size();
-        let shm_pool_started_at = timing_enabled.then(Instant::now);
-        if self.lock_surfaces[index].shm_pool.is_none() {
-            self.lock_surfaces[index].shm_pool =
-                Some(shm::SurfaceBufferPool::new(&self.shm, frame_size)?);
-        }
-        let shm_pool_prepare_ms = shm_pool_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
-
-        let commit_started_at = timing_enabled.then(Instant::now);
-        self.configure_viewport_for_surface(index, size);
-        let commit_result = self.lock_surfaces[index]
-            .shm_pool
-            .as_mut()
-            .expect("surface SHM pool should be initialized")
-            .commit_buffer(
-                queue_handle,
-                surface.wl_surface(),
-                &background,
-                size.buffer_scale_for_commit(),
-            )
-            .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
-        self.lock_surfaces[index].background = Some(background);
-        commit_result?;
-        self.note_first_frame_committed(first_frame);
-
-        if let Some(started_at) = total_started_at {
-            let sample = RenderTimingSample {
-                first_frame,
-                background_prepare_ms,
-                background_restore_ms: 0,
-                dynamic_overlay_ms: 0,
-                shm_pool_prepare_ms,
-                commit_ms: commit_started_at
-                    .map(|commit_started_at| {
-                        commit_started_at
-                            .elapsed()
-                            .as_millis()
-                            .min(u128::from(u64::MAX)) as u64
-                    })
-                    .unwrap_or(0),
-                total_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-            };
-            self.render_profiler.record(sample);
-            let output = self
-                .output_state
-                .info(&self.lock_surfaces[index].output)
-                .and_then(|info| info.name.clone())
-                .unwrap_or_else(|| format!("surface-{index}"));
-            tracing::debug!(
-                output,
-                logical_width = size.logical_width,
-                logical_height = size.logical_height,
-                width = frame_size.width,
-                height = frame_size.height,
-                buffer_scale = size.scale,
-                commit_buffer_scale = size.buffer_scale_for_commit(),
-                fractional_scale = size.fractional_scale,
-                output_role,
-                first_frame = sample.first_frame,
-                background_refreshed,
-                scene_base_refreshed = false,
-                background_prepare_ms = sample.background_prepare_ms,
-                background_restore_ms = 0,
-                dynamic_overlay_ms = 0,
-                shm_pool_prepare_ms = sample.shm_pool_prepare_ms,
-                commit_ms = sample.commit_ms,
-                total_ms = sample.total_ms,
-                "rendered curtain frame"
-            );
-        }
-
-        self.note_memory_after_render(first_frame);
-
-        Ok(())
-    }
-
-    fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
+    pub(super) fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
         let Some(viewport) = self.lock_surfaces[index].viewport.as_ref() else {
             return;
         };
@@ -420,7 +330,7 @@ impl CurtainApp {
         }
     }
 
-    fn note_first_frame_committed(&mut self, first_frame: bool) {
+    pub(super) fn note_first_frame_committed(&mut self, first_frame: bool) {
         if !first_frame || self.first_frame_committed_at.is_some() {
             return;
         }

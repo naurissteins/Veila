@@ -9,8 +9,8 @@ struct SurfaceMemorySummary {
     ui_visible: bool,
     software_buffer_count: u8,
     software_buffers_kib: u64,
-    shm_pool_estimated_kib: u64,
-    shm_pool_slots: usize,
+    frame_backend_estimated_kib: u64,
+    frame_backend_slots: usize,
     estimated_persistent_kib: u64,
     has_background: bool,
     has_scene_base: bool,
@@ -19,8 +19,8 @@ struct SurfaceMemorySummary {
 struct CurtainMemorySummary {
     rss_kib: Option<u64>,
     software_buffers_kib: u64,
-    shm_pool_estimated_kib: u64,
-    shm_pool_slots: usize,
+    frame_backend_estimated_kib: u64,
+    frame_backend_slots: usize,
     estimated_persistent_kib: u64,
     ui_visible_surfaces: usize,
     surfaces: Vec<SurfaceMemorySummary>,
@@ -35,8 +35,8 @@ impl CurtainApp {
             ui_visible_surfaces = summary.ui_visible_surfaces,
             rss_kib = summary.rss_kib,
             software_buffers_kib = summary.software_buffers_kib,
-            shm_pool_estimated_kib = summary.shm_pool_estimated_kib,
-            shm_pool_slots = summary.shm_pool_slots,
+            frame_backend_estimated_kib = summary.frame_backend_estimated_kib,
+            frame_backend_slots = summary.frame_backend_slots,
             estimated_persistent_kib = summary.estimated_persistent_kib,
             "curtain memory summary"
         );
@@ -50,8 +50,8 @@ impl CurtainApp {
                 ui_visible = surface.ui_visible,
                 software_buffer_count = surface.software_buffer_count,
                 software_buffers_kib = surface.software_buffers_kib,
-                shm_pool_estimated_kib = surface.shm_pool_estimated_kib,
-                shm_pool_slots = surface.shm_pool_slots,
+                frame_backend_estimated_kib = surface.frame_backend_estimated_kib,
+                frame_backend_slots = surface.frame_backend_slots,
                 estimated_persistent_kib = surface.estimated_persistent_kib,
                 has_background = surface.has_background,
                 has_scene_base = surface.has_scene_base,
@@ -77,8 +77,8 @@ impl CurtainApp {
 
     fn memory_summary(&self) -> CurtainMemorySummary {
         let mut software_buffers_kib = 0_u64;
-        let mut shm_pool_estimated_kib = 0_u64;
-        let mut shm_pool_slots_total = 0_usize;
+        let mut frame_backend_estimated_kib = 0_u64;
+        let mut frame_backend_slots_total = 0_usize;
         let mut ui_visible_surfaces = 0_usize;
         let mut surfaces = Vec::with_capacity(self.lock_surfaces.len());
         let mut counted_scene_bases = HashSet::with_capacity(self.lock_surfaces.len());
@@ -95,25 +95,26 @@ impl CurtainApp {
             let background_kib = software_buffer_kib(surface.background.as_ref());
             let scene_base_kib = software_buffer_kib(surface.scene_base.as_deref());
             let software_total_kib = background_kib + scene_base_kib;
-            let shm_pool_slots = surface
-                .shm_pool
+            let frame_backend_slots = surface
+                .frame_backend
                 .as_ref()
                 .map(|pool| pool.slot_count())
                 .unwrap_or(0);
-            let shm_kib = surface
-                .shm_pool
+            let backend_kib = surface
+                .frame_backend
                 .as_ref()
                 .map(|pool| (pool.reserved_bytes() / 1024) as u64)
                 .unwrap_or(0);
 
             software_buffers_kib = software_buffers_kib.saturating_add(background_kib);
-            shm_pool_slots_total = shm_pool_slots_total.saturating_add(shm_pool_slots);
+            frame_backend_slots_total =
+                frame_backend_slots_total.saturating_add(frame_backend_slots);
             if let Some(scene_base) = surface.scene_base.as_ref()
                 && counted_scene_bases.insert(Arc::as_ptr(scene_base))
             {
                 software_buffers_kib = software_buffers_kib.saturating_add(scene_base_kib);
             }
-            shm_pool_estimated_kib = shm_pool_estimated_kib.saturating_add(shm_kib);
+            frame_backend_estimated_kib = frame_backend_estimated_kib.saturating_add(backend_kib);
 
             let output = self
                 .output_state
@@ -130,9 +131,9 @@ impl CurtainApp {
                 ui_visible,
                 software_buffer_count,
                 software_buffers_kib: software_total_kib,
-                shm_pool_estimated_kib: shm_kib,
-                shm_pool_slots,
-                estimated_persistent_kib: software_total_kib.saturating_add(shm_kib),
+                frame_backend_estimated_kib: backend_kib,
+                frame_backend_slots,
+                estimated_persistent_kib: software_total_kib.saturating_add(backend_kib),
                 has_background: surface.background.is_some(),
                 has_scene_base: surface.scene_base.is_some(),
             });
@@ -141,9 +142,10 @@ impl CurtainApp {
         CurtainMemorySummary {
             rss_kib: current_rss_kib(),
             software_buffers_kib,
-            shm_pool_estimated_kib,
-            shm_pool_slots: shm_pool_slots_total,
-            estimated_persistent_kib: software_buffers_kib.saturating_add(shm_pool_estimated_kib),
+            frame_backend_estimated_kib,
+            frame_backend_slots: frame_backend_slots_total,
+            estimated_persistent_kib: software_buffers_kib
+                .saturating_add(frame_backend_estimated_kib),
             ui_visible_surfaces,
             surfaces,
         }

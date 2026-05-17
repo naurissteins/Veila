@@ -4,7 +4,7 @@ pub(crate) struct RenderTimingSample {
     pub(crate) background_prepare_ms: u64,
     pub(crate) background_restore_ms: u64,
     pub(crate) dynamic_overlay_ms: u64,
-    pub(crate) shm_pool_prepare_ms: u64,
+    pub(crate) frame_backend_prepare_ms: u64,
     pub(crate) commit_ms: u64,
     pub(crate) total_ms: u64,
 }
@@ -37,7 +37,7 @@ pub(crate) struct RenderProfiler {
     background_prepare: StageTimingStats,
     background_restore: StageTimingStats,
     dynamic_overlay: StageTimingStats,
-    shm_pool_prepare: StageTimingStats,
+    frame_backend_prepare: StageTimingStats,
     commit: StageTimingStats,
     total: StageTimingStats,
     dirty_frames_rendered: u64,
@@ -87,7 +87,8 @@ impl RenderProfiler {
         self.background_prepare.record(sample.background_prepare_ms);
         self.background_restore.record(sample.background_restore_ms);
         self.dynamic_overlay.record(sample.dynamic_overlay_ms);
-        self.shm_pool_prepare.record(sample.shm_pool_prepare_ms);
+        self.frame_backend_prepare
+            .record(sample.frame_backend_prepare_ms);
         self.commit.record(sample.commit_ms);
         self.total.record(sample.total_ms);
     }
@@ -120,8 +121,8 @@ impl RenderProfiler {
                 self.dynamic_overlay.average_ms(self.frames_rendered),
             ),
             (
-                "shm_pool_prepare_ms",
-                self.shm_pool_prepare.average_ms(self.frames_rendered),
+                "frame_backend_prepare_ms",
+                self.frame_backend_prepare.average_ms(self.frames_rendered),
             ),
             ("commit_ms", self.commit.average_ms(self.frames_rendered)),
         ];
@@ -129,7 +130,10 @@ impl RenderProfiler {
             ("background_prepare_ms", self.background_prepare.max_ms),
             ("background_restore_ms", self.background_restore.max_ms),
             ("dynamic_overlay_ms", self.dynamic_overlay.max_ms),
-            ("shm_pool_prepare_ms", self.shm_pool_prepare.max_ms),
+            (
+                "frame_backend_prepare_ms",
+                self.frame_backend_prepare.max_ms,
+            ),
             ("commit_ms", self.commit.max_ms),
         ];
         let slowest_avg_stage = average_stages
@@ -154,8 +158,9 @@ impl RenderProfiler {
             background_restore_max_ms = self.background_restore.max_ms,
             dynamic_overlay_avg_ms = self.dynamic_overlay.average_ms(self.frames_rendered),
             dynamic_overlay_max_ms = self.dynamic_overlay.max_ms,
-            shm_pool_prepare_avg_ms = self.shm_pool_prepare.average_ms(self.frames_rendered),
-            shm_pool_prepare_max_ms = self.shm_pool_prepare.max_ms,
+            frame_backend_prepare_avg_ms =
+                self.frame_backend_prepare.average_ms(self.frames_rendered),
+            frame_backend_prepare_max_ms = self.frame_backend_prepare.max_ms,
             commit_avg_ms = self.commit.average_ms(self.frames_rendered),
             commit_max_ms = self.commit.max_ms,
             dirty_frames_rendered = self.dirty_frames_rendered,

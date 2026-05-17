@@ -44,12 +44,12 @@ use veila_common::{
 };
 use veila_renderer::{
     ClearColor,
+    backend::{FrameBackend, FrameBackendPreference},
     background::{
         BackgroundAsset, BackgroundGradient, BackgroundLayered, BackgroundLayeredBase,
         BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
         GeneratedBackground,
     },
-    shm::SurfaceBufferPool,
 };
 use veila_ui::{ShellState, ShellTheme};
 use wayland_protocols_wlr::output_power_management::v1::client::{
@@ -80,7 +80,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base: Option<Arc<veila_renderer::SoftwareBuffer>>,
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_has_layers: bool,
-    pub(crate) shm_pool: Option<SurfaceBufferPool>,
+    pub(crate) frame_backend: Option<FrameBackend>,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
     pub(crate) preferred_scale: i32,
     pub(crate) preferred_fractional_scale: Option<u32>,
@@ -205,6 +205,7 @@ pub(crate) struct CurtainApp {
     pub(crate) all_surfaces_configured_logged: bool,
     pub(crate) all_surfaces_configured_at: Option<Instant>,
     pub(crate) background_render_started: bool,
+    pub(crate) frame_backend_preference: FrameBackendPreference,
     auth_in_flight: bool,
     next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
@@ -341,6 +342,7 @@ impl CurtainApp {
         let output_power_manager = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
         let fractional_scale_manager = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
         let viewporter = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
+        let frame_backend_preference = frame_backend_preference_from_env();
 
         if (screen_off_delay.is_some() || power_off_secondary_outputs)
             && output_power_manager.get().is_err()
@@ -443,6 +445,7 @@ impl CurtainApp {
             all_surfaces_configured_logged: false,
             all_surfaces_configured_at: None,
             background_render_started: false,
+            frame_backend_preference,
             auth_in_flight: false,
             next_auth_attempt_id: 1,
             has_keyboard_focus: false,
@@ -527,7 +530,7 @@ impl CurtainApp {
             scene_base: None,
             scene_base_revision: 0,
             scene_base_has_layers: false,
-            shm_pool: None,
+            frame_backend: None,
             output_power,
             preferred_scale: 1,
             preferred_fractional_scale: None,
@@ -922,13 +925,45 @@ pub(crate) fn effective_weather_snapshot(
     config.weather.enabled.then_some(runtime_snapshot).flatten()
 }
 
+fn frame_backend_preference_from_env() -> FrameBackendPreference {
+    match std::env::var("VEILA_RENDER_BACKEND") {
+        Ok(value) => frame_backend_preference_from_value(Some(&value)),
+        Err(_) => FrameBackendPreference::Software,
+    }
+}
+
+fn frame_backend_preference_from_value(value: Option<&str>) -> FrameBackendPreference {
+    let Some(value) = value else {
+        return FrameBackendPreference::Software;
+    };
+
+    match FrameBackendPreference::from_env_value(value) {
+        Some(preference) => {
+            tracing::info!(
+                requested_frame_backend = preference.as_str(),
+                "loaded renderer backend preference"
+            );
+            preference
+        }
+        None => {
+            tracing::warn!(
+                requested_frame_backend = value,
+                fallback_frame_backend = FrameBackendPreference::Software.as_str(),
+                "ignoring invalid renderer backend preference"
+            );
+            FrameBackendPreference::Software
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         SurfaceSize, effective_battery_snapshot, effective_weather_location,
-        effective_weather_snapshot,
+        effective_weather_snapshot, frame_backend_preference_from_value,
     };
     use veila_common::{AppConfig, BatterySnapshot, WeatherCondition, WeatherSnapshot};
+    use veila_renderer::backend::FrameBackendPreference;
 
     #[test]
     fn surface_size_tracks_logical_and_scaled_buffer_size() {
@@ -1039,6 +1074,30 @@ mod tests {
         assert_eq!(
             effective_weather_snapshot(&config, Some(snapshot.clone())),
             Some(snapshot)
+        );
+    }
+
+    #[test]
+    fn render_backend_preference_defaults_to_software() {
+        assert_eq!(
+            frame_backend_preference_from_value(None),
+            FrameBackendPreference::Software
+        );
+    }
+
+    #[test]
+    fn render_backend_preference_accepts_gpu_for_development() {
+        assert_eq!(
+            frame_backend_preference_from_value(Some("gpu")),
+            FrameBackendPreference::Gpu
+        );
+    }
+
+    #[test]
+    fn render_backend_preference_rejects_unknown_values() {
+        assert_eq!(
+            frame_backend_preference_from_value(Some("mystery")),
+            FrameBackendPreference::Software
         );
     }
 }
