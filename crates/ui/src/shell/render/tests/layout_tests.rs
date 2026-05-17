@@ -389,6 +389,9 @@ fn dynamic_overlay_draws_conditional_backdrop_when_visual_layers_exist() {
     let shell = ShellState::new_with_username_and_widgets(
         ShellTheme {
             now_playing_enabled: true,
+            now_playing_artwork_enabled: false,
+            now_playing_artist_enabled: false,
+            now_playing_title_enabled: false,
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Solid,
                 show_when: BackdropShowWhen::NowPlaying,
@@ -461,8 +464,8 @@ fn dynamic_overlay_draws_conditional_backdrop_when_visual_layers_exist() {
     shell.render_static_overlay(&mut buffer);
     shell.render_dynamic_overlay(&mut buffer);
 
-    let center = &buffer.pixels()[(60 * 200 + 100) * 4..(60 * 200 + 100) * 4 + 4];
-    assert_eq!(center, &[0, 0, 255, 255]);
+    let inside_backdrop = &buffer.pixels()[(25 * 200 + 45) * 4..(25 * 200 + 45) * 4 + 4];
+    assert_eq!(inside_backdrop, &[0, 0, 255, 255]);
 }
 
 #[test]
