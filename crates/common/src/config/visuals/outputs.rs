@@ -11,7 +11,7 @@ pub struct OutputVisualConfig {
 impl Default for OutputVisualConfig {
     fn default() -> Self {
         Self {
-            ui_mode: Some(OutputUiMode::Single),
+            ui_mode: Some(OutputUiMode::All),
             ui_output: None,
         }
     }
@@ -20,8 +20,8 @@ impl Default for OutputVisualConfig {
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OutputUiMode {
-    All,
     #[default]
+    All,
     Single,
 }
 

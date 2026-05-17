@@ -16,10 +16,18 @@ use anyhow::{Context, Result, anyhow, bail};
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
-    reexports::client::{
-        Connection, QueueHandle,
-        globals::GlobalList,
-        protocol::{wl_keyboard, wl_output, wl_surface},
+    reexports::{
+        client::{
+            Connection, QueueHandle,
+            globals::GlobalList,
+            protocol::{wl_keyboard, wl_output, wl_surface},
+        },
+        protocols::wp::{
+            fractional_scale::v1::client::{
+                wp_fractional_scale_manager_v1, wp_fractional_scale_v1,
+            },
+            viewporter::client::{wp_viewport, wp_viewporter},
+        },
     },
     registry::{GlobalProxy, RegistryState},
     seat::{SeatState, pointer::ThemedPointer},
@@ -75,6 +83,9 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
     pub(crate) preferred_scale: i32,
+    pub(crate) preferred_fractional_scale: Option<u32>,
+    pub(crate) fractional_scale: Option<wp_fractional_scale_v1::WpFractionalScaleV1>,
+    pub(crate) viewport: Option<wp_viewport::WpViewport>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,10 +113,16 @@ pub(crate) struct SurfaceSize {
     pub(crate) logical_height: u32,
     pub(crate) buffer: veila_renderer::FrameSize,
     pub(crate) scale: i32,
+    pub(crate) fractional_scale: Option<u32>,
 }
 
 impl SurfaceSize {
-    pub(crate) fn new(logical_width: u32, logical_height: u32, scale: i32) -> Self {
+    pub(crate) fn new_with_fractional_scale(
+        logical_width: u32,
+        logical_height: u32,
+        scale: i32,
+        fractional_scale: Option<u32>,
+    ) -> Self {
         let scale = scale.max(1) as u32;
         Self {
             logical_width,
@@ -115,6 +132,15 @@ impl SurfaceSize {
                 logical_height.saturating_mul(scale),
             ),
             scale: scale as i32,
+            fractional_scale,
+        }
+    }
+
+    pub(crate) fn buffer_scale_for_commit(self) -> i32 {
+        if self.fractional_scale.is_some() {
+            1
+        } else {
+            self.scale.max(1)
         }
     }
 }
@@ -128,6 +154,9 @@ pub(crate) struct CurtainApp {
     pub(crate) session_lock_state: SessionLockState,
     pub(crate) output_power_manager:
         GlobalProxy<zwlr_output_power_manager_v1::ZwlrOutputPowerManagerV1>,
+    pub(crate) fractional_scale_manager:
+        GlobalProxy<wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1>,
+    pub(crate) viewporter: GlobalProxy<wp_viewporter::WpViewporter>,
     pub(crate) session_lock: Option<SessionLock>,
     pub(crate) shm: Shm,
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
@@ -179,6 +208,7 @@ pub(crate) struct CurtainApp {
     auth_in_flight: bool,
     next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
+    pub(crate) focused_surface_index: Option<usize>,
     pub(crate) ctrl_active: bool,
     pub(crate) keyboard_layout_labels: Vec<String>,
     pub(crate) active_keyboard_layout: u32,
@@ -309,6 +339,8 @@ impl CurtainApp {
         let power_off_secondary_outputs =
             !emergency_active && config.lock.power_off_secondary_outputs;
         let output_power_manager = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
+        let fractional_scale_manager = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
+        let viewporter = GlobalProxy::from(globals.bind(queue_handle, 1..=1, ()));
 
         if (screen_off_delay.is_some() || power_off_secondary_outputs)
             && output_power_manager.get().is_err()
@@ -349,6 +381,8 @@ impl CurtainApp {
             seat_state: SeatState::new(globals, queue_handle),
             session_lock_state: SessionLockState::new(globals, queue_handle),
             output_power_manager,
+            fractional_scale_manager,
+            viewporter,
             session_lock: None,
             shm: Shm::bind(globals, queue_handle)
                 .context("compositor does not advertise wl_shm")?,
@@ -412,6 +446,7 @@ impl CurtainApp {
             auth_in_flight: false,
             next_auth_attempt_id: 1,
             has_keyboard_focus: false,
+            focused_surface_index: None,
             ctrl_active: false,
             keyboard_layout_labels: Vec::new(),
             active_keyboard_layout: 0,
@@ -471,6 +506,17 @@ impl CurtainApp {
 
         let output_power = self.bind_output_power_for_surface(&output, queue_handle);
         let wl_surface = self.compositor_state.create_surface(queue_handle);
+        let viewport = self
+            .viewporter
+            .get()
+            .ok()
+            .map(|viewporter| viewporter.get_viewport(&wl_surface, queue_handle, ()));
+        let fractional_scale = match (self.fractional_scale_manager.get(), viewport.is_some()) {
+            (Ok(manager), true) => {
+                Some(manager.get_fractional_scale(&wl_surface, queue_handle, wl_surface.clone()))
+            }
+            _ => None,
+        };
         let surface = session_lock.create_lock_surface(wl_surface, &output, queue_handle);
         self.lock_surfaces.push(ManagedLockSurface {
             output,
@@ -484,6 +530,9 @@ impl CurtainApp {
             shm_pool: None,
             output_power,
             preferred_scale: 1,
+            preferred_fractional_scale: None,
+            fractional_scale,
+            viewport,
         });
         self.background_render_started = false;
 
@@ -639,6 +688,38 @@ impl CurtainApp {
             .any(|entry| entry.surface.wl_surface() == surface)
     }
 
+    pub(crate) fn note_surface_activity(
+        &mut self,
+        surface: &wl_surface::WlSurface,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        let Some(index) = self
+            .lock_surfaces
+            .iter()
+            .position(|entry| entry.surface.wl_surface() == surface)
+        else {
+            return;
+        };
+
+        self.set_focused_surface_index(Some(index), queue_handle);
+    }
+
+    fn set_focused_surface_index(
+        &mut self,
+        index: Option<usize>,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.focused_surface_index == index {
+            return;
+        }
+
+        let previous_primary = self.selected_ui_surface_index();
+        self.focused_surface_index = index;
+        if self.selected_ui_surface_index() != previous_primary {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
     pub(crate) fn background_path_for_surface(&self, index: usize) -> Option<&Path> {
         if self.slideshow.is_some() {
             return self.background_path.as_deref();
@@ -686,6 +767,15 @@ impl CurtainApp {
                     .as_deref()
                     == Some(selected_name)
             })
+        {
+            return Some(index);
+        }
+
+        if let Some(index) = self.focused_surface_index
+            && self
+                .lock_surfaces
+                .get(index)
+                .is_some_and(|surface| surface.size.is_some())
         {
             return Some(index);
         }
@@ -842,22 +932,33 @@ mod tests {
 
     #[test]
     fn surface_size_tracks_logical_and_scaled_buffer_size() {
-        let size = SurfaceSize::new(1920, 1080, 2);
+        let size = SurfaceSize::new_with_fractional_scale(1920, 1080, 2, None);
 
         assert_eq!(size.logical_width, 1920);
         assert_eq!(size.logical_height, 1080);
         assert_eq!(size.buffer.width, 3840);
         assert_eq!(size.buffer.height, 2160);
         assert_eq!(size.scale, 2);
+        assert_eq!(size.buffer_scale_for_commit(), 2);
     }
 
     #[test]
     fn surface_size_never_uses_zero_or_negative_scale() {
-        let size = SurfaceSize::new(800, 600, 0);
+        let size = SurfaceSize::new_with_fractional_scale(800, 600, 0, None);
 
         assert_eq!(size.buffer.width, 800);
         assert_eq!(size.buffer.height, 600);
         assert_eq!(size.scale, 1);
+    }
+
+    #[test]
+    fn fractional_surface_size_commits_with_unit_buffer_scale() {
+        let size = SurfaceSize::new_with_fractional_scale(1920, 1080, 2, Some(150));
+
+        assert_eq!(size.buffer.width, 3840);
+        assert_eq!(size.buffer.height, 2160);
+        assert_eq!(size.buffer_scale_for_commit(), 1);
+        assert_eq!(size.fractional_scale, Some(150));
     }
 
     #[test]

@@ -102,6 +102,7 @@ impl KeyboardHandler for CurtainApp {
         _keysyms: &[Keysym],
     ) {
         if self.surface_has_focus_target(surface) {
+            self.note_surface_activity(surface, queue_handle);
             self.set_keyboard_focus(true, queue_handle);
         }
     }
@@ -244,6 +245,7 @@ impl PointerHandler for CurtainApp {
             if !self.surface_has_focus_target(&event.surface) {
                 continue;
             }
+            self.note_surface_activity(&event.surface, queue_handle);
 
             let outputs_powered_off = self.outputs_powered_off();
             if outputs_powered_off && !matches!(event.kind, PointerEventKind::Press { .. }) {

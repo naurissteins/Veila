@@ -194,10 +194,19 @@ impl CurtainApp {
             (1920, 1080)
         };
 
-        SurfaceSize::new(logical_size.0, logical_size.1, self.surface_scale(index))
+        SurfaceSize::new_with_fractional_scale(
+            logical_size.0,
+            logical_size.1,
+            self.surface_scale(index),
+            self.surface_fractional_scale(index),
+        )
     }
 
     pub(super) fn surface_scale(&self, index: usize) -> i32 {
+        let fractional_scale = self
+            .surface_fractional_scale(index)
+            .map(ceil_fractional_scale)
+            .unwrap_or(1);
         let output_scale = self
             .output_state
             .info(&self.lock_surfaces[index].output)
@@ -207,7 +216,19 @@ impl CurtainApp {
         self.lock_surfaces[index]
             .preferred_scale
             .max(output_scale)
+            .max(fractional_scale)
             .max(1)
+    }
+
+    pub(super) fn surface_fractional_scale(&self, index: usize) -> Option<u32> {
+        let surface = self.lock_surfaces.get(index)?;
+        if surface.viewport.is_none() || surface.fractional_scale.is_none() {
+            return None;
+        }
+
+        surface
+            .preferred_fractional_scale
+            .filter(|scale| *scale > 0)
     }
 
     fn log_surface_size(&self, index: usize, requested: (u32, u32), size: SurfaceSize) {
@@ -232,12 +253,18 @@ impl CurtainApp {
             buffer_width = size.buffer.width,
             buffer_height = size.buffer.height,
             buffer_scale = size.scale,
+            commit_buffer_scale = size.buffer_scale_for_commit(),
+            fractional_scale = size.fractional_scale,
             preferred_buffer_scale = self.lock_surfaces[index].preferred_scale,
             output_logical_width,
             output_logical_height,
             "resolved session-lock surface size"
         );
     }
+}
+
+fn ceil_fractional_scale(scale: u32) -> i32 {
+    scale.saturating_add(119).saturating_div(120).max(1) as i32
 }
 
 fn logical_size(info: &OutputInfo) -> Option<(i32, i32)> {

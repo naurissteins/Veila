@@ -830,10 +830,10 @@ fn parses_single_output_ui_mode() {
 }
 
 #[test]
-fn defaults_to_single_output_ui_mode() {
+fn defaults_to_all_output_ui_mode() {
     let config = AppConfig::from_toml_str("").expect("config should parse");
 
-    assert_eq!(config.visuals.output_ui_mode(), OutputUiMode::Single);
+    assert_eq!(config.visuals.output_ui_mode(), OutputUiMode::All);
     assert!(config.visuals.ui_output_name().is_none());
 }
 

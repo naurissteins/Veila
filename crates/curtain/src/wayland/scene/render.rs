@@ -114,6 +114,7 @@ impl CurtainApp {
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
         let mut dynamic_overlay_ms = 0;
         let ui_shell = &self.ui_shell;
+        self.configure_viewport_for_surface(index, size);
         let commit_result = {
             let lock_surface = &mut self.lock_surfaces[index];
             lock_surface
@@ -124,7 +125,7 @@ impl CurtainApp {
                     queue_handle,
                     surface.wl_surface(),
                     frame_size,
-                    size.scale,
+                    size.buffer_scale_for_commit(),
                     |buffer| {
                         buffer.pixels_mut().copy_from_slice(scene_base.pixels());
                         ui_shell.render_dynamic_overlay_scaled(buffer, render_scale);
@@ -170,6 +171,8 @@ impl CurtainApp {
                 width = frame_size.width,
                 height = frame_size.height,
                 buffer_scale = size.scale,
+                commit_buffer_scale = size.buffer_scale_for_commit(),
+                fractional_scale = size.fractional_scale,
                 output_role = output_role.as_str(),
                 first_frame = sample.first_frame,
                 background_refreshed,
@@ -218,11 +221,17 @@ impl CurtainApp {
             .unwrap_or(0);
 
         let commit_started_at = timing_enabled.then(Instant::now);
+        self.configure_viewport_for_surface(index, size);
         let commit_result = self.lock_surfaces[index]
             .shm_pool
             .as_mut()
             .expect("surface SHM pool should be initialized")
-            .commit_buffer(queue_handle, surface.wl_surface(), &background, size.scale)
+            .commit_buffer(
+                queue_handle,
+                surface.wl_surface(),
+                &background,
+                size.buffer_scale_for_commit(),
+            )
             .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
         self.lock_surfaces[index].background = Some(background);
         commit_result?;
@@ -258,6 +267,8 @@ impl CurtainApp {
                 width = frame_size.width,
                 height = frame_size.height,
                 buffer_scale = size.scale,
+                commit_buffer_scale = size.buffer_scale_for_commit(),
+                fractional_scale = size.fractional_scale,
                 output_role,
                 first_frame = sample.first_frame,
                 background_refreshed,
@@ -275,6 +286,16 @@ impl CurtainApp {
         self.note_memory_after_render(first_frame);
 
         Ok(())
+    }
+
+    fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
+        let Some(viewport) = self.lock_surfaces[index].viewport.as_ref() else {
+            return;
+        };
+
+        if size.fractional_scale.is_some() {
+            viewport.set_destination(size.logical_width as i32, size.logical_height as i32);
+        }
     }
 
     fn note_first_frame_committed(&mut self, first_frame: bool) {
