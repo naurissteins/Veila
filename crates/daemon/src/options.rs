@@ -23,6 +23,9 @@ pub struct DaemonOptions {
     pub health: bool,
     pub doctor: bool,
     pub check_config: bool,
+    pub init_config: bool,
+    pub init_force: bool,
+    pub init_theme: Option<String>,
     pub version: bool,
     pub reload_config: bool,
     pub background_prewarm_only: bool,
@@ -223,6 +226,7 @@ fn apply_control_positionals(options: &mut DaemonOptions, positional: &[String])
         "check-config" => {
             expect_no_extra_args(command, &positional[1..], || options.check_config = true)
         }
+        "init" => apply_init_positionals(options, &positional[1..]),
         "reload" => {
             expect_no_extra_args(command, &positional[1..], || options.reload_config = true)
         }
@@ -231,6 +235,38 @@ fn apply_control_positionals(options: &mut DaemonOptions, positional: &[String])
         "theme" => apply_theme_positionals(options, &positional[1..]),
         _ => bail!("unknown veila command: {command}"),
     }
+}
+
+fn apply_init_positionals(options: &mut DaemonOptions, args: &[String]) -> Result<()> {
+    options.init_config = true;
+    let mut index = 0;
+
+    while let Some(arg) = args.get(index) {
+        if arg == "--force" {
+            options.init_force = true;
+            index += 1;
+            continue;
+        }
+
+        if let Some(theme) = arg.strip_prefix("--theme=") {
+            options.init_theme = Some(theme.to_string());
+            index += 1;
+            continue;
+        }
+
+        if arg == "--theme" {
+            let Some(theme) = args.get(index + 1) else {
+                bail!("missing value for --theme");
+            };
+            options.init_theme = Some(theme.clone());
+            index += 2;
+            continue;
+        }
+
+        bail!("unexpected extra argument for init: {arg}");
+    }
+
+    Ok(())
 }
 
 fn apply_idle_positionals(options: &mut DaemonOptions, args: &[String]) -> Result<()> {
@@ -666,6 +702,57 @@ mod tests {
                 .expect("arguments should parse");
 
         assert!(options.check_config);
+    }
+
+    #[test]
+    fn parses_control_init_command() {
+        let options = DaemonOptions::parse_control_args(["veila".to_string(), "init".to_string()])
+            .expect("arguments should parse");
+
+        assert!(options.init_config);
+        assert!(!options.init_force);
+        assert_eq!(options.init_theme.as_deref(), None);
+    }
+
+    #[test]
+    fn parses_control_init_command_with_force_and_theme_equals() {
+        let options = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "init".to_string(),
+            "--force".to_string(),
+            "--theme=santorini".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.init_config);
+        assert!(options.init_force);
+        assert_eq!(options.init_theme.as_deref(), Some("santorini"));
+    }
+
+    #[test]
+    fn parses_control_init_command_with_space_theme() {
+        let options = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "init".to_string(),
+            "--theme".to_string(),
+            "window".to_string(),
+        ])
+        .expect("arguments should parse");
+
+        assert!(options.init_config);
+        assert_eq!(options.init_theme.as_deref(), Some("window"));
+    }
+
+    #[test]
+    fn rejects_control_init_missing_theme_value() {
+        let error = DaemonOptions::parse_control_args([
+            "veila".to_string(),
+            "init".to_string(),
+            "--theme".to_string(),
+        ])
+        .expect_err("missing theme value should fail");
+
+        assert!(error.to_string().contains("missing value for --theme"));
     }
 
     #[test]

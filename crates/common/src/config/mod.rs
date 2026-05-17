@@ -281,6 +281,43 @@ pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<
     Ok(path)
 }
 
+pub fn init_config(explicit_path: Option<&Path>, theme: &str, force: bool) -> Result<PathBuf> {
+    validate_theme_name(theme)?;
+
+    let path = match explicit_path {
+        Some(path) => path.to_path_buf(),
+        None => default_path().ok_or_else(|| {
+            VeilaError::ConfigIo(io::Error::new(
+                io::ErrorKind::NotFound,
+                "failed to resolve default config path",
+            ))
+        })?,
+    };
+
+    resolve_theme_path(theme, path.parent())?;
+
+    if path.exists() && !force {
+        return Err(VeilaError::ConfigIo(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "config already exists; pass --force to replace it",
+        )));
+    }
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut table = toml::Table::new();
+    table.insert(String::from("theme"), Value::String(theme.to_owned()));
+    let encoded = toml::to_string_pretty(&Value::Table(table)).map_err(|error| {
+        VeilaError::ConfigIo(io::Error::other(format!(
+            "failed to encode initial config: {error}"
+        )))
+    })?;
+    fs::write(&path, encoded)?;
+    Ok(path)
+}
+
 pub fn unset_theme_in_config(explicit_path: Option<&Path>) -> Result<(PathBuf, bool)> {
     let path = match explicit_path {
         Some(path) => path.to_path_buf(),

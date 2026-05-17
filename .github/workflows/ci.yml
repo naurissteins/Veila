@@ -61,6 +61,45 @@ jobs:
           sudo apt-get install -y libpam0g-dev libxkbcommon-dev
       - run: cargo test --workspace
 
+  theme-previews:
+    name: Theme Previews
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev libxkbcommon-dev
+      - run: cargo build -p veila-curtain
+      - name: Render bundled theme previews
+        run: |
+          mkdir -p target/theme-previews
+          for theme_path in assets/themes/*.toml; do
+            theme_name="$(basename "$theme_path" .toml)"
+            config_path="$RUNNER_TEMP/veila-theme-$theme_name.toml"
+            preview_path="target/theme-previews/$theme_name.png"
+            printf 'theme = "%s"\n' "$theme_name" > "$config_path"
+            if grep -q '^mode = "file"' "$theme_path"; then
+              printf '\n[background]\nmode = "solid"\n' >> "$config_path"
+            fi
+            ./target/debug/veila-curtain \
+              --config "$config_path" \
+              --preview-png "$preview_path" \
+              --preview-size 1920x1080 \
+              --preview-time 21:54 \
+              --preview-username Michelle \
+              --preview-hide-weather \
+              --preview-hide-battery \
+              --preview-hide-now-playing
+            test -s "$preview_path"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: veila-theme-previews
+          path: target/theme-previews/*.png
+
   release-check:
     name: Release Check
     runs-on: ubuntu-latest

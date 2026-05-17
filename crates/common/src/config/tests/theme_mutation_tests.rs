@@ -113,3 +113,65 @@ fn unset_theme_in_config_returns_not_changed_for_missing_file() {
 
     fs::remove_dir(dir).ok();
 }
+
+#[test]
+fn init_config_creates_theme_config() {
+    let dir = std::env::temp_dir().join(format!("veila-init-create-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+
+    let written_path = init_config(Some(&path), "samurai", false).expect("config should init");
+
+    assert_eq!(written_path, path);
+    let raw = fs::read_to_string(&written_path).expect("written config");
+    assert!(raw.contains("theme = \"samurai\""));
+
+    let loaded = AppConfig::load(Some(&written_path)).expect("config should load");
+    assert_eq!(loaded.config.visuals.clock_font_family(), Some("Japanola"));
+
+    fs::remove_file(written_path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn init_config_refuses_to_replace_existing_config_without_force() {
+    let dir = std::env::temp_dir().join(format!("veila-init-refuse-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(&path, "theme = \"default\"\n").expect("config file");
+
+    let error = init_config(Some(&path), "samurai", false).expect_err("init should refuse");
+
+    assert!(error.to_string().contains("config already exists"));
+    let raw = fs::read_to_string(&path).expect("config should remain");
+    assert!(raw.contains("theme = \"default\""));
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}
+
+#[test]
+fn init_config_replaces_existing_config_with_force() {
+    let dir = std::env::temp_dir().join(format!("veila-init-force-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        r#"
+            theme = "default"
+
+            [visuals.input]
+            width = 420
+        "#,
+    )
+    .expect("config file");
+
+    init_config(Some(&path), "seceda", true).expect("config should init");
+
+    let raw = fs::read_to_string(&path).expect("written config");
+    assert!(raw.contains("theme = \"seceda\""));
+    assert!(!raw.contains("width = 420"));
+
+    fs::remove_file(path).ok();
+    fs::remove_dir(dir).ok();
+}

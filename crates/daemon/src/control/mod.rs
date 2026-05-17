@@ -2,6 +2,7 @@ mod config;
 mod daemon;
 mod doctor;
 mod idle;
+mod init;
 mod term;
 mod theme;
 
@@ -16,6 +17,7 @@ use daemon::{
 };
 use doctor::print_doctor_report;
 use idle::run_idle_monitor;
+use init::init_config;
 use theme::{
     print_available_themes, print_current_theme, print_theme_source, set_theme_and_reload,
     unset_theme_and_reload,
@@ -61,6 +63,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
         + usize::from(options.health)
         + usize::from(options.doctor)
         + usize::from(options.check_config)
+        + usize::from(options.init_config)
         + usize::from(options.version)
         + usize::from(options.reload_config)
         + usize::from(options.idle);
@@ -191,6 +194,7 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         + usize::from(options.health)
         + usize::from(options.doctor)
         + usize::from(options.check_config)
+        + usize::from(options.init_config)
         + usize::from(options.version)
         + usize::from(options.reload_config)
         + usize::from(options.idle);
@@ -207,9 +211,17 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         bail!("--latency-report can only be used with `veila lock`");
     }
 
-    let daemon_socket_path = ipc::daemon_socket_path()?;
     if options.version {
         print_version_info();
+        return Ok(());
+    }
+
+    if options.init_config {
+        init_config(
+            options.config_path.as_deref(),
+            options.init_theme.as_deref(),
+            options.init_force,
+        )?;
         return Ok(());
     }
 
@@ -223,6 +235,18 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         return Ok(());
     }
 
+    if options.list_themes {
+        print_available_themes()?;
+        return Ok(());
+    }
+
+    if options.check_config {
+        print_config_validation(options.config_path.as_deref())?;
+        return Ok(());
+    }
+
+    let daemon_socket_path = ipc::daemon_socket_path()?;
+
     if let Some(theme) = options.set_theme.as_deref() {
         set_theme_and_reload(theme, options.config_path.as_deref(), &daemon_socket_path).await?;
         return Ok(());
@@ -230,11 +254,6 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
 
     if options.unset_theme {
         unset_theme_and_reload(options.config_path.as_deref(), &daemon_socket_path).await?;
-        return Ok(());
-    }
-
-    if options.list_themes {
-        print_available_themes()?;
         return Ok(());
     }
 
@@ -281,11 +300,6 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
             options.session_id.as_deref(),
         )
         .await;
-        return Ok(());
-    }
-
-    if options.check_config {
-        print_config_validation(options.config_path.as_deref())?;
         return Ok(());
     }
 
@@ -376,6 +390,8 @@ Commands:
   health                     Print daemon build and platform info
   doctor                     Check local runtime prerequisites without locking
   check-config               Validate config files without starting the daemon
+  init [--theme NAME]        Create config.toml with a starting theme
+       [--force]             Replace an existing config.toml
   reload                     Ask the running daemon to reload config from disk
   stop                       Stop the running daemon
   idle [--lock-after=N]      Lock after compositor-reported idle time

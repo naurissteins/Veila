@@ -5,8 +5,8 @@ use super::{
     BackgroundScaling, ClockFormat, ClockStyle, DateFormat, FontStyle, HorizontalAlign,
     InputRevealMode, InputVisualEntry, LayerKind, LayerVisualConfig, OutputUiMode, RgbColor,
     VerticalAlign, WeatherUnit, WidgetPositionConfig, active_include_source_paths,
-    active_theme_name, active_theme_source_path, bundled_theme_names, read_theme_source,
-    set_theme_in_config, unset_theme_in_config,
+    active_theme_name, active_theme_source_path, bundled_theme_names, init_config,
+    read_theme_source, set_theme_in_config, unset_theme_in_config,
 };
 use crate::VeilaError;
 
