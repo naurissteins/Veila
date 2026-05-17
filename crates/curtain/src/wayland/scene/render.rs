@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
 use veila_renderer::{PixelBuffer, copy_rect_from, shm};
 
-use crate::state::{CurtainApp, RenderTimingSample, SurfaceSize};
+use crate::state::{CurtainApp, DirtyRenderTimingSample, RenderTimingSample, SurfaceSize};
 
 impl CurtainApp {
     pub(crate) fn render_surface_with_emergency_fallback(
@@ -272,6 +272,18 @@ impl CurtainApp {
                         .min(u128::from(u64::MAX)) as u64
                 })
                 .unwrap_or(0);
+            let dirty_pixels = u64::try_from(damaged.width.max(0))
+                .unwrap_or(0)
+                .saturating_mul(u64::try_from(damaged.height.max(0)).unwrap_or(0));
+            let dirty_bytes = dirty_pixels.saturating_mul(4);
+            let total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+            self.render_profiler.record_dirty(DirtyRenderTimingSample {
+                dynamic_overlay_ms,
+                commit_ms,
+                total_ms,
+                dirty_pixels,
+                dirty_bytes,
+            });
             let output = self
                 .output_state
                 .info(&self.lock_surfaces[index].output)
@@ -287,14 +299,14 @@ impl CurtainApp {
                 dirty_y = damaged.y,
                 dirty_width = damaged.width,
                 dirty_height = damaged.height,
-                dirty_bytes =
-                    i64::from(damaged.width.max(0)) * i64::from(damaged.height.max(0)) * 4,
+                dirty_pixels,
+                dirty_bytes,
                 buffer_scale = size.scale,
                 commit_buffer_scale = size.buffer_scale_for_commit(),
                 fractional_scale = size.fractional_scale,
                 dynamic_overlay_ms,
                 commit_ms,
-                total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                total_ms,
                 "rendered auth dirty region"
             );
         }

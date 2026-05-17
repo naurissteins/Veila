@@ -65,7 +65,7 @@ use crate::{
 };
 
 pub(crate) use power::ScreenOffState;
-pub(crate) use profiler::{RenderProfiler, RenderTimingSample};
+pub(crate) use profiler::{DirtyRenderTimingSample, RenderProfiler, RenderTimingSample};
 pub(crate) use repeat::KeyRepeatState;
 pub(crate) use resume::ResumeInputState;
 

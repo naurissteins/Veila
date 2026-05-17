@@ -4,9 +4,13 @@ mod registry;
 mod session;
 
 use smithay_client_toolkit::reexports::{
-    client::protocol::wl_buffer,
+    client::{
+        Connection, Dispatch, QueueHandle,
+        protocol::{wl_buffer, wl_buffer::WlBuffer},
+    },
     protocols::wp::viewporter::client::{wp_viewport, wp_viewporter},
 };
+use veila_renderer::shm::ShmBufferRelease;
 use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_manager_v1;
 
 use crate::state::CurtainApp;
@@ -28,4 +32,19 @@ smithay_client_toolkit::reexports::client::delegate_noop!(
 smithay_client_toolkit::reexports::client::delegate_noop!(
     CurtainApp: ignore wp_viewport::WpViewport
 );
-smithay_client_toolkit::reexports::client::delegate_noop!(CurtainApp: ignore wl_buffer::WlBuffer);
+
+impl Dispatch<WlBuffer, ShmBufferRelease> for CurtainApp {
+    fn event(
+        _state: &mut Self,
+        proxy: &WlBuffer,
+        event: wl_buffer::Event,
+        data: &ShmBufferRelease,
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        if matches!(event, wl_buffer::Event::Release) {
+            data.mark_released();
+            proxy.destroy();
+        }
+    }
+}

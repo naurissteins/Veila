@@ -9,7 +9,7 @@ use smithay_client_toolkit::{
 };
 use veila_renderer::FrameSize;
 
-pub(super) fn current_outputs() -> Result<Vec<ProbedOutput>> {
+pub(crate) fn current_outputs() -> Result<Vec<ProbedOutput>> {
     let connection =
         Connection::connect_to_env().context("failed to connect to Wayland for output probe")?;
     let (globals, mut event_queue) = registry_queue_init(&connection)
@@ -45,10 +45,10 @@ pub(super) fn current_outputs() -> Result<Vec<ProbedOutput>> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct ProbedOutput {
-    pub(super) name: Option<String>,
-    pub(super) size: FrameSize,
-    pub(super) scale: i32,
+pub(crate) struct ProbedOutput {
+    pub(crate) name: Option<String>,
+    pub(crate) size: FrameSize,
+    pub(crate) scale: i32,
 }
 
 struct OutputProbe {

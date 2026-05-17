@@ -4,7 +4,7 @@ mod events;
 mod helpers;
 mod memory;
 mod mpris;
-mod output_probe;
+pub(crate) mod output_probe;
 mod prewarm;
 mod runtime;
 mod state;

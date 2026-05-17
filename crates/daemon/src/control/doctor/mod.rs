@@ -1,3 +1,4 @@
+mod renderer;
 mod runtime;
 mod services;
 mod wayland;
@@ -24,6 +25,7 @@ pub(super) async fn print_doctor_report(config_path: Option<&Path>, session_id: 
     services::check_idle_service(&mut summary);
     runtime::check_logind(&mut summary, session_id).await;
     wayland::check_wayland(&mut summary);
+    renderer::check_renderer(&mut summary, config_path);
 
     println!("doctor={}", summary.overall());
     println!("doctor_errors={}", summary.errors);
