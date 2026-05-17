@@ -4,7 +4,10 @@
 
 mod shell;
 
-pub use shell::{ShellAction, ShellKey, ShellState, ShellTheme, load_avatar, load_cached_avatar};
+pub use shell::{
+    ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellTheme, load_avatar,
+    load_cached_avatar,
+};
 
 /// Returns the component identifier used by logs and process supervision.
 pub const fn component_name() -> &'static str {

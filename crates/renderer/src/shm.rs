@@ -105,6 +105,52 @@ impl SurfaceBufferPool {
         Ok(())
     }
 
+    pub fn render_buffer_region<D>(
+        &mut self,
+        queue_handle: &QueueHandle<D>,
+        surface: &WlSurface,
+        size: FrameSize,
+        buffer_scale: i32,
+        damage: crate::shape::Rect,
+        render: impl FnOnce(&mut SoftwareBufferView<'_>) -> Result<Option<crate::shape::Rect>>,
+    ) -> Result<()>
+    where
+        D: Dispatch<wl_buffer::WlBuffer, ()> + 'static,
+    {
+        if size.is_empty() {
+            return Err(RendererError::EmptyFrame);
+        }
+
+        let byte_len = required_pool_len(size)?;
+        let offset = self.next_buffer_offset(size, byte_len)?;
+        let damaged = {
+            let mut buffer =
+                SoftwareBufferView::new(size, &mut self.pool.mmap()[offset..offset + byte_len])?;
+            render(&mut buffer)?
+                .unwrap_or_else(|| damage.clipped_to(size.width as i32, size.height as i32))
+        };
+        if damaged.is_empty() {
+            return Ok(());
+        }
+
+        let wl_buffer = self.pool.create_buffer(
+            offset as i32,
+            size.width as i32,
+            size.height as i32,
+            (size.width * 4) as i32,
+            wl_shm::Format::Argb8888,
+            (),
+            queue_handle,
+        );
+        surface.set_buffer_scale(buffer_scale.max(1));
+        surface.attach(Some(&wl_buffer), 0, 0);
+        surface.damage_buffer(damaged.x, damaged.y, damaged.width, damaged.height);
+        surface.commit();
+        wl_buffer.destroy();
+
+        Ok(())
+    }
+
     fn next_buffer_offset(&mut self, size: FrameSize, byte_len: usize) -> Result<usize> {
         if self.slot_len != byte_len {
             self.slot_len = byte_len;

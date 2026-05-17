@@ -31,6 +31,13 @@ pub enum ShellAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShellAnimationUpdate {
+    None,
+    AuthDirty,
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShellKey {
     Character(char),
     Backspace,

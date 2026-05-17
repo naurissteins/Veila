@@ -36,6 +36,55 @@ impl Rect {
     pub const fn contains(self, x: i32, y: i32) -> bool {
         x >= self.x && y >= self.y && x < self.x + self.width && y < self.y + self.height
     }
+
+    pub const fn right(self) -> i32 {
+        self.x + self.width
+    }
+
+    pub const fn bottom(self) -> i32 {
+        self.y + self.height
+    }
+
+    pub fn inflated(self, amount: i32) -> Self {
+        if self.is_empty() {
+            return self;
+        }
+
+        let amount = amount.max(0);
+        Self::new(
+            self.x - amount,
+            self.y - amount,
+            self.width + amount * 2,
+            self.height + amount * 2,
+        )
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        if self.is_empty() {
+            return other;
+        }
+        if other.is_empty() {
+            return self;
+        }
+
+        let left = self.x.min(other.x);
+        let top = self.y.min(other.y);
+        let right = self.right().max(other.right());
+        let bottom = self.bottom().max(other.bottom());
+        Self::new(left, top, right - left, bottom - top)
+    }
+
+    pub fn clipped_to(self, width: i32, height: i32) -> Self {
+        if self.is_empty() || width <= 0 || height <= 0 {
+            return Self::new(0, 0, 0, 0);
+        }
+
+        let left = self.x.clamp(0, width);
+        let top = self.y.clamp(0, height);
+        let right = self.right().clamp(0, width);
+        let bottom = self.bottom().clamp(0, height);
+        Self::new(left, top, (right - left).max(0), (bottom - top).max(0))
+    }
 }
 
 /// Border configuration for a filled box.

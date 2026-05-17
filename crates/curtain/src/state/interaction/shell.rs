@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surface};
-use veila_ui::{ShellAction, ShellKey};
+use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey};
 
 use crate::{ipc::auth::submit_password, keyboard_cache::store_keyboard_layout_label};
 
@@ -30,6 +30,7 @@ impl CurtainApp {
             return;
         }
 
+        let revision_before = self.ui_shell.static_scene_revision();
         let action = self.ui_shell.handle_key(key);
         if let ShellAction::Submit(secret) = action {
             let Some(socket_path) = self.daemon_socket.clone() else {
@@ -49,7 +50,7 @@ impl CurtainApp {
             self.auth_in_flight = true;
             submit_password(socket_path, attempt_id, secret, self.auth_sender.clone());
         }
-        self.render_all_surfaces(queue_handle);
+        self.render_auth_change(revision_before, queue_handle);
     }
 
     pub(crate) fn handle_shell_caps_lock(
@@ -58,7 +59,7 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
     ) {
         if self.ui_shell.set_caps_lock_active(active) {
-            self.render_all_surfaces(queue_handle);
+            self.render_auth_dirty_surfaces(queue_handle);
         }
     }
 
@@ -90,11 +91,12 @@ impl CurtainApp {
             return;
         };
 
+        let revision_before = self.ui_shell.static_scene_revision();
         if self
             .ui_shell
             .handle_pointer_press(width as i32, height as i32, position.0, position.1)
         {
-            self.render_all_surfaces(queue_handle);
+            self.render_auth_change(revision_before, queue_handle);
         }
     }
 
@@ -108,11 +110,12 @@ impl CurtainApp {
             return;
         };
 
+        let revision_before = self.ui_shell.static_scene_revision();
         if self
             .ui_shell
             .handle_pointer_motion(width as i32, height as i32, position.0, position.1)
         {
-            self.render_all_surfaces(queue_handle);
+            self.render_auth_change(revision_before, queue_handle);
         }
     }
 
@@ -130,24 +133,35 @@ impl CurtainApp {
             return;
         };
 
+        let revision_before = self.ui_shell.static_scene_revision();
         if self
             .ui_shell
             .handle_pointer_release(width as i32, height as i32, position.0, position.1)
         {
-            self.render_all_surfaces(queue_handle);
+            self.render_auth_change(revision_before, queue_handle);
         }
     }
 
     pub(crate) fn handle_shell_pointer_leave(&mut self, queue_handle: &QueueHandle<Self>) {
+        let revision_before = self.ui_shell.static_scene_revision();
         if self.ui_shell.handle_pointer_leave() {
-            self.render_all_surfaces(queue_handle);
+            self.render_auth_change(revision_before, queue_handle);
         }
     }
 
     pub(crate) fn advance_animated_scene(&mut self, queue_handle: &QueueHandle<Self>) {
         let power_status_changed = self.refresh_power_status_text();
-        if self.ui_shell.advance_animated_state() || power_status_changed {
-            self.render_all_surfaces(queue_handle);
+        match (
+            self.ui_shell.advance_animated_state_update(),
+            power_status_changed,
+        ) {
+            (_, true) | (ShellAnimationUpdate::Full, false) => {
+                self.render_all_surfaces(queue_handle);
+            }
+            (ShellAnimationUpdate::AuthDirty, false) => {
+                self.render_auth_dirty_surfaces(queue_handle);
+            }
+            (ShellAnimationUpdate::None, false) => {}
         }
     }
 
@@ -173,6 +187,14 @@ impl CurtainApp {
         }
 
         self.handle_shell_key(ShellKey::Backspace, queue_handle);
+    }
+
+    fn render_auth_change(&mut self, revision_before: u64, queue_handle: &QueueHandle<Self>) {
+        if self.ui_shell.static_scene_revision() == revision_before {
+            self.render_auth_dirty_surfaces(queue_handle);
+        } else {
+            self.render_all_surfaces(queue_handle);
+        }
     }
 
     fn surface_size(&self, surface: &wl_surface::WlSurface) -> Option<(u32, u32)> {

@@ -165,6 +165,31 @@ impl ShellState {
         self.with_render_scale(scale, |shell| shell.render_dynamic_overlay(buffer));
     }
 
+    pub fn render_auth_dirty_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
+        if self.emergency_active() {
+            self.render_emergency_dynamic_overlay_scaled(buffer, scale);
+            return;
+        }
+
+        self.with_render_scale(scale, |shell| {
+            let layout = shell.scene_layout(buffer.size());
+            shell.render_auth_or_input_group(buffer, &layout, true);
+            shell.render_floating_input_widgets(buffer, &layout, true);
+        });
+    }
+
+    pub fn auth_dirty_rect_scaled(&self, size: FrameSize, scale: u32) -> Option<Rect> {
+        if self.emergency_active() {
+            return None;
+        }
+
+        let mut rect = None;
+        self.with_render_scale(scale, |shell| {
+            rect = shell.auth_dirty_rect(size);
+        });
+        rect
+    }
+
     fn with_render_scale(&self, scale: u32, render: impl FnOnce(&ShellState)) {
         let scale = scale.max(1);
         if scale == 1 {
@@ -481,6 +506,69 @@ impl ShellState {
         None
     }
 
+    fn auth_dirty_rect(&self, size: FrameSize) -> Option<Rect> {
+        let layout = self.scene_layout(size);
+        let mut dirty = None;
+
+        if layout.floating_input {
+            dirty = union_rect(
+                dirty,
+                self.floating_input_rect(&layout, size)
+                    .map(auth_dirty_padding),
+            );
+        }
+
+        if let Some(status) = layout.floating_status.as_ref()
+            && let Some((x, y)) = self.floating_status_origin(&layout, size, status)
+        {
+            dirty = union_rect(
+                dirty,
+                Some(Rect::new(x, y, status.width as i32, status.height as i32)),
+            );
+        }
+
+        let sections = if layout.anchors.identity_y.is_some() {
+            layout
+                .model
+                .sections_for_auth_group(AuthGroup::Input)
+                .collect::<Vec<_>>()
+        } else {
+            layout
+                .model
+                .sections_for_role(LayoutRole::Auth)
+                .collect::<Vec<_>>()
+        };
+        let mut y = layout.anchors.auth_y;
+        for section in sections {
+            match &section.widget {
+                SceneWidget::Input(_) => {
+                    dirty = union_rect(
+                        dirty,
+                        Some(auth_dirty_padding(layout.metrics.input_rect(y))),
+                    );
+                }
+                SceneWidget::Status(block) => {
+                    dirty = union_rect(
+                        dirty,
+                        Some(Rect::new(
+                            layout.metrics.auth_center_x - block.width as i32 / 2,
+                            y,
+                            block.width as i32,
+                            block.height as i32,
+                        )),
+                    );
+                }
+                _ => {}
+            }
+            y += section.height(layout.metrics, &self.status) + section.gap_after;
+        }
+
+        dirty
+            .map(|rect| rect.inflated(12))
+            .map(|rect| rect.clipped_to(size.width as i32, size.height as i32))
+            .filter(|rect| !rect.is_empty())
+    }
+
     fn render_section(
         &self,
         buffer: &mut impl PixelBuffer,
@@ -734,4 +822,17 @@ fn rejected_status_text(failed_attempts: Option<u8>, retry_seconds: Option<u64>)
         }
         (None, Some(_)) | (None, None) => String::from("Authentication failed"),
     }
+}
+
+fn union_rect(current: Option<Rect>, next: Option<Rect>) -> Option<Rect> {
+    match (current, next) {
+        (Some(current), Some(next)) => Some(current.union(next)),
+        (Some(current), None) => Some(current),
+        (None, Some(next)) => Some(next),
+        (None, None) => None,
+    }
+}
+
+fn auth_dirty_padding(rect: Rect) -> Rect {
+    rect.inflated(8)
 }

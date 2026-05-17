@@ -105,6 +105,35 @@ impl CurtainApp {
         }
     }
 
+    pub(crate) fn render_auth_dirty_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
+        if !self.ready_notified {
+            if !self.pending_pre_ready_redraw {
+                tracing::debug!("deferred auth dirty redraw until curtain readiness");
+            }
+            self.pending_pre_ready_redraw = true;
+            return;
+        }
+
+        let surfaces: Vec<_> = self
+            .lock_surfaces
+            .iter()
+            .enumerate()
+            .filter(|(index, entry)| {
+                self.output_role_for_surface(*index).renders_shell() && entry.size.is_some()
+            })
+            .filter_map(|(_, entry)| entry.size.map(|size| (entry.surface.clone(), size)))
+            .collect();
+
+        for (surface, size) in surfaces {
+            if let Err(error) = self.render_auth_dirty_surface(&surface, size, queue_handle) {
+                self.failure_reason =
+                    Some(format!("failed to rerender auth dirty region: {error:#}"));
+                self.exit_requested = true;
+                return;
+            }
+        }
+    }
+
     pub(crate) fn maybe_notify_ready(&mut self) {
         if self.ready_notified || !self.session_locked || self.lock_surfaces.is_empty() {
             return;

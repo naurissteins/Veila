@@ -17,6 +17,16 @@ fn fills_rectangles() {
 }
 
 #[test]
+fn unions_inflates_and_clips_rectangles() {
+    let rect = Rect::new(4, 6, 10, 12)
+        .union(Rect::new(12, 3, 8, 4))
+        .inflated(2)
+        .clipped_to(18, 20);
+
+    assert_eq!(rect, Rect::new(2, 1, 16, 19));
+}
+
+#[test]
 fn blends_translucent_rectangles_over_existing_pixels() {
     let mut buffer = SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(10, 20, 30))
         .expect("buffer");

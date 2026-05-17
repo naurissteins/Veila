@@ -1,6 +1,9 @@
 use std::time::{Duration, Instant};
 
-use super::{ShellAction, ShellKey, ShellState, ShellStatus, avatar::current_retry_seconds};
+use super::{
+    ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellStatus,
+    avatar::current_retry_seconds,
+};
 
 const DEFAULT_NOW_PLAYING_FADE_DURATION_MS: u64 = 450;
 const PENDING_STATUS_DELAY_MS: u64 = 1_000;
@@ -119,6 +122,10 @@ impl ShellState {
     }
 
     pub fn advance_animated_state(&mut self) -> bool {
+        self.advance_animated_state_update() != ShellAnimationUpdate::None
+    }
+
+    pub fn advance_animated_state_update(&mut self) -> ShellAnimationUpdate {
         let mut changed = self.clock.refresh();
         let fade_duration = self.now_playing_fade_duration();
         if let Some(transition) = self.now_playing_transition.as_ref() {
@@ -136,7 +143,11 @@ impl ShellState {
             if !*shown && Instant::now() >= *visible_after {
                 *shown = true;
             }
-            return true;
+            return if changed {
+                ShellAnimationUpdate::Full
+            } else {
+                ShellAnimationUpdate::AuthDirty
+            };
         }
         let ShellStatus::Rejected {
             retry_until,
@@ -144,12 +155,20 @@ impl ShellState {
             ..
         } = &mut self.status
         else {
-            return changed;
+            return if changed {
+                ShellAnimationUpdate::Full
+            } else {
+                ShellAnimationUpdate::None
+            };
         };
 
         let next_display = retry_until.and_then(current_retry_seconds);
         if *displayed_retry_seconds == next_display {
-            return changed;
+            return if changed {
+                ShellAnimationUpdate::Full
+            } else {
+                ShellAnimationUpdate::None
+            };
         }
 
         *displayed_retry_seconds = next_display;
@@ -158,7 +177,7 @@ impl ShellState {
             self.status = ShellStatus::Idle;
         }
 
-        true
+        ShellAnimationUpdate::Full
     }
 
     pub(super) fn pending_spinner_phase(&self) -> Option<u8> {

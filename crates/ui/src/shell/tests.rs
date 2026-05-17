@@ -13,7 +13,7 @@ use veila_common::{
 use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
-use super::{ShellAction, ShellKey, ShellState, ShellStatus, ShellTheme};
+use super::{ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellStatus, ShellTheme};
 use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
 
 #[test]
@@ -377,7 +377,10 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
     );
 
     thread::sleep(Duration::from_millis(1_050));
-    assert!(shell.advance_animated_state());
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::AuthDirty
+    );
     assert!(matches!(
         shell.status,
         ShellStatus::Pending { shown: true, .. }
@@ -423,7 +426,10 @@ fn pending_inline_status_text_uses_short_copy_after_delay() {
     let _ = shell.handle_key(ShellKey::Enter);
     thread::sleep(Duration::from_millis(1_050));
 
-    assert!(shell.advance_animated_state());
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::AuthDirty
+    );
     assert_eq!(
         shell.inline_input_status_text().as_deref(),
         Some("Checking...")

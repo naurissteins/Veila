@@ -91,6 +91,30 @@ fn backdrop_rect_supports_center_and_right_alignment() {
 }
 
 #[test]
+fn auth_dirty_rect_covers_default_input_region() {
+    let shell = ShellState::default();
+    let dirty = shell
+        .auth_dirty_rect_scaled(FrameSize::new(1280, 720), 1)
+        .expect("auth dirty rect");
+
+    assert!(dirty.contains(640, 405));
+    assert!(dirty.width < 420);
+    assert!(dirty.height < 120);
+}
+
+#[test]
+fn auth_dirty_rect_scales_with_render_scale() {
+    let shell = ShellState::default();
+    let dirty = shell
+        .auth_dirty_rect_scaled(FrameSize::new(2560, 1440), 2)
+        .expect("scaled auth dirty rect");
+
+    assert!(dirty.contains(1280, 810));
+    assert!(dirty.width > 600);
+    assert!(dirty.height > 100);
+}
+
+#[test]
 fn backdrop_rect_supports_full_width_and_height() {
     let shell = ShellState::new(
         ShellTheme {

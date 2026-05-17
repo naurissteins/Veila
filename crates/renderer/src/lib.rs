@@ -176,6 +176,39 @@ pub trait PixelBuffer {
     }
 }
 
+pub fn copy_rect_from(
+    source: &impl PixelBuffer,
+    target: &mut impl PixelBuffer,
+    rect: shape::Rect,
+) -> Result<Option<shape::Rect>> {
+    if source.size() != target.size() {
+        return Err(RendererError::BufferSizeMismatch {
+            target: target.size(),
+            overlay: source.size(),
+        });
+    }
+
+    let size = target.size();
+    let rect = rect.clipped_to(size.width as i32, size.height as i32);
+    if rect.is_empty() {
+        return Ok(None);
+    }
+
+    let stride = size.width as usize * 4;
+    let left = rect.x as usize * 4;
+    let row_len = rect.width as usize * 4;
+    let source_pixels = source.pixels();
+    let target_pixels = target.pixels_mut();
+
+    for row in rect.y as usize..rect.bottom() as usize {
+        let start = row * stride + left;
+        let end = start + row_len;
+        target_pixels[start..end].copy_from_slice(&source_pixels[start..end]);
+    }
+
+    Ok(Some(rect))
+}
+
 impl SoftwareBuffer {
     /// Creates a new ARGB8888 buffer of the requested size.
     pub fn new(size: FrameSize) -> Result<Self> {
@@ -337,7 +370,8 @@ fn unpremultiply_channel(channel: u8, alpha: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer};
+    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer, copy_rect_from};
+    use crate::shape::Rect;
 
     #[test]
     fn detects_empty_frame_sizes() {
@@ -348,6 +382,31 @@ mod tests {
     #[test]
     fn computes_argb8888_byte_size() {
         assert_eq!(FrameSize::new(2, 3).byte_len(), Some(24));
+    }
+
+    #[test]
+    fn copies_clipped_rect_between_matching_buffers() {
+        let source =
+            SoftwareBuffer::solid(FrameSize::new(4, 4), ClearColor::opaque(10, 20, 30)).unwrap();
+        let mut target = SoftwareBuffer::solid(FrameSize::new(4, 4), ClearColor::opaque(0, 0, 0))
+            .expect("target");
+
+        let copied =
+            copy_rect_from(&source, &mut target, Rect::new(1, 1, 2, 2)).expect("copy rect");
+        assert_eq!(copied, Some(Rect::new(1, 1, 2, 2)));
+
+        let stride = target.size().width as usize;
+        for y in 0..4 {
+            for x in 0..4 {
+                let offset = (y * stride + x) * 4;
+                let pixel = &target.pixels()[offset..offset + 4];
+                if (1..3).contains(&x) && (1..3).contains(&y) {
+                    assert_eq!(pixel, &[30, 20, 10, 255]);
+                } else {
+                    assert_eq!(pixel, &[0, 0, 0, 255]);
+                }
+            }
+        }
     }
 
     #[test]
