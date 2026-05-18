@@ -179,6 +179,42 @@ x = 20
 y = -23
 relative_to = "now_playing_artist_title"
 
+[visuals.power.poweroff]
+enabled = true
+background_size = 0
+color = "#f38ba8"
+size = 40
+confirm = true
+halign = "center"
+valign = "center"
+x = 0
+y = 0
+relative_to = "poweroff"
+
+[visuals.power.reboot]
+enabled = true
+background_size = 0
+color = "#fab387"
+size = 40
+confirm = true
+halign = "center"
+valign = "center"
+x = 0
+y = 0
+relative_to = "reboot"
+
+[visuals.power.suspend]
+enabled = true
+background_size = 0
+color = "#b4befe"
+size = 40
+confirm = true
+halign = "center"
+valign = "center"
+x = 0
+y = 0
+relative_to = "suspend"
+
 # Auth
 [[visuals.backdrop]]
 enabled = true
@@ -245,6 +281,51 @@ halign = "center"
 valign = "center"
 y = -25
 x = -290
+z = 0
+
+# Poweroff
+[[visuals.backdrop]]
+enabled = false
+name = "poweroff"
+mode = "solid"
+color = "rgba(24, 24, 37, 1.0)"
+radius = 20
+width = 100
+height = 100
+halign = "center"
+valign = "center"
+y = -225
+x = 290
+z = 0
+
+# Reboot
+[[visuals.backdrop]]
+enabled = false
+name = "reboot"
+mode = "solid"
+color = "rgba(24, 24, 37, 1.0)"
+radius = 20
+width = 100
+height = 100
+halign = "center"
+valign = "center"
+y = -100
+x = 290
+z = 0
+
+# Suspend
+[[visuals.backdrop]]
+enabled = false
+name = "suspend"
+mode = "solid"
+color = "rgba(24, 24, 37, 1.0)"
+radius = 20
+width = 100
+height = 100
+halign = "center"
+valign = "center"
+y = 25
+x = 290
 z = 0
 
 # Weather Icon
