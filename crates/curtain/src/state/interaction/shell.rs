@@ -3,7 +3,10 @@ use std::time::{Duration, Instant};
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surface};
 use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey};
 
-use crate::{ipc::auth::submit_password, keyboard_cache::store_keyboard_layout_label};
+use crate::{
+    ipc::auth::{request_power_action, submit_password},
+    keyboard_cache::store_keyboard_layout_label,
+};
 
 use super::super::CurtainApp;
 
@@ -92,11 +95,12 @@ impl CurtainApp {
         };
 
         let revision_before = self.ui_shell.static_scene_revision();
+        let power_before = self.ui_shell.power_button_interaction_state();
         if self
             .ui_shell
             .handle_pointer_press(width as i32, height as i32, position.0, position.1)
         {
-            self.render_auth_change(revision_before, queue_handle);
+            self.render_pointer_change(revision_before, power_before, queue_handle);
         }
     }
 
@@ -111,11 +115,12 @@ impl CurtainApp {
         };
 
         let revision_before = self.ui_shell.static_scene_revision();
+        let power_before = self.ui_shell.power_button_interaction_state();
         if self
             .ui_shell
             .handle_pointer_motion(width as i32, height as i32, position.0, position.1)
         {
-            self.render_auth_change(revision_before, queue_handle);
+            self.render_pointer_change(revision_before, power_before, queue_handle);
         }
     }
 
@@ -134,18 +139,32 @@ impl CurtainApp {
         };
 
         let revision_before = self.ui_shell.static_scene_revision();
+        let power_before = self.ui_shell.power_button_interaction_state();
         if self
             .ui_shell
             .handle_pointer_release(width as i32, height as i32, position.0, position.1)
         {
-            self.render_auth_change(revision_before, queue_handle);
+            self.render_pointer_change(revision_before, power_before, queue_handle);
+        }
+
+        if let ShellAction::Power(action) = self.ui_shell.take_pointer_action() {
+            let Some(socket_path) = self.daemon_socket.clone() else {
+                tracing::warn!(
+                    ?action,
+                    "power action requested without a daemon auth socket"
+                );
+                return;
+            };
+            tracing::info!(?action, "requesting daemon-mediated power action");
+            request_power_action(socket_path, action);
         }
     }
 
     pub(crate) fn handle_shell_pointer_leave(&mut self, queue_handle: &QueueHandle<Self>) {
         let revision_before = self.ui_shell.static_scene_revision();
+        let power_before = self.ui_shell.power_button_interaction_state();
         if self.ui_shell.handle_pointer_leave() {
-            self.render_auth_change(revision_before, queue_handle);
+            self.render_pointer_change(revision_before, power_before, queue_handle);
         }
     }
 
@@ -194,6 +213,23 @@ impl CurtainApp {
             self.render_auth_dirty_surfaces(queue_handle);
         } else {
             self.render_all_surfaces(queue_handle);
+        }
+    }
+
+    fn render_pointer_change(
+        &mut self,
+        revision_before: u64,
+        power_before: (
+            Option<veila_common::PowerAction>,
+            Option<veila_common::PowerAction>,
+            Option<veila_common::PowerAction>,
+        ),
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.ui_shell.power_button_interaction_state() != power_before {
+            self.render_all_surfaces(queue_handle);
+        } else {
+            self.render_auth_change(revision_before, queue_handle);
         }
     }
 

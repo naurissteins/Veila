@@ -1,5 +1,5 @@
 use super::*;
-use crate::StatusDisplayMode;
+use crate::{PowerAction, StatusDisplayMode};
 
 #[test]
 fn parses_widget_enable_flags() {
@@ -93,6 +93,18 @@ fn weather_visuals_stay_active_when_any_part_is_enabled() {
 #[test]
 fn power_status_indicator_defaults_to_disabled() {
     assert!(!AppConfig::default().visuals.power_status_enabled());
+}
+
+#[test]
+fn power_buttons_default_to_disabled() {
+    let config = AppConfig::default();
+
+    assert!(!config.visuals.power_button_enabled(PowerAction::Suspend));
+    assert!(!config.visuals.power_button_enabled(PowerAction::Reboot));
+    assert!(!config.visuals.power_button_enabled(PowerAction::Poweroff));
+    assert!(!config.visuals.power_button_confirm(PowerAction::Suspend));
+    assert!(config.visuals.power_button_confirm(PowerAction::Reboot));
+    assert!(config.visuals.power_button_confirm(PowerAction::Poweroff));
 }
 
 #[test]
@@ -204,6 +216,64 @@ fn parses_power_status_widget_position() {
             valign: Some(VerticalAlign::Bottom),
             x: Some(28),
             y: Some(-36),
+            relative_to: None,
+        }
+    );
+}
+
+#[test]
+fn parses_power_button_visuals() {
+    let config = AppConfig::from_toml_str(
+        r##"
+            [visuals.power.suspend]
+            enabled = true
+            background_color = "#10203040"
+            background_size = 50
+            radius = 12
+            color = "#FFE0AA"
+            size = 22
+            confirm = true
+            halign = "left"
+            valign = "bottom"
+            x = 40
+            y = -44
+        "##,
+    )
+    .expect("config should parse");
+
+    assert!(config.visuals.power_button_enabled(PowerAction::Suspend));
+    assert_eq!(
+        config
+            .visuals
+            .power_button_background_color(PowerAction::Suspend),
+        Some(RgbColor::rgba(16, 32, 48, 64))
+    );
+    assert_eq!(
+        config
+            .visuals
+            .power_button_background_size(PowerAction::Suspend),
+        Some(50)
+    );
+    assert_eq!(
+        config.visuals.power_button_radius(PowerAction::Suspend),
+        Some(12)
+    );
+    assert_eq!(
+        config.visuals.power_button_color(PowerAction::Suspend),
+        Some(RgbColor::rgb(255, 224, 170))
+    );
+    assert_eq!(
+        config.visuals.power_button_size(PowerAction::Suspend),
+        Some(22)
+    );
+    assert!(config.visuals.power_button_confirm(PowerAction::Suspend));
+    assert_eq!(
+        config.visuals.power_button_position(PowerAction::Suspend),
+        WidgetPositionConfig {
+            halign: Some(HorizontalAlign::Left),
+            valign: Some(VerticalAlign::Bottom),
+            x: Some(40),
+            y: Some(-44),
             relative_to: None,
         }
     );

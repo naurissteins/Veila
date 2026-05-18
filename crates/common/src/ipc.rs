@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::NowPlayingSnapshot;
 use crate::error::Result;
+use crate::power::PowerAction;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockPowerStatusSnapshot {
@@ -74,6 +75,7 @@ pub enum ClientMessage {
     SubmitPassword { attempt_id: u64, secret: String },
     CancelAuthentication,
     Activity,
+    RequestPowerAction { action: PowerAction },
 }
 
 /// Messages sent from the daemon to UI-facing clients.
@@ -197,13 +199,15 @@ mod tests {
     use super::{
         ClientMessage, CurtainControlMessage, CurtainLatencyReport, DaemonControlMessage,
         DaemonControlResponse, DaemonMessage, DaemonReloadStatus, DaemonStatus, LatencyReportMode,
-        LiveReloadStatus, LockLatencyReport, LockPowerStatusSnapshot, decode_message,
+        LiveReloadStatus, LockLatencyReport, LockPowerStatusSnapshot, PowerAction, decode_message,
         encode_message,
     };
 
     #[test]
     fn round_trips_json_messages() {
-        let message = ClientMessage::CancelAuthentication;
+        let message = ClientMessage::RequestPowerAction {
+            action: PowerAction::Poweroff,
+        };
         let encoded = encode_message(&message).expect("ipc message should encode");
         let decoded = decode_message::<ClientMessage>(&encoded).expect("ipc message should decode");
 

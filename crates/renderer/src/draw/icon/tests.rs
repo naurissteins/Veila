@@ -1,6 +1,6 @@
 use super::{
-    AssetIcon, BatteryIcon, ICON_RASTER_CACHE, IconRasterKey, IconStyle, WeatherIcon, draw_icon,
-    icon_source, icon_visible_bounds,
+    AssetIcon, BatteryIcon, ICON_RASTER_CACHE, IconRasterKey, IconStyle, PowerIcon, WeatherIcon,
+    draw_icon, icon_source, icon_visible_bounds,
     parser::extract_path_data,
     parser::extract_viewbox,
     parser::parse_path_data,
@@ -153,6 +153,24 @@ fn caps_lock_svg_icon_follows_style_color() {
         pixels
             .chunks_exact(4)
             .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] > 180 && pixel[2] < 150 })
+    );
+}
+
+#[test]
+fn power_svg_icons_follow_style_color() {
+    let key = IconRasterKey {
+        icon: AssetIcon::Power(PowerIcon::Poweroff),
+        width: 48,
+        height: 48,
+        color: ClearColor::opaque(244, 128, 128),
+        padding: 0,
+    };
+    let pixels = rasterize_icon(key, icon_source(key.icon));
+
+    assert!(
+        pixels
+            .chunks_exact(4)
+            .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] < 170 && pixel[2] < 170 })
     );
 }
 

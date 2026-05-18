@@ -1,5 +1,6 @@
 mod battery;
 mod parser;
+mod power;
 mod raster;
 mod weather;
 
@@ -13,6 +14,8 @@ use crate::{ClearColor, PixelBuffer, shape::Rect};
 pub use battery::BatteryIcon;
 use battery::battery_svg;
 use parser::{ParsedIcon, eye_icon, eye_off_icon, user_icon};
+pub use power::PowerIcon;
+use power::power_svg;
 use raster::{blend_icon_raster, rasterize_icon, visible_alpha_bounds};
 pub use weather::WeatherIcon;
 use weather::weather_svg;
@@ -29,6 +32,7 @@ pub enum AssetIcon {
     User,
     CapsLock,
     Battery(BatteryIcon),
+    Power(PowerIcon),
     Weather(WeatherIcon),
 }
 
@@ -141,6 +145,7 @@ fn icon_source(icon: AssetIcon) -> IconRasterSource {
             IconRasterSource::Svg(include_bytes!("../../../../../assets/icons/caps-lock.svg"))
         }
         AssetIcon::Battery(icon) => IconRasterSource::Svg(battery_svg(icon)),
+        AssetIcon::Power(icon) => IconRasterSource::Svg(power_svg(icon)),
         AssetIcon::Weather(icon) => IconRasterSource::Svg(weather_svg(icon)),
     }
 }

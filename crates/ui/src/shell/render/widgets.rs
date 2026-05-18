@@ -4,7 +4,7 @@ use veila_common::ClockStyle;
 use veila_renderer::{
     ClearColor, PixelBuffer,
     avatar::{AvatarAsset, AvatarStyle},
-    icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon},
+    icon::{AssetIcon, IconStyle, draw_icon},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::TextBlock,
@@ -160,7 +160,7 @@ pub(super) fn draw_icon_chip(
     background: ClearColor,
     background_size: Option<i32>,
     radius: Option<i32>,
-    icon: BatteryIcon,
+    icon: AssetIcon,
     icon_style: IconStyle,
     icon_size: i32,
 ) {
@@ -185,7 +185,7 @@ pub(super) fn draw_icon_chip(
     draw_icon(
         buffer,
         Rect::new(icon_x, icon_y, icon_extent, icon_extent),
-        AssetIcon::Battery(icon),
+        icon,
         icon_style.with_padding(0),
     );
 }

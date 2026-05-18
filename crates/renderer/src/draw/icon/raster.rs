@@ -53,7 +53,7 @@ fn rasterize_svg_icon(key: IconRasterKey, svg: &[u8]) -> Vec<u8> {
     let mut pixels = pixmap.take();
     if matches!(
         key.icon,
-        super::AssetIcon::Battery(_) | super::AssetIcon::CapsLock
+        super::AssetIcon::Battery(_) | super::AssetIcon::CapsLock | super::AssetIcon::Power(_)
     ) {
         recolor_svg_pixels(&mut pixels, key.color);
     }

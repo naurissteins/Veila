@@ -46,10 +46,11 @@ pub use visuals::{
     InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerKind,
     LayerVisualConfig, NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig,
     NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerStatusVisualConfig, RevealDisplayMode, RevealVisualConfig,
-    StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign, VisualConfig,
-    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
-    WeatherVisualConfig, WidgetPositionConfig,
+    PlaceholderVisualConfig, PowerButtonVisualConfig, PowerStatusVisualConfig, PowerVisualConfig,
+    RevealDisplayMode, RevealVisualConfig, StatusDisplayMode, StatusVisualConfig,
+    UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherIconVisualConfig,
+    WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
+    WidgetPositionConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 

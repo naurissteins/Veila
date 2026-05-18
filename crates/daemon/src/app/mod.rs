@@ -258,6 +258,7 @@ pub async fn run(
                     &runtime.auth_sender,
                     &mut runtime.auth_state,
                     &mut runtime.suspend_state,
+                    &manager_proxy,
                     runtime.active_latency_report,
                     result?,
                 ).await?;

@@ -21,6 +21,7 @@ use battery::BatteryWidgetData;
 use clock::ClockState;
 use now_playing::NowPlayingWidgetData;
 use render::TextLayoutCache;
+use veila_common::PowerAction;
 use veila_renderer::avatar::AvatarAsset;
 use weather::WeatherWidgetData;
 
@@ -28,6 +29,7 @@ use weather::WeatherWidgetData;
 pub enum ShellAction {
     None,
     Submit(String),
+    Power(PowerAction),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +77,12 @@ struct NowPlayingTransition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PowerConfirmation {
+    action: PowerAction,
+    expires_at: Instant,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PreviewGrid {
     pub cell_size: i32,
     pub color: veila_renderer::ClearColor,
@@ -95,6 +103,10 @@ pub struct ShellState {
     auth_revealed: bool,
     reveal_toggle_hovered: bool,
     reveal_toggle_pressed: bool,
+    power_button_hovered: Option<PowerAction>,
+    power_button_pressed: Option<PowerAction>,
+    power_confirmation: Option<PowerConfirmation>,
+    requested_power_action: Option<PowerAction>,
     static_scene_revision: u64,
     focused: bool,
     status: ShellStatus,

@@ -10,7 +10,9 @@ use crate::{
 };
 
 use super::super::{
-    runtime::{ActiveRuntime, AuthResult, deactivate_lock, handle_client_message},
+    runtime::{
+        ActiveRuntime, AuthResult, ClientMessageContext, deactivate_lock, handle_client_message,
+    },
     state::RuntimeSlots,
     suspend::LockedSuspendState,
 };
@@ -20,16 +22,20 @@ pub(crate) async fn handle_auth_connection(
     auth_sender: &Option<tokio::sync::mpsc::UnboundedSender<AuthResult>>,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,
+    manager_proxy: &logind::ManagerProxy<'_>,
     latency_report: LatencyReportMode,
     mut stream: UnixStream,
 ) -> Result<()> {
     if let Some(message) = ipc::read_client_message(&mut stream).await?
         && let Err(error) = handle_client_message(
-            username,
-            auth_state,
-            auth_sender,
-            suspend_state,
-            latency_report,
+            ClientMessageContext {
+                username,
+                auth_state,
+                auth_sender,
+                suspend_state,
+                manager_proxy,
+                latency_report,
+            },
             stream,
             message,
         )

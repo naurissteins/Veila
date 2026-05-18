@@ -2,10 +2,13 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
-use veila_common::ipc::{ClientMessage, DaemonMessage, LatencyReportMode};
+use veila_common::{
+    PowerAction,
+    ipc::{ClientMessage, DaemonMessage, LatencyReportMode},
+};
 
 use crate::{
-    adapters::{ipc, pam},
+    adapters::{ipc, logind, pam},
     app::suspend::LockedSuspendState,
     domain::auth::{AuthAdmission, AuthState},
 };
@@ -24,18 +27,36 @@ pub(crate) enum AuthResult {
     },
 }
 
+pub(crate) struct ClientMessageContext<'a, 'p> {
+    pub(crate) username: &'a str,
+    pub(crate) auth_state: &'a mut AuthState,
+    pub(crate) auth_sender: &'a Option<UnboundedSender<AuthResult>>,
+    pub(crate) suspend_state: &'a mut LockedSuspendState,
+    pub(crate) manager_proxy: &'a logind::ManagerProxy<'p>,
+    pub(crate) latency_report: LatencyReportMode,
+}
+
 pub(crate) async fn handle_client_message(
-    username: &str,
-    auth_state: &mut AuthState,
-    auth_sender: &Option<UnboundedSender<AuthResult>>,
-    suspend_state: &mut LockedSuspendState,
-    latency_report: LatencyReportMode,
+    context: ClientMessageContext<'_, '_>,
     mut stream: UnixStream,
     message: ClientMessage,
 ) -> Result<()> {
+    let ClientMessageContext {
+        username,
+        auth_state,
+        auth_sender,
+        suspend_state,
+        manager_proxy,
+        latency_report,
+    } = context;
+
     match message {
         ClientMessage::Activity => {
             suspend_state.note_activity(Instant::now());
+        }
+        ClientMessage::RequestPowerAction { action } => {
+            suspend_state.note_activity(Instant::now());
+            request_power_action(manager_proxy, action).await?;
         }
         ClientMessage::SubmitPassword { attempt_id, secret } => {
             suspend_state.note_activity(Instant::now());
@@ -88,6 +109,19 @@ pub(crate) async fn handle_client_message(
         ClientMessage::CancelAuthentication => {}
     }
 
+    Ok(())
+}
+
+async fn request_power_action(
+    manager_proxy: &logind::ManagerProxy<'_>,
+    action: PowerAction,
+) -> Result<()> {
+    tracing::info!(?action, "received daemon-mediated power action request");
+    match action {
+        PowerAction::Suspend => manager_proxy.suspend(false).await?,
+        PowerAction::Reboot => manager_proxy.reboot(false).await?,
+        PowerAction::Poweroff => manager_proxy.power_off(false).await?,
+    }
     Ok(())
 }
 

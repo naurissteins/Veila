@@ -14,6 +14,8 @@ pub trait Manager {
     fn get_session_by_pid(&self, pid: u32) -> zbus::Result<OwnedObjectPath>;
     fn inhibit(&self, what: &str, who: &str, why: &str, mode: &str) -> zbus::Result<OwnedFd>;
     fn list_sessions(&self) -> zbus::Result<Vec<(String, u32, String, String, OwnedObjectPath)>>;
+    fn power_off(&self, interactive: bool) -> zbus::Result<()>;
+    fn reboot(&self, interactive: bool) -> zbus::Result<()>;
     fn suspend(&self, interactive: bool) -> zbus::Result<()>;
 
     #[zbus(signal)]

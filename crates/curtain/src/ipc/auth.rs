@@ -10,7 +10,10 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
-use veila_common::ipc::{ClientMessage, DaemonMessage, decode_message, encode_message};
+use veila_common::{
+    PowerAction,
+    ipc::{ClientMessage, DaemonMessage, decode_message, encode_message},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum AuthEvent {
@@ -46,6 +49,14 @@ pub(crate) fn notify_activity(socket_path: PathBuf) {
     thread::spawn(move || {
         if let Err(error) = run_activity_notification(socket_path) {
             tracing::debug!("failed to notify daemon about lock activity: {error:#}");
+        }
+    });
+}
+
+pub(crate) fn request_power_action(socket_path: PathBuf, action: PowerAction) {
+    thread::spawn(move || {
+        if let Err(error) = run_power_action_request(socket_path, action) {
+            tracing::warn!(?action, "failed to request power action: {error:#}");
         }
     });
 }
@@ -121,6 +132,16 @@ fn run_activity_notification(socket_path: PathBuf) -> anyhow::Result<()> {
     let mut stream = UnixStream::connect(&socket_path)?;
     verify_socket_peer(&stream, &socket_path).context("auth socket peer rejected")?;
     let mut payload = encode_message(&ClientMessage::Activity)?;
+    payload.push('\n');
+    stream.write_all(payload.as_bytes())?;
+    stream.flush()?;
+    Ok(())
+}
+
+fn run_power_action_request(socket_path: PathBuf, action: PowerAction) -> anyhow::Result<()> {
+    let mut stream = UnixStream::connect(&socket_path)?;
+    verify_socket_peer(&stream, &socket_path).context("auth socket peer rejected")?;
+    let mut payload = encode_message(&ClientMessage::RequestPowerAction { action })?;
     payload.push('\n');
     stream.write_all(payload.as_bytes())?;
     stream.flush()?;

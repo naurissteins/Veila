@@ -8,6 +8,7 @@ mod layer;
 mod layout;
 mod now_playing;
 mod outputs;
+mod power;
 mod weather;
 
 use serde::{Deserialize, Serialize};
@@ -32,6 +33,7 @@ pub use now_playing::{
     NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
 };
 pub use outputs::{OutputUiMode, OutputVisualConfig};
+pub use power::{PowerButtonVisualConfig, PowerVisualConfig};
 pub use weather::{
     WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
     WeatherVisualConfig,
@@ -160,6 +162,8 @@ pub struct VisualConfig {
     #[serde(default)]
     pub power_status: Option<PowerStatusVisualConfig>,
     #[serde(default)]
+    pub power: Option<PowerVisualConfig>,
+    #[serde(default)]
     pub grid: Option<GridVisualConfig>,
     #[serde(default)]
     pub weather: Option<WeatherVisualConfig>,
@@ -238,6 +242,7 @@ impl Default for VisualConfig {
             keyboard: Some(KeyboardVisualConfig::default()),
             battery: Some(BatteryVisualConfig::default()),
             power_status: Some(PowerStatusVisualConfig::default()),
+            power: Some(PowerVisualConfig::default()),
             grid: Some(GridVisualConfig::default()),
             weather: Some(WeatherVisualConfig::default()),
             backdrop: vec![BackdropVisualConfig {

@@ -1,4 +1,9 @@
-use veila_renderer::PixelBuffer;
+use veila_common::PowerAction;
+use veila_renderer::{
+    FrameSize, PixelBuffer,
+    icon::{AssetIcon, PowerIcon},
+    shape::Rect,
+};
 
 use super::super::{ShellState, ShellStatus};
 use super::{
@@ -8,6 +13,8 @@ use super::{
 
 impl ShellState {
     pub(super) fn render_top_right_indicators(&self, buffer: &mut impl PixelBuffer) {
+        self.render_power_buttons(buffer);
+
         let power_block = (self.theme.power_status_enabled
             && matches!(self.status, ShellStatus::Idle))
         .then_some(self.power_status_text.as_deref())
@@ -105,10 +112,58 @@ impl ShellState {
                 self.theme.battery_background_color,
                 self.theme.battery_background_size,
                 self.theme.battery_radius,
-                battery.icon,
+                AssetIcon::Battery(battery.icon),
                 icon_style,
                 battery_icon_size,
             );
         }
+    }
+
+    fn render_power_buttons(&self, buffer: &mut impl PixelBuffer) {
+        for button in self.theme.power_buttons {
+            if !button.enabled {
+                continue;
+            }
+
+            let Some(rect) = self.power_button_rect(buffer.size(), button.action) else {
+                continue;
+            };
+            let mut button_color = button.color.unwrap_or(self.theme.foreground);
+            if self.power_confirmation_action() == Some(button.action) {
+                button_color = self.theme.pending;
+            }
+            let icon_style = veila_renderer::icon::IconStyle::new(button_color);
+            draw_icon_chip(
+                buffer,
+                rect.x,
+                rect.y,
+                button.background_color,
+                button.background_size,
+                button.radius,
+                AssetIcon::Power(power_icon(button.action)),
+                icon_style,
+                button.size,
+            );
+        }
+    }
+
+    pub(crate) fn power_button_rect(&self, size: FrameSize, action: PowerAction) -> Option<Rect> {
+        let button = self
+            .theme
+            .power_buttons
+            .iter()
+            .find(|button| button.action == action && button.enabled)?;
+        let position = button.position?;
+        let chip_diameter =
+            top_right_chip_diameter(button.background_size, button.size, button.size);
+        Some(self.positioned_rect(size, position, chip_diameter, chip_diameter))
+    }
+}
+
+fn power_icon(action: PowerAction) -> PowerIcon {
+    match action {
+        PowerAction::Suspend => PowerIcon::Suspend,
+        PowerAction::Reboot => PowerIcon::Reboot,
+        PowerAction::Poweroff => PowerIcon::Poweroff,
     }
 }

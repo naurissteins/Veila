@@ -127,6 +127,7 @@ impl ShellState {
 
     pub fn advance_animated_state_update(&mut self) -> ShellAnimationUpdate {
         let mut changed = self.clock.refresh();
+        changed |= self.clear_expired_power_confirmation(Instant::now());
         let fade_duration = self.now_playing_fade_duration();
         if let Some(transition) = self.now_playing_transition.as_ref() {
             changed = true;

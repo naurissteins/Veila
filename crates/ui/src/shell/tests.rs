@@ -4,7 +4,7 @@ use std::{
 };
 
 use veila_common::{
-    BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot,
+    BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot, PowerAction,
     WeatherCondition, WeatherSnapshot, WeatherUnit,
 };
 use veila_common::{
@@ -14,7 +14,9 @@ use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellStatus, ShellTheme};
-use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
+use crate::shell::theme::{
+    Backdrop, PowerButton, VisualLayer, WidgetPosition, WidgetPositionTarget,
+};
 
 #[test]
 fn edits_and_submits_password_text() {
@@ -676,10 +678,84 @@ fn clears_hover_state_when_pointer_leaves_toggle() {
 }
 
 #[test]
+fn power_button_release_requests_unconfirmed_action() {
+    let mut shell = ShellState::new(
+        power_button_theme(PowerAction::Suspend, false),
+        None,
+        None,
+        true,
+    );
+    let rect = shell
+        .power_button_rect(FrameSize::new(1280, 720), PowerAction::Suspend)
+        .expect("power button rect");
+
+    assert!(shell.handle_pointer_press(1280, 720, (rect.x + 2) as f64, (rect.y + 2) as f64));
+    assert!(shell.handle_pointer_release(1280, 720, (rect.x + 2) as f64, (rect.y + 2) as f64));
+    assert_eq!(
+        shell.take_pointer_action(),
+        ShellAction::Power(PowerAction::Suspend)
+    );
+}
+
+#[test]
+fn power_button_confirmation_requires_second_click() {
+    let mut shell = ShellState::new(
+        power_button_theme(PowerAction::Poweroff, true),
+        None,
+        None,
+        true,
+    );
+    let rect = shell
+        .power_button_rect(FrameSize::new(1280, 720), PowerAction::Poweroff)
+        .expect("power button rect");
+
+    assert!(shell.handle_pointer_press(1280, 720, (rect.x + 2) as f64, (rect.y + 2) as f64));
+    assert!(shell.handle_pointer_release(1280, 720, (rect.x + 2) as f64, (rect.y + 2) as f64));
+    assert_eq!(shell.take_pointer_action(), ShellAction::None);
+    assert_eq!(
+        shell.power_confirmation_action(),
+        Some(PowerAction::Poweroff)
+    );
+
+    assert!(shell.handle_pointer_press(1280, 720, (rect.x + 2) as f64, (rect.y + 2) as f64));
+    assert!(shell.handle_pointer_release(1280, 720, (rect.x + 2) as f64, (rect.y + 2) as f64));
+    assert_eq!(
+        shell.take_pointer_action(),
+        ShellAction::Power(PowerAction::Poweroff)
+    );
+}
+
+#[test]
 fn can_disable_username_label() {
     let shell = ShellState::new(Default::default(), None, None, false);
 
     assert!(shell.username_text.is_none());
+}
+
+fn power_button_theme(action: PowerAction, confirm: bool) -> ShellTheme {
+    let mut theme = ShellTheme::default();
+    theme.power_buttons = theme.power_buttons.map(|mut button| {
+        button.enabled = false;
+        button
+    });
+    theme.power_buttons[0] = PowerButton {
+        action,
+        enabled: true,
+        position: Some(WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Top,
+            x: 20,
+            y: 20,
+            target: WidgetPositionTarget::Screen,
+        }),
+        background_color: veila_renderer::ClearColor::rgba(0, 0, 0, 80),
+        background_size: Some(44),
+        radius: Some(22),
+        color: Some(veila_renderer::ClearColor::opaque(255, 255, 255)),
+        size: 20,
+        confirm,
+    };
+    theme
 }
 
 #[test]

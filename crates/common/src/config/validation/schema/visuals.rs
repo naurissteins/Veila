@@ -61,6 +61,7 @@ pub(super) const VISUALS: &[KeyRule] = &[
     key("keyboard", Schema::Table(ICON_CHIP)),
     key("battery", Schema::Table(ICON_CHIP)),
     key("power_status", Schema::Table(POWER_STATUS)),
+    key("power", Schema::Table(POWER)),
     key("grid", Schema::Table(GRID)),
     key("weather", Schema::Table(WEATHER_VISUAL)),
     key("backdrop", Schema::ArrayTable(BACKDROP)),
@@ -204,6 +205,27 @@ const ICON_CHIP: &[KeyRule] = &[
 
 const POWER_STATUS: &[KeyRule] = &[
     key("enabled", Schema::Any),
+    key("halign", Schema::Any),
+    key("valign", Schema::Any),
+    key("x", Schema::Any),
+    key("y", Schema::Any),
+    key("relative_to", Schema::Any),
+];
+
+const POWER: &[KeyRule] = &[
+    key("suspend", Schema::Table(POWER_BUTTON)),
+    key("reboot", Schema::Table(POWER_BUTTON)),
+    key("poweroff", Schema::Table(POWER_BUTTON)),
+];
+
+const POWER_BUTTON: &[KeyRule] = &[
+    key("enabled", Schema::Any),
+    key("background_color", Schema::Any),
+    key("background_size", Schema::Any),
+    key("radius", Schema::Any),
+    key("color", Schema::Any),
+    key("size", Schema::Any),
+    key("confirm", Schema::Any),
     key("halign", Schema::Any),
     key("valign", Schema::Any),
     key("x", Schema::Any),

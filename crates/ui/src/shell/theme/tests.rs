@@ -4,10 +4,11 @@ use veila_common::{
     DateVisualConfig, EyeVisualConfig, FontStyle, GridVisualConfig, HorizontalAlign,
     InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerKind,
     LayerVisualConfig, NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerStatusVisualConfig,
-    RevealDisplayMode, RevealVisualConfig, StatusDisplayMode, StatusVisualConfig,
-    UsernameVisualConfig, VerticalAlign, WeatherIconVisualConfig, WeatherLocationVisualConfig,
-    WeatherTemperatureVisualConfig, WeatherVisualConfig, WidgetPositionConfig,
+    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerAction,
+    PowerButtonVisualConfig, PowerStatusVisualConfig, PowerVisualConfig, RevealDisplayMode,
+    RevealVisualConfig, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
+    WeatherVisualConfig, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -136,6 +137,41 @@ fn input_alpha_uses_rgba_values() {
             y: Some(-28),
             relative_to: None,
         },
+    });
+    config.visuals.power = Some(PowerVisualConfig {
+        suspend: Some(PowerButtonVisualConfig {
+            enabled: Some(true),
+            background_color: Some(ConfigColor::rgba(18, 22, 30, 82)),
+            background_size: Some(42),
+            radius: Some(12),
+            color: Some(ConfigColor::rgba(232, 238, 249, 173)),
+            size: Some(19),
+            confirm: Some(false),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Left),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(92),
+                y: Some(-28),
+                relative_to: None,
+            },
+        }),
+        reboot: None,
+        poweroff: Some(PowerButtonVisualConfig {
+            enabled: Some(true),
+            background_color: Some(ConfigColor::rgba(48, 16, 20, 90)),
+            background_size: Some(44),
+            radius: Some(22),
+            color: Some(ConfigColor::rgba(255, 160, 160, 224)),
+            size: Some(20),
+            confirm: Some(true),
+            position: WidgetPositionConfig {
+                halign: Some(HorizontalAlign::Left),
+                valign: Some(VerticalAlign::Bottom),
+                x: Some(144),
+                y: Some(-28),
+                relative_to: None,
+            },
+        }),
     });
     config.visuals.grid = Some(GridVisualConfig {
         enabled: Some(true),
@@ -436,6 +472,35 @@ fn input_alpha_uses_rgba_values() {
             target: super::WidgetPositionTarget::Screen,
         })
     );
+    assert_eq!(theme.power_buttons[0].action, PowerAction::Suspend);
+    assert!(theme.power_buttons[0].enabled);
+    assert_eq!(
+        theme.power_buttons[0].background_color,
+        ClearColor::rgba(18, 22, 30, 82)
+    );
+    assert_eq!(theme.power_buttons[0].background_size, Some(42));
+    assert_eq!(theme.power_buttons[0].radius, Some(12));
+    assert_eq!(
+        theme.power_buttons[0].color,
+        Some(ClearColor::rgba(232, 238, 249, 173))
+    );
+    assert_eq!(theme.power_buttons[0].size, 19);
+    assert!(!theme.power_buttons[0].confirm);
+    assert_eq!(
+        theme.power_buttons[0].position,
+        Some(super::WidgetPosition {
+            halign: HorizontalAlign::Left,
+            valign: VerticalAlign::Bottom,
+            x: 92,
+            y: -28,
+            target: super::WidgetPositionTarget::Screen,
+        })
+    );
+    assert_eq!(theme.power_buttons[1].action, PowerAction::Reboot);
+    assert!(!theme.power_buttons[1].enabled);
+    assert_eq!(theme.power_buttons[2].action, PowerAction::Poweroff);
+    assert!(theme.power_buttons[2].enabled);
+    assert!(theme.power_buttons[2].confirm);
     assert_eq!(theme.backdrops.len(), 1);
     assert_eq!(theme.backdrops[0].mode, BackdropMode::Blur);
     assert_eq!(theme.backdrops[0].show_when, BackdropShowWhen::NowPlaying);

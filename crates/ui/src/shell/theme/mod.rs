@@ -6,8 +6,8 @@ use std::collections::HashMap;
 
 use veila_common::{
     AppConfig, BackdropMode, BackdropShowWhen, ClockAlignment, ClockFormat, ClockStyle, DateFormat,
-    FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode, LayerKind, StatusDisplayMode,
-    VerticalAlign, WidgetPositionConfig,
+    FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode, LayerKind, PowerAction,
+    StatusDisplayMode, VerticalAlign, WidgetPositionConfig,
 };
 use veila_renderer::ClearColor;
 
@@ -67,6 +67,19 @@ pub struct VisualLayer {
     pub radius: i32,
     pub position: WidgetPosition,
     pub z: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PowerButton {
+    pub action: PowerAction,
+    pub enabled: bool,
+    pub position: Option<WidgetPosition>,
+    pub background_color: ClearColor,
+    pub background_size: Option<i32>,
+    pub radius: Option<i32>,
+    pub color: Option<ClearColor>,
+    pub size: i32,
+    pub confirm: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,6 +166,7 @@ pub struct ShellTheme {
     pub keyboard_size: Option<u32>,
     pub power_status_enabled: bool,
     pub power_status_position: Option<WidgetPosition>,
+    pub power_buttons: [PowerButton; 3],
     pub battery_enabled: bool,
     pub battery_position: Option<WidgetPosition>,
     pub battery_color: Option<ClearColor>,
@@ -282,6 +296,9 @@ impl ShellTheme {
         theme.power_status_position = theme
             .power_status_position
             .map(|position| scale_position(position, scale));
+        theme.power_buttons = theme
+            .power_buttons
+            .map(|button| scale_power_button(button, scale));
         theme.battery_position = theme
             .battery_position
             .map(|position| scale_position(position, scale));
@@ -375,6 +392,16 @@ fn scale_visual_layer(mut layer: VisualLayer, scale: u32) -> VisualLayer {
     layer.radius = scale_i32(layer.radius, scale);
     layer.position = scale_position(layer.position, scale);
     layer
+}
+
+fn scale_power_button(mut button: PowerButton, scale: u32) -> PowerButton {
+    button.position = button
+        .position
+        .map(|position| scale_position(position, scale));
+    button.background_size = scale_i32_opt(button.background_size, scale);
+    button.radius = scale_i32_opt(button.radius, scale);
+    button.size = scale_i32(button.size, scale);
+    button
 }
 
 fn scale_grid(mut grid: PreviewGrid, scale: u32) -> PreviewGrid {
@@ -512,6 +539,47 @@ fn resolve_power_status_position(
         VerticalAlign::Top,
         named_backdrops,
     )
+}
+
+fn resolve_power_button_position(
+    config: &AppConfig,
+    action: PowerAction,
+    named_backdrops: &HashMap<String, usize>,
+) -> Option<WidgetPosition> {
+    resolve_position(
+        config.visuals.power_button_position(action),
+        HorizontalAlign::Right,
+        VerticalAlign::Top,
+        named_backdrops,
+    )
+}
+
+fn resolve_power_button(
+    config: &AppConfig,
+    action: PowerAction,
+    named_backdrops: &HashMap<String, usize>,
+) -> PowerButton {
+    PowerButton {
+        action,
+        enabled: config.visuals.power_button_enabled(action),
+        position: resolve_power_button_position(config, action, named_backdrops),
+        background_color: config
+            .visuals
+            .power_button_background_color(action)
+            .map(to_color)
+            .unwrap_or_else(|| ClearColor::rgba(18, 22, 30, 82)),
+        background_size: config
+            .visuals
+            .power_button_background_size(action)
+            .map(i32::from),
+        radius: config
+            .visuals
+            .power_button_radius(action)
+            .map(|radius| i32::from(radius).clamp(0, 160)),
+        color: config.visuals.power_button_color(action).map(to_color),
+        size: i32::from(config.visuals.power_button_size(action).unwrap_or(20)).clamp(12, 96),
+        confirm: config.visuals.power_button_confirm(action),
+    }
 }
 
 fn resolve_backdrops(config: &AppConfig) -> (Vec<Backdrop>, HashMap<String, usize>) {
@@ -732,6 +800,11 @@ impl ShellTheme {
             resolve_weather_temperature_position(config, &named_backdrops);
         let weather_location_position = resolve_weather_location_position(config, &named_backdrops);
         let power_status_position = resolve_power_status_position(config, &named_backdrops);
+        let power_buttons = [
+            resolve_power_button(config, PowerAction::Suspend, &named_backdrops),
+            resolve_power_button(config, PowerAction::Reboot, &named_backdrops),
+            resolve_power_button(config, PowerAction::Poweroff, &named_backdrops),
+        ];
         let battery_position = resolve_battery_position(config, &named_backdrops);
         let grid = resolve_grid(config);
         let now_playing_artwork_position =
@@ -837,6 +910,7 @@ impl ShellTheme {
             keyboard_size: config.visuals.keyboard_size().map(u32::from),
             power_status_enabled: config.visuals.power_status_enabled(),
             power_status_position,
+            power_buttons,
             battery_enabled: config.visuals.battery_enabled(),
             battery_position,
             battery_color: config.visuals.battery_color().map(to_color),
