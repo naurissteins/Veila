@@ -10,7 +10,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
 use veila_common::ipc::{CurtainControlMessage, decode_message};
-use veila_common::{NowPlayingSnapshot, ipc::LockPowerStatusSnapshot};
+use veila_common::{FingerprintStatus, NowPlayingSnapshot, ipc::LockPowerStatusSnapshot};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
@@ -25,6 +25,9 @@ pub(crate) enum ControlEvent {
     },
     UpdatePowerStatus {
         snapshot: Option<LockPowerStatusSnapshot>,
+    },
+    UpdateFingerprintStatus {
+        status: Option<FingerprintStatus>,
     },
 }
 
@@ -112,6 +115,9 @@ fn run_listener(
             }
             CurtainControlMessage::UpdatePowerStatus { snapshot } => {
                 let _ = sender.send(ControlEvent::UpdatePowerStatus { snapshot });
+            }
+            CurtainControlMessage::UpdateFingerprintStatus { status } => {
+                let _ = sender.send(ControlEvent::UpdateFingerprintStatus { status });
             }
         }
     }

@@ -22,6 +22,7 @@ fn parses_partial_config_with_defaults() {
     );
     assert!(!config.lock.hide_cursor);
     assert!(config.lock.allow_empty_password);
+    assert!(!config.fingerprint.enabled);
     assert!(config.lock.avatar_path.is_none());
     assert_eq!(config.background.effective_mode(), BackgroundMode::Gradient);
     assert_eq!(config.background.color, RgbColor::rgb(12, 16, 24));

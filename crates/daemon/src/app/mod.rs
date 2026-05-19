@@ -1,6 +1,7 @@
 mod battery;
 mod cache;
 mod events;
+mod fingerprint;
 mod helpers;
 mod memory;
 mod mpris;
@@ -145,6 +146,7 @@ pub async fn run(
         )
         .await
         .context("failed to activate manual lock")?;
+        runtime.fingerprint.reset_for_new_lock();
     }
 
     loop {
@@ -177,6 +179,7 @@ pub async fn run(
                 if !was_active && runtime.state.is_active() {
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
+                    runtime.fingerprint.reset_for_new_lock();
                 }
             }
             Some(_) = unlock_stream.next() => {
@@ -190,6 +193,7 @@ pub async fn run(
                 if !runtime.state.is_active() {
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
+                    runtime.fingerprint.stop();
                 }
             }
             Some(signal) = prepare_for_sleep_stream.next() => {
@@ -250,6 +254,7 @@ pub async fn run(
                 if !runtime.state.is_active() {
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
+                    runtime.fingerprint.stop();
                 }
             }
             result = accept_auth_connection(&mut runtime.auth_listener), if runtime.state.is_active() && runtime.auth_listener.is_some() => {
@@ -401,6 +406,17 @@ pub async fn run(
                 }
 
                 if runtime.state.is_active() {
+                    runtime.fingerprint.update(
+                        true,
+                        runtime.loaded_config.config.fingerprint.enabled,
+                        &username,
+                        runtime.auth_sender.clone(),
+                    );
+                    runtime
+                        .fingerprint
+                        .forward_status_updates(runtime.control_socket_path.as_ref())
+                        .await;
+
                     let power_status_snapshot = runtime
                         .suspend_state
                         .power_status_snapshot(now, runtime.state.is_active());
@@ -427,6 +443,7 @@ pub async fn run(
                         }
                     }
                 } else {
+                    runtime.fingerprint.update(false, false, &username, None);
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
                 }
@@ -629,6 +646,7 @@ pub async fn run(
         }
     }
 
+    runtime.fingerprint.stop();
     let (auth_policy, slots) = runtime.slots_with_policy();
     shutdown_runtime(&session_proxy, slots, auth_policy).await;
 

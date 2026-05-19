@@ -19,6 +19,7 @@ use crate::domain::{
 
 use super::{
     battery::BatteryHandle,
+    fingerprint::FingerprintHandle,
     mpris::NowPlayingHandle,
     runtime::AuthResult,
     suspend::{LockedSuspendState, suspend_delay_seconds},
@@ -48,6 +49,7 @@ pub(super) struct AppRuntime {
     pub(super) suspend_state: LockedSuspendState,
     pub(super) last_power_status_snapshot: Option<LockPowerStatusSnapshot>,
     pub(super) power_status_sent: bool,
+    pub(super) fingerprint: FingerprintHandle,
 }
 
 impl AppRuntime {
@@ -95,6 +97,7 @@ impl AppRuntime {
             ),
             last_power_status_snapshot: None,
             power_status_sent: false,
+            fingerprint: FingerprintHandle::new(),
         }
     }
 

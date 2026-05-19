@@ -761,7 +761,7 @@ impl ShellState {
 
     pub(crate) fn status_text(&self) -> Option<String> {
         match &self.status {
-            ShellStatus::Idle => None,
+            ShellStatus::Idle => self.fingerprint_status_text(),
             ShellStatus::Pending { shown, .. } => {
                 shown.then(|| String::from("Checking authentication"))
             }
@@ -801,6 +801,26 @@ impl ShellState {
 
     fn input_shell_is_dynamic(&self) -> bool {
         self.secret_selected || matches!(self.status, ShellStatus::Rejected { .. })
+    }
+
+    fn fingerprint_status_text(&self) -> Option<String> {
+        match self.fingerprint_status.as_ref()? {
+            veila_common::FingerprintStatus::Ready => {
+                Some(String::from("Touch fingerprint reader"))
+            }
+            veila_common::FingerprintStatus::Scanning => Some(String::from("Reading fingerprint")),
+            veila_common::FingerprintStatus::Accepted => Some(String::from("Fingerprint accepted")),
+            veila_common::FingerprintStatus::NotRecognized => {
+                Some(String::from("Fingerprint not recognized"))
+            }
+            veila_common::FingerprintStatus::NoEnrolledFingers => {
+                Some(String::from("No enrolled fingerprints"))
+            }
+            veila_common::FingerprintStatus::Unavailable => {
+                Some(String::from("Fingerprint unavailable"))
+            }
+            veila_common::FingerprintStatus::Error => Some(String::from("Fingerprint error")),
+        }
     }
 }
 

@@ -324,6 +324,7 @@ impl ShellState {
             keyboard_layout_label: None,
             battery: battery_widget_data(battery_snapshot),
             power_status_text: None,
+            fingerprint_status: None,
             reveal_secret: false,
             auth_revealed: !theme.input_reveal_on_interaction,
             reveal_toggle_hovered: false,
@@ -388,6 +389,18 @@ impl ShellState {
         }
 
         self.power_status_text = text;
+        true
+    }
+
+    pub fn set_fingerprint_status(
+        &mut self,
+        status: Option<veila_common::FingerprintStatus>,
+    ) -> bool {
+        if self.fingerprint_status == status {
+            return false;
+        }
+
+        self.fingerprint_status = status;
         true
     }
 

@@ -21,7 +21,7 @@ use battery::BatteryWidgetData;
 use clock::ClockState;
 use now_playing::NowPlayingWidgetData;
 use render::TextLayoutCache;
-use veila_common::PowerAction;
+use veila_common::{FingerprintStatus, PowerAction};
 use veila_renderer::avatar::AvatarAsset;
 use weather::WeatherWidgetData;
 
@@ -99,6 +99,7 @@ pub struct ShellState {
     keyboard_layout_label: Option<String>,
     battery: Option<BatteryWidgetData>,
     power_status_text: Option<String>,
+    fingerprint_status: Option<FingerprintStatus>,
     reveal_secret: bool,
     auth_revealed: bool,
     reveal_toggle_hovered: bool,

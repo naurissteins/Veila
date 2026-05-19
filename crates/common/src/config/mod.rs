@@ -2,6 +2,7 @@ mod assets;
 mod background;
 mod battery;
 mod color;
+mod fingerprint;
 mod include;
 mod lock;
 mod now_playing;
@@ -33,6 +34,7 @@ pub use background::{
 };
 pub use battery::BatteryConfig;
 pub use color::ConfigColor;
+pub use fingerprint::FingerprintConfig;
 pub use lock::LockConfig;
 pub use now_playing::NowPlayingConfig;
 pub use validation::{
@@ -68,6 +70,8 @@ pub struct AppConfig {
     pub background: BackgroundConfig,
     #[serde(default)]
     pub lock: LockConfig,
+    #[serde(default)]
+    pub fingerprint: FingerprintConfig,
     #[serde(default)]
     pub battery: BatteryConfig,
     #[serde(default)]

@@ -15,7 +15,7 @@ use tokio::{
     time::timeout,
 };
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    BatterySnapshot, FingerprintStatus, NowPlayingSnapshot, WeatherSnapshot,
     ipc::{CurtainControlMessage, LatencyReportMode, LockPowerStatusSnapshot, encode_message},
 };
 
@@ -142,6 +142,19 @@ pub async fn request_curtain_power_status_update(
             snapshot: snapshot.cloned(),
         },
         "power status update",
+    )
+}
+
+pub async fn request_curtain_fingerprint_status_update(
+    control_socket: &Path,
+    status: Option<&FingerprintStatus>,
+) -> Result<()> {
+    send_curtain_control_message(
+        control_socket,
+        &CurtainControlMessage::UpdateFingerprintStatus {
+            status: status.cloned(),
+        },
+        "fingerprint status update",
     )
 }
 

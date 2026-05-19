@@ -4,8 +4,8 @@ use std::{
 };
 
 use veila_common::{
-    BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot, PowerAction,
-    WeatherCondition, WeatherSnapshot, WeatherUnit,
+    BackdropMode, BackdropShowWhen, BatterySnapshot, FingerprintStatus, LayerKind,
+    NowPlayingSnapshot, PowerAction, WeatherCondition, WeatherSnapshot, WeatherUnit,
 };
 use veila_common::{
     ClockFormat, DateFormat, HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign,
@@ -771,6 +771,32 @@ fn power_status_text_updates_without_touching_static_scene_revision() {
 }
 
 #[test]
+fn fingerprint_status_uses_auth_status_text() {
+    let mut shell = ShellState::default();
+
+    assert!(shell.set_fingerprint_status(Some(FingerprintStatus::Ready)));
+    assert_eq!(
+        shell.status_text().as_deref(),
+        Some("Touch fingerprint reader")
+    );
+    assert_eq!(shell.inline_input_status_text(), None);
+    assert!(!shell.set_fingerprint_status(Some(FingerprintStatus::Ready)));
+    assert!(shell.set_fingerprint_status(None));
+    assert_eq!(shell.status_text(), None);
+}
+
+#[test]
+fn fingerprint_status_does_not_replace_password_placeholder() {
+    let mut shell = ShellState::default();
+
+    assert!(shell.set_fingerprint_status(Some(FingerprintStatus::Unavailable)));
+    assert_eq!(shell.inline_input_status_text(), None);
+    shell.handle_key(ShellKey::Character('a'));
+
+    assert_eq!(shell.inline_input_status_text(), None);
+}
+
+#[test]
 fn uses_configured_username_override() {
     let shell = ShellState::new_with_username(
         Default::default(),
@@ -823,13 +849,35 @@ fn applying_theme_updates_clock_format() {
 }
 
 #[test]
-fn typing_does_not_change_static_scene_revision() {
+fn typing_refreshes_static_scene_when_placeholder_visibility_changes() {
     let mut shell = ShellState::default();
     let original = shell.static_scene_revision();
 
     shell.handle_key(ShellKey::Character('a'));
 
-    assert_eq!(shell.static_scene_revision(), original);
+    assert!(shell.static_scene_revision() > original);
+}
+
+#[test]
+fn typing_more_text_keeps_static_scene_revision() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('a'));
+    let after_first_character = shell.static_scene_revision();
+
+    shell.handle_key(ShellKey::Character('b'));
+
+    assert_eq!(shell.static_scene_revision(), after_first_character);
+}
+
+#[test]
+fn clearing_text_refreshes_static_scene_for_placeholder() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('a'));
+    let after_first_character = shell.static_scene_revision();
+
+    shell.handle_key(ShellKey::Backspace);
+
+    assert!(shell.static_scene_revision() > after_first_character);
 }
 
 #[test]

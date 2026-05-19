@@ -15,6 +15,7 @@ impl ShellState {
         match key {
             ShellKey::Escape if !self.input_visible() => ShellAction::None,
             ShellKey::Character(character) => {
+                let was_empty = self.secret.is_empty();
                 self.reveal_auth();
                 if !character.is_control()
                     && (self.secret_selected || self.secret.chars().count() < 128)
@@ -29,9 +30,11 @@ impl ShellState {
                         self.status = ShellStatus::Idle;
                     }
                 }
+                self.refresh_on_secret_empty_transition(was_empty);
                 ShellAction::None
             }
             ShellKey::Backspace => {
+                let was_empty = self.secret.is_empty();
                 self.reveal_auth();
                 if self.secret_selected {
                     self.secret.clear();
@@ -43,18 +46,22 @@ impl ShellState {
                     self.clear_rejected_state();
                     self.status = ShellStatus::Idle;
                 }
+                self.refresh_on_secret_empty_transition(was_empty);
                 ShellAction::None
             }
             ShellKey::Escape => {
+                let was_empty = self.secret.is_empty();
                 self.secret.clear();
                 self.set_secret_selected(false);
                 self.reveal_secret = false;
                 self.reveal_toggle_pressed = false;
                 self.status = ShellStatus::Idle;
                 self.hide_auth();
+                self.refresh_on_secret_empty_transition(was_empty);
                 ShellAction::None
             }
             ShellKey::Clear => {
+                let was_empty = self.secret.is_empty();
                 self.reveal_auth();
                 self.secret.clear();
                 self.set_secret_selected(false);
@@ -64,6 +71,7 @@ impl ShellState {
                     self.clear_rejected_state();
                     self.status = ShellStatus::Idle;
                 }
+                self.refresh_on_secret_empty_transition(was_empty);
                 ShellAction::None
             }
             ShellKey::SelectAll => {
@@ -234,6 +242,12 @@ impl ShellState {
 
     fn clear_rejected_state(&mut self) {
         if matches!(self.status, ShellStatus::Rejected { .. }) {
+            self.bump_static_scene_revision();
+        }
+    }
+
+    fn refresh_on_secret_empty_transition(&mut self, was_empty: bool) {
+        if was_empty != self.secret.is_empty() {
             self.bump_static_scene_revision();
         }
     }

@@ -1,3 +1,4 @@
+pub mod fprint;
 pub mod ipc;
 pub mod logind;
 pub mod pam;

@@ -99,6 +99,7 @@ const TOP_LEVEL: &[KeyRule] = &[
     key("include", Schema::Any),
     key("background", Schema::Table(BACKGROUND)),
     key("lock", Schema::Table(LOCK)),
+    key("fingerprint", Schema::Table(FINGERPRINT)),
     key("battery", Schema::Table(BATTERY)),
     key("now_playing", Schema::Table(NOW_PLAYING)),
     key("weather", Schema::Table(WEATHER)),
@@ -190,6 +191,8 @@ const BATTERY: &[KeyRule] = &[
     key("mock_percent", Schema::Any),
     key("mock_charging", Schema::Any),
 ];
+
+const FINGERPRINT: &[KeyRule] = &[key("enabled", Schema::Any)];
 
 const NOW_PLAYING: &[KeyRule] = &[
     key("include_players", Schema::Any),

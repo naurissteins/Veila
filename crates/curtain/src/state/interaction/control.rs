@@ -39,6 +39,11 @@ impl CurtainApp {
                         self.render_all_surfaces(queue_handle);
                     }
                 }
+                ControlEvent::UpdateFingerprintStatus { status } => {
+                    if self.ui_shell.set_fingerprint_status(status) {
+                        self.render_all_surfaces(queue_handle);
+                    }
+                }
             }
         }
     }

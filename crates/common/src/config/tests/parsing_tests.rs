@@ -582,6 +582,19 @@ fn parses_lock_allow_empty_password() {
 }
 
 #[test]
+fn parses_fingerprint_config() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [fingerprint]
+            enabled = true
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.fingerprint.enabled);
+}
+
+#[test]
 fn parses_power_off_secondary_outputs() {
     let config = AppConfig::from_toml_str(
         r#"
