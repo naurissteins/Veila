@@ -13,6 +13,7 @@ fn first_run_defaults_match_bundled_theme() {
         config.lock.log_file_path,
         std::path::PathBuf::from("~/.local/state/veila/veilad.log")
     );
+    assert!(!config.lock.hide_cursor);
     assert!(config.lock.avatar_path.is_none());
     assert_eq!(config.background.effective_mode(), BackgroundMode::Radial);
     assert_eq!(config.background.color, RgbColor::rgb(65, 50, 73));

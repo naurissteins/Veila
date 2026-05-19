@@ -180,6 +180,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_color: ClearColor,
     pub(crate) ui_output_mode: OutputUiMode,
     pub(crate) ui_output_name: Option<String>,
+    pub(crate) hide_cursor: bool,
     pub(crate) power_off_secondary_outputs: bool,
     pub(crate) secondary_outputs_powered_off: bool,
     pub(crate) weather_snapshot: Option<WeatherSnapshot>,
@@ -419,6 +420,7 @@ impl CurtainApp {
             } else {
                 config.visuals.ui_output_name().map(str::to_owned)
             },
+            hide_cursor: config.lock.hide_cursor,
             power_off_secondary_outputs,
             secondary_outputs_powered_off: false,
             weather_snapshot: options.weather_snapshot,

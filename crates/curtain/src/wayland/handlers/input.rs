@@ -263,7 +263,7 @@ impl PointerHandler for CurtainApp {
                         continue;
                     }
                     self.record_visible_lock_activity();
-                    self.set_default_pointer_cursor(_conn);
+                    self.set_configured_pointer_cursor(_conn);
                     self.handle_shell_pointer_motion(&event.surface, event.position, queue_handle);
                 }
                 PointerEventKind::Motion { .. } => {
@@ -331,13 +331,19 @@ impl PointerHandler for CurtainApp {
 }
 
 impl CurtainApp {
-    fn set_default_pointer_cursor(&mut self, connection: &Connection) {
+    pub(crate) fn set_configured_pointer_cursor(&self, connection: &Connection) {
         let Some(pointer) = self.pointer.as_ref() else {
             return;
         };
 
-        if let Err(error) = pointer.set_cursor(connection, CursorIcon::Default) {
-            tracing::debug!(%error, "failed to set default pointer cursor");
+        let result = if self.hide_cursor {
+            pointer.hide_cursor()
+        } else {
+            pointer.set_cursor(connection, CursorIcon::Default)
+        };
+
+        if let Err(error) = result {
+            tracing::debug!(hide_cursor = self.hide_cursor, %error, "failed to set pointer cursor");
         }
     }
 }

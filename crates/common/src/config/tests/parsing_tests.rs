@@ -556,6 +556,19 @@ fn parses_lock_screen_off_seconds() {
 }
 
 #[test]
+fn parses_lock_hide_cursor() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            hide_cursor = true
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(config.lock.hide_cursor);
+}
+
+#[test]
 fn parses_power_off_secondary_outputs() {
     let config = AppConfig::from_toml_str(
         r#"

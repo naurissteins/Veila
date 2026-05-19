@@ -54,6 +54,8 @@ impl CurtainApp {
         self.slideshow = slideshow;
         self.ui_output_mode = config.visuals.output_ui_mode();
         self.ui_output_name = config.visuals.ui_output_name().map(str::to_owned);
+        self.hide_cursor = config.lock.hide_cursor;
+        self.set_configured_pointer_cursor(&self.connection);
         self.power_off_secondary_outputs = config.lock.power_off_secondary_outputs;
         self.lock_wait_timeout =
             std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
