@@ -569,6 +569,19 @@ fn parses_lock_hide_cursor() {
 }
 
 #[test]
+fn parses_lock_allow_empty_password() {
+    let config = AppConfig::from_toml_str(
+        r#"
+            [lock]
+            allow_empty_password = false
+        "#,
+    )
+    .expect("config should parse");
+
+    assert!(!config.lock.allow_empty_password);
+}
+
+#[test]
 fn parses_power_off_secondary_outputs() {
     let config = AppConfig::from_toml_str(
         r#"

@@ -36,6 +36,13 @@ impl CurtainApp {
         let revision_before = self.ui_shell.static_scene_revision();
         let action = self.ui_shell.handle_key(key);
         if let ShellAction::Submit(secret) = action {
+            if !self.allow_empty_password && secret.is_empty() {
+                tracing::debug!("ignored empty password submit");
+                self.ui_shell.authentication_busy();
+                self.render_auth_change(revision_before, queue_handle);
+                return;
+            }
+
             let Some(socket_path) = self.daemon_socket.clone() else {
                 tracing::warn!("password submitted without a daemon auth socket");
                 self.ui_shell.authentication_rejected(None, None);

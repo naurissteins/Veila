@@ -20,6 +20,8 @@ pub struct LockConfig {
     pub auth_backoff_max_seconds: u64,
     #[serde(default)]
     pub hide_cursor: bool,
+    #[serde(default = "default_allow_empty_password")]
+    pub allow_empty_password: bool,
     #[serde(default)]
     pub screen_off_seconds: Option<u64>,
     #[serde(default)]
@@ -45,6 +47,7 @@ impl Default for LockConfig {
             auth_backoff_base_ms: default_auth_backoff_base_ms(),
             auth_backoff_max_seconds: default_auth_backoff_max_seconds(),
             hide_cursor: false,
+            allow_empty_password: default_allow_empty_password(),
             screen_off_seconds: None,
             power_off_secondary_outputs: false,
             suspend_seconds: None,
@@ -73,6 +76,10 @@ const fn default_lock_auto_reload_debounce_ms() -> u64 {
 
 const fn default_lock_log_to_file() -> bool {
     false
+}
+
+const fn default_allow_empty_password() -> bool {
+    true
 }
 
 fn default_lock_log_file_path() -> PathBuf {
