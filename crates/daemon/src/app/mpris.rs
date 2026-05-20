@@ -6,10 +6,19 @@ use tokio::sync::watch;
 use veila_common::{NowPlayingConfig, NowPlayingSnapshot};
 use zbus::{Connection, Proxy, fdo::DBusProxy, zvariant::OwnedValue};
 
-const REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+mod signals;
+#[cfg(test)]
+mod tests;
+
+use signals::MprisClient;
+
+const FALLBACK_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const MPRIS_PREFIX: &str = "org.mpris.MediaPlayer2.";
+const MPRIS_NAMESPACE: &str = "org.mpris.MediaPlayer2";
 const MPRIS_PATH: &str = "/org/mpris/MediaPlayer2";
 const MPRIS_INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
+const DBUS_INTERFACE: &str = "org.freedesktop.DBus";
+const DBUS_PROPERTIES_INTERFACE: &str = "org.freedesktop.DBus.Properties";
 
 #[derive(Clone)]
 pub(super) struct NowPlayingHandle {
@@ -73,16 +82,37 @@ async fn run_now_playing_service(
             playback_active_tx.send_replace(refresh.playback_active);
         }
 
-        let refresh = tokio::time::sleep(REFRESH_INTERVAL);
-        tokio::pin!(refresh);
+        let fallback_refresh = tokio::time::sleep(FALLBACK_REFRESH_INTERVAL);
+        tokio::pin!(fallback_refresh);
 
-        tokio::select! {
-            _ = &mut refresh => {}
-            changed = config_rx.changed() => {
-                if changed.is_err() {
-                    break;
+        if let Some(active_client) = client.as_mut() {
+            tokio::select! {
+                _ = &mut fallback_refresh => {}
+                signal = active_client.wait_for_change() => {
+                    match signal {
+                        Ok(reason) => tracing::debug!(?reason, "mpris refresh triggered by dbus signal"),
+                        Err(error) => {
+                            client = None;
+                            tracing::debug!("mpris signal stream failed: {error:#}");
+                        }
+                    }
                 }
-                config = config_rx.borrow().clone();
+                changed = config_rx.changed() => {
+                    if changed.is_err() {
+                        break;
+                    }
+                    config = config_rx.borrow().clone();
+                }
+            }
+        } else {
+            tokio::select! {
+                _ = &mut fallback_refresh => {}
+                changed = config_rx.changed() => {
+                    if changed.is_err() {
+                        break;
+                    }
+                    config = config_rx.borrow().clone();
+                }
             }
         }
     }
@@ -91,22 +121,6 @@ async fn run_now_playing_service(
 struct NowPlayingRefresh {
     snapshot: Option<NowPlayingSnapshot>,
     playback_active: bool,
-}
-
-struct MprisClient {
-    connection: Connection,
-}
-
-impl MprisClient {
-    async fn connect() -> Result<Self> {
-        Ok(Self {
-            connection: Connection::session().await?,
-        })
-    }
-
-    async fn refresh(&self, config: &NowPlayingConfig) -> Result<NowPlayingRefresh> {
-        fetch_snapshot(&self.connection, config).await
-    }
 }
 
 async fn fetch_refresh_state(
@@ -354,86 +368,5 @@ fn same_track_snapshot(
                 && left.artwork_path == right.artwork_path
         }
         _ => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{PlayerDescriptor, normalize_filter_value, player_is_excluded, player_is_included};
-
-    #[test]
-    fn excludes_players_by_identity_case_insensitively() {
-        let player = PlayerDescriptor {
-            bus_name: String::from("org.mpris.MediaPlayer2.firefox"),
-            identity: Some(String::from("Firefox")),
-            desktop_entry: Some(String::from("firefox")),
-        };
-
-        assert!(player_is_excluded(&player, &[String::from("firefox")]));
-    }
-
-    #[test]
-    fn includes_all_players_when_include_list_is_empty() {
-        let player = PlayerDescriptor {
-            bus_name: String::from("org.mpris.MediaPlayer2.firefox"),
-            identity: Some(String::from("Firefox")),
-            desktop_entry: Some(String::from("firefox")),
-        };
-
-        assert!(player_is_included(&player, &[]));
-    }
-
-    #[test]
-    fn includes_matching_players_by_identity_case_insensitively() {
-        let player = PlayerDescriptor {
-            bus_name: String::from("org.mpris.MediaPlayer2.spotify"),
-            identity: Some(String::from("Spotify")),
-            desktop_entry: Some(String::from("spotify")),
-        };
-
-        assert!(player_is_included(&player, &[String::from("spotify")]));
-        assert!(!player_is_included(&player, &[String::from("firefox")]));
-    }
-
-    #[test]
-    fn excludes_players_by_bus_name_base_for_instance_suffixes() {
-        let player = PlayerDescriptor {
-            bus_name: String::from("org.mpris.MediaPlayer2.chromium.instance458"),
-            identity: None,
-            desktop_entry: None,
-        };
-
-        assert!(player_is_excluded(&player, &[String::from("Chromium")]));
-    }
-
-    #[test]
-    fn ignores_empty_filter_entries() {
-        let player = PlayerDescriptor {
-            bus_name: String::from("org.mpris.MediaPlayer2.spotify"),
-            identity: Some(String::from("Spotify")),
-            desktop_entry: Some(String::from("spotify")),
-        };
-
-        assert!(!player_is_excluded(
-            &player,
-            &[String::from(" "), String::from("")],
-        ));
-        assert!(!player_is_included(
-            &player,
-            &[String::from(" "), String::from("")],
-        ));
-        assert_eq!(normalize_filter_value(" Firefox "), "firefox");
-    }
-
-    #[test]
-    fn exclude_filters_override_include_filters() {
-        let player = PlayerDescriptor {
-            bus_name: String::from("org.mpris.MediaPlayer2.firefox"),
-            identity: Some(String::from("Firefox")),
-            desktop_entry: Some(String::from("firefox")),
-        };
-
-        assert!(player_is_included(&player, &[String::from("Firefox")]));
-        assert!(player_is_excluded(&player, &[String::from("Firefox")]));
     }
 }
