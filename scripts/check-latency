@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+max_activation_ms="${VEILA_MAX_ACTIVATION_MS:-2500}"
+max_ready_wait_ms="${VEILA_MAX_READY_WAIT_MS:-2000}"
+max_first_frame_ms="${VEILA_MAX_FIRST_FRAME_MS:-2000}"
+max_session_locked_ms="${VEILA_MAX_SESSION_LOCKED_MS:-2000}"
+
+if [[ -n "${VEILA_BIN:-}" ]]; then
+  veila_bin="$VEILA_BIN"
+elif [[ -x target/debug/veila ]]; then
+  veila_bin="target/debug/veila"
+elif command -v veila >/dev/null 2>&1; then
+  veila_bin="veila"
+else
+  echo "error: could not find veila; set VEILA_BIN=/path/to/veila" >&2
+  exit 1
+fi
+
+status_output="$("$veila_bin" "$@" status 2>&1)" || {
+  printf '%s\n' "$status_output" >&2
+  echo "error: veilad must be running before latency check" >&2
+  exit 1
+}
+
+if printf '%s\n' "$status_output" | awk -F= '$1 == "active_lock" && $2 == "true" { found = 1 } END { exit found ? 0 : 1 }'; then
+  echo "error: Veila is already locked; unlock before running latency check" >&2
+  exit 1
+fi
+
+output="$("$veila_bin" --wait-ready --latency-report=verbose "$@" lock 2>&1)" || {
+  printf '%s\n' "$output" >&2
+  exit 1
+}
+
+printf '%s\n' "$output"
+
+value_for() {
+  local key="$1"
+  printf '%s\n' "$output" | awk -F= -v key="$key" '$1 == key { print $2; found = 1; exit } END { exit found ? 0 : 1 }'
+}
+
+require_value() {
+  local key="$1"
+  if ! value_for "$key"; then
+    echo "error: latency report missing $key" >&2
+    exit 1
+  fi
+}
+
+require_number() {
+  local key="$1"
+  local value
+  value="$(require_value "$key")"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    echo "error: latency report $key is not numeric: $value" >&2
+    exit 1
+  fi
+  printf '%s\n' "$value"
+}
+
+assert_at_most() {
+  local key="$1"
+  local max="$2"
+  local value
+  value="$(require_number "$key")"
+  if (( value > max )); then
+    echo "error: $key=${value}ms exceeds ${max}ms" >&2
+    exit 1
+  fi
+}
+
+if [[ "$(require_value latency_report)" != "true" ]]; then
+  echo "error: command did not return a latency report" >&2
+  exit 1
+fi
+
+if [[ "$(require_value curtain_report)" != "ok" ]]; then
+  echo "error: curtain latency report unavailable" >&2
+  exit 1
+fi
+
+surface_count="$(require_number surface_count)"
+if (( surface_count < 1 )); then
+  echo "error: latency report has no lock surfaces" >&2
+  exit 1
+fi
+
+assert_at_most activation_total_ms "$max_activation_ms"
+assert_at_most curtain_ready_wait_ms "$max_ready_wait_ms"
+assert_at_most first_frame_ms "$max_first_frame_ms"
+assert_at_most session_locked_ms "$max_session_locked_ms"
+
+echo "latency_check=ok"
+echo "latency_threshold.activation_total_ms=$max_activation_ms"
+echo "latency_threshold.curtain_ready_wait_ms=$max_ready_wait_ms"
+echo "latency_threshold.first_frame_ms=$max_first_frame_ms"
+echo "latency_threshold.session_locked_ms=$max_session_locked_ms"

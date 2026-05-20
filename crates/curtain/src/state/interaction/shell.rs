@@ -52,11 +52,7 @@ impl CurtainApp {
 
             let attempt_id = self.next_auth_attempt_id;
             self.next_auth_attempt_id = self.next_auth_attempt_id.saturating_add(1);
-            tracing::info!(
-                attempt_id,
-                secret_len = secret.chars().count(),
-                "submitting password attempt"
-            );
+            tracing::info!(attempt_id, "submitting password attempt");
             self.auth_in_flight = true;
             submit_password(socket_path, attempt_id, secret, self.auth_sender.clone());
         }

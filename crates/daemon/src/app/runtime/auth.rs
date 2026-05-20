@@ -61,11 +61,7 @@ pub(crate) async fn handle_client_message(
         ClientMessage::SubmitPassword { attempt_id, secret } => {
             suspend_state.note_activity(Instant::now());
             let started_at = Instant::now();
-            tracing::info!(
-                attempt_id,
-                secret_len = secret.chars().count(),
-                "received password submission"
-            );
+            tracing::info!(attempt_id, "received password submission");
             match auth_state.admit(Instant::now()) {
                 AuthAdmission::Allowed => {
                     let Some(sender) = auth_sender.clone() else {
