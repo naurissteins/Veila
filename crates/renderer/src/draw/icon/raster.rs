@@ -1,5 +1,5 @@
 use resvg::usvg;
-use tiny_skia::{FillRule, FilterQuality, Paint, Pixmap, PixmapPaint, Transform};
+use tiny_skia::{FillRule, Paint, Transform};
 
 use super::{IconRasterKey, IconRasterSource, ParsedIcon};
 use crate::{PixelBuffer, draw::skia::color as skia_color};
@@ -39,17 +39,7 @@ fn rasterize_svg_icon(key: IconRasterKey, svg: &[u8]) -> Vec<u8> {
     let Ok(tree) = usvg::Tree::from_data(svg, &options) else {
         return Vec::new();
     };
-    let size = tree.size();
-    let inset = key.padding.max(0) as f32;
-    let target_width = (key.width as f32 - inset * 2.0).max(1.0);
-    let target_height = (key.height as f32 - inset * 2.0).max(1.0);
-    let scale = (target_width / size.width()).min(target_height / size.height());
-    let icon_width = size.width() * scale;
-    let icon_height = size.height() * scale;
-    let translate_x = ((key.width as f32 - icon_width) / 2.0).max(0.0);
-    let translate_y = ((key.height as f32 - icon_height) / 2.0).max(0.0);
-    let transform = Transform::from_scale(scale, scale).post_translate(translate_x, translate_y);
-    resvg::render(&tree, transform, &mut pixmap.as_mut());
+    resvg::render(&tree, svg_transform(key, &tree), &mut pixmap.as_mut());
     let mut pixels = pixmap.take();
     if matches!(
         key.icon,
@@ -58,7 +48,7 @@ fn rasterize_svg_icon(key: IconRasterKey, svg: &[u8]) -> Vec<u8> {
         recolor_svg_pixels(&mut pixels, key.color);
     }
     scale_svg_alpha(&mut pixels, key.color.alpha);
-    normalize_svg_pixels(key, pixels)
+    pixels
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,45 +69,25 @@ impl AlphaBounds {
     }
 }
 
-fn normalize_svg_pixels(key: IconRasterKey, pixels: Vec<u8>) -> Vec<u8> {
-    let Some(bounds) = visible_alpha_bounds(&pixels, key.width, key.height) else {
-        return pixels;
-    };
-
-    if bounds.left == 0
-        && bounds.top == 0
-        && bounds.right == key.width
-        && bounds.bottom == key.height
-    {
-        return pixels;
-    }
-
-    let cropped_pixels = crop_visible_pixels(&pixels, key.width, bounds);
-    let Some(source_size) = tiny_skia::IntSize::from_wh(bounds.width(), bounds.height()) else {
-        return pixels;
-    };
-    let Some(source) = Pixmap::from_vec(cropped_pixels, source_size) else {
-        return pixels;
-    };
-    let Some(mut normalized) = Pixmap::new(key.width, key.height) else {
-        return pixels;
-    };
-
+fn svg_transform(key: IconRasterKey, tree: &usvg::Tree) -> Transform {
+    let bounds = tree.root().abs_layer_bounding_box();
     let inset = key.padding.max(0) as f32;
     let target_width = (key.width as f32 - inset * 2.0).max(1.0);
     let target_height = (key.height as f32 - inset * 2.0).max(1.0);
-    let scale = (target_width / bounds.width() as f32).min(target_height / bounds.height() as f32);
-    let icon_width = bounds.width() as f32 * scale;
-    let icon_height = bounds.height() as f32 * scale;
+    let scale = (target_width / bounds.width()).min(target_height / bounds.height());
+    let icon_width = bounds.width() * scale;
+    let icon_height = bounds.height() * scale;
     let translate_x = ((key.width as f32 - icon_width) / 2.0).max(0.0);
     let translate_y = ((key.height as f32 - icon_height) / 2.0).max(0.0);
-    let paint = PixmapPaint {
-        quality: FilterQuality::Bicubic,
-        ..PixmapPaint::default()
-    };
-    let transform = Transform::from_row(scale, 0.0, 0.0, scale, translate_x, translate_y);
-    normalized.draw_pixmap(0, 0, source.as_ref(), &paint, transform, None);
-    normalized.take()
+
+    Transform::from_row(
+        scale,
+        0.0,
+        0.0,
+        scale,
+        translate_x - bounds.x() * scale,
+        translate_y - bounds.y() * scale,
+    )
 }
 
 pub(super) fn svg_translate_y(key: IconRasterKey, icon_height: f32) -> f32 {
@@ -127,22 +97,6 @@ pub(super) fn svg_translate_y(key: IconRasterKey, icon_height: f32) -> f32 {
         super::AssetIcon::Weather(_) => ((key.height as f32 - inset) - icon_height).max(inset),
         _ => ((key.height as f32 - icon_height) / 2.0).max(0.0),
     }
-}
-
-fn crop_visible_pixels(pixels: &[u8], width: u32, bounds: AlphaBounds) -> Vec<u8> {
-    let source_stride = width as usize * 4;
-    let cropped_stride = bounds.width() as usize * 4;
-    let mut cropped = vec![0; cropped_stride * bounds.height() as usize];
-
-    for row in 0..bounds.height() as usize {
-        let source_row = bounds.top as usize + row;
-        let source_offset = source_row * source_stride + bounds.left as usize * 4;
-        let target_offset = row * cropped_stride;
-        cropped[target_offset..target_offset + cropped_stride]
-            .copy_from_slice(&pixels[source_offset..source_offset + cropped_stride]);
-    }
-
-    cropped
 }
 
 pub(super) fn visible_alpha_bounds(pixels: &[u8], width: u32, height: u32) -> Option<AlphaBounds> {
