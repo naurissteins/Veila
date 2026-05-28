@@ -1,4 +1,9 @@
-use super::{PlayerDescriptor, normalize_filter_value, player_is_excluded, player_is_included};
+use anyhow::anyhow;
+
+use super::{
+    PlayerDescriptor, normalize_filter_value, optional_property_string, player_is_excluded,
+    player_is_included,
+};
 
 #[test]
 fn excludes_players_by_identity_case_insensitively() {
@@ -74,4 +79,23 @@ fn exclude_filters_override_include_filters() {
 
     assert!(player_is_included(&player, &[String::from("Firefox")]));
     assert!(player_is_excluded(&player, &[String::from("Firefox")]));
+}
+
+#[test]
+fn optional_property_errors_become_missing_values() {
+    let value = optional_property_string(
+        Err(anyhow!("error occurred in Get")),
+        "org.mpris.MediaPlayer2.chromium.instance458",
+        "DesktopEntry",
+    );
+
+    assert_eq!(value, None);
+    assert_eq!(
+        optional_property_string(
+            Ok(Some(String::from("chromium"))),
+            "org.mpris.MediaPlayer2.chromium.instance458",
+            "DesktopEntry",
+        ),
+        Some(String::from("chromium"))
+    );
 }

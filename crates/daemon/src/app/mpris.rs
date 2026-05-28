@@ -211,7 +211,11 @@ async fn player_snapshot(
     let player = PlayerDescriptor {
         bus_name: bus_name.to_string(),
         identity: property_string(&root_proxy, "Identity").await?,
-        desktop_entry: property_string(&root_proxy, "DesktopEntry").await?,
+        desktop_entry: optional_property_string(
+            property_string(&root_proxy, "DesktopEntry").await,
+            bus_name,
+            "DesktopEntry",
+        ),
     };
 
     if !player_is_included(&player, &config.include_players) {
@@ -280,6 +284,24 @@ fn playback_rank(status: &str) -> Option<u8> {
 async fn property_string(proxy: &Proxy<'_>, property: &str) -> Result<Option<String>> {
     let value: String = proxy.get_property(property).await?;
     Ok(normalize_string(value))
+}
+
+fn optional_property_string(
+    result: Result<Option<String>>,
+    bus_name: &str,
+    property: &str,
+) -> Option<String> {
+    match result {
+        Ok(value) => value,
+        Err(error) => {
+            tracing::debug!(
+                bus_name,
+                property,
+                "optional mpris property unavailable: {error:#}"
+            );
+            None
+        }
+    }
 }
 
 fn metadata_string(metadata: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
