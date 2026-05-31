@@ -46,6 +46,7 @@ pub(super) fn same_widget_data(
             left.title == right.title
                 && left.artist == right.artist
                 && left.artwork_path == right.artwork_path
+                && left.artwork.is_some() == right.artwork.is_some()
         }
         _ => false,
     }
@@ -58,11 +59,17 @@ fn normalize(value: String) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{fs, path::PathBuf};
 
     use veila_common::NowPlayingSnapshot;
 
     use super::{same_widget_data, widget_data};
+
+    const ONE_PIXEL_PNG: &[u8] = &[
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1,
+        13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
 
     #[test]
     fn hides_widget_without_title() {
@@ -106,5 +113,37 @@ mod tests {
         }));
 
         assert!(same_widget_data(left.as_ref(), right.as_ref()));
+    }
+
+    #[test]
+    fn detects_late_artwork_load_for_same_track_and_path() {
+        let path = std::env::temp_dir().join(format!(
+            "veila-now-playing-artwork-{}.png",
+            std::process::id()
+        ));
+        let _ = fs::remove_file(&path);
+
+        let before = widget_data(Some(NowPlayingSnapshot {
+            title: String::from("Track"),
+            artist: Some(String::from("Artist")),
+            artwork_path: Some(path.clone()),
+            fetched_at_unix: 0,
+        }))
+        .expect("widget before artwork exists");
+
+        fs::write(&path, ONE_PIXEL_PNG).expect("write artwork");
+        let after = widget_data(Some(NowPlayingSnapshot {
+            title: String::from("Track"),
+            artist: Some(String::from("Artist")),
+            artwork_path: Some(path.clone()),
+            fetched_at_unix: 10,
+        }))
+        .expect("widget after artwork exists");
+
+        let _ = fs::remove_file(path);
+
+        assert!(before.artwork.is_none());
+        assert!(after.artwork.is_some());
+        assert!(!same_widget_data(Some(&before), Some(&after)));
     }
 }
