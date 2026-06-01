@@ -19,9 +19,21 @@ permissions:
   contents: write
 
 jobs:
-  linux-x86_64:
-    name: linux-x86_64
-    runs-on: ubuntu-latest
+  linux:
+    name: linux-${{ matrix.artifact_arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact_arch: x86_64-linux
+            deb_arch: amd64
+            rpm_arch: x86_64
+            runner: ubuntu-latest
+          - artifact_arch: aarch64-linux
+            deb_arch: arm64
+            rpm_arch: aarch64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -46,7 +58,7 @@ jobs:
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-rust-cache
+          shared-key: release-rust-cache-${{ matrix.artifact_arch }}
 
       - name: Build optimized release
         run: cargo build --locked --release --workspace
@@ -69,7 +81,7 @@ jobs:
           else
             version="${GITHUB_REF_NAME#v}"
           fi
-          dist_dir="dist/veila-${version}-x86_64-linux"
+          dist_dir="dist/veila-${version}-${{ matrix.artifact_arch }}"
 
           rm -rf "$dist_dir"
           mkdir -p \
@@ -88,7 +100,7 @@ jobs:
           install -m644 README.md "$dist_dir/README.md"
           install -m644 LICENSE "$dist_dir/LICENSE"
 
-          tar -C dist -czf "dist/veila-${version}-x86_64-linux.tar.gz" "veila-${version}-x86_64-linux"
+          tar -C dist -czf "dist/veila-${version}-${{ matrix.artifact_arch }}.tar.gz" "veila-${version}-${{ matrix.artifact_arch }}"
 
       - name: Package Debian package
         shell: bash
@@ -103,7 +115,7 @@ jobs:
           else
             version="${GITHUB_REF_NAME#v}"
           fi
-          bash packaging/deb/build-deb.sh "$version" dist
+          DEB_ARCHITECTURE="${{ matrix.deb_arch }}" bash packaging/deb/build-deb.sh "$version" dist
 
       - name: Package RPM package
         shell: bash
@@ -120,26 +132,26 @@ jobs:
             artifact_version="${GITHUB_REF_NAME#v}"
             package_version="$artifact_version"
           fi
-          bash packaging/rpm/build-rpm.sh \
+          RPM_ARCHITECTURE="${{ matrix.rpm_arch }}" bash packaging/rpm/build-rpm.sh \
             "$package_version" \
             dist \
-            "dist/veila-${artifact_version}-x86_64-linux.tar.gz"
+            "dist/veila-${artifact_version}-${{ matrix.artifact_arch }}.tar.gz"
 
       - name: Upload release asset
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/veila-*-x86_64-linux.tar.gz
-            dist/veila_*_amd64.deb
+            dist/veila-*-${{ matrix.artifact_arch }}.tar.gz
+            dist/veila_*_${{ matrix.deb_arch }}.deb
             dist/veila-*.rpm
 
       - name: Upload manual packaging artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.artifact_name }}
+          name: ${{ github.event.inputs.artifact_name }}-${{ matrix.artifact_arch }}
           path: |
-            dist/veila-*-x86_64-linux.tar.gz
-            dist/veila_*_amd64.deb
+            dist/veila-*-${{ matrix.artifact_arch }}.tar.gz
+            dist/veila_*_${{ matrix.deb_arch }}.deb
             dist/veila-*.rpm
