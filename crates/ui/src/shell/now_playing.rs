@@ -16,6 +16,9 @@ pub(super) fn widget_data(snapshot: Option<NowPlayingSnapshot>) -> Option<NowPla
     let title = normalize(snapshot.title)?;
     let artist = snapshot.artist.and_then(normalize);
     let artwork_path = snapshot.artwork_path;
+    if artwork_path.is_none() {
+        tracing::debug!("now playing snapshot has no artwork path");
+    }
     let artwork = artwork_path
         .as_deref()
         .and_then(|path| match CoverArtAsset::load(path) {
