@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use image::RgbaImage;
+use image::{ImageReader, RgbaImage};
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
 use crate::{FrameSize, PixelBuffer, RendererError, Result};
@@ -14,7 +14,10 @@ pub enum CoverArtAsset {
 
 impl CoverArtAsset {
     pub fn load(path: &Path) -> Result<Self> {
-        let image = image::open(path)?.to_rgba8();
+        let image = ImageReader::open(path)?
+            .with_guessed_format()?
+            .decode()?
+            .to_rgba8();
         let pixmap = rgba_to_pixmap(image)?;
         Ok(Self::Image(pixmap))
     }

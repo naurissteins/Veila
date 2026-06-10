@@ -7,7 +7,7 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-use image::{RgbaImage, imageops::FilterType};
+use image::{ImageReader, RgbaImage, imageops::FilterType};
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
 use crate::{ClearColor, FrameSize, PixelBuffer, RendererError, Result, ShadowStyle};
@@ -100,7 +100,10 @@ impl AvatarAsset {
             return Ok(cached);
         }
 
-        let image = image::open(path)?.to_rgba8();
+        let image = ImageReader::open(path)?
+            .with_guessed_format()?
+            .decode()?
+            .to_rgba8();
         let image = prepare_avatar_image(image);
         let pixmap = rgba_to_pixmap(image)?;
         let _ = store_cached_avatar(path, &pixmap);

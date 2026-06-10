@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use image::RgbaImage;
+use image::{ImageReader, RgbaImage};
 
 use super::{
     BackgroundAsset, BackgroundKind, BackgroundTreatment, GeneratedBackground, RenderCacheSummary,
@@ -65,7 +65,11 @@ pub fn prewarm_source(path: &Path) -> Result<SourceCacheStatus> {
         return Ok(SourceCacheStatus::Hit);
     }
 
-    let image = image::open(path)?.to_rgba8();
+    let image = ImageReader::open(path)?
+        .with_guessed_format()?
+        .decode()?
+        .to_rgba8();
+
     store_cached_rgba(path, &image)?;
     Ok(SourceCacheStatus::Warmed)
 }
@@ -229,7 +233,11 @@ pub(super) fn load_rgba_image(path: &Path) -> Result<RgbaImage> {
         return Ok(image);
     }
 
-    let image = image::open(path)?.to_rgba8();
+    let image = ImageReader::open(path)?
+        .with_guessed_format()?
+        .decode()?
+        .to_rgba8();
+
     let _ = store_cached_rgba(path, &image);
     Ok(image)
 }
