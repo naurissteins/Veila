@@ -134,10 +134,18 @@ fn premultiply(channel: u8, alpha: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use image::{Rgba, RgbaImage};
 
     use super::{CoverArtAsset, rgba_to_pixmap};
     use crate::{ClearColor, FrameSize, SoftwareBuffer};
+
+    const ONE_PIXEL_PNG: &[u8] = &[
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1,
+        13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
 
     #[test]
     fn converts_rgba_cover_to_pixmap() {
@@ -164,5 +172,20 @@ mod tests {
         asset.draw(&mut buffer, 8, 8, 48, 48, 12, None);
 
         assert!(buffer.pixels().iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn loads_png_cover_art_without_file_extension() {
+        let path = std::env::temp_dir().join(format!(
+            "veila-cover-art-extensionless-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_file(&path);
+        fs::write(&path, ONE_PIXEL_PNG).expect("write png");
+
+        let result = CoverArtAsset::load(&path);
+
+        let _ = fs::remove_file(path);
+        assert!(result.is_ok());
     }
 }
