@@ -105,7 +105,7 @@
         }:
         let
           cfg = config.programs.veila;
-          package = self.packages.${pkgs.system}.default;
+          package = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         in
         {
           options.programs.veila = {
