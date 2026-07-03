@@ -12,7 +12,6 @@ use smithay_client_toolkit::{
     },
 };
 use veila_ui::ShellKey;
-use xkbcommon::xkb;
 
 use crate::{ipc::auth::notify_activity, state::CurtainApp};
 
@@ -391,22 +390,78 @@ fn active_layout_label(app: &CurtainApp) -> Option<String> {
 }
 
 fn parse_keymap_layout_labels(keymap: Keymap<'_>) -> Vec<String> {
-    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-    let Some(keymap) = xkb::Keymap::new_from_string(
-        &context,
-        keymap.as_string(),
-        xkb::KEYMAP_FORMAT_TEXT_V1,
-        xkb::KEYMAP_COMPILE_NO_FLAGS,
-    ) else {
-        tracing::warn!("failed to parse keyboard keymap for layout indicator");
-        return Vec::new();
-    };
+    parse_keymap_layout_labels_from_str(&keymap.as_string())
+}
 
-    keymap
-        .layouts()
-        .map(short_layout_label)
-        .filter(|label| !label.is_empty())
-        .collect()
+fn parse_keymap_layout_labels_from_str(keymap: &str) -> Vec<String> {
+    let mut labels_by_group = Vec::new();
+    let mut fallback_labels = Vec::new();
+
+    for line in keymap.lines().map(str::trim_start) {
+        if !line.starts_with("name[") {
+            continue;
+        }
+
+        let Some((group, value)) = line.split_once('=') else {
+            continue;
+        };
+        let Some(name) = parse_xkb_quoted_string(value) else {
+            continue;
+        };
+        let label = short_layout_label(&name);
+        if label.is_empty() {
+            continue;
+        }
+
+        if let Some(index) = parse_xkb_layout_group_index(group) {
+            if labels_by_group.len() <= index {
+                labels_by_group.resize(index + 1, None);
+            }
+            labels_by_group[index] = Some(label);
+        } else {
+            fallback_labels.push(label);
+        }
+    }
+
+    let labels: Vec<String> = labels_by_group.into_iter().flatten().collect();
+    if labels.is_empty() {
+        fallback_labels
+    } else {
+        labels
+    }
+}
+
+fn parse_xkb_layout_group_index(group: &str) -> Option<usize> {
+    let start = group.find('[')? + 1;
+    let end = group[start..].find(']')? + start;
+    let group = group[start..end].trim().to_ascii_lowercase();
+    let number = group.strip_prefix("group")?.parse::<usize>().ok()?;
+    number.checked_sub(1)
+}
+
+fn parse_xkb_quoted_string(value: &str) -> Option<String> {
+    let mut characters = value.trim_start().chars();
+    if characters.next()? != '"' {
+        return None;
+    }
+
+    let mut parsed = String::new();
+    let mut escaped = false;
+    for character in characters {
+        if escaped {
+            parsed.push(character);
+            escaped = false;
+            continue;
+        }
+
+        match character {
+            '\\' => escaped = true,
+            '"' => return Some(parsed),
+            _ => parsed.push(character),
+        }
+    }
+
+    None
 }
 
 fn short_layout_label(name: &str) -> String {
@@ -441,7 +496,10 @@ fn short_layout_label(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::short_layout_label;
+    use super::{
+        parse_keymap_layout_labels_from_str, parse_xkb_layout_group_index, parse_xkb_quoted_string,
+        short_layout_label,
+    };
 
     #[test]
     fn normalizes_common_layout_codes() {
@@ -455,5 +513,54 @@ mod tests {
         assert_eq!(short_layout_label("English (US)"), "EN");
         assert_eq!(short_layout_label("latvian"), "LV");
         assert_eq!(short_layout_label("Portuguese-Brazil"), "POR");
+    }
+
+    #[test]
+    fn parses_xkb_layout_group_indices() {
+        assert_eq!(parse_xkb_layout_group_index("name[group1]"), Some(0));
+        assert_eq!(parse_xkb_layout_group_index("name[Group2]"), Some(1));
+        assert_eq!(parse_xkb_layout_group_index("name[group0]"), None);
+        assert_eq!(parse_xkb_layout_group_index("name[foo]"), None);
+    }
+
+    #[test]
+    fn parses_xkb_quoted_strings() {
+        assert_eq!(
+            parse_xkb_quoted_string("\"English (US)\";"),
+            Some(String::from("English (US)"))
+        );
+        assert_eq!(
+            parse_xkb_quoted_string("\"Custom \\\"Graphre\\\"\";"),
+            Some(String::from("Custom \"Graphre\""))
+        );
+        assert_eq!(parse_xkb_quoted_string("English;"), None);
+    }
+
+    #[test]
+    fn extracts_layout_labels_without_recompiling_keymap() {
+        let keymap = r#"
+            xkb_keymap {
+                xkb_symbols "(unnamed)" {
+                    name[group1]="English (US)";
+                    name[group2]="graphre";
+                };
+            };
+        "#;
+
+        assert_eq!(parse_keymap_layout_labels_from_str(keymap), ["EN", "GRA"]);
+    }
+
+    #[test]
+    fn ignores_malformed_layout_names() {
+        let keymap = r#"
+            xkb_keymap {
+                xkb_symbols "(unnamed)" {
+                    name[group1]=English;
+                    name[group2]="Portuguese-Brazil";
+                };
+            };
+        "#;
+
+        assert_eq!(parse_keymap_layout_labels_from_str(keymap), ["POR"]);
     }
 }
