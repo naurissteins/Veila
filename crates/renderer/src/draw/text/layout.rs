@@ -23,14 +23,10 @@ pub(super) fn layout_text_block(
     FONT_CONTEXT.with(|context| {
         let mut context = context.borrow_mut();
         let mut buffer = Buffer::new(&mut context.font_system, font_metrics(&style));
-        buffer.set_wrap(&mut context.font_system, wrap);
-        buffer.set_size(
-            &mut context.font_system,
-            max_width.map(|value| value as f32),
-            None,
-        );
+        buffer.set_wrap(wrap);
+        buffer.set_size(max_width.map(|value| value as f32), None);
         let attrs = text_attrs(&style);
-        buffer.set_text(&mut context.font_system, text, &attrs, Shaping::Advanced);
+        buffer.set_text(text, &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut context.font_system, true);
 
         let mut width = 0.0f32;

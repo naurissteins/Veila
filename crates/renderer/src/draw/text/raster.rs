@@ -71,10 +71,10 @@ pub(super) fn visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBo
             swash_cache,
         } = &mut *context;
         let mut cosmic_buffer = Buffer::new(font_system, font_metrics(&style));
-        cosmic_buffer.set_wrap(font_system, Wrap::None);
-        cosmic_buffer.set_size(font_system, None, None);
+        cosmic_buffer.set_wrap(Wrap::None);
+        cosmic_buffer.set_size(None, None);
         let attrs = text_attrs(&style);
-        cosmic_buffer.set_text(font_system, text, &attrs, cosmic_text::Shaping::Advanced);
+        cosmic_buffer.set_text(text, &attrs, cosmic_text::Shaping::Advanced, None);
         cosmic_buffer.shape_until_scroll(font_system, true);
 
         let mut bounds: Option<TextBounds> = None;
@@ -142,10 +142,10 @@ fn rasterize_text(text: &str, style: TextStyle, color: ClearColor) -> Option<Tex
             swash_cache,
         } = &mut *context;
         let mut cosmic_buffer = Buffer::new(font_system, font_metrics(&style));
-        cosmic_buffer.set_wrap(font_system, Wrap::None);
-        cosmic_buffer.set_size(font_system, None, None);
+        cosmic_buffer.set_wrap(Wrap::None);
+        cosmic_buffer.set_size(None, None);
         let attrs = text_attrs(&style);
-        cosmic_buffer.set_text(font_system, text, &attrs, cosmic_text::Shaping::Advanced);
+        cosmic_buffer.set_text(text, &attrs, cosmic_text::Shaping::Advanced, None);
         cosmic_buffer.shape_until_scroll(font_system, true);
 
         cosmic_buffer.draw(
