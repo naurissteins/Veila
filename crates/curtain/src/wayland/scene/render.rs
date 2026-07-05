@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
-use veila_renderer::{PixelBuffer, copy_rect_from, crossfade_buffers, shm};
+use veila_renderer::{CrossfadeProgress, PixelBuffer, copy_rect_from, crossfade_buffers_into, shm};
 
 use crate::state::{CurtainApp, DirtyRenderTimingSample, RenderTimingSample, SurfaceSize};
 
@@ -458,14 +458,12 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
         from: &veila_renderer::SoftwareBuffer,
         to: &veila_renderer::SoftwareBuffer,
-        progress: u8,
+        progress: CrossfadeProgress,
         ui_visible: bool,
         output_role: &'static str,
     ) -> Result<()> {
         let frame_size = size.buffer;
         let render_scale = size.scale.max(1) as u32;
-        let blended = crossfade_buffers(from, to, progress)
-            .map_err(|error| anyhow!("failed to crossfade slideshow background: {error}"))?;
 
         if self.lock_surfaces[index].shm_pool.is_none() {
             self.lock_surfaces[index].shm_pool =
@@ -473,16 +471,21 @@ impl CurtainApp {
         }
         self.configure_viewport_for_surface(index, size);
 
+        // Request the next vsync-aligned frame callback so the crossfade advances
+        // in step with the compositor's refresh instead of a wall-clock timer.
+        self.request_surface_frame_callback(index, queue_handle);
+
         if !ui_visible {
             self.lock_surfaces[index]
                 .shm_pool
                 .as_mut()
                 .expect("surface SHM pool should be initialized")
-                .commit_buffer(
+                .render_buffer(
                     queue_handle,
                     surface.wl_surface(),
-                    &blended,
+                    frame_size,
                     size.buffer_scale_for_commit(),
+                    |buffer| crossfade_buffers_into(from, to, progress, buffer),
                 )
                 .map_err(|error| anyhow!("failed to commit crossfaded background: {error}"))?;
             return Ok(());
@@ -499,7 +502,7 @@ impl CurtainApp {
                 frame_size,
                 size.buffer_scale_for_commit(),
                 |buffer| {
-                    buffer.pixels_mut().copy_from_slice(blended.pixels());
+                    crossfade_buffers_into(from, to, progress, buffer)?;
                     ui_shell.render_dynamic_overlay_scaled(buffer, render_scale);
                     Ok(())
                 },

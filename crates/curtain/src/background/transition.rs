@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use veila_renderer::SoftwareBuffer;
+use veila_renderer::{CROSSFADE_PROGRESS_MAX, CrossfadeProgress, SoftwareBuffer};
 
 #[derive(Debug)]
 pub(crate) enum SlideshowTransitionPhase {
@@ -53,16 +53,22 @@ impl SlideshowTransition {
         self.phase = SlideshowTransitionPhase::Animating { started_at: now };
     }
 
-    pub(crate) fn fade_progress(&self, now: Instant) -> Option<u8> {
+    pub(crate) fn fade_progress(&self, now: Instant) -> Option<CrossfadeProgress> {
         let SlideshowTransitionPhase::Animating { started_at } = self.phase else {
             return None;
         };
 
-        let elapsed = now.saturating_duration_since(started_at).min(self.duration);
-        Some(
-            ((elapsed.as_millis() * 100) / self.duration.as_millis().max(1))
-                .min(u128::from(u8::MAX)) as u8,
-        )
+        let elapsed = now.saturating_duration_since(started_at);
+        if elapsed >= self.duration {
+            return Some(CROSSFADE_PROGRESS_MAX);
+        }
+
+        let duration_nanos = self.duration.as_nanos().max(1);
+        let progress = elapsed
+            .as_nanos()
+            .saturating_mul(u128::from(CROSSFADE_PROGRESS_MAX))
+            / duration_nanos;
+        Some(progress.min(u128::from(CROSSFADE_PROGRESS_MAX)) as CrossfadeProgress)
     }
 
     pub(crate) fn is_complete(&self, now: Instant) -> bool {
@@ -100,11 +106,11 @@ mod tests {
         assert_eq!(transition.fade_progress(started_at), Some(0));
         assert_eq!(
             transition.fade_progress(started_at + std::time::Duration::from_millis(50)),
-            Some(50)
+            Some(5_000)
         );
         assert_eq!(
             transition.fade_progress(started_at + std::time::Duration::from_millis(100)),
-            Some(100)
+            Some(10_000)
         );
         assert!(transition.is_complete(started_at + std::time::Duration::from_millis(100)));
     }

@@ -10,13 +10,16 @@ use std::{sync::Arc, time::Instant};
 
 use loader::{spawn_avatar_loader, spawn_loader, spawn_preloader};
 use smithay_client_toolkit::reexports::client::QueueHandle;
-use veila_renderer::{FrameSize, SoftwareBuffer};
+use veila_renderer::{CrossfadeProgress, FrameSize, SoftwareBuffer};
 
 use veila_common::config::wallpaper_paths_equal;
 
 use crate::state::CurtainApp;
 
-const SLIDESHOW_TRANSITION_POLL_INTERVAL_MS: u64 = 80;
+// Frame pacing is driven by Wayland frame callbacks (vsync). This timer is only a
+// watchdog to guarantee completion and to re-kick a surface whose frame callback
+// stalled (e.g. it was briefly not committed).
+const SLIDESHOW_TRANSITION_WATCHDOG_MS: u64 = 100;
 
 impl CurtainApp {
     pub(crate) fn drain_background_events(&mut self, queue_handle: &QueueHandle<Self>) {
@@ -267,20 +270,96 @@ impl CurtainApp {
             return;
         }
 
-        self.render_all_surfaces(queue_handle);
+        // Frame callbacks drive rendering while animating. This only renders
+        // surfaces that have no callback in flight yet (e.g. before the first
+        // callback of the chain), so it does not spin against the callback path.
+        for index in 0..self.lock_surfaces.len() {
+            if self.lock_surfaces[index].frame_callback_pending {
+                continue;
+            }
+            if !self.render_slideshow_transition_surface(index, queue_handle) {
+                return;
+            }
+        }
+    }
+
+    /// Drives the next crossfade frame from a Wayland frame callback (vsync-aligned).
+    pub(crate) fn on_surface_frame_callback(
+        &mut self,
+        surface: &smithay_client_toolkit::reexports::client::protocol::wl_surface::WlSurface,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        let Some(index) = self
+            .lock_surfaces
+            .iter()
+            .position(|entry| entry.surface.wl_surface() == surface)
+        else {
+            return;
+        };
+        self.lock_surfaces[index].frame_callback_pending = false;
+
+        let now = Instant::now();
+        let Some(transition) = self.slideshow_transition.as_ref() else {
+            return;
+        };
+        if !transition.is_animating() {
+            return;
+        }
+        if transition.is_complete(now) {
+            self.finalize_slideshow_transition(queue_handle);
+            return;
+        }
+
+        self.render_slideshow_transition_surface(index, queue_handle);
+    }
+
+    /// Renders one surface's crossfade frame. Surfaces without a size yet are
+    /// skipped. Returns `false` only on a fatal render error (a failure is
+    /// recorded and exit requested), signalling callers to stop.
+    fn render_slideshow_transition_surface(
+        &mut self,
+        index: usize,
+        queue_handle: &QueueHandle<Self>,
+    ) -> bool {
+        let Some(size) = self.lock_surfaces[index].size else {
+            return true;
+        };
+        let lock_surface = self.lock_surfaces[index].surface.clone();
+        if let Err(error) =
+            self.render_surface_with_emergency_fallback(&lock_surface, size, queue_handle)
+        {
+            self.failure_reason =
+                Some(format!("failed to render slideshow crossfade frame: {error:#}"));
+            self.exit_requested = true;
+            return false;
+        }
+        true
+    }
+
+    pub(crate) fn request_surface_frame_callback(
+        &mut self,
+        index: usize,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.lock_surfaces[index].frame_callback_pending {
+            return;
+        }
+        let wl_surface = self.lock_surfaces[index].surface.wl_surface().clone();
+        wl_surface.frame(queue_handle, wl_surface.clone());
+        self.lock_surfaces[index].frame_callback_pending = true;
     }
 
     pub(crate) fn slideshow_transition_poll_interval(&self) -> Option<std::time::Duration> {
         self.slideshow_transition
             .as_ref()
             .filter(|transition| transition.is_animating())
-            .map(|_| std::time::Duration::from_millis(SLIDESHOW_TRANSITION_POLL_INTERVAL_MS))
+            .map(|_| std::time::Duration::from_millis(SLIDESHOW_TRANSITION_WATCHDOG_MS))
     }
 
     pub(crate) fn slideshow_crossfade_for_surface(
         &self,
         index: usize,
-    ) -> Option<(Arc<SoftwareBuffer>, Arc<SoftwareBuffer>, u8)> {
+    ) -> Option<(Arc<SoftwareBuffer>, Arc<SoftwareBuffer>, CrossfadeProgress)> {
         let transition = self.slideshow_transition.as_ref()?;
         let progress = transition.fade_progress(Instant::now())?;
         let from = transition.from_buffers.get(index)?.clone()?;

@@ -61,7 +61,12 @@ In `timed` mode, Veila preloads the next wallpaper while the current one is show
 3. An ease-in-out crossfade runs between the previous and next frame.
 4. The UI shell is not re-rendered on every animation tick; only the wallpaper blend is updated, which keeps CPU use low during transitions.
 
-Crossfade polling runs at about 80 ms while a transition is active. Outside transitions, the lock screen keeps its normal idle refresh rate.
+The crossfade is driven by Wayland frame callbacks, so it advances in step with
+the compositor's refresh (vsync-aligned) rather than a fixed wall-clock timer.
+Progress is computed from elapsed time against the configured duration, so the
+fade always finishes on schedule regardless of the display's refresh rate. A
+coarse watchdog timer only guarantees completion if a frame callback stalls.
+Outside transitions, the lock screen keeps its normal idle refresh rate.
 
 ### Examples
 

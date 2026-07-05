@@ -275,10 +275,11 @@ impl CompositorHandler for CurtainApp {
     fn frame(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _surface: &wl_surface::WlSurface,
+        qh: &QueueHandle<Self>,
+        surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
+        self.on_surface_frame_callback(surface, qh);
     }
 
     fn surface_enter(
