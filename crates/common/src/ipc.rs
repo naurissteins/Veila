@@ -174,6 +174,7 @@ pub struct DaemonReloadStatus {
 pub enum LiveReloadStatus {
     NotActive,
     Forwarded,
+    Skipped,
 }
 
 /// Responses sent by the long-running daemon control socket.

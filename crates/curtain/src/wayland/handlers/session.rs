@@ -127,7 +127,7 @@ impl Dispatch<wp_fractional_scale_v1::WpFractionalScaleV1, wl_surface::WlSurface
         );
         state.lock_surfaces[index].size = Some(size);
         let lock_surface = state.lock_surfaces[index].surface.clone();
-        if let Err(error) = state.render_surface(&lock_surface, size, qh) {
+        if let Err(error) = state.render_surface_with_emergency_fallback(&lock_surface, size, qh) {
             state.failure_reason = Some(format!(
                 "failed to rerender fractionally scaled curtain surface: {error:#}"
             ));

@@ -161,6 +161,9 @@ fn reload_effect_message(status: &veila_common::ipc::DaemonReloadStatus) -> &'st
     match (status.active_lock, &status.live_reload) {
         (false, _) => "changes will apply on next lock",
         (true, veila_common::ipc::LiveReloadStatus::Forwarded) => "active lockscreen updated",
+        (true, veila_common::ipc::LiveReloadStatus::Skipped) => {
+            "active lockscreen wallpaper preserved; other daemon settings updated"
+        }
         (true, veila_common::ipc::LiveReloadStatus::NotActive) => {
             "active lockscreen was not updated"
         }

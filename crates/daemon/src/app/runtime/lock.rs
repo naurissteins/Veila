@@ -16,11 +16,12 @@ use crate::{
     },
 };
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    AppConfig, BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
     ipc::{CurtainLatencyReport, LatencyReportMode, LockLatencyReport},
 };
 
 use super::state::{ActiveRuntime, LockActivation, reset_runtime, update_locked_hint};
+use crate::app::prewarm;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn activate_lock(
@@ -47,6 +48,12 @@ pub(crate) async fn activate_lock(
     let auth_listener = ipc::bind_listener(&auth_socket_path).await?;
     let socket_setup_elapsed_ms = elapsed_ms(socket_setup_started_at);
     let socket_setup_elapsed_us = elapsed_us(socket_setup_started_at);
+
+    if let Some(path) = initial_background_path
+        && let Ok(loaded_config) = AppConfig::load(config_path)
+    {
+        prewarm::ensure_wallpaper_cached_for_lock(&loaded_config.config, path).await;
+    }
 
     let spawn_started_at = Instant::now();
     let mut child = match process::spawn_curtain(

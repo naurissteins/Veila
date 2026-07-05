@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
-use veila_renderer::{PixelBuffer, copy_rect_from, shm};
+use veila_renderer::{PixelBuffer, copy_rect_from, crossfade_buffers, shm};
 
 use crate::state::{CurtainApp, DirtyRenderTimingSample, RenderTimingSample, SurfaceSize};
 
@@ -46,6 +46,21 @@ impl CurtainApp {
         let revision = self.ui_shell.static_scene_revision();
         let output_role = self.output_role_for_surface(index);
         let ui_visible = output_role.renders_shell();
+
+        if let Some((from, to, progress)) = self.slideshow_crossfade_for_surface(index) {
+            return self.render_surface_slideshow_crossfade(
+                index,
+                surface,
+                size,
+                queue_handle,
+                &from,
+                &to,
+                progress,
+                ui_visible,
+                output_role.as_str(),
+            );
+        }
+
         let background_started_at = timing_enabled.then(Instant::now);
         let scene_base_cache_ready = if ui_visible {
             self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
@@ -432,5 +447,73 @@ impl CurtainApp {
             Some(elapsed.as_millis().min(u128::from(u64::MAX)) as u64);
         self.latency_timings.first_frame_us =
             Some(elapsed.as_micros().min(u128::from(u64::MAX)) as u64);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_surface_slideshow_crossfade(
+        &mut self,
+        index: usize,
+        surface: &SessionLockSurface,
+        size: SurfaceSize,
+        queue_handle: &QueueHandle<Self>,
+        from: &veila_renderer::SoftwareBuffer,
+        to: &veila_renderer::SoftwareBuffer,
+        progress: u8,
+        ui_visible: bool,
+        output_role: &'static str,
+    ) -> Result<()> {
+        let frame_size = size.buffer;
+        let render_scale = size.scale.max(1) as u32;
+        let blended = crossfade_buffers(from, to, progress)
+            .map_err(|error| anyhow!("failed to crossfade slideshow background: {error}"))?;
+
+        if self.lock_surfaces[index].shm_pool.is_none() {
+            self.lock_surfaces[index].shm_pool =
+                Some(shm::SurfaceBufferPool::new(&self.shm, frame_size)?);
+        }
+        self.configure_viewport_for_surface(index, size);
+
+        if !ui_visible {
+            self.lock_surfaces[index]
+                .shm_pool
+                .as_mut()
+                .expect("surface SHM pool should be initialized")
+                .commit_buffer(
+                    queue_handle,
+                    surface.wl_surface(),
+                    &blended,
+                    size.buffer_scale_for_commit(),
+                )
+                .map_err(|error| anyhow!("failed to commit crossfaded background: {error}"))?;
+            return Ok(());
+        }
+
+        let ui_shell = &self.ui_shell;
+        self.lock_surfaces[index]
+            .shm_pool
+            .as_mut()
+            .expect("surface SHM pool should be initialized")
+            .render_buffer(
+                queue_handle,
+                surface.wl_surface(),
+                frame_size,
+                size.buffer_scale_for_commit(),
+                |buffer| {
+                    buffer.pixels_mut().copy_from_slice(blended.pixels());
+                    ui_shell.render_dynamic_overlay_scaled(buffer, render_scale);
+                    Ok(())
+                },
+            )
+            .map_err(|error| anyhow!("failed to render crossfaded slideshow frame: {error}"))?;
+
+        tracing::trace!(
+            output_role,
+            progress,
+            width = frame_size.width,
+            height = frame_size.height,
+            "rendered slideshow crossfade frame"
+        );
+
+        Ok(())
     }
 }

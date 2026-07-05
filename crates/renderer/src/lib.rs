@@ -209,6 +209,62 @@ pub fn copy_rect_from(
     Ok(Some(rect))
 }
 
+/// Crossfades two same-sized ARGB8888 buffers with an ease-in-out curve.
+///
+/// `progress` is linear elapsed time in the range `0..=100`, where `0` returns `from`
+/// and `100` returns `to`. The blend weight uses a smoothstep curve so the fade eases
+/// in and out instead of moving at a constant rate.
+pub fn crossfade_buffers(
+    from: &impl PixelBuffer,
+    to: &impl PixelBuffer,
+    progress: u8,
+) -> Result<SoftwareBuffer> {
+    if from.size() != to.size() {
+        return Err(RendererError::BufferSizeMismatch {
+            target: from.size(),
+            overlay: to.size(),
+        });
+    }
+
+    let progress = eased_crossfade_progress(progress.min(100));
+    let inverse = 100 - progress;
+    let mut output = SoftwareBuffer::new(from.size())?;
+    let from_pixels = from.pixels();
+    let to_pixels = to.pixels();
+    let out_pixels = output.pixels_mut();
+
+    for (index, out) in out_pixels.chunks_exact_mut(4).enumerate() {
+        let base = index * 4;
+        let from_px = &from_pixels[base..base + 4];
+        let to_px = &to_pixels[base..base + 4];
+        out[0] = crossfade_channel(from_px[0], to_px[0], progress, inverse);
+        out[1] = crossfade_channel(from_px[1], to_px[1], progress, inverse);
+        out[2] = crossfade_channel(from_px[2], to_px[2], progress, inverse);
+        out[3] = crossfade_channel(from_px[3], to_px[3], progress, inverse);
+    }
+
+    Ok(output)
+}
+
+fn crossfade_channel(from: u8, to: u8, progress: u16, inverse: u16) -> u8 {
+    let blended = (u16::from(from) * inverse + u16::from(to) * progress + 50) / 100;
+    blended.min(u16::from(u8::MAX)) as u8
+}
+
+/// Maps linear fade time to an ease-in-out blend weight (`smoothstep`).
+fn eased_crossfade_progress(linear: u8) -> u16 {
+    if linear == 0 {
+        return 0;
+    }
+    if linear >= 100 {
+        return 100;
+    }
+
+    let t = f32::from(linear) / 100.0;
+    let eased = t * t * (3.0 - 2.0 * t);
+    ((eased * 100.0).round().clamp(0.0, 100.0)) as u16
+}
+
 impl SoftwareBuffer {
     /// Creates a new ARGB8888 buffer of the requested size.
     pub fn new(size: FrameSize) -> Result<Self> {
@@ -370,7 +426,7 @@ fn unpremultiply_channel(channel: u8, alpha: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer, copy_rect_from};
+    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer, copy_rect_from, crossfade_buffers};
     use crate::shape::Rect;
 
     #[test]
@@ -423,6 +479,39 @@ mod tests {
             .expect("buffer should be created");
 
         assert_eq!(buffer.pixels(), &[4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn crossfades_between_two_buffers() {
+        let from =
+            SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(0, 0, 0)).expect("from");
+        let to = SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(100, 50, 25))
+            .expect("to");
+
+        let start =
+            crossfade_buffers(&from, &to, 0).expect("crossfade at 0% should succeed");
+        assert_eq!(start.pixels(), from.pixels());
+
+        let end = crossfade_buffers(&from, &to, 100).expect("crossfade at 100% should succeed");
+        assert_eq!(end.pixels(), to.pixels());
+
+        let mid = crossfade_buffers(&from, &to, 50).expect("crossfade at 50% should succeed");
+        assert_eq!(mid.pixels(), &[13, 25, 50, 255]);
+    }
+
+    #[test]
+    fn crossfade_easing_slows_start_and_end() {
+        assert_eq!(super::eased_crossfade_progress(0), 0);
+        assert_eq!(super::eased_crossfade_progress(100), 100);
+        assert_eq!(super::eased_crossfade_progress(50), 50);
+
+        let quarter = super::eased_crossfade_progress(25);
+        let three_quarters = super::eased_crossfade_progress(75);
+        assert!(quarter < 25, "expected eased quarter progress < 25, got {quarter}");
+        assert!(
+            three_quarters > 75,
+            "expected eased three-quarter progress > 75, got {three_quarters}"
+        );
     }
 
     #[test]
