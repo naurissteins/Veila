@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use veila_renderer::{
-    FrameSize, PixelBuffer,
+    FrameSize, PixelBuffer, SoftwareBuffer,
     background::{
-        load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
-        load_cached_render_variant,
+        BackgroundAsset, load_cached_generated_render, load_cached_generated_render_variant,
+        load_cached_render, load_cached_render_variant,
     },
 };
 
@@ -18,6 +18,10 @@ impl CurtainApp {
         size: SurfaceSize,
         scene_base_revision: Option<u64>,
     ) -> Result<bool> {
+        if self.slideshow_transition_preserves_surface(index) {
+            return Ok(false);
+        }
+
         let frame_size = size.buffer;
         let selected_path = self
             .background_path_for_surface(index)
@@ -85,13 +89,34 @@ impl CurtainApp {
         }
 
         self.lock_surfaces[index].background = Some(
-            self.background_asset
-                .render(frame_size)
+            self.render_uncached_background(selected_path.as_deref(), frame_size)
                 .map_err(|error| anyhow!("failed to render background asset: {error}"))?,
         );
         self.lock_surfaces[index].background_path = selected_path;
 
         Ok(true)
+    }
+
+    fn render_uncached_background(
+        &self,
+        path: Option<&std::path::Path>,
+        frame_size: FrameSize,
+    ) -> veila_renderer::Result<SoftwareBuffer> {
+        let Some(path) = path else {
+            return self.background_asset.render(frame_size);
+        };
+
+        if self.background_path.as_deref() == Some(path) {
+            return self.background_asset.render(frame_size);
+        }
+
+        BackgroundAsset::load(
+            Some(path),
+            self.background_color,
+            None,
+            self.background_treatment,
+        )?
+        .render(frame_size)
     }
 
     fn scene_base_matches(
@@ -102,8 +127,12 @@ impl CurtainApp {
         selected_path: Option<&std::path::Path>,
     ) -> bool {
         let surface = &self.lock_surfaces[index];
+        let layers_complete = !self.ready_notified
+            || !self.ui_shell.has_visual_layers()
+            || surface.scene_base_has_layers;
         surface.scene_base_revision == revision
             && surface.background_path.as_deref() == selected_path
+            && layers_complete
             && surface
                 .scene_base
                 .as_ref()
@@ -116,10 +145,18 @@ impl CurtainApp {
         size: SurfaceSize,
         background_refreshed: bool,
     ) -> Result<bool> {
+        if self.slideshow_transition_preserves_surface(index) {
+            return Ok(false);
+        }
+
         let frame_size = size.buffer;
         let render_scale = size.scale.max(1) as u32;
         let revision = self.ui_shell.static_scene_revision();
+        let needs_full_layers = self.ready_notified
+            && self.ui_shell.has_visual_layers()
+            && !self.lock_surfaces[index].scene_base_has_layers;
         let needs_refresh = background_refreshed
+            || needs_full_layers
             || self.lock_surfaces[index]
                 .scene_base
                 .as_ref()
@@ -132,17 +169,46 @@ impl CurtainApp {
             return Ok(false);
         }
 
-        if let Some(refreshed) =
-            self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
-        {
+        if let Some(refreshed) = self.try_prepare_scene_base_without_background(
+            index,
+            frame_size,
+            revision,
+            size.scale,
+        )? {
             return Ok(refreshed);
         }
 
-        let Some(background) = self.lock_surfaces[index].background.as_ref() else {
+        let selected_path = self
+            .background_path_for_surface(index)
+            .map(ToOwned::to_owned);
+        let background = self.lock_surfaces[index]
+            .background
+            .as_ref()
+            .cloned()
+            .or_else(|| {
+                selected_path.as_deref().and_then(|path| {
+                    load_cached_render(path, frame_size, self.background_treatment)
+                        .ok()
+                        .flatten()
+                })
+            })
+            .or_else(|| {
+                self.background_generated.and_then(|generated| {
+                    load_cached_generated_render(generated, frame_size, self.background_treatment)
+                        .ok()
+                        .flatten()
+                })
+            })
+            .or_else(|| {
+                self.lock_surfaces[index]
+                    .scene_base
+                    .as_ref()
+                    .map(|buffer| buffer.as_ref().clone())
+            });
+
+        let Some(mut buffer) = background else {
             return Err(anyhow!("background buffer is unavailable"));
         };
-
-        let mut buffer = background.clone();
         self.ui_shell
             .render_static_backdrops_scaled(&mut buffer, render_scale);
         let has_layers = self.render_static_scene_overlay(&mut buffer, render_scale);
@@ -161,6 +227,10 @@ impl CurtainApp {
         revision: u64,
         scale: i32,
     ) -> Result<Option<bool>> {
+        if self.slideshow_transition_preserves_surface(index) {
+            return Ok(Some(false));
+        }
+
         let selected_path = self
             .background_path_for_surface(index)
             .map(ToOwned::to_owned);
@@ -256,7 +326,8 @@ impl CurtainApp {
                     &variant,
                 )
             {
-                let has_layers = self.render_static_scene_overlay(&mut buffer, scale.max(1) as u32);
+                let has_layers =
+                    self.render_static_scene_overlay(&mut buffer, scale.max(1) as u32);
                 self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                 self.lock_surfaces[index].scene_base_revision = revision;
                 self.lock_surfaces[index].scene_base_has_layers = has_layers;
@@ -293,5 +364,37 @@ impl CurtainApp {
 
         self.ui_shell.render_static_overlay_scaled(buffer, scale);
         self.ui_shell.has_visual_layers()
+    }
+
+    pub(crate) fn build_slideshow_scene_base(
+        &mut self,
+        index: usize,
+        size: SurfaceSize,
+        background: SoftwareBuffer,
+        revision: u64,
+    ) -> Arc<SoftwareBuffer> {
+        if !self.ui_visible_on_surface(index) {
+            return Arc::new(background);
+        }
+
+        let render_scale = size.scale.max(1) as u32;
+        let mut buffer = background;
+        self.ui_shell
+            .render_static_backdrops_scaled(&mut buffer, render_scale);
+        let has_layers = self.render_static_scene_overlay(&mut buffer, render_scale);
+        let surface = &mut self.lock_surfaces[index];
+        surface.scene_base_has_layers = has_layers;
+        surface.scene_base_revision = revision;
+        Arc::new(buffer)
+    }
+
+    fn slideshow_transition_preserves_surface(&self, index: usize) -> bool {
+        self.slideshow_transition
+            .as_ref()
+            .is_some_and(|transition| transition.is_loading() && {
+                self.lock_surfaces
+                    .get(index)
+                    .is_some_and(|surface| surface.scene_base.is_some() || surface.background.is_some())
+            })
     }
 }

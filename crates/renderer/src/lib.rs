@@ -209,6 +209,142 @@ pub fn copy_rect_from(
     Ok(Some(rect))
 }
 
+/// Linear crossfade progress on a `0..=10_000` scale (`10_000` = fully faded to `to`).
+pub type CrossfadeProgress = u16;
+
+/// Upper bound of [`CrossfadeProgress`] (fully faded to `to`).
+pub const CROSSFADE_PROGRESS_MAX: CrossfadeProgress = 10_000;
+
+const CROSSFADE_ROUND: u32 = CROSSFADE_PROGRESS_MAX as u32 / 2;
+
+/// Crossfades two same-sized ARGB8888 buffers with an ease-in-out curve into `output`.
+///
+/// `progress` is linear elapsed time on a `0..=10_000` scale.
+pub fn crossfade_buffers_into(
+    from: &impl PixelBuffer,
+    to: &impl PixelBuffer,
+    progress: CrossfadeProgress,
+    output: &mut impl PixelBuffer,
+) -> Result<()> {
+    if from.size() != to.size() || output.size() != from.size() {
+        return Err(RendererError::BufferSizeMismatch {
+            target: output.size(),
+            overlay: from.size(),
+        });
+    }
+
+    let eased = eased_crossfade_progress(progress.min(CROSSFADE_PROGRESS_MAX));
+    // Fixed-point blend weight on a 0..=256 scale so we can shift by 8 instead of
+    // dividing per channel (division dominated the per-frame cost on wide displays).
+    let weight = ((u32::from(eased) * 256 + CROSSFADE_ROUND) / u32::from(CROSSFADE_PROGRESS_MAX))
+        .min(256);
+    let inverse = 256 - weight;
+    let from_pixels = from.pixels();
+    let to_pixels = to.pixels();
+    let out_pixels = output.pixels_mut();
+
+    blend_crossfade_slices(out_pixels, from_pixels, to_pixels, weight, inverse);
+
+    Ok(())
+}
+
+/// Number of bytes above which the blend is split across worker threads.
+/// A 1920x1080 frame is ~8.3 MB; below this the thread hand-off costs more than it saves.
+const CROSSFADE_PARALLEL_THRESHOLD_BYTES: usize = 4 * 1024 * 1024;
+const CROSSFADE_MAX_THREADS: usize = 8;
+
+fn blend_crossfade_slices(out: &mut [u8], from: &[u8], to: &[u8], weight: u32, inverse: u32) {
+    let threads = if out.len() >= CROSSFADE_PARALLEL_THRESHOLD_BYTES {
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .min(CROSSFADE_MAX_THREADS)
+    } else {
+        1
+    };
+
+    if threads <= 1 {
+        blend_crossfade_pixels(out, from, to, weight, inverse);
+        return;
+    }
+
+    // Round the chunk size up to a whole number of 4-byte pixels so that
+    // `chunks_mut` yields at most `threads` slices (the last may be shorter).
+    let chunk = out.len().div_ceil(threads).next_multiple_of(4);
+    if chunk == 0 {
+        blend_crossfade_pixels(out, from, to, weight, inverse);
+        return;
+    }
+
+    std::thread::scope(|scope| {
+        for ((out_chunk, from_chunk), to_chunk) in out
+            .chunks_mut(chunk)
+            .zip(from.chunks(chunk))
+            .zip(to.chunks(chunk))
+        {
+            scope.spawn(move || {
+                blend_crossfade_pixels(out_chunk, from_chunk, to_chunk, weight, inverse);
+            });
+        }
+    });
+}
+
+#[inline]
+fn blend_crossfade_pixels(out: &mut [u8], from: &[u8], to: &[u8], weight: u32, inverse: u32) {
+    for ((o, f), t) in out
+        .chunks_exact_mut(4)
+        .zip(from.chunks_exact(4))
+        .zip(to.chunks_exact(4))
+    {
+        o[0] = ((u32::from(f[0]) * inverse + u32::from(t[0]) * weight + 128) >> 8) as u8;
+        o[1] = ((u32::from(f[1]) * inverse + u32::from(t[1]) * weight + 128) >> 8) as u8;
+        o[2] = ((u32::from(f[2]) * inverse + u32::from(t[2]) * weight + 128) >> 8) as u8;
+        o[3] = ((u32::from(f[3]) * inverse + u32::from(t[3]) * weight + 128) >> 8) as u8;
+    }
+}
+
+/// Crossfades two same-sized ARGB8888 buffers with an ease-in-out curve.
+///
+/// `progress` is linear elapsed time in the range `0..=100`, where `0` returns `from`
+/// and `100` returns `to`. The blend weight uses a smoothstep curve so the fade eases
+/// in and out instead of moving at a constant rate.
+pub fn crossfade_buffers(
+    from: &impl PixelBuffer,
+    to: &impl PixelBuffer,
+    progress: u8,
+) -> Result<SoftwareBuffer> {
+    if from.size() != to.size() {
+        return Err(RendererError::BufferSizeMismatch {
+            target: from.size(),
+            overlay: to.size(),
+        });
+    }
+
+    let mut output = SoftwareBuffer::new(from.size())?;
+    crossfade_buffers_into(
+        from,
+        to,
+        u16::from(progress.min(100)) * 100,
+        &mut output,
+    )?;
+    Ok(output)
+}
+
+/// Maps linear fade time to an ease-in-out blend weight (`smoothstep`).
+fn eased_crossfade_progress(linear: CrossfadeProgress) -> u16 {
+    if linear == 0 {
+        return 0;
+    }
+    if linear >= CROSSFADE_PROGRESS_MAX {
+        return CROSSFADE_PROGRESS_MAX;
+    }
+
+    let t = f32::from(linear) / f32::from(CROSSFADE_PROGRESS_MAX);
+    let eased = t * t * (3.0 - 2.0 * t);
+    ((eased * f32::from(CROSSFADE_PROGRESS_MAX)).round().clamp(0.0, f32::from(CROSSFADE_PROGRESS_MAX)))
+        as u16
+}
+
 impl SoftwareBuffer {
     /// Creates a new ARGB8888 buffer of the requested size.
     pub fn new(size: FrameSize) -> Result<Self> {
@@ -370,7 +506,7 @@ fn unpremultiply_channel(channel: u8, alpha: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer, copy_rect_from};
+    use super::{ClearColor, FrameSize, RendererError, SoftwareBuffer, copy_rect_from, crossfade_buffers};
     use crate::shape::Rect;
 
     #[test]
@@ -423,6 +559,42 @@ mod tests {
             .expect("buffer should be created");
 
         assert_eq!(buffer.pixels(), &[4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn crossfades_between_two_buffers() {
+        let from =
+            SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(0, 0, 0)).expect("from");
+        let to = SoftwareBuffer::solid(FrameSize::new(1, 1), ClearColor::opaque(100, 50, 25))
+            .expect("to");
+
+        let start =
+            crossfade_buffers(&from, &to, 0).expect("crossfade at 0% should succeed");
+        assert_eq!(start.pixels(), from.pixels());
+
+        let end = crossfade_buffers(&from, &to, 100).expect("crossfade at 100% should succeed");
+        assert_eq!(end.pixels(), to.pixels());
+
+        let mid = crossfade_buffers(&from, &to, 50).expect("crossfade at 50% should succeed");
+        assert_eq!(mid.pixels(), &[13, 25, 50, 255]);
+    }
+
+    #[test]
+    fn crossfade_easing_slows_start_and_end() {
+        assert_eq!(super::eased_crossfade_progress(0), 0);
+        assert_eq!(super::eased_crossfade_progress(10_000), 10_000);
+        assert_eq!(super::eased_crossfade_progress(5_000), 5_000);
+
+        let quarter = super::eased_crossfade_progress(2_500);
+        let three_quarters = super::eased_crossfade_progress(7_500);
+        assert!(
+            quarter < 2_500,
+            "expected eased quarter progress < 2500, got {quarter}"
+        );
+        assert!(
+            three_quarters > 7_500,
+            "expected eased three-quarter progress > 7500, got {three_quarters}"
+        );
     }
 
     #[test]

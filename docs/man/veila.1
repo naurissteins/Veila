@@ -1,4 +1,4 @@
-.TH VEILA 1 "May 2026" "Veila 0.4.0" "User Commands"
+.TH VEILA 1 "July 2026" "Veila 0.4.4" "User Commands"
 .SH NAME
 veila \- control CLI for the Veila Wayland screen locker
 .SH SYNOPSIS
@@ -162,7 +162,30 @@ falling back to
 If no config file exists, Veila uses the bundled default theme and hardcoded safety defaults. Run
 .B veila init
 to create a starter config explicitly.
+.PP
+Background images and slideshows are configured under
+.BR [background]
+and
+.BR [background.slideshow]
+in
+.IR config.toml .
+Slideshow rotation uses
+.B change_every_seconds
+in
+.B timed
+mode.
+The crossfade animation is controlled with
+.B transition_duration_ms
+(default
+.BR 0 ,
+i.e. disabled; set a positive value in milliseconds to enable it).
+See
+.BR /usr/share/doc/veila/background.md
+for examples.
 .SH FILES
+.TP
+.I /usr/share/doc/veila/background.md
+Background and slideshow configuration reference.
 .TP
 .I ~/.config/veila/config.toml
 Default user configuration file.

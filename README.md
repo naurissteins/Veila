@@ -37,6 +37,7 @@ Veila is built for wlroots-style compositors like labwc, Niri, Hyprland, Sway, M
 - Flexible styling for the clock, password field, colors, fonts and more
 - Widgets: weather, battery, now playing, keyboard layout, Caps Lock, avatar and username
 - Color-only backgrounds, wallpaper backgrounds and per-monitor background overrides
+- Wallpaper slideshow with preload and smooth crossfade transitions
 - Preview mode, generate lockscreen to a PNG for screenshots and theme work
 - Lightweight design without a heavy desktop UI toolkit
 
@@ -151,3 +152,8 @@ Import `veila.homeModules.default` to install Veila and manage the config file a
 For full installation, configuration, theming and more, visit:
 
 https://naurissteins.com/veila
+
+Repository docs:
+
+- [Background and slideshow](docs/background.md)
+- [`veila(1)` man page](docs/man/veila.1)

@@ -17,7 +17,8 @@ use veila_renderer::{
         BackgroundAsset, BackgroundGradient, BackgroundLayered, BackgroundLayeredBase,
         BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
         GeneratedBackground, RenderCacheSummary, SourceCacheStatus,
-        load_cached_generated_render_variant, load_cached_render_variant, prewarm_rendered,
+        load_cached_generated_render_variant, load_cached_render, load_cached_render_variant,
+        prewarm_rendered,
         prewarm_rendered_generated, prewarm_source, store_cached_generated_render_variant,
         store_cached_render_variant,
     },
@@ -30,6 +31,74 @@ use crate::app::output_probe;
 
 use super::memory;
 use crate::adapters::process;
+
+pub(super) async fn ensure_wallpaper_cached_for_lock(config: &AppConfig, path: &Path) {
+    let config = config.clone();
+    let path = path.to_path_buf();
+    let display_path = path.display().to_string();
+
+    if let Err(error) =
+        tokio::task::spawn_blocking(move || ensure_wallpaper_cached_for_lock_blocking(&config, &path))
+            .await
+    {
+        tracing::warn!(
+            path = display_path,
+            "failed to warm wallpaper render cache before lock: {error:#}"
+        );
+    }
+}
+
+fn ensure_wallpaper_cached_for_lock_blocking(config: &AppConfig, path: &Path) {
+    let outputs = output_probe::current_outputs().unwrap_or_default();
+    if outputs.is_empty() {
+        return;
+    }
+
+    let fallback = to_clear_color(config.background.color);
+    let treatment = background_treatment(&config.background);
+    let sizes = prewarm_sizes_for_outputs(&outputs);
+    let buffer_sizes = unique_buffer_sizes(&sizes);
+    if sizes.is_empty() && buffer_sizes.is_empty() {
+        return;
+    }
+
+    let scene_shell = ScenePrewarmConfig::from_config(config).into_shell();
+    let static_scene = scene_shell
+        .static_scene_cache_variant(1)
+        .is_some()
+        .then_some(&scene_shell);
+    let backdrops = backdrop_prewarm_specs(config);
+
+    let all_plain_cached = buffer_sizes.iter().all(|size| {
+        load_cached_render(path, *size, treatment)
+            .ok()
+            .flatten()
+            .is_some()
+    });
+    if all_plain_cached {
+        let _ = prewarm_layered_backgrounds(
+            path,
+            fallback,
+            treatment,
+            &backdrops,
+            &sizes,
+            static_scene,
+        );
+        return;
+    }
+
+    let started_at = Instant::now();
+    let _ = prewarm_source(path);
+    let _ = prewarm_rendered(path, fallback, treatment, &buffer_sizes);
+    let _ = prewarm_layered_backgrounds(path, fallback, treatment, &backdrops, &sizes, static_scene);
+    tracing::debug!(
+        path = %path.display(),
+        elapsed_ms = elapsed_ms(started_at),
+        output_count = outputs.len(),
+        warmed_sizes = buffer_sizes.len(),
+        "warmed wallpaper render cache before lock"
+    );
+}
 
 pub(super) fn spawn_background_prewarm(config_path: Option<&Path>) {
     let config_path = config_path.map(Path::to_path_buf);
@@ -517,7 +586,7 @@ fn prewarm_static_scene(
     }
 
     let started_at = Instant::now();
-    let sizes = unique_prewarm_sizes(outputs);
+    let sizes = prewarm_sizes_for_outputs(outputs);
     let mut warmed_sizes = 0usize;
 
     for size in &sizes {
@@ -543,15 +612,32 @@ fn unique_buffer_sizes(sizes: &[PrewarmSize]) -> Vec<FrameSize> {
     unique
 }
 
-fn unique_prewarm_sizes(outputs: &[output_probe::ProbedOutput]) -> Vec<PrewarmSize> {
+fn prewarm_sizes_for_outputs(outputs: &[output_probe::ProbedOutput]) -> Vec<PrewarmSize> {
     let mut sizes = Vec::new();
     for output in outputs {
-        let size = PrewarmSize::from(output);
-        if !sizes.contains(&size) {
-            sizes.push(size);
+        push_prewarm_size(&mut sizes, PrewarmSize::from(output));
+        let scale = output.scale.max(1) as u32;
+        if scale > 1 {
+            let logical = FrameSize::new(
+                output.size.width / scale,
+                output.size.height / scale,
+            );
+            push_prewarm_size(
+                &mut sizes,
+                PrewarmSize {
+                    buffer: logical,
+                    scale: 1,
+                },
+            );
         }
     }
     sizes
+}
+
+fn push_prewarm_size(sizes: &mut Vec<PrewarmSize>, candidate: PrewarmSize) {
+    if !sizes.contains(&candidate) {
+        sizes.push(candidate);
+    }
 }
 
 fn prewarm_jobs(
@@ -559,11 +645,13 @@ fn prewarm_jobs(
     outputs: &[output_probe::ProbedOutput],
 ) -> Vec<PrewarmJob> {
     let mut jobs = Vec::new();
-    let all_sizes: Vec<_> = outputs.iter().map(PrewarmSize::from).collect();
+    let all_sizes = prewarm_sizes_for_outputs(outputs);
 
     if background.slideshow_enabled() {
-        if let Ok(Some(path)) = background.resolved_slideshow_initial_path() {
-            merge_prewarm_job(&mut jobs, path, &all_sizes);
+        if let Ok(paths) = background.resolved_slideshow_paths() {
+            for path in paths {
+                merge_prewarm_job(&mut jobs, path, &all_sizes);
+            }
         }
         return jobs;
     }
@@ -1168,11 +1256,51 @@ mod tests {
         assert_eq!(jobs.len(), 1);
         assert_eq!(
             jobs[0].sizes,
-            vec![PrewarmSize {
-                buffer: FrameSize::new(3840, 2160),
-                scale: 2
-            }]
+            vec![
+                PrewarmSize {
+                    buffer: FrameSize::new(3840, 2160),
+                    scale: 2
+                },
+                PrewarmSize {
+                    buffer: FrameSize::new(1920, 1080),
+                    scale: 1
+                }
+            ]
         );
+    }
+
+    #[test]
+    fn prewarm_jobs_include_every_slideshow_wallpaper() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("veila-prewarm-jobs-{}", std::process::id()));
+        let first = temp_dir.join("00-first.jpg");
+        let second = temp_dir.join("01-second.jpg");
+        std::fs::create_dir_all(&temp_dir).expect("slideshow dir");
+        std::fs::write(&first, b"first").expect("first slide");
+        std::fs::write(&second, b"second").expect("second slide");
+
+        let config = AppConfig::from_toml_str(&format!(
+            r#"
+                [background.slideshow]
+                files = ["{}", "{}"]
+                order = "random"
+            "#,
+            first.display(),
+            second.display()
+        ))
+        .expect("config");
+        let outputs = vec![ProbedOutput {
+            name: Some(String::from("DP-1")),
+            size: FrameSize::new(1920, 1080),
+            scale: 1,
+        }];
+
+        let jobs = prewarm_jobs(&config.background, &outputs);
+
+        assert_eq!(jobs.len(), 2);
+        assert!(jobs.iter().any(|job| job.path == first));
+        assert!(jobs.iter().any(|job| job.path == second));
+        let _ = std::fs::remove_dir_all(temp_dir);
     }
 
     #[test]

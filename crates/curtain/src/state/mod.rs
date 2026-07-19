@@ -58,7 +58,7 @@ use wayland_protocols_wlr::output_power_management::v1::client::{
 
 use crate::{
     CurtainOptions,
-    background::{BackgroundEvent, BackgroundSlideshow},
+    background::{BackgroundEvent, BackgroundSlideshow, SlideshowTransition},
     ipc::auth::AuthEvent,
     ipc::control::{ControlEvent, spawn_listener},
     keyboard_cache::load_keyboard_layout_label,
@@ -81,6 +81,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_has_layers: bool,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
+    pub(crate) frame_callback_pending: bool,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
     pub(crate) preferred_scale: i32,
     pub(crate) preferred_fractional_scale: Option<u32>,
@@ -169,6 +170,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
+    pub(crate) slideshow_transition: Option<SlideshowTransition>,
     auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
     pub(crate) background_sender: Sender<BackgroundEvent>,
@@ -264,19 +266,6 @@ impl CurtainApp {
         } else {
             theme.background
         };
-        let background_asset = BackgroundAsset::load(
-            None,
-            background_color,
-            (!emergency_active)
-                .then(|| background_generated(&config.background))
-                .flatten(),
-            if emergency_active {
-                BackgroundTreatment::default()
-            } else {
-                background_treatment(&config.background)
-            },
-        )
-        .context("failed to prepare fallback background")?;
         let background_generated = (!emergency_active)
             .then(|| background_generated(&config.background))
             .flatten();
@@ -296,11 +285,23 @@ impl CurtainApp {
         let background_path = if emergency_active {
             None
         } else {
-            slideshow
-                .as_ref()
-                .map(|slideshow| slideshow.current_path().to_path_buf())
+            options
+                .initial_background_path
+                .clone()
+                .or_else(|| {
+                    slideshow
+                        .as_ref()
+                        .map(|slideshow| slideshow.current_path().to_path_buf())
+                })
                 .or_else(|| config.background.resolved_path())
         };
+        let background_asset = load_curtain_background_asset(
+            background_path.as_deref(),
+            background_color,
+            background_generated,
+            background_treatment,
+        )
+        .context("failed to prepare fallback background")?;
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
         let weather_location = effective_weather_location(&config);
@@ -402,6 +403,7 @@ impl CurtainApp {
                 config.background.outputs.clone()
             },
             slideshow,
+            slideshow_transition: None,
             auth_events,
             auth_sender,
             background_sender,
@@ -488,6 +490,7 @@ impl CurtainApp {
         }
 
         tracing::info!(surfaces = self.lock_surfaces.len(), "created lock surfaces");
+        self.maybe_start_background_render();
         Ok(())
     }
 
@@ -532,6 +535,7 @@ impl CurtainApp {
             scene_base_revision: 0,
             scene_base_has_layers: false,
             shm_pool: None,
+            frame_callback_pending: false,
             output_power,
             preferred_scale: 1,
             preferred_fractional_scale: None,
@@ -581,6 +585,9 @@ impl CurtainApp {
             .as_ref()
             .and_then(|slideshow| slideshow.next_due_in(now))
             .unwrap_or(shell_interval);
+        let slideshow_transition_interval = self
+            .slideshow_transition_poll_interval()
+            .unwrap_or(shell_interval);
         let screen_off_interval = self
             .screen_off
             .due_in(now, self.session_locked)
@@ -592,6 +599,7 @@ impl CurtainApp {
         shell_interval
             .min(repeat_interval)
             .min(slideshow_interval)
+            .min(slideshow_transition_interval)
             .min(screen_off_interval)
             .min(power_status_interval)
     }
@@ -610,6 +618,7 @@ impl CurtainApp {
         self.background_path = None;
         self.background_outputs.clear();
         self.slideshow = None;
+        self.slideshow_transition = None;
         self.background_generated = None;
         self.background_treatment = BackgroundTreatment::default();
         self.background_color = EMERGENCY_BACKGROUND;
@@ -819,6 +828,25 @@ pub(crate) fn background_treatment(
             .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
         scaling: to_background_scaling(config.scaling),
     }
+}
+
+pub(crate) fn load_curtain_background_asset(
+    wallpaper_path: Option<&Path>,
+    fallback: ClearColor,
+    generated: Option<GeneratedBackground>,
+    treatment: BackgroundTreatment,
+) -> Result<BackgroundAsset> {
+    if let Some(path) = wallpaper_path {
+        return BackgroundAsset::load(Some(path), fallback, None, treatment).with_context(|| {
+            format!(
+                "failed to load curtain wallpaper asset at {}",
+                path.display()
+            )
+        });
+    }
+
+    BackgroundAsset::load(None, fallback, generated, treatment)
+        .context("failed to prepare generated curtain background")
 }
 
 fn to_background_scaling(scaling: ConfigBackgroundScaling) -> BackgroundScaling {

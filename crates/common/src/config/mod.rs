@@ -31,6 +31,7 @@ pub use background::{
     BackgroundLayeredBaseMode, BackgroundLayeredBlobConfig, BackgroundLayeredConfig,
     BackgroundMode, BackgroundOutputConfig, BackgroundRadialConfig, BackgroundScaling,
     BackgroundSlideshowConfig, BackgroundSlideshowMode, BackgroundSlideshowOrder,
+    wallpaper_paths_equal,
 };
 pub use battery::BatteryConfig;
 pub use color::ConfigColor;

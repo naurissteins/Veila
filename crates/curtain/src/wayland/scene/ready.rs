@@ -188,11 +188,6 @@ impl CurtainApp {
             return;
         }
 
-        for surface in &mut self.lock_surfaces {
-            surface.scene_base = None;
-            surface.scene_base_revision = 0;
-            surface.scene_base_has_layers = false;
-        }
         self.pending_pre_ready_redraw = true;
     }
 
@@ -203,6 +198,17 @@ impl CurtainApp {
 
         self.pending_pre_ready_redraw = false;
         self.render_all_surfaces(queue_handle);
+    }
+
+    pub(crate) fn estimated_surface_size(&self, index: usize) -> Option<SurfaceSize> {
+        let info = self.output_state.info(&self.lock_surfaces[index].output)?;
+        let (width, height) = logical_size(&info)?;
+        Some(SurfaceSize::new_with_fractional_scale(
+            width as u32,
+            height as u32,
+            self.surface_scale(index),
+            self.surface_fractional_scale(index),
+        ))
     }
 
     pub(crate) fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> SurfaceSize {

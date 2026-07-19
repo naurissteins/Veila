@@ -1,14 +1,25 @@
 mod loader;
 mod slideshow;
+mod transition;
 
 pub(crate) use loader::BackgroundEvent;
 pub(crate) use slideshow::BackgroundSlideshow;
+pub(crate) use transition::SlideshowTransition;
+
+use std::{sync::Arc, time::Instant};
 
 use loader::{spawn_avatar_loader, spawn_loader, spawn_preloader};
 use smithay_client_toolkit::reexports::client::QueueHandle;
-use veila_renderer::FrameSize;
+use veila_renderer::{CrossfadeProgress, FrameSize, SoftwareBuffer};
+
+use veila_common::config::wallpaper_paths_equal;
 
 use crate::state::CurtainApp;
+
+// Frame pacing is driven by Wayland frame callbacks (vsync). This timer is only a
+// watchdog to guarantee completion and to re-kick a surface whose frame callback
+// stalled (e.g. it was briefly not committed).
+const SLIDESHOW_TRANSITION_WATCHDOG_MS: u64 = 100;
 
 impl CurtainApp {
     pub(crate) fn drain_background_events(&mut self, queue_handle: &QueueHandle<Self>) {
@@ -20,25 +31,33 @@ impl CurtainApp {
                     elapsed_ms,
                     cache_hit,
                 } => {
+                    if self.try_apply_slideshow_transition_buffers(
+                        &path,
+                        &buffers,
+                        queue_handle,
+                    ) {
+                        continue;
+                    }
+
                     tracing::info!(
                         elapsed_ms,
                         rendered_sizes = buffers.len(),
                         cache_hit,
                         "loaded deferred curtain background image"
                     );
-                    let revision = self.ui_shell.static_scene_revision();
                     let mut changed = false;
                     for index in 0..self.lock_surfaces.len() {
                         if self
                             .background_path_for_surface(index)
-                            .is_none_or(|selected_path| selected_path != path.as_path())
+                            .is_none_or(|selected_path| {
+                                !wallpaper_paths_equal(selected_path, path.as_path())
+                            })
                         {
                             continue;
                         }
 
-                        let surface = &mut self.lock_surfaces[index];
-                        let Some(surface_size) = surface.size else {
-                            surface.background = None;
+                        let Some(surface_size) = self.lock_surfaces[index].size else {
+                            self.lock_surfaces[index].background = None;
                             continue;
                         };
 
@@ -51,24 +70,12 @@ impl CurtainApp {
                             continue;
                         };
 
-                        if cache_hit
-                            && surface.background_path.as_deref() == Some(path.as_path())
-                            && surface.scene_base_revision == revision
-                            && surface
-                                .scene_base
-                                .as_ref()
-                                .is_some_and(|scene_base| scene_base.size() == size)
-                        {
-                            tracing::debug!(
-                                path = %path.display(),
-                                width = size.width,
-                                height = size.height,
-                                output_cached = true,
-                                "skipping redundant deferred background rerender"
-                            );
+                        let skip_update = self.surface_wallpaper_is_current(index, path.as_path(), size);
+                        if skip_update {
                             continue;
                         }
 
+                        let surface = &mut self.lock_surfaces[index];
                         surface.background = Some(buffer);
                         surface.background_path = Some(path.clone());
                         surface.scene_base = None;
@@ -127,10 +134,7 @@ impl CurtainApp {
             return;
         }
 
-        let Some(specs) = self.background_render_specs() else {
-            return;
-        };
-
+        let specs = self.background_render_specs();
         if specs.is_empty() {
             return;
         }
@@ -148,7 +152,7 @@ impl CurtainApp {
         self.preload_next_slideshow_background();
     }
 
-    fn background_render_specs(&self) -> Option<Vec<BackgroundRenderSpec>> {
+    fn background_render_specs(&self) -> Vec<BackgroundRenderSpec> {
         let mut specs: Vec<BackgroundRenderSpec> = Vec::new();
 
         for (index, surface) in self.lock_surfaces.iter().enumerate() {
@@ -158,7 +162,13 @@ impl CurtainApp {
             else {
                 continue;
             };
-            let size = surface.size?.buffer;
+            let Some(size) = surface
+                .size
+                .map(|size| size.buffer)
+                .or_else(|| self.estimated_surface_size(index).map(|size| size.buffer))
+            else {
+                continue;
+            };
 
             if let Some(spec) = specs.iter_mut().find(|spec| spec.path == path) {
                 if !spec.sizes.contains(&size) {
@@ -173,7 +183,7 @@ impl CurtainApp {
             });
         }
 
-        Some(specs)
+        specs
     }
 
     pub(crate) fn preload_next_slideshow_background(&self) {
@@ -227,10 +237,304 @@ impl CurtainApp {
         };
 
         tracing::info!(path = %path.display(), "advanced lockscreen slideshow background");
+
+        let transition_duration = self
+            .slideshow
+            .as_ref()
+            .map(BackgroundSlideshow::transition_duration)
+            .unwrap_or_default();
+
+        if transition_duration.is_zero() {
+            self.background_path = Some(path);
+            self.reset_background_source_state();
+            self.render_all_surfaces(queue_handle);
+            self.maybe_start_background_render();
+            return;
+        }
+
+        self.begin_slideshow_transition(path, transition_duration, queue_handle);
+    }
+
+    pub(crate) fn advance_slideshow_transition(&mut self, queue_handle: &QueueHandle<Self>) {
+        let now = Instant::now();
+        let Some(transition) = self.slideshow_transition.as_ref() else {
+            return;
+        };
+
+        if transition.is_loading() {
+            return;
+        }
+
+        if transition.is_complete(now) {
+            self.finalize_slideshow_transition(queue_handle);
+            return;
+        }
+
+        // Frame callbacks drive rendering while animating. This only renders
+        // surfaces that have no callback in flight yet (e.g. before the first
+        // callback of the chain), so it does not spin against the callback path.
+        for index in 0..self.lock_surfaces.len() {
+            if self.lock_surfaces[index].frame_callback_pending {
+                continue;
+            }
+            if !self.render_slideshow_transition_surface(index, queue_handle) {
+                return;
+            }
+        }
+    }
+
+    /// Drives the next crossfade frame from a Wayland frame callback (vsync-aligned).
+    pub(crate) fn on_surface_frame_callback(
+        &mut self,
+        surface: &smithay_client_toolkit::reexports::client::protocol::wl_surface::WlSurface,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        let Some(index) = self
+            .lock_surfaces
+            .iter()
+            .position(|entry| entry.surface.wl_surface() == surface)
+        else {
+            return;
+        };
+        self.lock_surfaces[index].frame_callback_pending = false;
+
+        let now = Instant::now();
+        let Some(transition) = self.slideshow_transition.as_ref() else {
+            return;
+        };
+        if !transition.is_animating() {
+            return;
+        }
+        if transition.is_complete(now) {
+            self.finalize_slideshow_transition(queue_handle);
+            return;
+        }
+
+        self.render_slideshow_transition_surface(index, queue_handle);
+    }
+
+    /// Renders one surface's crossfade frame. Surfaces without a size yet are
+    /// skipped. Returns `false` only on a fatal render error (a failure is
+    /// recorded and exit requested), signalling callers to stop.
+    fn render_slideshow_transition_surface(
+        &mut self,
+        index: usize,
+        queue_handle: &QueueHandle<Self>,
+    ) -> bool {
+        let Some(size) = self.lock_surfaces[index].size else {
+            return true;
+        };
+        let lock_surface = self.lock_surfaces[index].surface.clone();
+        if let Err(error) =
+            self.render_surface_with_emergency_fallback(&lock_surface, size, queue_handle)
+        {
+            self.failure_reason =
+                Some(format!("failed to render slideshow crossfade frame: {error:#}"));
+            self.exit_requested = true;
+            return false;
+        }
+        true
+    }
+
+    pub(crate) fn request_surface_frame_callback(
+        &mut self,
+        index: usize,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if self.lock_surfaces[index].frame_callback_pending {
+            return;
+        }
+        let wl_surface = self.lock_surfaces[index].surface.wl_surface().clone();
+        wl_surface.frame(queue_handle, wl_surface.clone());
+        self.lock_surfaces[index].frame_callback_pending = true;
+    }
+
+    pub(crate) fn slideshow_transition_poll_interval(&self) -> Option<std::time::Duration> {
+        self.slideshow_transition
+            .as_ref()
+            .filter(|transition| transition.is_animating())
+            .map(|_| std::time::Duration::from_millis(SLIDESHOW_TRANSITION_WATCHDOG_MS))
+    }
+
+    pub(crate) fn slideshow_crossfade_for_surface(
+        &self,
+        index: usize,
+    ) -> Option<(Arc<SoftwareBuffer>, Arc<SoftwareBuffer>, CrossfadeProgress)> {
+        let transition = self.slideshow_transition.as_ref()?;
+        let progress = transition.fade_progress(Instant::now())?;
+        let from = transition.from_buffers.get(index)?.clone()?;
+        let to = transition.to_buffers.get(index)?.clone()?;
+        Some((from, to, progress))
+    }
+
+    fn begin_slideshow_transition(
+        &mut self,
+        path: std::path::PathBuf,
+        duration: std::time::Duration,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        let from_buffers: Vec<_> = (0..self.lock_surfaces.len())
+            .map(|index| self.snapshot_slideshow_surface_buffer(index))
+            .collect();
+
+        tracing::debug!(
+            path = %path.display(),
+            duration_ms = duration.as_millis(),
+            "beginning slideshow crossfade"
+        );
+
+        self.slideshow_transition = Some(SlideshowTransition::new(
+            from_buffers,
+            path.clone(),
+            duration,
+        ));
         self.background_path = Some(path);
-        self.reset_background_source_state();
-        self.render_all_surfaces(queue_handle);
+        self.background_render_started = false;
         self.maybe_start_background_render();
+        self.render_all_surfaces(queue_handle);
+    }
+
+    fn snapshot_slideshow_surface_buffer(&self, index: usize) -> Option<Arc<SoftwareBuffer>> {
+        let surface = &self.lock_surfaces[index];
+        if self.ui_visible_on_surface(index) {
+            return surface.scene_base.clone().or_else(|| {
+                surface
+                    .background
+                    .as_ref()
+                    .map(|buffer| Arc::new(buffer.clone()))
+            });
+        }
+
+        surface
+            .background
+            .as_ref()
+            .map(|buffer| Arc::new(buffer.clone()))
+            .or_else(|| surface.scene_base.clone())
+    }
+
+    fn surface_wallpaper_is_current(
+        &self,
+        index: usize,
+        path: &std::path::Path,
+        size: FrameSize,
+    ) -> bool {
+        let surface = &self.lock_surfaces[index];
+        let wallpaper_path = surface
+            .background_path
+            .as_deref()
+            .or(self.background_path.as_deref());
+        let path_matches =
+            wallpaper_path.is_some_and(|current| wallpaper_paths_equal(current, path));
+
+        if !path_matches {
+            return false;
+        }
+
+        if let Some(scene_base) = &surface.scene_base {
+            return scene_base.size() == size;
+        }
+
+        surface
+            .background
+            .as_ref()
+            .is_some_and(|background| background.size() == size)
+    }
+
+    fn try_apply_slideshow_transition_buffers(
+        &mut self,
+        path: &std::path::Path,
+        buffers: &[(FrameSize, SoftwareBuffer)],
+        queue_handle: &QueueHandle<Self>,
+    ) -> bool {
+        let transition_active = self
+            .slideshow_transition
+            .as_ref()
+            .is_some_and(|transition| wallpaper_paths_equal(&transition.to_path, path));
+        if !transition_active {
+            return false;
+        }
+
+        let revision = self.ui_shell.static_scene_revision();
+        let mut built_targets = Vec::new();
+
+        for index in 0..self.lock_surfaces.len() {
+            let Some(surface_size) = self.lock_surfaces[index].size else {
+                continue;
+            };
+
+            let size = surface_size.buffer;
+            let Some(buffer) = buffers
+                .iter()
+                .find(|(candidate, _)| *candidate == size)
+                .map(|(_, buffer)| buffer.clone())
+            else {
+                continue;
+            };
+
+            if self
+                .slideshow_transition
+                .as_ref()
+                .and_then(|transition| transition.to_buffers.get(index))
+                .is_some_and(Option::is_some)
+            {
+                continue;
+            }
+
+            let target = self.build_slideshow_scene_base(index, surface_size, buffer, revision);
+            built_targets.push((index, target));
+        }
+
+        let Some(transition) = self.slideshow_transition.as_mut() else {
+            return true;
+        };
+
+        let mut changed = false;
+        for (index, target) in built_targets {
+            if transition.to_buffers[index].is_none() {
+                transition.to_buffers[index] = Some(target);
+                changed = true;
+            }
+        }
+
+        if transition.all_targets_ready() && transition.is_loading() {
+            transition.mark_animating(Instant::now());
+            changed = true;
+        }
+
+        if changed {
+            self.render_all_surfaces(queue_handle);
+        }
+
+        true
+    }
+
+    fn finalize_slideshow_transition(&mut self, queue_handle: &QueueHandle<Self>) {
+        let Some(transition) = self.slideshow_transition.take() else {
+            return;
+        };
+
+        tracing::debug!(
+            path = %transition.to_path.display(),
+            "finalized slideshow crossfade"
+        );
+
+        let revision = self.ui_shell.static_scene_revision();
+        for (index, target) in transition.to_buffers.into_iter().enumerate() {
+            let Some(target) = target else {
+                continue;
+            };
+
+            let has_layers = self.ui_visible_on_surface(index) && self.ui_shell.has_visual_layers();
+            let surface = &mut self.lock_surfaces[index];
+            surface.scene_base = Some(target);
+            surface.background = None;
+            surface.background_path = Some(transition.to_path.clone());
+            surface.scene_base_revision = revision;
+            surface.scene_base_has_layers = has_layers;
+        }
+
+        self.background_render_started = true;
+        self.render_all_surfaces(queue_handle);
     }
 }
 
