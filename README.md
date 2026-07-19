@@ -76,6 +76,17 @@ veila lock
 
 ### NixOS
 
+**Nixpkgs (recommended):**
+
+Veila is available in the official [Nixpkgs unstable repository](https://search.nixos.org/packages?channel=unstable&query=veila#show=veila). Add it and the required PAM service to your NixOS configuration:
+
+```nix
+{
+  environment.systemPackages = with pkgs; [ veila ];
+  security.pam.services.veila = {};
+}
+```
+
 **Flake installation:**
 
 ```nix
