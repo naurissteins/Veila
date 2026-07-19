@@ -103,12 +103,13 @@ fn fetch_snapshot(config: &WeatherConfig) -> Result<WeatherSnapshot> {
     let url = format!(
         "https://api.open-meteo.com/v1/forecast?latitude={latitude:.6}&longitude={longitude:.6}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius"
     );
-    let response = ureq::get(&url)
-        .set("User-Agent", "Veila/0.1 weather widget")
+    let mut response = ureq::get(&url)
+        .header("User-Agent", "Veila/0.1 weather widget")
         .call()
         .context("failed to fetch weather from Open-Meteo")?;
     let payload: OpenMeteoResponse = response
-        .into_json()
+        .body_mut()
+        .read_json()
         .context("failed to decode Open-Meteo response")?;
     let snapshot = WeatherSnapshot {
         temperature_celsius: payload.current.temperature_2m.round() as i16,
@@ -215,15 +216,16 @@ fn cached_coordinates(config: &WeatherConfig) -> Result<Option<(f64, f64)>> {
 
 fn geocode_location(location: &str) -> Result<(f64, f64)> {
     tracing::debug!(%location, "geocoding weather location");
-    let response = ureq::get("https://geocoding-api.open-meteo.com/v1/search")
+    let mut response = ureq::get("https://geocoding-api.open-meteo.com/v1/search")
         .query("name", location)
         .query("count", "1")
         .query("language", "en")
-        .set("User-Agent", "Veila/0.1 weather widget")
+        .header("User-Agent", "Veila/0.1 weather widget")
         .call()
         .with_context(|| format!("failed to geocode weather location '{location}'"))?;
     let payload: GeocodingResponse = response
-        .into_json()
+        .body_mut()
+        .read_json()
         .context("failed to decode Open-Meteo geocoding response")?;
     if let Some((latitude, longitude)) = first_geocoding_result(payload) {
         return Ok((latitude, longitude));
