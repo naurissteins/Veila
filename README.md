@@ -99,7 +99,15 @@ Veila is available in the official [Nixpkgs unstable repository](https://search.
       modules = [
         veila.nixosModules.default
         {
-          programs.veila.enable = true;
+          programs.veila = {
+            enable = true;
+            service.enable = true;
+            idle = {
+              enable = true;
+              lockAfter = 300;
+              lockBeforeSleep = true;
+            };
+          };
         }
       ];
     };
@@ -107,7 +115,7 @@ Veila is available in the official [Nixpkgs unstable repository](https://search.
 }
 ```
 
-The module installs `veila`, `veilad` and `veila-curtain` and configures the required PAM service.
+The module installs `veila`, `veilad` and `veila-curtain`, configures the required PAM service, and (when enabled) sets up the `veilad` and idle systemd user services.
 
 **Install directly:**
 
