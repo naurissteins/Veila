@@ -8,6 +8,7 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/naurissteins/veila?style=for-the-badge&labelColor=181825&color=f9e2af)
 
 Veila is built for wlroots-style compositors like labwc, Niri, Hyprland, Sway, MangoWC and others that support the Wayland ext-session-lock-v1 protocol. Its main goal is to provide a secure, fast and elegant lock screen without relying on heavyweight UI stacks.
+
 </div>
 
 <a href="https://github.com/user-attachments/assets/3b523594-dc4e-428e-8564-a619148973ee" target="_blank">
@@ -25,7 +26,7 @@ Veila is built for wlroots-style compositors like labwc, Niri, Hyprland, Sway, M
 
 </div>
 
-----
+---
 
 ## 🔥 Features
 
@@ -40,7 +41,9 @@ Veila is built for wlroots-style compositors like labwc, Niri, Hyprland, Sway, M
 - Lightweight design without a heavy desktop UI toolkit
 
 ## Install
+
 ### Arch Linux
+
 On Arch Linux, install Veila from the AUR:
 
 ```bash
@@ -112,6 +115,36 @@ Add PAM service:
   security.pam.services.veila = {};
 }
 ```
+
+**Home Manager:**
+
+Import `veila.homeModules.default` to install Veila and manage the config file and user services.
+
+```nix
+{
+  imports = [ veila.homeModules.default ];
+
+  programs.veila = {
+    enable = true;
+    service.enable = true;
+    settings = {
+      theme = "santorini";
+    };
+    idle = {
+      enable = true;
+      lockAfter = 300;
+      lockBeforeSleep = true;
+    };
+  };
+}
+```
+
+> [!IMPORTANT]
+> Home Manager cannot set up PAM, so password unlock needs one line in your system (NixOS) configuration:
+>
+> ```nix
+> security.pam.services.veila = {};
+> ```
 
 ## Docs
 
