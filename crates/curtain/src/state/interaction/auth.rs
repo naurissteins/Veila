@@ -31,6 +31,15 @@ impl CurtainApp {
                     self.ui_shell.authentication_busy();
                     self.render_all_surfaces(queue_handle);
                 }
+                AuthEvent::Failed { attempt_id } => {
+                    self.auth_in_flight = false;
+                    tracing::warn!(
+                        attempt_id,
+                        "authentication attempt produced no verdict; releasing the input guard"
+                    );
+                    self.ui_shell.authentication_rejected(None, None);
+                    self.render_all_surfaces(queue_handle);
+                }
             }
         }
     }
