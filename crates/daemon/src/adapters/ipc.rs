@@ -14,10 +14,12 @@ use veila_common::ipc::{
     ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, decode_message,
     encode_message,
 };
+use zeroize::{Zeroize, Zeroizing};
 
 const SOCKET_MODE: u32 = 0o600;
 const RUNTIME_DIR_MODE: u32 = 0o700;
 const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
+const SECRET_LINE_CAPACITY: usize = 2 * 1024;
 
 pub async fn bind_listener(path: &Path) -> Result<UnixListener> {
     if path.exists() {
@@ -123,13 +125,16 @@ pub async fn send_daemon_control_message(
 }
 
 pub async fn read_client_message(stream: &mut UnixStream) -> Result<Option<ClientMessage>> {
-    let Some(line) = read_bounded_line(stream, "auth request").await? else {
+    let Some(mut line) = read_bounded_line(stream, "auth request").await? else {
         return Ok(None);
     };
 
-    decode_message(&line)
+    // holds submitted password in cleartext JSON until it is decoded into a Secret
+    let decoded = decode_message(&line)
         .map(Some)
-        .context("invalid auth request")
+        .context("invalid auth request");
+    line.zeroize();
+    decoded
 }
 
 pub async fn write_daemon_message(stream: &mut UnixStream, message: &DaemonMessage) -> Result<()> {
@@ -275,18 +280,19 @@ fn verify_peer_uid(stream: &UnixStream) -> Result<()> {
 }
 
 async fn read_bounded_line(stream: &mut UnixStream, label: &str) -> Result<Option<String>> {
-    let mut line = Vec::new();
-    let mut chunk = [0_u8; 1024];
+    let mut line = Vec::with_capacity(SECRET_LINE_CAPACITY);
+    let mut chunk = Zeroizing::new([0_u8; 1024]);
 
     loop {
         let read = stream
-            .read(&mut chunk)
+            .read(chunk.as_mut())
             .await
             .with_context(|| format!("failed to read {label}"))?;
         if read == 0 {
             if line.is_empty() {
                 return Ok(None);
             }
+            line.zeroize();
             bail!("{label} ended before newline");
         }
 
@@ -294,13 +300,15 @@ async fn read_bounded_line(stream: &mut UnixStream, label: &str) -> Result<Optio
         let line_end = bytes.iter().position(|byte| *byte == b'\n');
         let consumed = line_end.unwrap_or(bytes.len());
         if line.len() + consumed > IPC_MAX_LINE_BYTES {
+            line.zeroize();
             bail!("{label} exceeds {IPC_MAX_LINE_BYTES} bytes");
         }
 
         line.extend_from_slice(&bytes[..consumed]);
         if line_end.is_some() {
-            let line = String::from_utf8(line).with_context(|| format!("{label} is not UTF-8"))?;
-            return Ok(Some(line));
+            return String::from_utf8(line)
+                .map(Some)
+                .with_context(|| format!("{label} is not UTF-8"));
         }
     }
 }

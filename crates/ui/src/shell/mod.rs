@@ -21,14 +21,14 @@ use battery::BatteryWidgetData;
 use clock::ClockState;
 use now_playing::NowPlayingWidgetData;
 use render::TextLayoutCache;
-use veila_common::{FingerprintStatus, PowerAction};
+use veila_common::{FingerprintStatus, PowerAction, Secret};
 use veila_renderer::avatar::AvatarAsset;
 use weather::WeatherWidgetData;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellAction {
     None,
-    Submit(String),
+    Submit(Secret),
     Power(PowerAction),
 }
 
@@ -93,7 +93,7 @@ pub struct PreviewGrid {
 #[derive(Debug, Clone)]
 pub struct ShellState {
     mode: ShellMode,
-    secret: String,
+    secret: Secret,
     secret_selected: bool,
     caps_lock_active: bool,
     keyboard_layout_label: Option<String>,

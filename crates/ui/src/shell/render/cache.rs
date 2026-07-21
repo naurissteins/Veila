@@ -6,6 +6,7 @@ use veila_renderer::{
         measure_visible_text_bounds, single_line_text_block,
     },
 };
+use zeroize::Zeroize;
 
 use super::{
     layout::SceneMetrics,
@@ -36,6 +37,17 @@ pub(crate) struct TextLayoutCache {
 pub(super) struct CachedTextBlock {
     pub(super) key: Option<CachedTextKey>,
     pub(super) block: Option<TextBlock>,
+}
+
+impl TextLayoutCache {
+    /// Drops the cached revealed-password layout, zeroing the plaintext held in its cache key
+    pub(crate) fn forget_revealed_secret(&mut self) {
+        if let Some(key) = self.revealed_secret.key.as_mut() {
+            key.text.zeroize();
+        }
+        self.revealed_secret.key = None;
+        self.revealed_secret.block = None;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -365,5 +377,31 @@ impl CachedTextBounds {
         self.key = Some(key);
         self.bounds = Some(bounds);
         bounds
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use veila_renderer::{ClearColor, text::TextStyle};
+
+    use super::TextLayoutCache;
+
+    #[test]
+    fn forgetting_the_revealed_secret_drops_the_cached_plaintext() {
+        let mut cache = TextLayoutCache::default();
+        cache.revealed_secret_block(
+            "hunter2",
+            TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+            512,
+        );
+        assert!(cache.revealed_secret.key.is_some());
+
+        cache.forget_revealed_secret();
+
+        assert!(
+            cache.revealed_secret.key.is_none(),
+            "cache key still holds the revealed password"
+        );
+        assert!(cache.revealed_secret.block.is_none());
     }
 }

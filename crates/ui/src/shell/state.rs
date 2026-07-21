@@ -1,7 +1,7 @@
 use std::{cell::RefCell, path::PathBuf};
 
 use veila_common::{
-    BatterySnapshot, InputRevealMode, NowPlayingSnapshot, WeatherSnapshot, WeatherUnit,
+    BatterySnapshot, InputRevealMode, NowPlayingSnapshot, Secret, WeatherSnapshot, WeatherUnit,
 };
 use veila_renderer::{ClearColor, avatar::AvatarAsset};
 
@@ -318,7 +318,7 @@ impl ShellState {
         let reveal_hint_text = theme.input_reveal_hint.clone();
         Self {
             mode: ShellMode::Rich,
-            secret: String::new(),
+            secret: Secret::new(),
             secret_selected: false,
             caps_lock_active: false,
             keyboard_layout_label: None,

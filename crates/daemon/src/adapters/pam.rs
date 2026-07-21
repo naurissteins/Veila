@@ -4,6 +4,7 @@ use anyhow::{Context, Result, anyhow};
 use nonstick::{
     AuthnFlags, ConversationAdapter, Result as PamResult, Transaction, TransactionBuilder,
 };
+use veila_common::Secret;
 
 fn pam_service() -> String {
     if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
@@ -19,7 +20,7 @@ fn pam_service() -> String {
 
 struct PasswordConversation {
     username: String,
-    password: String,
+    password: Secret,
 }
 
 impl ConversationAdapter for PasswordConversation {
@@ -28,7 +29,8 @@ impl ConversationAdapter for PasswordConversation {
     }
 
     fn masked_prompt(&self, _request: impl AsRef<OsStr>) -> PamResult<OsString> {
-        Ok(OsString::from(&self.password))
+        // PAM takes ownership of this copy, so it is out of our reach from here on
+        Ok(OsString::from(self.password.expose()))
     }
 
     fn error_msg(&self, _message: impl AsRef<OsStr>) {}
@@ -36,11 +38,11 @@ impl ConversationAdapter for PasswordConversation {
     fn info_msg(&self, _message: impl AsRef<OsStr>) {}
 }
 
-pub fn authenticate(username: &str, password: &str) -> Result<()> {
+pub fn authenticate(username: &str, password: &Secret) -> Result<()> {
     let service = pam_service();
     let conversation = PasswordConversation {
         username: username.to_string(),
-        password: password.to_string(),
+        password: password.clone(),
     };
 
     let mut transaction = TransactionBuilder::new_with_service(&service)

@@ -131,7 +131,7 @@ impl ShellState {
         draw_masked_input(
             buffer,
             Rect::new(rect.x, rect.y, rect.width, rect.height),
-            self.secret.chars().count(),
+            self.secret.char_count(),
             self.focused,
             self.emergency_mask_style(),
         );

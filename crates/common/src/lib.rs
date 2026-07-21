@@ -8,6 +8,7 @@ pub mod error;
 pub mod ipc;
 pub mod now_playing;
 pub mod power;
+pub mod secret;
 pub mod weather;
 
 pub use battery::BatterySnapshot;
@@ -32,4 +33,5 @@ pub use error::{Result, VeilaError};
 pub use ipc::FingerprintStatus;
 pub use now_playing::NowPlayingSnapshot;
 pub use power::PowerAction;
+pub use secret::{SECRET_CAPACITY, Secret};
 pub use weather::{WeatherCondition, WeatherSnapshot};

@@ -11,8 +11,8 @@ use std::{
 use anyhow::{Context, Result, bail};
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
 use veila_common::{
-    PowerAction,
-    ipc::{ClientMessage, DaemonMessage, decode_message, encode_message},
+    PowerAction, Secret,
+    ipc::{ClientMessage, DaemonMessage, decode_message, encode_message, encode_secret_message},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +41,7 @@ const AUTH_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60);
 pub(crate) fn submit_password(
     socket_path: PathBuf,
     attempt_id: u64,
-    secret: String,
+    secret: Secret,
     sender: Sender<AuthEvent>,
 ) {
     thread::spawn(move || {
@@ -71,7 +71,7 @@ pub(crate) fn request_power_action(socket_path: PathBuf, action: PowerAction) {
 fn run_attempt(
     socket_path: PathBuf,
     attempt_id: u64,
-    secret: String,
+    secret: Secret,
     sender: &Sender<AuthEvent>,
 ) -> anyhow::Result<()> {
     let started_at = Instant::now();
@@ -83,10 +83,11 @@ fn run_attempt(
     stream
         .set_read_timeout(Some(AUTH_RESPONSE_TIMEOUT))
         .context("failed to set auth response timeout")?;
-    let mut payload = encode_message(&ClientMessage::SubmitPassword { attempt_id, secret })?;
+    let mut payload = encode_secret_message(&ClientMessage::SubmitPassword { attempt_id, secret })?;
     payload.push('\n');
     stream.write_all(payload.as_bytes())?;
     stream.flush()?;
+    drop(payload);
     tracing::debug!(
         attempt_id,
         elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
@@ -213,6 +214,7 @@ mod tests {
         time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
+    use veila_common::Secret;
     use veila_common::ipc::{DaemonMessage, encode_message};
 
     use super::{AuthEvent, submit_password};
@@ -237,7 +239,7 @@ mod tests {
         submit_password(
             unique_socket_path("auth-missing"),
             3,
-            String::from("secret"),
+            Secret::from(String::from("secret")),
             sender,
         );
 
@@ -261,7 +263,12 @@ mod tests {
         });
 
         let (sender, receiver) = channel();
-        submit_password(path.clone(), 5, String::from("secret"), sender);
+        submit_password(
+            path.clone(),
+            5,
+            Secret::from(String::from("secret")),
+            sender,
+        );
 
         assert_eq!(
             receiver
@@ -297,7 +304,12 @@ mod tests {
         });
 
         let (sender, receiver) = channel();
-        submit_password(path.clone(), 9, String::from("secret"), sender);
+        submit_password(
+            path.clone(),
+            9,
+            Secret::from(String::from("secret")),
+            sender,
+        );
 
         assert_eq!(
             receiver
