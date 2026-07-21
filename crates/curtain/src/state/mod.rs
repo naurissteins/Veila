@@ -199,6 +199,7 @@ pub(crate) struct CurtainApp {
     pub(crate) session_locked_at: Option<Instant>,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
+    unlock_authorized: bool,
     pub(crate) ready_notified: bool,
     pub(crate) latency_report: LatencyReportMode,
     pub(crate) latency_timings: CurtainLatencyReport,
@@ -439,6 +440,7 @@ impl CurtainApp {
             session_locked_at: None,
             session_finished: false,
             exit_requested: false,
+            unlock_authorized: false,
             ready_notified: false,
             latency_report: options.latency_report,
             latency_timings: CurtainLatencyReport::default(),
@@ -563,6 +565,20 @@ impl CurtainApp {
         self.exit_requested = true;
     }
 
+    /// Records that daemon authorized this unlock
+    pub(crate) fn authorize_unlock(&mut self) {
+        self.unlock_authorized = true;
+    }
+
+    pub(crate) fn request_exit_from_signal(&mut self) {
+        // Standalone --lock sessions have no daemon to authenticate against, so a signal is the
+        // only way out. Daemon-managed locks must still wait for an authorized unlock
+        if self.control_socket.is_none() {
+            self.authorize_unlock();
+        }
+        self.exit_requested = true;
+    }
+
     pub(crate) fn can_stop(&self) -> bool {
         self.failure_reason.is_some()
             || (self.exit_requested && (self.session_locked || self.session_finished))
@@ -673,9 +689,21 @@ impl CurtainApp {
             self.secondary_outputs_powered_off = false;
         }
 
-        if let Some(session_lock) = self.session_lock.take()
-            && session_lock.is_locked()
-        {
+        let Some(session_lock) = self.session_lock.take() else {
+            return Ok(());
+        };
+
+        if !self.unlock_authorized {
+            tracing::error!(
+                failure_reason = self.failure_reason.as_deref(),
+                "curtain is exiting without a daemon-authorized unlock; leaving the session locked"
+            );
+            // Leaked on purpose: dropping would send destroy() and can raise invalid_destroy.
+            std::mem::forget(session_lock);
+            return Ok(());
+        }
+
+        if session_lock.is_locked() {
             tracing::info!("releasing session lock");
             session_lock.unlock();
             self.connection

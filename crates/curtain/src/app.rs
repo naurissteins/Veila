@@ -84,7 +84,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     loop_handle
         .insert_source(signals, |event, _, app: &mut CurtainApp| {
             tracing::info!(?event, "termination requested");
-            app.request_exit();
+            app.request_exit_from_signal();
         })
         .context("failed to insert signal source into event loop")?;
 
