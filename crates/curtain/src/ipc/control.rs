@@ -48,18 +48,7 @@ pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>)
         })?;
     }
 
-    let listener = UnixListener::bind(&socket_path)
-        .with_context(|| format!("failed to bind control socket {}", socket_path.display()))?;
-    std::fs::set_permissions(
-        &socket_path,
-        std::fs::Permissions::from_mode(CONTROL_SOCKET_MODE),
-    )
-    .with_context(|| {
-        format!(
-            "failed to restrict control socket {}",
-            socket_path.display()
-        )
-    })?;
+    let listener = bind_secured(&socket_path)?;
     let owner_uid = std::fs::metadata(&socket_path)
         .with_context(|| format!("failed to inspect control socket {}", socket_path.display()))?
         .uid();
@@ -67,6 +56,40 @@ pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>)
     thread::spawn(move || run_listener(listener, owner_uid, sender));
 
     Ok(())
+}
+
+fn bind_secured(socket_path: &std::path::Path) -> Result<UnixListener> {
+    let mut name = std::ffi::OsString::from(".");
+    name.push(
+        socket_path
+            .file_name()
+            .unwrap_or_else(|| std::ffi::OsStr::new("control.sock")),
+    );
+    name.push(format!(".{}.staging", std::process::id()));
+    let staging = socket_path.with_file_name(name);
+    let _ = std::fs::remove_file(&staging);
+
+    let listener = UnixListener::bind(&staging)
+        .with_context(|| format!("failed to bind control socket {}", staging.display()))?;
+    if let Err(error) = std::fs::set_permissions(
+        &staging,
+        std::fs::Permissions::from_mode(CONTROL_SOCKET_MODE),
+    ) {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error)
+            .with_context(|| format!("failed to restrict control socket {}", staging.display()));
+    }
+    if let Err(error) = std::fs::rename(&staging, socket_path) {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error).with_context(|| {
+            format!(
+                "failed to publish control socket at {}",
+                socket_path.display()
+            )
+        });
+    }
+
+    Ok(listener)
 }
 
 /// Runs until an unlock is delivered or the curtain drops the receiver

@@ -1,5 +1,5 @@
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     os::unix::fs::{MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
 };
@@ -25,10 +25,7 @@ pub async fn bind_listener(path: &Path) -> Result<UnixListener> {
             .with_context(|| format!("failed to remove stale socket {}", path.display()))?;
     }
 
-    let listener =
-        UnixListener::bind(path).with_context(|| format!("failed to bind {}", path.display()))?;
-    secure_socket_file(path)?;
-    Ok(listener)
+    bind_secured(path)
 }
 
 pub async fn bind_single_instance_listener(path: &Path) -> Result<UnixListener> {
@@ -48,10 +45,33 @@ pub async fn bind_single_instance_listener(path: &Path) -> Result<UnixListener> 
         }
     }
 
-    let listener =
-        UnixListener::bind(path).with_context(|| format!("failed to bind {}", path.display()))?;
-    secure_socket_file(path)?;
+    bind_secured(path)
+}
+
+fn bind_secured(path: &Path) -> Result<UnixListener> {
+    let staging = staging_socket_path(path);
+    let _ = std::fs::remove_file(&staging);
+
+    let listener = UnixListener::bind(&staging)
+        .with_context(|| format!("failed to bind {}", staging.display()))?;
+    if let Err(error) = secure_socket_file(&staging) {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error);
+    }
+    if let Err(error) = std::fs::rename(&staging, path) {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error)
+            .with_context(|| format!("failed to publish socket at {}", path.display()));
+    }
+
     Ok(listener)
+}
+
+fn staging_socket_path(path: &Path) -> PathBuf {
+    let mut name = OsString::from(".");
+    name.push(path.file_name().unwrap_or_else(|| OsStr::new("socket")));
+    name.push(format!(".{}.staging", std::process::id()));
+    path.with_file_name(name)
 }
 
 pub fn auth_socket_path() -> Result<PathBuf> {
@@ -294,7 +314,10 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use super::{SOCKET_MODE, runtime_root_from_env, secure_socket_file, validate_private_dir};
+    use super::{
+        SOCKET_MODE, bind_secured, runtime_root_from_env, secure_socket_file, staging_socket_path,
+        validate_private_dir,
+    };
 
     #[test]
     fn rejects_missing_runtime_dir() {
@@ -321,6 +344,48 @@ mod tests {
             .expect("time")
             .as_nanos();
         std::env::temp_dir().join(format!("veila-{label}-{}-{stamp}", std::process::id()))
+    }
+
+    #[test]
+    fn staging_path_is_a_hidden_sibling_of_the_target() {
+        // Same directory keeps the publish step a rename rather than a cross-filesystem copy
+        let path = Path::new("/run/user/1000/veila/veilad.sock");
+        let staging = staging_socket_path(path);
+
+        assert_eq!(staging.parent(), path.parent());
+        assert!(
+            staging
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with(".veilad.sock.")),
+            "unexpected staging name: {staging:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn bind_secured_publishes_an_owner_only_socket() {
+        let dir = unique_test_dir("bind-secured");
+        fs::create_dir_all(&dir).expect("test dir");
+        let path = dir.join("veilad.sock");
+
+        let listener = bind_secured(&path).expect("bind secured");
+
+        let mode = fs::metadata(&path).expect("metadata").mode() & 0o777;
+        assert_eq!(mode, SOCKET_MODE);
+
+        let leftovers: Vec<_> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.contains("staging"))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "staging entries left behind: {leftovers:?}"
+        );
+
+        drop(listener);
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

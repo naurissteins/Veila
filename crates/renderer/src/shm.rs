@@ -17,7 +17,6 @@ pub struct SurfaceBufferPool {
     pool: RawPool,
     slot_len: usize,
     slots: Vec<BufferSlot>,
-    next_slot: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +45,18 @@ impl BufferSlot {
             buffer: None,
         }
     }
+
+    fn destroy_buffer(&mut self) {
+        if let Some(buffer) = self.buffer.take() {
+            buffer.destroy();
+        }
+    }
+}
+
+impl Drop for BufferSlot {
+    fn drop(&mut self) {
+        self.destroy_buffer();
+    }
 }
 
 impl SurfaceBufferPool {
@@ -55,7 +66,6 @@ impl SurfaceBufferPool {
             pool: RawPool::new(slot_len, shm)?,
             slot_len,
             slots: Vec::new(),
-            next_slot: 0,
         })
     }
 
@@ -75,7 +85,9 @@ impl SurfaceBufferPool {
         }
 
         let byte_len = required_pool_len(size)?;
-        let slot_index = self.next_buffer_slot(size, byte_len)?;
+        let Some(slot_index) = self.next_buffer_slot(size, byte_len)? else {
+            return Ok(());
+        };
         let offset = slot_index
             .checked_mul(byte_len)
             .ok_or(RendererError::InvalidFrameSize(size))?;
@@ -118,7 +130,9 @@ impl SurfaceBufferPool {
         }
 
         let byte_len = required_pool_len(size)?;
-        let slot_index = self.next_buffer_slot(size, byte_len)?;
+        let Some(slot_index) = self.next_buffer_slot(size, byte_len)? else {
+            return Ok(());
+        };
         let offset = slot_index
             .checked_mul(byte_len)
             .ok_or(RendererError::InvalidFrameSize(size))?;
@@ -166,7 +180,9 @@ impl SurfaceBufferPool {
         }
 
         let byte_len = required_pool_len(size)?;
-        let slot_index = self.next_buffer_slot(size, byte_len)?;
+        let Some(slot_index) = self.next_buffer_slot(size, byte_len)? else {
+            return Ok(());
+        };
         let offset = slot_index
             .checked_mul(byte_len)
             .ok_or(RendererError::InvalidFrameSize(size))?;
@@ -212,49 +228,44 @@ impl SurfaceBufferPool {
         self.slots.len()
     }
 
-    fn next_buffer_slot(&mut self, size: FrameSize, byte_len: usize) -> Result<usize> {
+    fn next_buffer_slot(&mut self, size: FrameSize, byte_len: usize) -> Result<Option<usize>> {
         if self.slot_len != byte_len {
             self.slot_len = byte_len;
             self.slots.clear();
-            self.next_slot = 0;
             self.pool.resize(byte_len)?;
         }
 
         self.compact_released_slots(size, byte_len)?;
 
-        if let Some((index, slot)) = self
-            .slots
-            .iter_mut()
-            .enumerate()
-            .find(|(_, slot)| slot.released.load(Ordering::Acquire))
-        {
-            slot.buffer = None;
-            slot.released.store(false, Ordering::Release);
-            self.next_slot = (index + 1) % self.slots.len().max(1);
-            return Ok(index);
-        }
+        let choice = choose_slot(
+            self.slots
+                .iter()
+                .map(|slot| slot.released.load(Ordering::Acquire)),
+            self.slots.len(),
+            MAX_BUFFER_SLOTS,
+        );
 
-        if self.slots.len() >= MAX_BUFFER_SLOTS {
-            let index = self.next_slot % self.slots.len();
-            if let Some(buffer) = self.slots[index].buffer.take() {
-                buffer.destroy();
+        match choice {
+            SlotChoice::Reuse(index) => {
+                let slot = &mut self.slots[index];
+                slot.destroy_buffer();
+                slot.released.store(false, Ordering::Release);
+                Ok(Some(index))
             }
-            self.slots[index].released.store(false, Ordering::Release);
-            self.next_slot = (index + 1) % self.slots.len();
-            return Ok(index);
+            SlotChoice::Skip => Ok(None),
+            SlotChoice::Grow => {
+                let index = self.slots.len();
+                let new_len = byte_len
+                    .checked_mul(index + 1)
+                    .ok_or(RendererError::InvalidFrameSize(size))?;
+                if new_len > i32::MAX as usize {
+                    return Err(RendererError::InvalidFrameSize(size));
+                }
+                self.pool.resize(new_len)?;
+                self.slots.push(BufferSlot::new());
+                Ok(Some(index))
+            }
         }
-
-        let index = self.slots.len();
-        let new_len = byte_len
-            .checked_mul(index + 1)
-            .ok_or(RendererError::InvalidFrameSize(size))?;
-        if new_len > i32::MAX as usize {
-            return Err(RendererError::InvalidFrameSize(size));
-        }
-        self.pool.resize(new_len)?;
-        self.slots.push(BufferSlot::new());
-        self.next_slot = (index + 1) % self.slots.len().max(1);
-        Ok(index)
     }
 
     fn compact_released_slots(&mut self, size: FrameSize, byte_len: usize) -> Result<()> {
@@ -265,9 +276,6 @@ impl SurfaceBufferPool {
                 .is_some_and(|slot| slot.released.load(Ordering::Acquire))
         {
             self.slots.pop();
-        }
-        if !self.slots.is_empty() {
-            self.next_slot %= self.slots.len();
         }
 
         let new_len = byte_len
@@ -290,6 +298,31 @@ where
     SurfaceBufferPool::new(shm, buffer.size())?.commit_buffer(queue_handle, surface, buffer, 1)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SlotChoice {
+    Reuse(usize),
+    Grow,
+    Skip,
+}
+
+fn choose_slot(
+    released: impl Iterator<Item = bool>,
+    slot_count: usize,
+    max_slots: usize,
+) -> SlotChoice {
+    for (index, is_released) in released.enumerate() {
+        if is_released {
+            return SlotChoice::Reuse(index);
+        }
+    }
+
+    if slot_count >= max_slots {
+        SlotChoice::Skip
+    } else {
+        SlotChoice::Grow
+    }
+}
+
 fn required_pool_len(size: crate::FrameSize) -> Result<usize> {
     if size.is_empty() {
         return Err(RendererError::EmptyFrame);
@@ -306,7 +339,11 @@ fn reserved_bytes_for_slots(slot_len: usize, slots: usize) -> usize {
 mod tests {
     use crate::FrameSize;
 
-    use super::{MAX_BUFFER_SLOTS, required_pool_len, reserved_bytes_for_slots};
+    use super::{
+        MAX_BUFFER_SLOTS,
+        SlotChoice::{Grow, Reuse, Skip},
+        choose_slot, required_pool_len, reserved_bytes_for_slots,
+    };
 
     #[test]
     fn required_pool_len_matches_frame_byte_len() {
@@ -323,5 +360,31 @@ mod tests {
     #[test]
     fn pool_growth_is_capped_to_two_frame_slots() {
         assert_eq!(MAX_BUFFER_SLOTS, 2);
+    }
+
+    #[test]
+    fn grows_while_under_the_slot_cap() {
+        assert_eq!(choose_slot([].into_iter(), 0, MAX_BUFFER_SLOTS), Grow);
+        assert_eq!(choose_slot([false].into_iter(), 1, MAX_BUFFER_SLOTS), Grow);
+    }
+
+    #[test]
+    fn reuses_the_first_released_slot() {
+        assert_eq!(
+            choose_slot([false, true].into_iter(), 2, MAX_BUFFER_SLOTS),
+            Reuse(1)
+        );
+        assert_eq!(
+            choose_slot([true, true].into_iter(), 2, MAX_BUFFER_SLOTS),
+            Reuse(0)
+        );
+    }
+
+    #[test]
+    fn skips_the_frame_rather_than_overwriting_a_busy_slot() {
+        assert_eq!(
+            choose_slot([false, false].into_iter(), 2, MAX_BUFFER_SLOTS),
+            Skip
+        );
     }
 }
