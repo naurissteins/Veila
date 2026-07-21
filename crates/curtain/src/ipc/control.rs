@@ -1,10 +1,11 @@
 use std::{
     io::{BufRead, BufReader},
     os::unix::fs::{MetadataExt, PermissionsExt},
-    os::unix::net::UnixListener,
+    os::unix::net::{UnixListener, UnixStream},
     path::PathBuf,
     sync::mpsc::Sender,
     thread,
+    time::Duration,
 };
 
 use anyhow::{Context, Result, bail};
@@ -33,6 +34,9 @@ pub(crate) enum ControlEvent {
 
 const CONTROL_SOCKET_MODE: u32 = 0o600;
 const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
+const ACCEPT_BACKOFF_MIN: Duration = Duration::from_millis(50);
+const ACCEPT_BACKOFF_MAX: Duration = Duration::from_secs(1);
+const CONTROL_READ_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>) -> Result<()> {
     if socket_path.exists() {
@@ -60,65 +64,94 @@ pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>)
         .with_context(|| format!("failed to inspect control socket {}", socket_path.display()))?
         .uid();
 
-    thread::spawn(move || {
-        if let Err(error) = run_listener(listener, owner_uid, sender) {
-            tracing::warn!("curtain control listener exited with error: {error:#}");
-        }
-    });
+    thread::spawn(move || run_listener(listener, owner_uid, sender));
 
     Ok(())
 }
 
-fn run_listener(
-    listener: UnixListener,
-    owner_uid: u32,
-    sender: Sender<ControlEvent>,
-) -> Result<()> {
-    loop {
-        let (stream, _) = listener
-            .accept()
-            .context("failed to accept control connection")?;
-        let peer = getsockopt(&stream, PeerCredentials)
-            .context("failed to read control peer credentials")?;
-        if peer.uid() != owner_uid {
-            tracing::warn!(
-                peer_uid = peer.uid(),
-                expected_uid = owner_uid,
-                "rejected curtain control connection from unexpected uid"
-            );
-            continue;
-        }
+/// Runs until an unlock is delivered or the curtain drops the receiver
+fn run_listener(listener: UnixListener, owner_uid: u32, sender: Sender<ControlEvent>) {
+    let mut accept_backoff = ACCEPT_BACKOFF_MIN;
 
-        let mut reader = BufReader::new(stream);
-        let Some(line) = read_bounded_line(&mut reader, "control message")? else {
-            continue;
+    loop {
+        let stream = match listener.accept() {
+            Ok((stream, _)) => {
+                accept_backoff = ACCEPT_BACKOFF_MIN;
+                stream
+            }
+            Err(error) => {
+                tracing::warn!(
+                    retry_in_ms = accept_backoff.as_millis().min(u128::from(u64::MAX)) as u64,
+                    "failed to accept curtain control connection; retrying: {error}"
+                );
+                thread::sleep(accept_backoff);
+                accept_backoff = accept_backoff.saturating_mul(2).min(ACCEPT_BACKOFF_MAX);
+                continue;
+            }
         };
 
-        match decode_message::<CurtainControlMessage>(&line)
-            .context("invalid curtain control message")?
-        {
-            CurtainControlMessage::Unlock { attempt_id } => {
-                let _ = sender.send(ControlEvent::Unlock { attempt_id });
-                return Ok(());
+        let message = match read_control_message(stream, owner_uid) {
+            Ok(Some(message)) => message,
+            Ok(None) => continue,
+            Err(error) => {
+                tracing::warn!("ignoring invalid curtain control connection: {error:#}");
+                continue;
             }
-            CurtainControlMessage::ReloadConfig => {
-                let _ = sender.send(ControlEvent::Reload);
-            }
-            CurtainControlMessage::ArmResumeInputGuard => {
-                let _ = sender.send(ControlEvent::ArmResumeInputGuard);
-            }
-            CurtainControlMessage::MarkResumed => {
-                let _ = sender.send(ControlEvent::MarkResumed);
-            }
-            CurtainControlMessage::UpdateNowPlaying { snapshot } => {
-                let _ = sender.send(ControlEvent::UpdateNowPlaying { snapshot });
-            }
-            CurtainControlMessage::UpdatePowerStatus { snapshot } => {
-                let _ = sender.send(ControlEvent::UpdatePowerStatus { snapshot });
-            }
-            CurtainControlMessage::UpdateFingerprintStatus { status } => {
-                let _ = sender.send(ControlEvent::UpdateFingerprintStatus { status });
-            }
+        };
+
+        let unlock_requested = matches!(message, CurtainControlMessage::Unlock { .. });
+        if sender.send(control_event(message)).is_err() {
+            tracing::debug!("curtain control receiver is gone; stopping control listener");
+            return;
+        }
+
+        if unlock_requested {
+            return;
+        }
+    }
+}
+
+fn read_control_message(
+    stream: UnixStream,
+    owner_uid: u32,
+) -> Result<Option<CurtainControlMessage>> {
+    let peer =
+        getsockopt(&stream, PeerCredentials).context("failed to read control peer credentials")?;
+    if peer.uid() != owner_uid {
+        bail!(
+            "rejected curtain control connection from uid {}, expected socket owner uid {owner_uid}",
+            peer.uid()
+        );
+    }
+
+    stream
+        .set_read_timeout(Some(CONTROL_READ_TIMEOUT))
+        .context("failed to set control read timeout")?;
+
+    let mut reader = BufReader::new(stream);
+    let Some(line) = read_bounded_line(&mut reader, "control message")? else {
+        return Ok(None);
+    };
+
+    decode_message(&line)
+        .map(Some)
+        .context("invalid curtain control message")
+}
+
+fn control_event(message: CurtainControlMessage) -> ControlEvent {
+    match message {
+        CurtainControlMessage::Unlock { attempt_id } => ControlEvent::Unlock { attempt_id },
+        CurtainControlMessage::ReloadConfig => ControlEvent::Reload,
+        CurtainControlMessage::ArmResumeInputGuard => ControlEvent::ArmResumeInputGuard,
+        CurtainControlMessage::MarkResumed => ControlEvent::MarkResumed,
+        CurtainControlMessage::UpdateNowPlaying { snapshot } => {
+            ControlEvent::UpdateNowPlaying { snapshot }
+        }
+        CurtainControlMessage::UpdatePowerStatus { snapshot } => {
+            ControlEvent::UpdatePowerStatus { snapshot }
+        }
+        CurtainControlMessage::UpdateFingerprintStatus { status } => {
+            ControlEvent::UpdateFingerprintStatus { status }
         }
     }
 }
@@ -151,5 +184,132 @@ fn read_bounded_line<R: BufRead>(reader: &mut R, label: &str) -> Result<Option<S
                 .map(Some)
                 .with_context(|| format!("{label} is not UTF-8"));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        io::Write,
+        os::unix::net::{UnixListener, UnixStream},
+        path::{Path, PathBuf},
+        sync::mpsc::channel,
+        thread,
+        time::{Duration, SystemTime, UNIX_EPOCH},
+    };
+
+    use nix::unistd::Uid;
+    use veila_common::ipc::{CurtainControlMessage, encode_message};
+
+    use super::{ControlEvent, run_listener};
+
+    const RECV_TIMEOUT: Duration = Duration::from_secs(5);
+
+    fn unique_socket_path(label: &str) -> PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "veila-test-{label}-{}-{stamp}.sock",
+            std::process::id()
+        ))
+    }
+
+    fn send_payload(path: &Path, payload: &str) {
+        let mut stream = UnixStream::connect(path).expect("connect to control socket");
+        stream.write_all(payload.as_bytes()).expect("write payload");
+        stream.flush().expect("flush payload");
+    }
+
+    fn encoded_unlock(attempt_id: u64) -> String {
+        let encoded = encode_message(&CurtainControlMessage::Unlock {
+            attempt_id: Some(attempt_id),
+        })
+        .expect("encode unlock");
+        format!("{encoded}\n")
+    }
+
+    #[test]
+    fn delivers_unlock_after_malformed_connections() {
+        let path = unique_socket_path("control-resilience");
+        let listener = UnixListener::bind(&path).expect("bind control socket");
+        let (sender, receiver) = channel();
+        let handle = thread::spawn({
+            let owner_uid = Uid::effective().as_raw();
+            move || run_listener(listener, owner_uid, sender)
+        });
+
+        // Each of these previously killed the listener thread for the rest of the lock session
+        send_payload(&path, "not json at all\n");
+        send_payload(&path, "{\"Unlock\": \n");
+        send_payload(&path, "truncated without newline");
+        UnixStream::connect(&path).expect("connect and close without sending");
+
+        send_payload(&path, &encoded_unlock(7));
+
+        let event = receiver
+            .recv_timeout(RECV_TIMEOUT)
+            .expect("unlock must still be delivered after malformed connections");
+        assert_eq!(
+            event,
+            ControlEvent::Unlock {
+                attempt_id: Some(7)
+            }
+        );
+
+        handle.join().expect("listener thread should exit cleanly");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn keeps_serving_updates_before_unlock() {
+        let path = unique_socket_path("control-continuity");
+        let listener = UnixListener::bind(&path).expect("bind control socket");
+        let (sender, receiver) = channel();
+        let handle = thread::spawn({
+            let owner_uid = Uid::effective().as_raw();
+            move || run_listener(listener, owner_uid, sender)
+        });
+
+        let reload = encode_message(&CurtainControlMessage::ReloadConfig).expect("encode reload");
+        send_payload(&path, &format!("{reload}\n"));
+        assert_eq!(
+            receiver.recv_timeout(RECV_TIMEOUT).expect("reload event"),
+            ControlEvent::Reload
+        );
+
+        send_payload(&path, "}{ still not json\n");
+        send_payload(&path, &encoded_unlock(1));
+
+        assert_eq!(
+            receiver.recv_timeout(RECV_TIMEOUT).expect("unlock event"),
+            ControlEvent::Unlock {
+                attempt_id: Some(1)
+            }
+        );
+
+        handle.join().expect("listener thread should exit cleanly");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn stops_when_curtain_receiver_is_gone() {
+        let path = unique_socket_path("control-shutdown");
+        let listener = UnixListener::bind(&path).expect("bind control socket");
+        let (sender, receiver) = channel::<ControlEvent>();
+        let handle = thread::spawn({
+            let owner_uid = Uid::effective().as_raw();
+            move || run_listener(listener, owner_uid, sender)
+        });
+
+        drop(receiver);
+        let reload = encode_message(&CurtainControlMessage::ReloadConfig).expect("encode reload");
+        send_payload(&path, &format!("{reload}\n"));
+
+        handle
+            .join()
+            .expect("listener thread should stop once the receiver is dropped");
+        std::fs::remove_file(&path).ok();
     }
 }
