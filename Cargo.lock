@@ -2040,6 +2040,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "toml",
+ "zeroize",
 ]
 
 [[package]]
@@ -2083,6 +2084,7 @@ dependencies = [
  "veila-renderer",
  "veila-ui",
  "zbus",
+ "zeroize",
 ]
 
 [[package]]
@@ -2107,6 +2109,7 @@ dependencies = [
  "tracing-subscriber",
  "veila-common",
  "veila-renderer",
+ "zeroize",
 ]
 
 [[package]]

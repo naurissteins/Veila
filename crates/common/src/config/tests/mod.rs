@@ -6,7 +6,7 @@ use super::{
     InputRevealMode, InputVisualEntry, LayerKind, LayerVisualConfig, OutputUiMode, RgbColor,
     VerticalAlign, WeatherUnit, WidgetPositionConfig, active_include_source_paths,
     active_theme_name, active_theme_source_path, bundled_theme_names, init_config,
-    read_theme_source, set_theme_in_config, unset_theme_in_config,
+    read_theme_source, resolve_default_path, set_theme_in_config, unset_theme_in_config,
 };
 use crate::VeilaError;
 
@@ -16,5 +16,6 @@ mod file_loading_tests;
 mod nested_visual_fixture;
 mod nested_visual_tests;
 mod parsing_tests;
+mod path_resolution_tests;
 mod theme_loading_tests;
 mod theme_mutation_tests;

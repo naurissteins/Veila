@@ -358,6 +358,7 @@ fn load_cached_avatar_at(path: &Path, cache_home: Option<&Path>) -> Result<Optio
         return Ok(None);
     }
 
+    // Infallible: the header was read with read_exact into a fixed 16-byte array
     let width = u32::from_le_bytes(header[8..12].try_into().expect("width slice"));
     let height = u32::from_le_bytes(header[12..16].try_into().expect("height slice"));
     let size = tiny_skia::IntSize::from_wh(width, height).ok_or(

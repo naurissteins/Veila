@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, elapsed_ms, elapsed_us,
     ipc::{CurtainLatencyReport, LatencyReportMode, LockLatencyReport},
 };
 
@@ -164,14 +164,6 @@ If you ran `cargo run -p veila-daemon` after changing curtain startup arguments 
     }
 }
 
-fn elapsed_ms(started_at: Instant) -> u64 {
-    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
-}
-
-fn elapsed_us(started_at: Instant) -> u64 {
-    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
-}
-
 async fn read_curtain_latency_report(stream: UnixStream) -> Option<CurtainLatencyReport> {
     let mut stream = stream;
     match ipc::read_ipc_line(&mut stream, "curtain latency report").await {
@@ -261,7 +253,16 @@ pub(crate) async fn deactivate_lock(
     *state = LockState::Unlocking;
 
     if let Some(child) = runtime.curtain.take() {
-        stop_active_curtain(child, runtime.control_socket_path.as_deref(), attempt_id).await?;
+        match stop_active_curtain(child, runtime.control_socket_path.as_deref(), attempt_id).await {
+            CurtainStop::Released => {}
+            CurtainStop::UnlockUndeliverable(child) => {
+                *runtime.curtain = Some(child);
+                *state = LockState::Locked;
+                return Err(anyhow!(
+                    "could not deliver the unlock to the curtain; session stays locked"
+                ));
+            }
+        }
     }
 
     reset_runtime(
@@ -299,28 +300,126 @@ enum ReadyResult {
     Exited(ExitStatus),
 }
 
+pub(crate) enum CurtainStop {
+    /// The curtain was told to unlock and is no longer holding the session lock.
+    Released,
+    /// The unlock never reached the curtain, which therefore still holds the lock.
+    UnlockUndeliverable(Child),
+}
+
+const GRACEFUL_EXIT_WINDOW: Duration = Duration::from_secs(5);
+const UNLOCK_DELIVERY_ATTEMPTS: u32 = 3;
+const UNLOCK_RETRY_DELAY: Duration = Duration::from_millis(100);
+
 async fn stop_active_curtain(
     child: Child,
     control_socket_path: Option<&Path>,
     attempt_id: Option<u64>,
-) -> Result<()> {
-    let child = if let Some(control_socket_path) = control_socket_path {
-        match process::request_curtain_unlock(control_socket_path, attempt_id).await {
-            Ok(()) => {
-                match process::wait_for_graceful_curtain_exit(child, Duration::from_secs(5)).await?
-                {
-                    Some(child) => child,
-                    None => return Ok(()),
-                }
-            }
-            Err(error) => {
-                tracing::warn!("failed to request graceful curtain unlock: {error:#}");
-                child
-            }
-        }
-    } else {
-        child
+) -> CurtainStop {
+    let Some(control_socket_path) = control_socket_path else {
+        // No control socket means this curtain is not daemon-managed, so it self-authorizes on
+        // a termination signal and stopping it is enough.
+        force_stop(child).await;
+        return CurtainStop::Released;
     };
 
-    process::force_stop_curtain(child).await
+    if let Err(error) = deliver_unlock(control_socket_path, attempt_id).await {
+        tracing::error!("could not deliver unlock to the curtain: {error:#}");
+        return CurtainStop::UnlockUndeliverable(child);
+    }
+
+    match process::wait_for_graceful_curtain_exit(child, GRACEFUL_EXIT_WINDOW).await {
+        Ok(None) => CurtainStop::Released,
+        Ok(Some(child)) => {
+            // The unlock was delivered, so the curtain has already recorded it as authorized and
+            // will release the lock when the signal makes it exit.
+            tracing::warn!("curtain did not exit after an authorized unlock; forcing stop");
+            force_stop(child).await;
+            CurtainStop::Released
+        }
+        Err(error) => {
+            tracing::error!("failed while waiting for curtain to exit: {error:#}");
+            CurtainStop::Released
+        }
+    }
+}
+
+async fn deliver_unlock(control_socket_path: &Path, attempt_id: Option<u64>) -> Result<()> {
+    let mut last_error = None;
+
+    for attempt in 1..=UNLOCK_DELIVERY_ATTEMPTS {
+        match process::request_curtain_unlock(control_socket_path, attempt_id).await {
+            Ok(()) => return Ok(()),
+            Err(error) => {
+                tracing::warn!(attempt, "failed to request curtain unlock: {error:#}");
+                last_error = Some(error);
+                if attempt < UNLOCK_DELIVERY_ATTEMPTS {
+                    tokio::time::sleep(UNLOCK_RETRY_DELAY).await;
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| anyhow!("unlock delivery failed")))
+}
+
+async fn force_stop(child: Child) {
+    if let Err(error) = process::force_stop_curtain(child).await {
+        tracing::error!("failed to force stop the curtain: {error:#}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        path::PathBuf,
+        time::{Instant, SystemTime, UNIX_EPOCH},
+    };
+
+    use tokio::net::UnixListener;
+
+    use super::{UNLOCK_DELIVERY_ATTEMPTS, UNLOCK_RETRY_DELAY, deliver_unlock};
+
+    fn unique_socket_path(label: &str) -> PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "veila-test-{label}-{}-{stamp}.sock",
+            std::process::id()
+        ))
+    }
+
+    #[tokio::test]
+    async fn retries_before_reporting_an_undeliverable_unlock() {
+        let path = unique_socket_path("unlock-missing");
+        let started_at = Instant::now();
+
+        deliver_unlock(&path, Some(1))
+            .await
+            .expect_err("a missing control socket must not report success");
+
+        // Every attempt but the last is followed by a backoff sleep, so the elapsed time is
+        // observable evidence that the retries actually ran.
+        let minimum = UNLOCK_RETRY_DELAY * (UNLOCK_DELIVERY_ATTEMPTS - 1);
+        assert!(
+            started_at.elapsed() >= minimum,
+            "expected at least {minimum:?} of retry backoff, took {:?}",
+            started_at.elapsed()
+        );
+    }
+
+    #[tokio::test]
+    async fn delivers_unlock_to_a_listening_curtain() {
+        let path = unique_socket_path("unlock-delivered");
+        let listener = UnixListener::bind(&path).expect("bind control socket");
+
+        deliver_unlock(&path, Some(7))
+            .await
+            .expect("unlock should reach a listening curtain");
+
+        drop(listener);
+        std::fs::remove_file(&path).ok();
+    }
 }

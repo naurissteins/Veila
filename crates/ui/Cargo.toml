@@ -13,6 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 veila-common = { path = "../common" }
+zeroize = { workspace = true }
 veila-renderer = { path = "../renderer" }
 time = { workspace = true }
 tracing = { workspace = true }

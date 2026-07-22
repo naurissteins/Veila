@@ -1,8 +1,14 @@
+pub mod line;
+
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 use crate::NowPlayingSnapshot;
 use crate::error::Result;
 use crate::power::PowerAction;
+use crate::secret::Secret;
+
+pub use line::{IPC_MAX_LINE_BYTES, LineAccumulator, LineProgress};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockPowerStatusSnapshot {
@@ -83,7 +89,7 @@ pub struct LockLatencyReport {
 /// Messages sent from UI-facing clients to the daemon.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
-    SubmitPassword { attempt_id: u64, secret: String },
+    SubmitPassword { attempt_id: u64, secret: Secret },
     CancelAuthentication,
     Activity,
     RequestPowerAction { action: PowerAction },
@@ -192,7 +198,7 @@ pub enum DaemonControlResponse {
     },
 }
 
-/// Encodes an IPC message as JSON for the initial control channel.
+/// Encodes an IPC message as JSON for the initial control channel
 pub fn encode_message<T>(message: &T) -> Result<String>
 where
     T: Serialize,
@@ -200,7 +206,14 @@ where
     serde_json::to_string(message).map_err(Into::into)
 }
 
-/// Decodes an IPC message from JSON for the initial control channel.
+pub fn encode_secret_message<T>(message: &T) -> Result<Zeroizing<String>>
+where
+    T: Serialize,
+{
+    encode_message(message).map(Zeroizing::new)
+}
+
+/// Decodes an IPC message from JSON for the initial control channel
 pub fn decode_message<T>(input: &str) -> Result<T>
 where
     T: for<'de> Deserialize<'de>,
@@ -214,8 +227,37 @@ mod tests {
         ClientMessage, CurtainControlMessage, CurtainLatencyReport, DaemonControlMessage,
         DaemonControlResponse, DaemonMessage, DaemonReloadStatus, DaemonStatus, FingerprintStatus,
         LatencyReportMode, LiveReloadStatus, LockLatencyReport, LockPowerStatusSnapshot,
-        PowerAction, decode_message, encode_message,
+        PowerAction, Secret, decode_message, encode_message, encode_secret_message,
     };
+
+    #[test]
+    fn submitted_password_is_redacted_in_debug_output() {
+        let message = ClientMessage::SubmitPassword {
+            attempt_id: 1,
+            secret: Secret::from(String::from("hunter2")),
+        };
+
+        let rendered = format!("{message:?}");
+
+        assert!(
+            !rendered.contains("hunter2"),
+            "debug output leaked the secret: {rendered}"
+        );
+        assert!(rendered.contains("<redacted>"));
+    }
+
+    #[test]
+    fn round_trips_submitted_passwords() {
+        let message = ClientMessage::SubmitPassword {
+            attempt_id: 4,
+            secret: Secret::from(String::from("hunter2")),
+        };
+        let encoded = encode_secret_message(&message).expect("secret message should encode");
+        let decoded =
+            decode_message::<ClientMessage>(&encoded).expect("secret message should decode");
+
+        assert_eq!(decoded, message);
+    }
 
     #[test]
     fn round_trips_json_messages() {

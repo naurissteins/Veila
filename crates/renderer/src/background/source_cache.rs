@@ -25,6 +25,7 @@ pub(crate) fn load_cached_rgba(path: &Path) -> Result<Option<RgbaImage>> {
     }
 
     let size = FrameSize::new(
+        // Infallible: the header was read with read_exact into a fixed 16-byte array
         u32::from_le_bytes(header[8..12].try_into().expect("width slice")),
         u32::from_le_bytes(header[12..16].try_into().expect("height slice")),
     );

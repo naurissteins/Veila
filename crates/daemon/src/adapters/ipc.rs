@@ -1,5 +1,5 @@
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     os::unix::fs::{MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
 };
@@ -11,13 +11,14 @@ use tokio::{
     net::{UnixListener, UnixStream},
 };
 use veila_common::ipc::{
-    ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, decode_message,
-    encode_message,
+    ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, LineAccumulator,
+    LineProgress, decode_message, encode_message,
 };
+use zeroize::{Zeroize, Zeroizing};
 
 const SOCKET_MODE: u32 = 0o600;
 const RUNTIME_DIR_MODE: u32 = 0o700;
-const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
+const SECRET_LINE_CAPACITY: usize = 2 * 1024;
 
 pub async fn bind_listener(path: &Path) -> Result<UnixListener> {
     if path.exists() {
@@ -25,10 +26,7 @@ pub async fn bind_listener(path: &Path) -> Result<UnixListener> {
             .with_context(|| format!("failed to remove stale socket {}", path.display()))?;
     }
 
-    let listener =
-        UnixListener::bind(path).with_context(|| format!("failed to bind {}", path.display()))?;
-    secure_socket_file(path)?;
-    Ok(listener)
+    bind_secured(path)
 }
 
 pub async fn bind_single_instance_listener(path: &Path) -> Result<UnixListener> {
@@ -48,10 +46,33 @@ pub async fn bind_single_instance_listener(path: &Path) -> Result<UnixListener> 
         }
     }
 
-    let listener =
-        UnixListener::bind(path).with_context(|| format!("failed to bind {}", path.display()))?;
-    secure_socket_file(path)?;
+    bind_secured(path)
+}
+
+fn bind_secured(path: &Path) -> Result<UnixListener> {
+    let staging = staging_socket_path(path);
+    let _ = std::fs::remove_file(&staging);
+
+    let listener = UnixListener::bind(&staging)
+        .with_context(|| format!("failed to bind {}", staging.display()))?;
+    if let Err(error) = secure_socket_file(&staging) {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error);
+    }
+    if let Err(error) = std::fs::rename(&staging, path) {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error)
+            .with_context(|| format!("failed to publish socket at {}", path.display()));
+    }
+
     Ok(listener)
+}
+
+fn staging_socket_path(path: &Path) -> PathBuf {
+    let mut name = OsString::from(".");
+    name.push(path.file_name().unwrap_or_else(|| OsStr::new("socket")));
+    name.push(format!(".{}.staging", std::process::id()));
+    path.with_file_name(name)
 }
 
 pub fn auth_socket_path() -> Result<PathBuf> {
@@ -103,13 +124,16 @@ pub async fn send_daemon_control_message(
 }
 
 pub async fn read_client_message(stream: &mut UnixStream) -> Result<Option<ClientMessage>> {
-    let Some(line) = read_bounded_line(stream, "auth request").await? else {
+    let Some(mut line) = read_bounded_line(stream, "auth request").await? else {
         return Ok(None);
     };
 
-    decode_message(&line)
+    // holds submitted password in cleartext JSON until it is decoded into a Secret
+    let decoded = decode_message(&line)
         .map(Some)
-        .context("invalid auth request")
+        .context("invalid auth request");
+    line.zeroize();
+    decoded
 }
 
 pub async fn write_daemon_message(stream: &mut UnixStream, message: &DaemonMessage) -> Result<()> {
@@ -255,32 +279,23 @@ fn verify_peer_uid(stream: &UnixStream) -> Result<()> {
 }
 
 async fn read_bounded_line(stream: &mut UnixStream, label: &str) -> Result<Option<String>> {
-    let mut line = Vec::new();
-    let mut chunk = [0_u8; 1024];
+    // Pre-sized so an auth request lands without the buffer reallocating, which would strand a
+    // cleartext copy of the password in freed memory that zeroizing can no longer reach
+    let mut accumulator = LineAccumulator::with_capacity(SECRET_LINE_CAPACITY);
+    let mut chunk = Zeroizing::new([0_u8; 1024]);
 
     loop {
         let read = stream
-            .read(&mut chunk)
+            .read(chunk.as_mut())
             .await
             .with_context(|| format!("failed to read {label}"))?;
         if read == 0 {
-            if line.is_empty() {
-                return Ok(None);
-            }
-            bail!("{label} ended before newline");
+            return accumulator.finish(label).map_err(Into::into);
         }
 
-        let bytes = &chunk[..read];
-        let line_end = bytes.iter().position(|byte| *byte == b'\n');
-        let consumed = line_end.unwrap_or(bytes.len());
-        if line.len() + consumed > IPC_MAX_LINE_BYTES {
-            bail!("{label} exceeds {IPC_MAX_LINE_BYTES} bytes");
-        }
-
-        line.extend_from_slice(&bytes[..consumed]);
-        if line_end.is_some() {
-            let line = String::from_utf8(line).with_context(|| format!("{label} is not UTF-8"))?;
-            return Ok(Some(line));
+        match accumulator.push_chunk(&chunk[..read], label)? {
+            LineProgress::Complete { line, .. } => return Ok(Some(line)),
+            LineProgress::Pending => {}
         }
     }
 }
@@ -294,7 +309,10 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use super::{SOCKET_MODE, runtime_root_from_env, secure_socket_file, validate_private_dir};
+    use super::{
+        SOCKET_MODE, bind_secured, runtime_root_from_env, secure_socket_file, staging_socket_path,
+        validate_private_dir,
+    };
 
     #[test]
     fn rejects_missing_runtime_dir() {
@@ -321,6 +339,48 @@ mod tests {
             .expect("time")
             .as_nanos();
         std::env::temp_dir().join(format!("veila-{label}-{}-{stamp}", std::process::id()))
+    }
+
+    #[test]
+    fn staging_path_is_a_hidden_sibling_of_the_target() {
+        // Same directory keeps the publish step a rename rather than a cross-filesystem copy
+        let path = Path::new("/run/user/1000/veila/veilad.sock");
+        let staging = staging_socket_path(path);
+
+        assert_eq!(staging.parent(), path.parent());
+        assert!(
+            staging
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with(".veilad.sock.")),
+            "unexpected staging name: {staging:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn bind_secured_publishes_an_owner_only_socket() {
+        let dir = unique_test_dir("bind-secured");
+        fs::create_dir_all(&dir).expect("test dir");
+        let path = dir.join("veilad.sock");
+
+        let listener = bind_secured(&path).expect("bind secured");
+
+        let mode = fs::metadata(&path).expect("metadata").mode() & 0o777;
+        assert_eq!(mode, SOCKET_MODE);
+
+        let leftovers: Vec<_> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.contains("staging"))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "staging entries left behind: {leftovers:?}"
+        );
+
+        drop(listener);
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

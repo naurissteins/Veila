@@ -8,7 +8,8 @@ use veila_common::{
     NowPlayingSnapshot, PowerAction, WeatherCondition, WeatherSnapshot, WeatherUnit,
 };
 use veila_common::{
-    ClockFormat, DateFormat, HorizontalAlign, InputRevealMode, StatusDisplayMode, VerticalAlign,
+    ClockFormat, DateFormat, HorizontalAlign, InputRevealMode, Secret, StatusDisplayMode,
+    VerticalAlign,
 };
 use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
@@ -32,12 +33,12 @@ fn edits_and_submits_password_text() {
     );
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("ab"))
+        ShellAction::Submit(Secret::from(String::from("ab")))
     );
     assert_eq!(shell.handle_key(ShellKey::Backspace), ShellAction::None);
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("a"))
+        ShellAction::Submit(Secret::from(String::from("a")))
     );
 }
 
@@ -61,7 +62,7 @@ fn select_all_then_typing_replaces_secret() {
         shell.handle_key(ShellKey::Character('z')),
         ShellAction::None
     );
-    assert_eq!(shell.secret, "z");
+    assert_eq!(shell.secret.expose(), "z");
     assert!(!shell.secret_selected);
 }
 
@@ -141,7 +142,7 @@ fn empty_enter_submits_authentication() {
 
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::new())
+        ShellAction::Submit(Secret::new())
     );
     assert!(matches!(
         shell.status,
@@ -162,7 +163,7 @@ fn emergency_mode_keeps_password_input_flow() {
     );
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("a"))
+        ShellAction::Submit(Secret::from(String::from("a")))
     );
 }
 
@@ -298,7 +299,7 @@ fn first_character_reveals_hidden_auth_stack() {
     assert!(shell.static_scene_revision() > original);
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("a"))
+        ShellAction::Submit(Secret::from(String::from("a")))
     );
 }
 
@@ -375,7 +376,7 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
     );
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("a"))
+        ShellAction::Submit(Secret::from(String::from("a")))
     );
 
     thread::sleep(Duration::from_millis(1_050));
@@ -399,7 +400,7 @@ fn pending_state_requests_active_animation_polling() {
 
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::new())
+        ShellAction::Submit(Secret::new())
     );
 
     assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
@@ -417,7 +418,7 @@ fn pending_state_disables_reveal_toggle_interaction() {
 
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("s"))
+        ShellAction::Submit(Secret::from(String::from("s")))
     );
     assert!(shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64));
     assert!(!shell.reveal_toggle_hovered);
@@ -607,7 +608,7 @@ fn retry_cooldown_clears_rejected_state_after_timeout() {
     assert_eq!(shell.inline_input_status_text(), None);
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
-        ShellAction::Submit(String::from("a"))
+        ShellAction::Submit(Secret::from(String::from("a")))
     );
 }
 

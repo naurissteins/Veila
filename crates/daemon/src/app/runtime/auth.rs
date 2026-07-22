@@ -3,7 +3,7 @@ use std::time::Instant;
 use anyhow::{Result, anyhow};
 use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
 use veila_common::{
-    PowerAction,
+    PowerAction, Secret,
     ipc::{ClientMessage, DaemonMessage, LatencyReportMode},
 };
 
@@ -126,7 +126,7 @@ struct AuthAttempt {
     started_at: Instant,
     failed_attempts: u8,
     username: String,
-    secret: String,
+    secret: Secret,
     stream: UnixStream,
     sender: UnboundedSender<AuthResult>,
     latency_report: LatencyReportMode,

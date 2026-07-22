@@ -1,4 +1,5 @@
 use super::*;
+use veila_common::Secret;
 
 #[test]
 fn unfocused_input_style_uses_configured_input_border() {
@@ -659,7 +660,7 @@ fn pending_status_text_stays_hidden_until_delay_elapses() {
     let action = shell.handle_key(ShellKey::Character('a'));
     assert!(matches!(action, ShellAction::None));
     let action = shell.handle_key(ShellKey::Enter);
-    assert_eq!(action, ShellAction::Submit(String::from("a")));
+    assert_eq!(action, ShellAction::Submit(Secret::from(String::from("a"))));
 
     assert_eq!(shell.status_text(), None);
 }

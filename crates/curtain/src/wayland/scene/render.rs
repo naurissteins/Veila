@@ -96,6 +96,7 @@ impl CurtainApp {
         let scene_base = self.lock_surfaces[index]
             .scene_base
             .as_ref()
+            // Checked non-None immediately above
             .expect("scene base buffer should exist")
             .clone();
         let background_restore_ms = background_restore_started_at
@@ -120,6 +121,7 @@ impl CurtainApp {
             lock_surface
                 .shm_pool
                 .as_mut()
+                // Assigned immediately above when None
                 .expect("surface SHM pool should be initialized")
                 .render_buffer(
                     queue_handle,
@@ -238,6 +240,7 @@ impl CurtainApp {
             lock_surface
                 .shm_pool
                 .as_mut()
+                // Assigned immediately above when None
                 .expect("surface SHM pool should be initialized")
                 .render_buffer_region(
                     queue_handle,
@@ -347,6 +350,7 @@ impl CurtainApp {
         let commit_result = self.lock_surfaces[index]
             .shm_pool
             .as_mut()
+            // Assigned immediately above when None
             .expect("surface SHM pool should be initialized")
             .commit_buffer(
                 queue_handle,

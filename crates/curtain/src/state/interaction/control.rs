@@ -12,6 +12,7 @@ impl CurtainApp {
                     } else {
                         tracing::info!("received curtain unlock request from daemon");
                     }
+                    self.authorize_unlock();
                     self.request_exit();
                 }
                 ControlEvent::Reload => {

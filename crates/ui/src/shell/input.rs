@@ -18,10 +18,10 @@ impl ShellState {
                 let was_empty = self.secret.is_empty();
                 self.reveal_auth();
                 if !character.is_control()
-                    && (self.secret_selected || self.secret.chars().count() < 128)
+                    && (self.secret_selected || self.secret.char_count() < 128)
                 {
                     if self.secret_selected {
-                        self.secret.clear();
+                        self.clear_secret();
                         self.set_secret_selected(false);
                     }
                     self.secret.push(character);
@@ -37,7 +37,7 @@ impl ShellState {
                 let was_empty = self.secret.is_empty();
                 self.reveal_auth();
                 if self.secret_selected {
-                    self.secret.clear();
+                    self.clear_secret();
                     self.set_secret_selected(false);
                 } else {
                     self.secret.pop();
@@ -51,7 +51,7 @@ impl ShellState {
             }
             ShellKey::Escape => {
                 let was_empty = self.secret.is_empty();
-                self.secret.clear();
+                self.clear_secret();
                 self.set_secret_selected(false);
                 self.reveal_secret = false;
                 self.reveal_toggle_pressed = false;
@@ -63,7 +63,7 @@ impl ShellState {
             ShellKey::Clear => {
                 let was_empty = self.secret.is_empty();
                 self.reveal_auth();
-                self.secret.clear();
+                self.clear_secret();
                 self.set_secret_selected(false);
                 self.reveal_secret = false;
                 self.reveal_toggle_pressed = false;
@@ -114,7 +114,7 @@ impl ShellState {
         if !matches!(self.status, ShellStatus::Rejected { .. }) {
             self.bump_static_scene_revision();
         }
-        self.secret.clear();
+        self.clear_secret();
         self.set_secret_selected(false);
         self.reveal_secret = false;
         self.reveal_toggle_pressed = false;
@@ -244,6 +244,12 @@ impl ShellState {
         if matches!(self.status, ShellStatus::Rejected { .. }) {
             self.bump_static_scene_revision();
         }
+    }
+
+    /// Clears the secret and the revealed-password layout together
+    fn clear_secret(&mut self) {
+        self.secret.clear();
+        self.text_layout_cache.borrow_mut().forget_revealed_secret();
     }
 
     fn refresh_on_secret_empty_transition(&mut self, was_empty: bool) {

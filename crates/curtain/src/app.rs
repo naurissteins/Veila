@@ -4,6 +4,8 @@ use anyhow::{Context, Result, bail};
 use calloop::signals::{Signal, Signals};
 use smithay_client_toolkit::reexports::client::{Connection, globals::registry_queue_init};
 
+use veila_common::{elapsed_ms, elapsed_us};
+
 use crate::{CurtainOptions, preview, state::CurtainApp};
 
 pub fn run(options: CurtainOptions) -> Result<()> {
@@ -84,7 +86,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     loop_handle
         .insert_source(signals, |event, _, app: &mut CurtainApp| {
             tracing::info!(?event, "termination requested");
-            app.request_exit();
+            app.request_exit_from_signal();
         })
         .context("failed to insert signal source into event loop")?;
 
@@ -102,6 +104,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         app.drain_control_events(&queue_handle);
         app.drain_background_events(&queue_handle);
         app.drain_auth_events(&queue_handle);
+        app.advance_auth_watchdog(&queue_handle);
         app.advance_input_repeat(&queue_handle);
         app.advance_background_slideshow(&queue_handle);
         app.advance_output_power();
@@ -116,12 +119,4 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn elapsed_ms(started_at: Instant) -> u64 {
-    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
-}
-
-fn elapsed_us(started_at: Instant) -> u64 {
-    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
 }
