@@ -25,6 +25,7 @@ use crate::error::{Result, VeilaError};
 use assets::bundled_theme_dir;
 
 const DEFAULT_THEME_NAME: &str = "default";
+const SYSTEM_CONFIG_PATH: &str = "/etc/veila/config.toml";
 
 pub use background::{
     BackgroundConfig, BackgroundGradientConfig, BackgroundLayeredBaseConfig,
@@ -247,7 +248,7 @@ pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<
 
     let path = match explicit_path {
         Some(path) => path.to_path_buf(),
-        None => default_path().ok_or_else(|| {
+        None => user_config_path().ok_or_else(|| {
             VeilaError::ConfigIo(io::Error::new(
                 io::ErrorKind::NotFound,
                 "failed to resolve default config path",
@@ -282,7 +283,7 @@ pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<
             "failed to encode config after setting theme: {error}"
         )))
     })?;
-    fs::write(&path, encoded)?;
+    write_config_file(&path, &encoded)?;
     Ok(path)
 }
 
@@ -291,7 +292,7 @@ pub fn init_config(explicit_path: Option<&Path>, theme: &str, force: bool) -> Re
 
     let path = match explicit_path {
         Some(path) => path.to_path_buf(),
-        None => default_path().ok_or_else(|| {
+        None => user_config_path().ok_or_else(|| {
             VeilaError::ConfigIo(io::Error::new(
                 io::ErrorKind::NotFound,
                 "failed to resolve default config path",
@@ -319,14 +320,14 @@ pub fn init_config(explicit_path: Option<&Path>, theme: &str, force: bool) -> Re
             "failed to encode initial config: {error}"
         )))
     })?;
-    fs::write(&path, encoded)?;
+    write_config_file(&path, &encoded)?;
     Ok(path)
 }
 
 pub fn unset_theme_in_config(explicit_path: Option<&Path>) -> Result<(PathBuf, bool)> {
     let path = match explicit_path {
         Some(path) => path.to_path_buf(),
-        None => default_path().ok_or_else(|| {
+        None => user_config_path().ok_or_else(|| {
             VeilaError::ConfigIo(io::Error::new(
                 io::ErrorKind::NotFound,
                 "failed to resolve default config path",
@@ -361,16 +362,48 @@ pub fn unset_theme_in_config(explicit_path: Option<&Path>) -> Result<(PathBuf, b
             )))
         })?
     };
-    fs::write(&path, encoded)?;
+    write_config_file(&path, &encoded)?;
     Ok((path, true))
 }
 
-fn default_path() -> Option<PathBuf> {
+fn write_config_file(path: &Path, contents: &str) -> Result<()> {
+    fs::write(path, contents).map_err(|error| match error.kind() {
+        io::ErrorKind::PermissionDenied | io::ErrorKind::ReadOnlyFilesystem => {
+            VeilaError::ConfigIo(io::Error::new(
+                error.kind(),
+                format!(
+                    "cannot write {}: the config file is read-only, so it is likely managed declaratively; change it at its source instead",
+                    path.display()
+                ),
+            ))
+        }
+        _ => VeilaError::ConfigIo(error),
+    })
+}
+
+fn user_config_path() -> Option<PathBuf> {
     let config_root = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
 
     Some(config_root.join("veila").join("config.toml"))
+}
+
+fn default_path() -> Option<PathBuf> {
+    resolve_default_path(user_config_path(), Path::new(SYSTEM_CONFIG_PATH))
+}
+
+fn resolve_default_path(user: Option<PathBuf>, system: &Path) -> Option<PathBuf> {
+    match user {
+        Some(path) if path.exists() => Some(path),
+        user => {
+            if system.exists() {
+                Some(system.to_path_buf())
+            } else {
+                user
+            }
+        }
+    }
 }
 
 pub fn active_include_source_paths(explicit_config_path: Option<&Path>) -> Result<Vec<PathBuf>> {

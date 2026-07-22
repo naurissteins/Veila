@@ -5,7 +5,7 @@ use thiserror::Error;
 pub enum VeilaError {
     #[error("failed to parse config: {0}")]
     Config(#[from] toml::de::Error),
-    #[error("failed to load config: {0}")]
+    #[error("config file error: {0}")]
     ConfigIo(#[from] std::io::Error),
     #[error("unknown theme preset '{0}'")]
     ThemeNotFound(String),
