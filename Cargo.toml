@@ -36,6 +36,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = { version = "3", default-features = true, features = ["json"] }
 wayland-protocols-wlr = "0.3"
-xkbcommon = "0.8"
+xkbcommon = "0.9"
 zeroize = "1"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
