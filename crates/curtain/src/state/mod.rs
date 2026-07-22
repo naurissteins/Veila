@@ -64,6 +64,8 @@ use crate::{
     keyboard_cache::load_keyboard_layout_label,
 };
 
+pub(crate) use veila_common::{duration_ms_between, elapsed_ms, elapsed_us};
+
 pub(crate) use power::ScreenOffState;
 pub(crate) use profiler::{DirtyRenderTimingSample, RenderProfiler, RenderTimingSample};
 pub(crate) use repeat::KeyRepeatState;
@@ -819,23 +821,6 @@ impl CurtainApp {
             .position(|surface| surface.size.is_some())
             .or_else(|| (!self.lock_surfaces.is_empty()).then_some(0))
     }
-}
-
-pub(crate) fn elapsed_ms(started_at: Instant) -> u64 {
-    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
-}
-
-pub(crate) fn elapsed_us(started_at: Instant) -> u64 {
-    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
-}
-
-pub(crate) fn duration_ms_between(started_at: Option<Instant>, ended_at: Instant) -> Option<u64> {
-    started_at.map(|started_at| {
-        ended_at
-            .saturating_duration_since(started_at)
-            .as_millis()
-            .min(u128::from(u64::MAX)) as u64
-    })
 }
 
 pub(crate) fn background_treatment(

@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{BufReader, Write},
     os::unix::fs::MetadataExt,
     os::unix::net::UnixStream,
     path::{Path, PathBuf},
@@ -9,6 +9,8 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
+
+use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
 use veila_common::{
     PowerAction, Secret,
@@ -34,7 +36,6 @@ pub(crate) enum AuthEvent {
     },
 }
 
-const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
 const AUTH_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 const AUTH_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -170,37 +171,6 @@ fn verify_socket_peer(stream: &UnixStream, socket_path: &Path) -> Result<()> {
         );
     }
     Ok(())
-}
-
-fn read_bounded_line<R: BufRead>(reader: &mut R, label: &str) -> Result<Option<String>> {
-    let mut line = Vec::new();
-
-    loop {
-        let buffer = reader
-            .fill_buf()
-            .with_context(|| format!("failed to read {label}"))?;
-        if buffer.is_empty() {
-            if line.is_empty() {
-                return Ok(None);
-            }
-            bail!("{label} ended before newline");
-        }
-
-        let line_end = buffer.iter().position(|byte| *byte == b'\n');
-        let consumed = line_end.unwrap_or(buffer.len());
-        if line.len() + consumed > IPC_MAX_LINE_BYTES {
-            bail!("{label} exceeds {IPC_MAX_LINE_BYTES} bytes");
-        }
-
-        line.extend_from_slice(&buffer[..consumed]);
-        reader.consume(consumed + usize::from(line_end.is_some()));
-
-        if line_end.is_some() {
-            return String::from_utf8(line)
-                .map(Some)
-                .with_context(|| format!("{label} is not UTF-8"));
-        }
-    }
 }
 
 #[cfg(test)]

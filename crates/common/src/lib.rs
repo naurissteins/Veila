@@ -9,6 +9,7 @@ pub mod ipc;
 pub mod now_playing;
 pub mod power;
 pub mod secret;
+pub mod time;
 pub mod weather;
 
 pub use battery::BatterySnapshot;
@@ -34,4 +35,5 @@ pub use ipc::FingerprintStatus;
 pub use now_playing::NowPlayingSnapshot;
 pub use power::PowerAction;
 pub use secret::{SECRET_CAPACITY, Secret};
+pub use time::{duration_ms, duration_ms_between, duration_us, elapsed_ms, elapsed_us};
 pub use weather::{WeatherCondition, WeatherSnapshot};

@@ -11,14 +11,13 @@ use tokio::{
     net::{UnixListener, UnixStream},
 };
 use veila_common::ipc::{
-    ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, decode_message,
-    encode_message,
+    ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, LineAccumulator,
+    LineProgress, decode_message, encode_message,
 };
 use zeroize::{Zeroize, Zeroizing};
 
 const SOCKET_MODE: u32 = 0o600;
 const RUNTIME_DIR_MODE: u32 = 0o700;
-const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
 const SECRET_LINE_CAPACITY: usize = 2 * 1024;
 
 pub async fn bind_listener(path: &Path) -> Result<UnixListener> {
@@ -280,7 +279,9 @@ fn verify_peer_uid(stream: &UnixStream) -> Result<()> {
 }
 
 async fn read_bounded_line(stream: &mut UnixStream, label: &str) -> Result<Option<String>> {
-    let mut line = Vec::with_capacity(SECRET_LINE_CAPACITY);
+    // Pre-sized so an auth request lands without the buffer reallocating, which would strand a
+    // cleartext copy of the password in freed memory that zeroizing can no longer reach
+    let mut accumulator = LineAccumulator::with_capacity(SECRET_LINE_CAPACITY);
     let mut chunk = Zeroizing::new([0_u8; 1024]);
 
     loop {
@@ -289,26 +290,12 @@ async fn read_bounded_line(stream: &mut UnixStream, label: &str) -> Result<Optio
             .await
             .with_context(|| format!("failed to read {label}"))?;
         if read == 0 {
-            if line.is_empty() {
-                return Ok(None);
-            }
-            line.zeroize();
-            bail!("{label} ended before newline");
+            return accumulator.finish(label).map_err(Into::into);
         }
 
-        let bytes = &chunk[..read];
-        let line_end = bytes.iter().position(|byte| *byte == b'\n');
-        let consumed = line_end.unwrap_or(bytes.len());
-        if line.len() + consumed > IPC_MAX_LINE_BYTES {
-            line.zeroize();
-            bail!("{label} exceeds {IPC_MAX_LINE_BYTES} bytes");
-        }
-
-        line.extend_from_slice(&bytes[..consumed]);
-        if line_end.is_some() {
-            return String::from_utf8(line)
-                .map(Some)
-                .with_context(|| format!("{label} is not UTF-8"));
+        match accumulator.push_chunk(&chunk[..read], label)? {
+            LineProgress::Complete { line, .. } => return Ok(Some(line)),
+            LineProgress::Pending => {}
         }
     }
 }

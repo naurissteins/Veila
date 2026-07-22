@@ -13,6 +13,8 @@ pub enum VeilaError {
     InvalidThemeName(String),
     #[error("failed to encode or decode ipc message: {0}")]
     IpcCodec(#[from] serde_json::Error),
+    #[error("invalid ipc message framing: {0}")]
+    IpcFraming(String),
 }
 
 /// Common result type for shared Veila libraries.

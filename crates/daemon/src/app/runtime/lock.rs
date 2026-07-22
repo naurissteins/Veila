@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot,
+    BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, elapsed_ms, elapsed_us,
     ipc::{CurtainLatencyReport, LatencyReportMode, LockLatencyReport},
 };
 
@@ -162,14 +162,6 @@ If you ran `cargo run -p veila-daemon` after changing curtain startup arguments 
             ))
         }
     }
-}
-
-fn elapsed_ms(started_at: Instant) -> u64 {
-    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
-}
-
-fn elapsed_us(started_at: Instant) -> u64 {
-    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
 }
 
 async fn read_curtain_latency_report(stream: UnixStream) -> Option<CurtainLatencyReport> {

@@ -4,6 +4,8 @@ use anyhow::{Context, Result, bail};
 use calloop::signals::{Signal, Signals};
 use smithay_client_toolkit::reexports::client::{Connection, globals::registry_queue_init};
 
+use veila_common::{elapsed_ms, elapsed_us};
+
 use crate::{CurtainOptions, preview, state::CurtainApp};
 
 pub fn run(options: CurtainOptions) -> Result<()> {
@@ -117,12 +119,4 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn elapsed_ms(started_at: Instant) -> u64 {
-    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
-}
-
-fn elapsed_us(started_at: Instant) -> u64 {
-    started_at.elapsed().as_micros().min(u128::from(u64::MAX)) as u64
 }

@@ -116,6 +116,7 @@ fn parse_svg_asset(svg: &str) -> ParsedIcon {
 }
 
 fn empty_path() -> Path {
+    // Infallible: a 1x1 rect at the origin is always valid
     PathBuilder::from_rect(tiny_skia::Rect::from_xywh(0.0, 0.0, 1.0, 1.0).expect("rect"))
 }
 

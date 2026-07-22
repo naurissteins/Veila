@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader},
+    io::BufReader,
     os::unix::fs::{MetadataExt, PermissionsExt},
     os::unix::net::{UnixListener, UnixStream},
     path::PathBuf,
@@ -9,6 +9,8 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
+
+use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
 use veila_common::ipc::{CurtainControlMessage, decode_message};
 use veila_common::{FingerprintStatus, NowPlayingSnapshot, ipc::LockPowerStatusSnapshot};
@@ -33,7 +35,6 @@ pub(crate) enum ControlEvent {
 }
 
 const CONTROL_SOCKET_MODE: u32 = 0o600;
-const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
 const ACCEPT_BACKOFF_MIN: Duration = Duration::from_millis(50);
 const ACCEPT_BACKOFF_MAX: Duration = Duration::from_secs(1);
 const CONTROL_READ_TIMEOUT: Duration = Duration::from_secs(5);
@@ -175,37 +176,6 @@ fn control_event(message: CurtainControlMessage) -> ControlEvent {
         }
         CurtainControlMessage::UpdateFingerprintStatus { status } => {
             ControlEvent::UpdateFingerprintStatus { status }
-        }
-    }
-}
-
-fn read_bounded_line<R: BufRead>(reader: &mut R, label: &str) -> Result<Option<String>> {
-    let mut line = Vec::new();
-
-    loop {
-        let buffer = reader
-            .fill_buf()
-            .with_context(|| format!("failed to read {label}"))?;
-        if buffer.is_empty() {
-            if line.is_empty() {
-                return Ok(None);
-            }
-            bail!("{label} ended before newline");
-        }
-
-        let line_end = buffer.iter().position(|byte| *byte == b'\n');
-        let consumed = line_end.unwrap_or(buffer.len());
-        if line.len() + consumed > IPC_MAX_LINE_BYTES {
-            bail!("{label} exceeds {IPC_MAX_LINE_BYTES} bytes");
-        }
-
-        line.extend_from_slice(&buffer[..consumed]);
-        reader.consume(consumed + usize::from(line_end.is_some()));
-
-        if line_end.is_some() {
-            return String::from_utf8(line)
-                .map(Some)
-                .with_context(|| format!("{label} is not UTF-8"));
         }
     }
 }

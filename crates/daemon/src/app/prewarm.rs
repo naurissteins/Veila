@@ -10,6 +10,7 @@ use veila_common::{
         BackgroundLayeredBaseMode, BackgroundLayeredConfig,
         BackgroundScaling as ConfigBackgroundScaling,
     },
+    elapsed_ms,
 };
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
@@ -916,10 +917,6 @@ fn to_layered_background(config: &BackgroundLayeredConfig) -> BackgroundLayered 
 fn blob_color(color: RgbColor, opacity: u8) -> ClearColor {
     let alpha = ((u16::from(color.3) * u16::from(opacity.min(100)) + 50) / 100) as u8;
     ClearColor::rgba(color.0, color.1, color.2, alpha)
-}
-
-fn elapsed_ms(started_at: Instant) -> u64 {
-    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
 }
 
 struct PrewarmReport {
