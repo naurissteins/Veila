@@ -1,3 +1,20 @@
+veila (0.4.4-1) UNRELEASED; urgency=medium
+
+  * Add slideshow crossfade transitions with configurable
+    transition_duration_ms (opt-in; default 0 for an instant cut).
+  * Fix lock wallpaper flash and delay when sway rewrites the slideshow
+    include file: skip include-change reloads on the active curtain session
+    and keep the wallpaper fixed for the lock; theme and widgets still
+    reload live.
+  * Prewarm slideshow wallpapers and the static scene cache before spawn
+    to reduce lock latency and cache misses.
+  * Fix crossfade when the next wallpaper is already cached: the background
+    loader still delivers BuffersReady so the transition can animate.
+  * Ignore redundant deferred wallpaper updates when the surface already
+    shows the correct image.
+
+ -- Stéphane Cottin <stephane.cottin@vixns.com>  Sun, 05 Jul 2026 20:30:00 +0200
+
 veila (0.1.5-1) UNRELEASED; urgency=medium
 
   * Initial Debian packaging for Launchpad PPA builds.

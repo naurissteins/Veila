@@ -10,6 +10,16 @@ use smithay_client_toolkit::{
 use crate::state::{CurtainApp, SurfaceSize, duration_ms_between, elapsed_ms, elapsed_us};
 
 impl CurtainApp {
+    pub(crate) fn reset_lock_surface_render_state(&mut self, index: usize) {
+        let surface = &mut self.lock_surfaces[index];
+        surface.shm_pool = None;
+        surface.scene_base = None;
+        surface.scene_base_revision = 0;
+        surface.scene_base_has_layers = false;
+        surface.background = None;
+        surface.background_path = None;
+    }
+
     pub(crate) fn configure_surface(
         &mut self,
         queue_handle: &QueueHandle<Self>,
@@ -27,7 +37,11 @@ impl CurtainApp {
 
         let size = self.resolve_surface_size(index, configure.new_size);
         let was_unconfigured = self.lock_surfaces[index].size.is_none();
+        let previous_size = self.lock_surfaces[index].size;
         self.lock_surfaces[index].size = Some(size);
+        if previous_size.is_some() && previous_size != Some(size) {
+            self.reset_lock_surface_render_state(index);
+        }
         self.log_surface_size(index, configure.new_size, size);
         if was_unconfigured && !self.first_surface_configured_logged {
             self.first_surface_configured_logged = true;
@@ -76,6 +90,16 @@ impl CurtainApp {
 
         self.maybe_notify_ready();
         self.flush_pending_pre_ready_redraw(queue_handle);
+        self.flush_pending_deferred_redraw(queue_handle);
+    }
+
+    pub(crate) fn flush_pending_deferred_redraw(&mut self, queue_handle: &QueueHandle<Self>) {
+        if !self.ready_notified || !self.pending_deferred_redraw {
+            return;
+        }
+
+        self.pending_deferred_redraw = false;
+        self.render_all_surfaces(queue_handle);
     }
 
     pub(crate) fn render_all_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
@@ -126,6 +150,13 @@ impl CurtainApp {
 
         for (surface, size) in surfaces {
             if let Err(error) = self.render_auth_dirty_surface(&surface, size, queue_handle) {
+                if Self::is_buffer_slots_busy(&error) {
+                    tracing::debug!(
+                        "deferring auth dirty redraw until SHM buffer slots are released"
+                    );
+                    self.pending_deferred_redraw = true;
+                    continue;
+                }
                 self.failure_reason =
                     Some(format!("failed to rerender auth dirty region: {error:#}"));
                 self.exit_requested = true;
@@ -188,11 +219,6 @@ impl CurtainApp {
             return;
         }
 
-        for surface in &mut self.lock_surfaces {
-            surface.scene_base = None;
-            surface.scene_base_revision = 0;
-            surface.scene_base_has_layers = false;
-        }
         self.pending_pre_ready_redraw = true;
     }
 
@@ -203,6 +229,17 @@ impl CurtainApp {
 
         self.pending_pre_ready_redraw = false;
         self.render_all_surfaces(queue_handle);
+    }
+
+    pub(crate) fn estimated_surface_size(&self, index: usize) -> Option<SurfaceSize> {
+        let info = self.output_state.info(&self.lock_surfaces[index].output)?;
+        let (width, height) = logical_size(&info)?;
+        Some(SurfaceSize::new_with_fractional_scale(
+            width as u32,
+            height as u32,
+            self.surface_scale(index),
+            self.surface_fractional_scale(index),
+        ))
     }
 
     pub(crate) fn resolve_surface_size(&self, index: usize, requested: (u32, u32)) -> SurfaceSize {

@@ -107,8 +107,10 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         app.advance_auth_watchdog(&queue_handle);
         app.advance_input_repeat(&queue_handle);
         app.advance_background_slideshow(&queue_handle);
+        app.advance_slideshow_transition(&queue_handle);
         app.advance_output_power();
         app.advance_animated_scene(&queue_handle);
+        app.flush_pending_deferred_redraw(&queue_handle);
         app.check_lock_deadline()?;
     }
 

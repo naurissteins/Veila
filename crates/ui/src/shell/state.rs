@@ -353,9 +353,18 @@ impl ShellState {
         }
     }
 
-    pub fn set_avatar(&mut self, avatar: AvatarAsset) {
+    pub fn set_avatar(&mut self, avatar: AvatarAsset) -> bool {
+        if self.avatar.cache_key() == avatar.cache_key() {
+            return false;
+        }
+
         self.avatar = avatar;
         self.bump_static_scene_revision();
+        true
+    }
+
+    pub fn avatar_cache_key(&self) -> String {
+        self.avatar.cache_key()
     }
 
     pub fn set_focus(&mut self, focused: bool) {

@@ -8,6 +8,18 @@ use serde::{Deserialize, Serialize};
 
 use super::RgbColor;
 
+/// Compares wallpaper paths for slideshow selection and daemon handoff.
+pub fn wallpaper_paths_equal(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+
+    match (fs::canonicalize(left), fs::canonicalize(right)) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BackgroundMode {
@@ -73,6 +85,8 @@ pub struct BackgroundSlideshowConfig {
     pub mode: BackgroundSlideshowMode,
     #[serde(default = "default_background_slideshow_change_every_seconds")]
     pub change_every_seconds: u64,
+    #[serde(default = "default_background_slideshow_transition_duration_ms")]
+    pub transition_duration_ms: u16,
 }
 
 impl Default for BackgroundSlideshowConfig {
@@ -84,6 +98,7 @@ impl Default for BackgroundSlideshowConfig {
             order: BackgroundSlideshowOrder::Sequence,
             mode: BackgroundSlideshowMode::Timed,
             change_every_seconds: default_background_slideshow_change_every_seconds(),
+            transition_duration_ms: default_background_slideshow_transition_duration_ms(),
         }
     }
 }
@@ -95,6 +110,10 @@ impl BackgroundSlideshowConfig {
 
     pub fn change_interval(&self) -> Duration {
         Duration::from_secs(self.change_every_seconds.max(1))
+    }
+
+    pub fn transition_duration(&self) -> Duration {
+        Duration::from_millis(self.transition_duration_ms.clamp(0, 10_000) as u64)
     }
 
     pub const fn rotates_while_locked(&self) -> bool {
@@ -402,6 +421,10 @@ const fn default_background_slideshow_enabled() -> bool {
 
 const fn default_background_slideshow_change_every_seconds() -> u64 {
     300
+}
+
+const fn default_background_slideshow_transition_duration_ms() -> u16 {
+    0
 }
 
 const fn default_background_blur_strength() -> u8 {

@@ -66,11 +66,18 @@ impl LockedSuspendState {
         now: Instant,
         active_lock: bool,
     ) {
+        let policy_changed = self.delay != delay
+            || self.battery_only != battery_only
+            || self.skip_while_media_playing != skip_while_media_playing;
         self.delay = delay;
         self.battery_only = battery_only;
         self.skip_while_media_playing = skip_while_media_playing;
-        self.suspend_requested = false;
-        self.last_reported_skip_reason = None;
+        // Wallpaper/config reloads must not clear an in-flight suspend request:
+        // that was re-arming Ready immediately and double-suspending (NVIDIA hang).
+        if policy_changed {
+            self.suspend_requested = false;
+            self.last_reported_skip_reason = None;
+        }
         self.last_activity_at = if !active_lock || delay.is_none() {
             None
         } else {
@@ -270,6 +277,26 @@ mod tests {
 
         assert_eq!(
             state.evaluate(now + Duration::from_secs(7), true, false, None, false),
+            SuspendDecision::Pending
+        );
+    }
+
+    #[test]
+    fn unchanged_policy_reload_preserves_in_flight_suspend_request() {
+        let now = Instant::now();
+        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, false);
+        state.arm(now);
+        state.mark_requested();
+        state.set_policy(
+            Some(Duration::from_secs(5)),
+            false,
+            false,
+            now + Duration::from_secs(6),
+            true,
+        );
+
+        assert_eq!(
+            state.evaluate(now + Duration::from_secs(6), true, false, None, false),
             SuspendDecision::Pending
         );
     }

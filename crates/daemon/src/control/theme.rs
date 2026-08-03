@@ -72,6 +72,7 @@ pub(super) async fn set_theme_and_reload(
                 match status.live_reload {
                     veila_common::ipc::LiveReloadStatus::NotActive => "not-active",
                     veila_common::ipc::LiveReloadStatus::Forwarded => "forwarded",
+                    veila_common::ipc::LiveReloadStatus::Skipped => "skipped",
                 }
             );
         }
@@ -133,6 +134,7 @@ pub(super) async fn unset_theme_and_reload(
                 match status.live_reload {
                     veila_common::ipc::LiveReloadStatus::NotActive => "not-active",
                     veila_common::ipc::LiveReloadStatus::Forwarded => "forwarded",
+                    veila_common::ipc::LiveReloadStatus::Skipped => "skipped",
                 }
             );
         }

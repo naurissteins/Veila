@@ -48,6 +48,18 @@ pub(crate) fn spawn_loader(
         let cached_buffers = load_cached_buffers(&path, treatment, &unique_sizes);
         let cached_sizes: Vec<_> = cached_buffers.iter().map(|(size, _)| *size).collect();
 
+        if cached_sizes.len() == unique_sizes.len() {
+            if !cached_buffers.is_empty() {
+                let _ = sender.send(BackgroundEvent::BuffersReady {
+                    path: path.clone(),
+                    buffers: cached_buffers,
+                    elapsed_ms: cached_started_at.elapsed().as_millis(),
+                    cache_hit: true,
+                });
+            }
+            return;
+        }
+
         if !cached_buffers.is_empty() {
             let _ = sender.send(BackgroundEvent::BuffersReady {
                 path: path.clone(),

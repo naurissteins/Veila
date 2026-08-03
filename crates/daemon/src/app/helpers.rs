@@ -253,6 +253,12 @@ pub(super) async fn apply_loaded_config(
 
     let live_reload = if !state.is_active() {
         Ok(LiveReloadStatus::NotActive)
+    } else if reload_source == "include-change" {
+        tracing::debug!(
+            reload_source,
+            "skipping curtain reload during active lock; wallpaper is fixed for the session"
+        );
+        Ok(LiveReloadStatus::Skipped)
     } else if let Some(control_socket_path) = control_socket_path {
         process::request_curtain_reload(control_socket_path)
             .await
@@ -273,6 +279,7 @@ pub(super) async fn apply_loaded_config(
     let live_reload_status = match live_reload {
         LiveReloadStatus::NotActive => "not-active",
         LiveReloadStatus::Forwarded => "forwarded",
+        LiveReloadStatus::Skipped => "skipped",
     };
     if let Some(reload_debounce_ms) = reload_debounce_ms {
         tracing::info!(

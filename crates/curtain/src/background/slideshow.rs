@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use veila_common::config::{BackgroundConfig, BackgroundSlideshowMode, BackgroundSlideshowOrder};
+use veila_common::config::{BackgroundConfig, BackgroundSlideshowMode, BackgroundSlideshowOrder, wallpaper_paths_equal};
 
 pub(crate) struct BackgroundSlideshow {
     paths: Vec<PathBuf>,
@@ -12,6 +12,7 @@ pub(crate) struct BackgroundSlideshow {
     sequence: Vec<usize>,
     position: usize,
     change_interval: Duration,
+    transition_duration: Duration,
     next_change_at: Option<Instant>,
 }
 
@@ -41,8 +42,22 @@ impl BackgroundSlideshow {
             .or_else(|| background.resolved_slideshow_initial_path().ok().flatten());
         let initial_index = initial_path
             .as_deref()
-            .and_then(|initial_path| paths.iter().position(|path| path.as_path() == initial_path))
-            .unwrap_or(0);
+            .and_then(|initial_path| {
+                paths
+                    .iter()
+                    .position(|path| wallpaper_paths_equal(path, initial_path))
+            })
+            .unwrap_or_else(|| {
+                if initial_path.is_some() {
+                    tracing::warn!(
+                        requested = initial_path
+                            .as_deref()
+                            .map(|path| path.display().to_string()),
+                        "daemon-selected slideshow wallpaper was not found in resolved paths; falling back to first entry"
+                    );
+                }
+                0
+            });
         let sequence = slideshow_sequence(paths.len(), order, initial_index);
 
         let next_change_at = (paths.len() > 1 && slideshow.rotates_while_locked())
@@ -55,8 +70,13 @@ impl BackgroundSlideshow {
             sequence,
             position: 0,
             change_interval: slideshow.change_interval(),
+            transition_duration: slideshow.transition_duration(),
             next_change_at,
         })
+    }
+
+    pub(crate) fn transition_duration(&self) -> Duration {
+        self.transition_duration
     }
 
     pub(crate) fn current_path(&self) -> &Path {
@@ -196,6 +216,7 @@ mod tests {
             sequence: vec![0, 1],
             position: 1,
             change_interval: Duration::from_secs(5),
+            transition_duration: Duration::from_millis(800),
             next_change_at: Some(Instant::now()),
         };
 
@@ -217,6 +238,7 @@ mod tests {
             sequence: vec![0, 1],
             position: 0,
             change_interval: Duration::from_secs(5),
+            transition_duration: Duration::from_millis(800),
             next_change_at: None,
         };
 

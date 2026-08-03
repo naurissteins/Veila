@@ -2,7 +2,10 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
-use veila_renderer::{PixelBuffer, copy_rect_from, shm};
+use veila_renderer::{
+    ClearColor, CrossfadeProgress, PixelBuffer, RendererError, SoftwareBuffer, copy_rect_from,
+    crossfade_buffers_into, shm,
+};
 
 use crate::state::{CurtainApp, DirtyRenderTimingSample, RenderTimingSample, SurfaceSize};
 
@@ -15,12 +18,79 @@ impl CurtainApp {
     ) -> Result<()> {
         match self.render_surface(surface, size, queue_handle) {
             Ok(()) => Ok(()),
-            Err(error) if !self.ui_shell.emergency_active() => {
+            Err(error) if Self::is_buffer_slots_busy(&error) => {
+                tracing::debug!("deferring curtain redraw until SHM buffer slots are released");
+                self.pending_deferred_redraw = true;
+                Ok(())
+            }
+            Err(error)
+                if !self.ui_shell.emergency_active()
+                    && !Self::is_buffer_slots_busy(&error)
+                    && Self::is_recoverable_scene_error(&error) =>
+            {
+                // Output/mode churn on resume (NVIDIA) invalidates scene buffers mid-lock.
+                // Rebuild once before falling back to the emergency unlock UI.
+                tracing::warn!(
+                    error = %error,
+                    "recoverable curtain render failure; rebuilding scene before emergency UI"
+                );
+                self.abandon_slideshow_transition_for_rebuild();
+                if let Some(index) = self
+                    .lock_surfaces
+                    .iter()
+                    .position(|entry| entry.surface.wl_surface() == surface.wl_surface())
+                {
+                    self.reset_lock_surface_render_state(index);
+                }
+                match self.render_surface(surface, size, queue_handle) {
+                    Ok(()) => Ok(()),
+                    Err(retry_error) => {
+                        let reason = format!("{retry_error:#}");
+                        self.activate_emergency_ui(&reason)?;
+                        self.render_surface(surface, size, queue_handle)
+                    }
+                }
+            }
+            Err(error)
+                if !self.ui_shell.emergency_active() && !Self::is_buffer_slots_busy(&error) =>
+            {
                 let reason = format!("{error:#}");
                 self.activate_emergency_ui(&reason)?;
                 self.render_surface(surface, size, queue_handle)
             }
             Err(error) => Err(error),
+        }
+    }
+
+    pub(crate) fn is_buffer_slots_busy(error: &anyhow::Error) -> bool {
+        error.chain().any(|cause| {
+            cause
+                .downcast_ref::<RendererError>()
+                .is_some_and(|err| matches!(err, RendererError::BufferSlotsBusy))
+        }) || error
+            .to_string()
+            .contains("buffer slots are still in use by the compositor")
+    }
+
+    fn is_recoverable_scene_error(error: &anyhow::Error) -> bool {
+        error.chain().any(|cause| {
+            if let Some(err) = cause.downcast_ref::<RendererError>() {
+                return matches!(
+                    err,
+                    RendererError::BufferSizeMismatch { .. } | RendererError::InvalidFrameSize(_)
+                );
+            }
+            let message = cause.to_string();
+            message.contains("scene base buffer is unavailable")
+                || message.contains("background buffer is unavailable")
+                || message.contains("buffer size mismatch")
+                || message.contains("failed to render crossfaded slideshow frame")
+        })
+    }
+
+    fn abandon_slideshow_transition_for_rebuild(&mut self) {
+        if self.slideshow_transition.take().is_some() {
+            tracing::info!("abandoned slideshow crossfade to rebuild lock scene after output churn");
         }
     }
 
@@ -46,6 +116,34 @@ impl CurtainApp {
         let revision = self.ui_shell.static_scene_revision();
         let output_role = self.output_role_for_surface(index);
         let ui_visible = output_role.renders_shell();
+
+        if let Some((from, to, progress)) = self.slideshow_crossfade_for_surface(index) {
+            if from.size() != frame_size || to.size() != frame_size {
+                // Mode/scale change mid-crossfade (common after S3): drop transition
+                // and rebuild a normal frame instead of emergency UI.
+                tracing::warn!(
+                    from = ?from.size(),
+                    to = ?to.size(),
+                    target = ?frame_size,
+                    "slideshow crossfade size mismatch after output change; rebuilding scene"
+                );
+                self.abandon_slideshow_transition_for_rebuild();
+                self.reset_lock_surface_render_state(index);
+            } else {
+                return self.render_surface_slideshow_crossfade(
+                    index,
+                    surface,
+                    size,
+                    queue_handle,
+                    &from,
+                    &to,
+                    progress,
+                    ui_visible,
+                    output_role.as_str(),
+                );
+            }
+        }
+
         let background_started_at = timing_enabled.then(Instant::now);
         let scene_base_cache_ready = if ui_visible {
             self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
@@ -89,7 +187,23 @@ impl CurtainApp {
         }
 
         if self.lock_surfaces[index].scene_base.is_none() {
-            return Err(anyhow!("scene base buffer is unavailable"));
+            // prepare_* may have skipped rebuild while a slideshow load held a
+            // background-only surface. Force a full scene_base rebuild.
+            self.abandon_slideshow_transition_for_rebuild();
+            let _ = self.prepare_scene_base(index, size, true)?;
+        }
+        if self.lock_surfaces[index].scene_base.is_none() {
+            tracing::warn!("scene base still missing after rebuild; using solid fallback buffer");
+            let mut buffer = SoftwareBuffer::solid(frame_size, ClearColor::opaque(12, 14, 18))
+                .map_err(|error| anyhow!("failed to allocate fallback scene base: {error}"))?;
+            let render_scale = size.scale.max(1) as u32;
+            self.ui_shell
+                .render_static_backdrops_scaled(&mut buffer, render_scale);
+            let has_layers = self.render_static_scene_overlay(&mut buffer, render_scale);
+            self.lock_surfaces[index].scene_base = Some(std::sync::Arc::new(buffer));
+            self.lock_surfaces[index].scene_base_revision = revision;
+            self.lock_surfaces[index].scene_base_has_layers = has_layers;
+            self.lock_surfaces[index].background = None;
         }
 
         let background_restore_started_at = timing_enabled.then(Instant::now);
@@ -263,8 +377,22 @@ impl CurtainApp {
                     },
                 )
                 .map(|_| damaged)
-        }
-        .map_err(|error| anyhow!("failed to render and commit auth dirty region: {error}"))?;
+        };
+        let damaged = match damaged {
+            Ok(damaged) => damaged,
+            Err(veila_renderer::RendererError::BufferSlotsBusy) => {
+                tracing::debug!(
+                    "auth dirty region: deferring until SHM buffer slots are released"
+                );
+                self.pending_deferred_redraw = true;
+                return Ok(());
+            }
+            Err(error) => {
+                return Err(anyhow!(
+                    "failed to render and commit auth dirty region: {error}"
+                ));
+            }
+        };
 
         if let Some(started_at) = total_started_at {
             let commit_ms = commit_started_at
@@ -436,5 +564,76 @@ impl CurtainApp {
             Some(elapsed.as_millis().min(u128::from(u64::MAX)) as u64);
         self.latency_timings.first_frame_us =
             Some(elapsed.as_micros().min(u128::from(u64::MAX)) as u64);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_surface_slideshow_crossfade(
+        &mut self,
+        index: usize,
+        surface: &SessionLockSurface,
+        size: SurfaceSize,
+        queue_handle: &QueueHandle<Self>,
+        from: &veila_renderer::SoftwareBuffer,
+        to: &veila_renderer::SoftwareBuffer,
+        progress: CrossfadeProgress,
+        ui_visible: bool,
+        output_role: &'static str,
+    ) -> Result<()> {
+        let frame_size = size.buffer;
+        let render_scale = size.scale.max(1) as u32;
+
+        if self.lock_surfaces[index].shm_pool.is_none() {
+            self.lock_surfaces[index].shm_pool =
+                Some(shm::SurfaceBufferPool::new(&self.shm, frame_size)?);
+        }
+        self.configure_viewport_for_surface(index, size);
+
+        // Request the next vsync-aligned frame callback so the crossfade advances
+        // in step with the compositor's refresh instead of a wall-clock timer.
+        self.request_surface_frame_callback(index, queue_handle);
+
+        if !ui_visible {
+            self.lock_surfaces[index]
+                .shm_pool
+                .as_mut()
+                .expect("surface SHM pool should be initialized")
+                .render_buffer(
+                    queue_handle,
+                    surface.wl_surface(),
+                    frame_size,
+                    size.buffer_scale_for_commit(),
+                    |buffer| crossfade_buffers_into(from, to, progress, buffer),
+                )
+                .map_err(|error| anyhow!("failed to commit crossfaded background: {error}"))?;
+            return Ok(());
+        }
+
+        let ui_shell = &self.ui_shell;
+        self.lock_surfaces[index]
+            .shm_pool
+            .as_mut()
+            .expect("surface SHM pool should be initialized")
+            .render_buffer(
+                queue_handle,
+                surface.wl_surface(),
+                frame_size,
+                size.buffer_scale_for_commit(),
+                |buffer| {
+                    crossfade_buffers_into(from, to, progress, buffer)?;
+                    ui_shell.render_dynamic_overlay_scaled(buffer, render_scale);
+                    Ok(())
+                },
+            )
+            .map_err(|error| anyhow!("failed to render crossfaded slideshow frame: {error}"))?;
+
+        tracing::trace!(
+            output_role,
+            progress,
+            width = frame_size.width,
+            height = frame_size.height,
+            "rendered slideshow crossfade frame"
+        );
+
+        Ok(())
     }
 }

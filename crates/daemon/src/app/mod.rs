@@ -211,13 +211,19 @@ pub async fn run(
                         }
                     }
                     Ok(_) => {
-                        if runtime.state.is_active()
-                            && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
-                        {
-                            match crate::adapters::process::request_curtain_mark_resumed(control_socket_path).await {
-                                Ok(()) => {}
-                                Err(error) => {
-                                    tracing::warn!("failed to mark curtain as resumed after sleep: {error:#}");
+                        // After resume, restart the full idle suspend delay. Immediate
+                        // re-suspend races NVIDIA uvm_suspend and bricks reboot.
+                        if runtime.state.is_active() {
+                            runtime.suspend_state.arm(std::time::Instant::now());
+                            runtime.last_power_status_snapshot = None;
+                            runtime.power_status_sent = false;
+                            if let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+                            {
+                                match crate::adapters::process::request_curtain_mark_resumed(control_socket_path).await {
+                                    Ok(()) => {}
+                                    Err(error) => {
+                                        tracing::warn!("failed to mark curtain as resumed after sleep: {error:#}");
+                                    }
                                 }
                             }
                         }
@@ -375,6 +381,9 @@ pub async fn run(
                                 );
                             }
                             Err(error) => {
+                                // Back off a full idle period instead of hammering logind
+                                // (InteractiveAuthorizationRequired / OperationInProgress).
+                                runtime.suspend_state.arm(now);
                                 tracing::warn!(
                                     "failed to request system suspend after locked inactivity: {error:#}"
                                 );

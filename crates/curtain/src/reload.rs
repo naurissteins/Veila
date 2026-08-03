@@ -1,16 +1,10 @@
-use anyhow::Context;
 use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_common::AppConfig;
-use veila_renderer::background::BackgroundAsset;
 use veila_ui::ShellTheme;
 use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 
-use crate::{
-    background::BackgroundSlideshow,
-    state::{
-        CurtainApp, background_generated, background_treatment, effective_battery_snapshot,
-        effective_weather_location, effective_weather_snapshot,
-    },
+use crate::state::{
+    CurtainApp, effective_battery_snapshot, effective_weather_location, effective_weather_snapshot,
 };
 
 impl CurtainApp {
@@ -24,34 +18,9 @@ impl CurtainApp {
         };
         let config = loaded_config.config;
         let theme = ShellTheme::from_config(&config);
-        let background_asset = match BackgroundAsset::load(
-            None,
-            theme.background,
-            background_generated(&config.background),
-            background_treatment(&config.background),
-        )
-        .context("failed to prepare fallback background")
-        {
-            Ok(asset) => asset,
-            Err(error) => {
-                tracing::warn!("failed to reload curtain fallback background: {error:#}");
-                return;
-            }
-        };
-        let background_generated = background_generated(&config.background);
-        let slideshow = BackgroundSlideshow::load(&config.background, None);
-        let background_path = slideshow
-            .as_ref()
-            .map(|slideshow| slideshow.current_path().to_path_buf())
-            .or_else(|| config.background.resolved_path());
 
+        // Wallpaper is fixed for this lock session; only theme/widgets refresh here.
         self.background_color = theme.background;
-        self.background_asset = background_asset;
-        self.background_generated = background_generated;
-        self.background_treatment = background_treatment(&config.background);
-        self.background_path = background_path.clone();
-        self.background_outputs = config.background.outputs.clone();
-        self.slideshow = slideshow;
         self.ui_output_mode = config.visuals.output_ui_mode();
         self.ui_output_name = config.visuals.ui_output_name().map(str::to_owned);
         self.hide_cursor = config.lock.hide_cursor;
@@ -116,7 +85,6 @@ impl CurtainApp {
             effective_battery_snapshot(&config, self.battery_snapshot.clone()),
             self.now_playing_snapshot.clone(),
         );
-        self.reset_background_source_state();
         if should_wake_outputs {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
@@ -127,17 +95,10 @@ impl CurtainApp {
                 .as_deref()
                 .map(|path| path.display().to_string())
                 .unwrap_or_else(|| "defaults".to_string()),
-            background_mode = config.background.effective_mode().as_str(),
-            background_image = background_path
-                .as_deref()
-                .map(|path| path.display().to_string()),
-            background_output_overrides = config.background.outputs.len(),
-            background_slideshow_images = self.slideshow.as_ref().map(BackgroundSlideshow::len),
-            "reloaded curtain config"
+            "reloaded curtain config (background preserved)"
         );
 
         self.render_all_surfaces(queue_handle);
         self.maybe_power_off_secondary_outputs();
-        self.maybe_start_background_render();
     }
 }

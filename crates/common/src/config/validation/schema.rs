@@ -130,6 +130,7 @@ const BACKGROUND_SLIDESHOW: &[KeyRule] = &[
     key("order", Schema::Any),
     key("mode", Schema::Any),
     key("change_every_seconds", Schema::Any),
+    key("transition_duration_ms", Schema::Any),
 ];
 
 const BACKGROUND_GRADIENT: &[KeyRule] = &[

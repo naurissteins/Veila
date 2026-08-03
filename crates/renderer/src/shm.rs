@@ -252,7 +252,9 @@ impl SurfaceBufferPool {
                 slot.released.store(false, Ordering::Release);
                 Ok(Some(index))
             }
-            SlotChoice::Skip => Ok(None),
+            // Prefer an explicit busy error so the curtain can defer and retry
+            // instead of silently dropping a frame under bursty redraws.
+            SlotChoice::Skip => Err(RendererError::BufferSlotsBusy),
             SlotChoice::Grow => {
                 let index = self.slots.len();
                 let new_len = byte_len
