@@ -99,7 +99,9 @@ fn weather_svg_icons_preserve_source_fill_colors() {
 
     assert!(
         pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|pixel| { pixel[3] > 0 && (pixel[0] < 240 || pixel[1] < 240 || pixel[2] < 240) })
     );
 }
@@ -117,7 +119,9 @@ fn battery_svg_icons_follow_style_color() {
 
     assert!(
         pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] > 200 && pixel[2] < 200 })
     );
 }
@@ -133,7 +137,7 @@ fn battery_svg_color_blends_into_argb_buffer_without_swapping_channels() {
         IconStyle::new(ClearColor::opaque(249, 226, 175)).with_padding(0),
     );
 
-    assert!(buffer.pixels().chunks_exact(4).any(|pixel| {
+    assert!(buffer.pixels().as_chunks::<4>().0.iter().any(|pixel| {
         pixel[3] > 220 && pixel[2] > pixel[0].saturating_add(35) && pixel[1] > 190
     }));
 }
@@ -151,7 +155,9 @@ fn caps_lock_svg_icon_follows_style_color() {
 
     assert!(
         pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] > 180 && pixel[2] < 150 })
     );
 }
@@ -169,7 +175,9 @@ fn power_svg_icons_follow_style_color() {
 
     assert!(
         pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|pixel| { pixel[3] > 220 && pixel[0] > 220 && pixel[1] < 170 && pixel[2] < 170 })
     );
 }

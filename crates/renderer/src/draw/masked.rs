@@ -97,7 +97,9 @@ mod tests {
         let width = buffer.size().width as usize;
         let first_drawn_x = buffer
             .pixels()
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .enumerate()
             .find_map(|(index, pixel)| {
                 let alpha = pixel[3];
