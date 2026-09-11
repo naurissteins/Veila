@@ -880,7 +880,7 @@ fn visible_alpha_x_bounds(buffer: &SoftwareBuffer) -> Option<(i32, i32)> {
     let mut left = width;
     let mut right = 0usize;
 
-    for (index, pixel) in buffer.pixels().chunks_exact(4).enumerate() {
+    for (index, pixel) in buffer.pixels().as_chunks::<4>().0.iter().enumerate() {
         if pixel[3] == 0 {
             continue;
         }

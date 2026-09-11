@@ -34,7 +34,7 @@ use self::runtime::{
     ActiveRuntime, accept_auth_connection, accept_control_connection, receive_auth_result,
     wait_for_curtain_exit,
 };
-use self::state::AppRuntime;
+use self::state::{AppRuntime, ControlInputs};
 use self::watch::{AutoReloadTrigger, AutoReloadWatcher, effective_auto_reload_debounce_ms};
 
 pub async fn run_background_prewarm_once(config_path: Option<&Path>) -> Result<()> {
@@ -146,7 +146,7 @@ pub async fn run(
         )
         .await
         .context("failed to activate manual lock")?;
-        runtime.fingerprint.reset_for_new_lock();
+        runtime.fingerprint.reset_for_new_lock().await;
     }
 
     loop {
@@ -179,7 +179,7 @@ pub async fn run(
                 if !was_active && runtime.state.is_active() {
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
-                    runtime.fingerprint.reset_for_new_lock();
+                    runtime.fingerprint.reset_for_new_lock().await;
                 }
             }
             Some(_) = unlock_stream.next() => {
@@ -193,7 +193,7 @@ pub async fn run(
                 if !runtime.state.is_active() {
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
-                    runtime.fingerprint.stop();
+                    runtime.fingerprint.stop().await;
                 }
             }
             Some(signal) = prepare_for_sleep_stream.next() => {
@@ -209,8 +209,14 @@ pub async fn run(
                                 }
                             }
                         }
+                        runtime.fingerprint.pause_for_sleep().await;
+                        runtime
+                            .fingerprint
+                            .forward_status_updates(runtime.control_socket_path.as_ref())
+                            .await;
                     }
                     Ok(_) => {
+                        runtime.fingerprint.resume_after_sleep();
                         if runtime.state.is_active()
                             && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
                         {
@@ -254,7 +260,7 @@ pub async fn run(
                 if !runtime.state.is_active() {
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
-                    runtime.fingerprint.stop();
+                    runtime.fingerprint.stop().await;
                 }
             }
             result = accept_auth_connection(&mut runtime.auth_listener), if runtime.state.is_active() && runtime.auth_listener.is_some() => {
@@ -272,6 +278,10 @@ pub async fn run(
                 let Some(result) = result else {
                     continue;
                 };
+                if runtime.fingerprint.should_discard_auth_result(&result) {
+                    tracing::debug!("discarding fingerprint success received during sleep preparation");
+                    continue;
+                }
 
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_auth_result(
@@ -291,15 +301,16 @@ pub async fn run(
                 let now_playing_snapshot = runtime.now_playing.current_snapshot();
                 let daemon_config_load_ms = runtime.daemon_config_load_ms;
                 let daemon_config_load_us = runtime.daemon_config_load_us;
-                let (
+                let ControlInputs {
                     loaded_config,
                     last_reload_result,
                     last_reload_unix_ms,
                     auth_policy,
                     background_selection,
                     suspend_state,
+                    fingerprint,
                     slots,
-                ) = runtime.control_inputs();
+                } = runtime.control_inputs();
                 if handle_control_connection(
                     result?,
                     &options,
@@ -316,6 +327,7 @@ pub async fn run(
                     &now_playing,
                     background_selection,
                     suspend_state,
+                    fingerprint,
                     slots,
                     auth_policy,
                     daemon_config_load_ms,
@@ -411,7 +423,7 @@ pub async fn run(
                         runtime.loaded_config.config.fingerprint.enabled,
                         &username,
                         runtime.auth_sender.clone(),
-                    );
+                    ).await;
                     runtime
                         .fingerprint
                         .forward_status_updates(runtime.control_socket_path.as_ref())
@@ -443,7 +455,10 @@ pub async fn run(
                         }
                     }
                 } else {
-                    runtime.fingerprint.update(false, false, &username, None);
+                    runtime
+                        .fingerprint
+                        .update(false, false, &username, None)
+                        .await;
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;
                 }
@@ -459,15 +474,16 @@ pub async fn run(
                                     let weather = runtime.weather.clone();
                                     let battery = runtime.battery.clone();
                                     let now_playing = runtime.now_playing.clone();
-                                    let (
+                                    let ControlInputs {
                                         loaded_config,
                                         last_reload_result,
                                         last_reload_unix_ms,
                                         auth_policy,
-                                        _background_selection,
+                                        background_selection: _,
                                         suspend_state,
+                                        fingerprint: _,
                                         slots,
-                                    ) = runtime.control_inputs();
+                                    } = runtime.control_inputs();
                                     match helpers::apply_loaded_config(
                                         slots.state,
                                         slots.control_socket_path.as_deref(),
@@ -525,15 +541,16 @@ pub async fn run(
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
                                 let now_playing = runtime.now_playing.clone();
-                                let (
+                                let ControlInputs {
                                     loaded_config,
                                     last_reload_result,
                                     last_reload_unix_ms,
                                     auth_policy,
-                                    _background_selection,
+                                    background_selection: _,
                                     suspend_state,
+                                    fingerprint: _,
                                     slots,
-                                ) = runtime.control_inputs();
+                                } = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
                                     slots.control_socket_path.as_deref(),
@@ -583,15 +600,16 @@ pub async fn run(
                                 let weather = runtime.weather.clone();
                                 let battery = runtime.battery.clone();
                                 let now_playing = runtime.now_playing.clone();
-                                let (
+                                let ControlInputs {
                                     loaded_config,
                                     last_reload_result,
                                     last_reload_unix_ms,
                                     auth_policy,
-                                    _background_selection,
+                                    background_selection: _,
                                     suspend_state,
+                                    fingerprint: _,
                                     slots,
-                                ) = runtime.control_inputs();
+                                } = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
                                     slots.control_socket_path.as_deref(),
@@ -646,7 +664,7 @@ pub async fn run(
         }
     }
 
-    runtime.fingerprint.stop();
+    runtime.fingerprint.stop().await;
     let (auth_policy, slots) = runtime.slots_with_policy();
     shutdown_runtime(&session_proxy, slots, auth_policy).await;
 

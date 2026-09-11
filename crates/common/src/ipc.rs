@@ -138,6 +138,8 @@ pub enum DaemonControlMessage {
         wait_ready: bool,
         force_emergency_ui: bool,
         latency_report: LatencyReportMode,
+        #[serde(default)]
+        sleep_transition: bool,
     },
     Stop,
     Status,
@@ -345,12 +347,39 @@ mod tests {
             wait_ready: true,
             force_emergency_ui: true,
             latency_report: LatencyReportMode::Verbose,
+            sleep_transition: true,
         };
         let encoded = encode_message(&message).expect("daemon control message should encode");
         let decoded = decode_message::<DaemonControlMessage>(&encoded)
             .expect("daemon control message should decode");
 
         assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn defaults_missing_sleep_transition_for_older_lock_clients() {
+        let mut encoded = serde_json::to_value(DaemonControlMessage::LockNow {
+            wait_ready: true,
+            force_emergency_ui: false,
+            latency_report: LatencyReportMode::Disabled,
+            sleep_transition: true,
+        })
+        .expect("daemon control message should encode");
+        encoded["LockNow"]
+            .as_object_mut()
+            .expect("lock message should be an object")
+            .remove("sleep_transition");
+
+        let decoded: DaemonControlMessage =
+            serde_json::from_value(encoded).expect("older lock message should decode");
+
+        assert!(matches!(
+            decoded,
+            DaemonControlMessage::LockNow {
+                sleep_transition: false,
+                ..
+            }
+        ));
     }
 
     #[test]

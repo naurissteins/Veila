@@ -138,7 +138,7 @@ pub(super) fn scale_svg_alpha(pixels: &mut [u8], alpha: u8) {
         return;
     }
 
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         if pixel[3] == 0 {
             continue;
         }
@@ -151,7 +151,7 @@ pub(super) fn scale_svg_alpha(pixels: &mut [u8], alpha: u8) {
 }
 
 fn recolor_svg_pixels(pixels: &mut [u8], color: crate::ClearColor) {
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         let alpha = pixel[3];
         if alpha == 0 {
             continue;

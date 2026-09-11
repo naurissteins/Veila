@@ -13,6 +13,7 @@ use crate::{
 
 use super::super::{
     battery::BatteryHandle,
+    fingerprint::FingerprintHandle,
     helpers::{
         activate_and_log, build_daemon_health, build_daemon_status, reload_config_response,
         select_initial_background_path,
@@ -41,6 +42,7 @@ pub(crate) async fn handle_control_connection(
     now_playing: &NowPlayingHandle,
     background_selection: &mut Option<BackgroundSelectionState>,
     suspend_state: &mut crate::app::suspend::LockedSuspendState,
+    fingerprint: &mut FingerprintHandle,
     slots: RuntimeSlots<'_>,
     auth_policy: &mut AuthPolicy,
     daemon_config_load_ms: u64,
@@ -67,8 +69,12 @@ pub(crate) async fn handle_control_connection(
             wait_ready,
             force_emergency_ui,
             latency_report,
+            sleep_transition,
         } => {
             *active_latency_report = latency_report;
+            if sleep_transition {
+                fingerprint.pause_for_sleep().await;
+            }
             if !state.is_active() {
                 let initial_background_path =
                     select_initial_background_path(&loaded_config.config, background_selection);

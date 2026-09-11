@@ -117,7 +117,7 @@ fn rgba_to_pixmap(image: RgbaImage) -> Result<Pixmap> {
         RendererError::InvalidFrameSize(FrameSize::new(width, height)),
     )?;
     let mut data = image.into_raw();
-    for pixel in data.chunks_exact_mut(4) {
+    for pixel in data.as_chunks_mut::<4>().0 {
         let alpha = pixel[3];
         pixel[0] = premultiply(pixel[0], alpha);
         pixel[1] = premultiply(pixel[1], alpha);

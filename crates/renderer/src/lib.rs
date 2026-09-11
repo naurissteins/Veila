@@ -152,7 +152,9 @@ pub trait PixelBuffer {
     fn clear(&mut self, color: ClearColor) {
         let pixel = color.to_argb8888_bytes();
         self.pixels_mut()
-            .chunks_exact_mut(4)
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
             .for_each(|chunk| chunk.copy_from_slice(&pixel));
     }
 
@@ -166,8 +168,10 @@ pub trait PixelBuffer {
 
         for (dst, src) in self
             .pixels_mut()
-            .chunks_exact_mut(4)
-            .zip(overlay.pixels().chunks_exact(4))
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(overlay.pixels().as_chunks::<4>().0.iter())
         {
             blend_pixel(dst, src);
         }
@@ -271,7 +275,7 @@ impl SoftwareBuffer {
     pub fn save_png(&self, path: &Path) -> Result<()> {
         let mut rgba = Vec::with_capacity(self.pixels.len());
 
-        for pixel in self.pixels.chunks_exact(4) {
+        for pixel in self.pixels.as_chunks::<4>().0 {
             let blue = pixel[0];
             let green = pixel[1];
             let red = pixel[2];

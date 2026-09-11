@@ -27,6 +27,7 @@ pub(super) async fn lock_running_daemon(
     wait_ready: bool,
     force_emergency_ui: bool,
     latency_report: LatencyReportMode,
+    sleep_transition: bool,
 ) -> Result<Option<(bool, Option<veila_common::ipc::LockLatencyReport>)>> {
     ensure_running_daemon(daemon_socket_path)?;
 
@@ -36,6 +37,7 @@ pub(super) async fn lock_running_daemon(
             wait_ready,
             force_emergency_ui,
             latency_report,
+            sleep_transition,
         },
     )
     .await?;

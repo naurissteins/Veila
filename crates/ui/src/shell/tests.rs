@@ -213,7 +213,9 @@ fn emergency_mode_renders_without_theme_layers() {
     assert!(
         buffer
             .pixels()
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|pixel| pixel != first_pixel)
     );
 }

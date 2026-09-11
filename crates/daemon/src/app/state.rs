@@ -161,17 +161,7 @@ impl AppRuntime {
         )
     }
 
-    pub(super) fn control_inputs(
-        &mut self,
-    ) -> (
-        &mut LoadedConfig,
-        &mut Option<String>,
-        &mut Option<u64>,
-        &mut AuthPolicy,
-        &mut Option<BackgroundSelectionState>,
-        &mut LockedSuspendState,
-        RuntimeSlots<'_>,
-    ) {
+    pub(super) fn control_inputs(&mut self) -> ControlInputs<'_> {
         let Self {
             loaded_config,
             last_reload_result,
@@ -179,6 +169,7 @@ impl AppRuntime {
             auth_policy,
             background_selection,
             suspend_state,
+            fingerprint,
             state,
             curtain,
             auth_listener,
@@ -191,14 +182,15 @@ impl AppRuntime {
             ..
         } = self;
 
-        (
+        ControlInputs {
             loaded_config,
             last_reload_result,
             last_reload_unix_ms,
             auth_policy,
             background_selection,
             suspend_state,
-            RuntimeSlots {
+            fingerprint,
+            slots: RuntimeSlots {
                 state,
                 curtain,
                 auth_listener,
@@ -209,8 +201,19 @@ impl AppRuntime {
                 auth_state,
                 active_latency_report,
             },
-        )
+        }
     }
+}
+
+pub(super) struct ControlInputs<'a> {
+    pub(super) loaded_config: &'a mut LoadedConfig,
+    pub(super) last_reload_result: &'a mut Option<String>,
+    pub(super) last_reload_unix_ms: &'a mut Option<u64>,
+    pub(super) auth_policy: &'a mut AuthPolicy,
+    pub(super) background_selection: &'a mut Option<BackgroundSelectionState>,
+    pub(super) suspend_state: &'a mut LockedSuspendState,
+    pub(super) fingerprint: &'a mut FingerprintHandle,
+    pub(super) slots: RuntimeSlots<'a>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

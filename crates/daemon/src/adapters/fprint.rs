@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use futures_util::StreamExt;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{mpsc::UnboundedSender, watch};
 use veila_common::FingerprintStatus;
 use zbus::{proxy, zvariant::OwnedObjectPath};
 
@@ -8,7 +8,9 @@ use zbus::{proxy, zvariant::OwnedObjectPath};
 pub(crate) enum VerifyOutcome {
     Matched,
     NotMatched,
+    NoEnrolledFingers,
     Unavailable,
+    Cancelled,
 }
 
 #[proxy(
@@ -38,7 +40,12 @@ trait FprintDevice {
 pub(crate) async fn verify_once(
     username: &str,
     status_sender: &UnboundedSender<Option<FingerprintStatus>>,
+    cancel: &mut watch::Receiver<bool>,
 ) -> Result<VerifyOutcome> {
+    if cancellation_requested(cancel) {
+        return Ok(VerifyOutcome::Cancelled);
+    }
+
     let connection = zbus::Connection::system()
         .await
         .context("failed to connect to system D-Bus for fprintd")?;
@@ -66,7 +73,11 @@ pub(crate) async fn verify_once(
         return Ok(VerifyOutcome::Unavailable);
     }
 
-    let result = verify_claimed_device(username, &device, status_sender).await;
+    let result = if cancellation_requested(cancel) {
+        Ok(VerifyOutcome::Cancelled)
+    } else {
+        verify_claimed_device(username, &device, status_sender, cancel).await
+    };
     if let Err(error) = device.release().await {
         tracing::debug!("failed to release fprintd device: {error}");
     }
@@ -77,6 +88,7 @@ async fn verify_claimed_device(
     username: &str,
     device: &FprintDeviceProxy<'_>,
     status_sender: &UnboundedSender<Option<FingerprintStatus>>,
+    cancel: &mut watch::Receiver<bool>,
 ) -> Result<VerifyOutcome> {
     let enrolled = device
         .list_enrolled_fingers(username)
@@ -84,7 +96,7 @@ async fn verify_claimed_device(
         .context("failed to list enrolled fingerprints")?;
     if enrolled.is_empty() {
         let _ = status_sender.send(Some(FingerprintStatus::NoEnrolledFingers));
-        return Ok(VerifyOutcome::Unavailable);
+        return Ok(VerifyOutcome::NoEnrolledFingers);
     }
 
     let mut stream = device
@@ -92,15 +104,34 @@ async fn verify_claimed_device(
         .await
         .context("failed to subscribe to fprintd verification status")?;
     let _ = status_sender.send(Some(FingerprintStatus::Ready));
+    if cancellation_requested(cancel) {
+        return Ok(VerifyOutcome::Cancelled);
+    }
     device
         .verify_start("any")
         .await
         .context("failed to start fprintd verification")?;
 
-    while let Some(signal) = stream.next().await {
-        let args = signal
-            .args()
-            .context("failed to decode fprintd verification status")?;
+    loop {
+        let signal = tokio::select! {
+            biased;
+            _ = wait_for_cancellation(cancel) => {
+                stop_verification(device, "cancelled").await;
+                return Ok(VerifyOutcome::Cancelled);
+            }
+            signal = stream.next() => signal,
+        };
+        let Some(signal) = signal else {
+            stop_verification(device, "disconnected").await;
+            return Ok(VerifyOutcome::Unavailable);
+        };
+        let args = match signal.args() {
+            Ok(args) => args,
+            Err(error) => {
+                stop_verification(device, "invalid-status").await;
+                return Err(error).context("failed to decode fprintd verification status");
+            }
+        };
         let status = verify_status(args.result(), *args.done());
         let _ = status_sender.send(Some(status));
         if !*args.done() {
@@ -112,13 +143,31 @@ async fn verify_claimed_device(
         } else {
             VerifyOutcome::NotMatched
         };
-        if let Err(error) = device.verify_stop().await {
-            tracing::debug!("failed to stop fprintd verification: {error}");
-        }
+        stop_verification(device, "completed").await;
         return Ok(outcome);
     }
+}
 
-    Ok(VerifyOutcome::Unavailable)
+async fn stop_verification(device: &FprintDeviceProxy<'_>, reason: &str) {
+    if let Err(error) = device.verify_stop().await {
+        tracing::debug!(reason, "failed to stop fprintd verification: {error}");
+    }
+}
+
+fn cancellation_requested(cancel: &watch::Receiver<bool>) -> bool {
+    *cancel.borrow()
+}
+
+async fn wait_for_cancellation(cancel: &mut watch::Receiver<bool>) {
+    if cancellation_requested(cancel) {
+        return;
+    }
+
+    while cancel.changed().await.is_ok() {
+        if cancellation_requested(cancel) {
+            return;
+        }
+    }
 }
 
 pub(crate) fn verify_status(result: &str, done: bool) -> FingerprintStatus {

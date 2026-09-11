@@ -62,7 +62,7 @@ pub(super) async fn run_idle_monitor(
             event = idle_events.recv() => {
                 match event {
                     Some(IdleMonitorEvent::Idled) => {
-                        if let Err(error) = request_lock(daemon_socket_path, false, "idle").await {
+                        if let Err(error) = request_lock(daemon_socket_path, false, false, "idle").await {
                             tracing::warn!("failed to request idle lock: {error:#}");
                         }
                     }
@@ -78,7 +78,7 @@ pub(super) async fn run_idle_monitor(
                 match signal {
                     Some(signal) => match signal.args() {
                         Ok(args) if *args.start() => {
-                            match request_lock(daemon_socket_path, true, "sleep").await {
+                            match request_lock(daemon_socket_path, true, true, "sleep").await {
                                 Ok(()) => {
                                     sleep_inhibitor.take();
                                     println!("sleep_lock_ready=true");
@@ -115,6 +115,7 @@ pub(super) async fn run_idle_monitor(
 async fn request_lock(
     daemon_socket_path: &std::path::Path,
     wait_ready: bool,
+    sleep_transition: bool,
     source: &str,
 ) -> Result<()> {
     lock_running_daemon(
@@ -122,6 +123,7 @@ async fn request_lock(
         wait_ready,
         false,
         LatencyReportMode::Disabled,
+        sleep_transition,
     )
     .await?;
     println!("{source}_lock_requested=true");

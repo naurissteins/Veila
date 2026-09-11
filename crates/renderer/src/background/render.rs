@@ -24,7 +24,9 @@ pub(super) fn render_image(
 
     for (target, pixel) in buffer
         .pixels_mut()
-        .chunks_exact_mut(4)
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
         .zip(composed.pixels())
     {
         target.copy_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
