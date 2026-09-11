@@ -162,6 +162,7 @@ pub async fn run(options: DaemonOptions) -> Result<()> {
                         wait_ready: options.wait_ready,
                         force_emergency_ui: options.force_emergency_ui,
                         latency_report: options.latency_report,
+                        sleep_transition: false,
                     },
                 )
                 .await?;
@@ -273,6 +274,7 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
             options.wait_ready,
             options.force_emergency_ui,
             options.latency_report,
+            false,
         )
         .await?;
         if options.wait_ready {
