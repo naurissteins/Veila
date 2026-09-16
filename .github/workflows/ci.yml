@@ -113,6 +113,7 @@ jobs:
 
   release-check:
     name: Release Check
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -126,6 +127,7 @@ jobs:
 
   nix:
     name: Nix Package (${{ matrix.system }})
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
