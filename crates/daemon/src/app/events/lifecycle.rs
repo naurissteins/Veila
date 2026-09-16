@@ -25,6 +25,7 @@ pub(crate) async fn handle_lock_signal(
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
     latency_report: LatencyReportMode,
+    acquire_timeout_seconds: u64,
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
     slots: RuntimeSlots<'_>,
@@ -60,6 +61,7 @@ pub(crate) async fn handle_lock_signal(
         now_playing_snapshot,
         force_emergency_ui,
         latency_report,
+        acquire_timeout_seconds,
         daemon_config_load_ms,
         daemon_config_load_us,
         ActiveRuntime::new(
@@ -137,6 +139,7 @@ pub(crate) async fn handle_curtain_exit(
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
     latency_report: LatencyReportMode,
+    acquire_timeout_seconds: u64,
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
     slots: RuntimeSlots<'_>,
@@ -184,6 +187,7 @@ pub(crate) async fn handle_curtain_exit(
             now_playing_snapshot,
             force_emergency_ui,
             latency_report,
+            acquire_timeout_seconds,
             daemon_config_load_ms,
             daemon_config_load_us,
             ActiveRuntime::new(

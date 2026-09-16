@@ -1,15 +1,14 @@
 use std::time::Instant;
 
-use anyhow::Result;
-use tokio::net::UnixStream;
 use veila_common::ipc::LatencyReportMode;
 
 use crate::{
-    adapters::{ipc, logind},
+    adapters::logind,
     domain::auth::{AuthPolicy, AuthState},
 };
 
 use super::super::{
+    connections::AuthConnection,
     runtime::{
         ActiveRuntime, AuthResult, ClientMessageContext, deactivate_lock, handle_client_message,
     },
@@ -17,34 +16,36 @@ use super::super::{
     suspend::LockedSuspendState,
 };
 
-pub(crate) async fn handle_auth_connection(
+pub(crate) async fn handle_auth_message(
     username: &str,
     auth_sender: &Option<tokio::sync::mpsc::UnboundedSender<AuthResult>>,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,
     manager_proxy: &logind::ManagerProxy<'_>,
     latency_report: LatencyReportMode,
-    mut stream: UnixStream,
-) -> Result<()> {
-    if let Some(message) = ipc::read_client_message(&mut stream).await?
-        && let Err(error) = handle_client_message(
-            ClientMessageContext {
-                username,
-                auth_state,
-                auth_sender,
-                suspend_state,
-                manager_proxy,
-                latency_report,
-            },
-            stream,
-            message,
-        )
-        .await
+    connection: AuthConnection,
+) {
+    let AuthConnection {
+        generation: _,
+        stream,
+        message,
+    } = connection;
+    if let Err(error) = handle_client_message(
+        ClientMessageContext {
+            username,
+            auth_state,
+            auth_sender,
+            suspend_state,
+            manager_proxy,
+            latency_report,
+        },
+        stream,
+        message,
+    )
+    .await
     {
         tracing::warn!("failed to handle auth request: {error:#}");
     }
-
-    Ok(())
 }
 
 pub(crate) async fn handle_auth_result(

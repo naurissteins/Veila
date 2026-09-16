@@ -9,6 +9,9 @@ use smithay_client_toolkit::{
 
 use crate::state::{CurtainApp, SurfaceSize, duration_ms_between, elapsed_ms, elapsed_us};
 
+const STARTUP_NOTIFY_RETRY_INTERVAL: std::time::Duration = std::time::Duration::from_millis(250);
+const STARTUP_NOTIFY_GRACE: std::time::Duration = std::time::Duration::from_secs(2);
+
 impl CurtainApp {
     pub(crate) fn configure_surface(
         &mut self,
@@ -135,47 +138,108 @@ impl CurtainApp {
     }
 
     pub(crate) fn maybe_notify_ready(&mut self) {
-        if self.ready_notified || !self.session_locked || self.lock_surfaces.is_empty() {
+        let became_ready = if self.ready_notified {
+            false
+        } else {
+            if !self.session_locked || self.lock_surfaces.is_empty() {
+                return;
+            }
+
+            if self.lock_surfaces.iter().any(|entry| entry.size.is_none()) {
+                return;
+            }
+
+            self.ready_notified = true;
+            self.refresh_scene_base_after_ready();
+            self.latency_timings.ready_notified_ms = Some(elapsed_ms(self.startup_started_at));
+            self.latency_timings.ready_notified_us = Some(elapsed_us(self.startup_started_at));
+            self.latency_timings.surface_count = self.lock_surfaces.len();
+            true
+        };
+
+        self.maybe_notify_startup();
+
+        if became_ready {
+            self.log_memory_snapshot("ready");
+            self.maybe_start_avatar_load();
+            self.maybe_power_off_secondary_outputs();
+        }
+    }
+
+    pub(crate) fn maybe_notify_startup(&mut self) {
+        let now = std::time::Instant::now();
+        if now < self.startup_notify_retry_at {
+            return;
+        }
+        if self.session_lock_notified
+            && !self.ready_notification_sent
+            && self.startup_started_at.elapsed() > self.lock_wait_timeout + STARTUP_NOTIFY_GRACE
+        {
+            tracing::warn!("giving up late curtain readiness notification");
+            self.notify_socket = None;
             return;
         }
 
-        if self.lock_surfaces.iter().any(|entry| entry.size.is_none()) {
+        let Some(path) = self.notify_socket.as_deref() else {
+            self.session_lock_notified = self.session_locked;
+            self.ready_notification_sent = self.ready_notified;
             return;
-        }
+        };
 
-        self.ready_notified = true;
-        self.refresh_scene_base_after_ready();
-        self.latency_timings.ready_notified_ms = Some(elapsed_ms(self.startup_started_at));
-        self.latency_timings.ready_notified_us = Some(elapsed_us(self.startup_started_at));
-        self.latency_timings.surface_count = self.lock_surfaces.len();
-
-        if let Some(path) = self.notify_socket.as_deref() {
-            let report = self
-                .latency_report
-                .is_enabled()
-                .then_some(&self.latency_timings);
-            if let Err(error) = notify_ready(path, report) {
-                tracing::warn!(?path, "failed to notify ready state: {error:#}");
-            } else {
-                let ready_notified_at = std::time::Instant::now();
-                tracing::info!(
-                    ?path,
-                    startup_elapsed_ms = elapsed_ms(self.startup_started_at),
-                    startup_elapsed_us = elapsed_us(self.startup_started_at),
-                    session_locked_elapsed_ms = self.session_locked_at.map(elapsed_ms),
-                    session_locked_elapsed_us = self.session_locked_at.map(elapsed_us),
-                    first_surface_to_ready_ms =
-                        duration_ms_between(self.first_surface_configured_at, ready_notified_at,),
-                    all_surfaces_to_ready_ms =
-                        duration_ms_between(self.all_surfaces_configured_at, ready_notified_at,),
-                    "curtain reported readiness"
-                );
+        if self.session_locked && !self.session_lock_notified {
+            match notify_startup(
+                path,
+                &veila_common::ipc::CurtainStartupMessage::SessionLocked,
+            ) {
+                Ok(()) => {
+                    self.session_lock_notified = true;
+                    tracing::info!(?path, "curtain reported compositor lock acquisition");
+                }
+                Err(error) => {
+                    self.startup_notify_retry_at = now + STARTUP_NOTIFY_RETRY_INTERVAL;
+                    tracing::warn!(
+                        ?path,
+                        "failed to notify compositor lock acquisition: {error:#}"
+                    );
+                    return;
+                }
             }
         }
 
-        self.log_memory_snapshot("ready");
-        self.maybe_start_avatar_load();
-        self.maybe_power_off_secondary_outputs();
+        if self.ready_notified && self.session_lock_notified && !self.ready_notification_sent {
+            let message = veila_common::ipc::CurtainStartupMessage::Ready {
+                latency_report: self
+                    .latency_report
+                    .is_enabled()
+                    .then(|| Box::new(self.latency_timings.clone())),
+            };
+            match notify_startup(path, &message) {
+                Ok(()) => {
+                    self.ready_notification_sent = true;
+                    let ready_notified_at = std::time::Instant::now();
+                    tracing::info!(
+                        ?path,
+                        startup_elapsed_ms = elapsed_ms(self.startup_started_at),
+                        startup_elapsed_us = elapsed_us(self.startup_started_at),
+                        session_locked_elapsed_ms = self.session_locked_at.map(elapsed_ms),
+                        session_locked_elapsed_us = self.session_locked_at.map(elapsed_us),
+                        first_surface_to_ready_ms = duration_ms_between(
+                            self.first_surface_configured_at,
+                            ready_notified_at,
+                        ),
+                        all_surfaces_to_ready_ms = duration_ms_between(
+                            self.all_surfaces_configured_at,
+                            ready_notified_at,
+                        ),
+                        "curtain reported readiness"
+                    );
+                }
+                Err(error) => {
+                    self.startup_notify_retry_at = now + STARTUP_NOTIFY_RETRY_INTERVAL;
+                    tracing::warn!(?path, "failed to notify ready state: {error:#}");
+                }
+            }
+        }
     }
 
     fn refresh_scene_base_after_ready(&mut self) {
@@ -305,27 +369,18 @@ fn logical_size(info: &OutputInfo) -> Option<(i32, i32)> {
     }
 }
 
-fn notify_ready(
-    path: &Path,
-    report: Option<&veila_common::ipc::CurtainLatencyReport>,
-) -> Result<()> {
+fn notify_startup(path: &Path, message: &veila_common::ipc::CurtainStartupMessage) -> Result<()> {
     use std::io::Write as _;
     use std::os::unix::net::UnixStream;
 
     let mut stream = UnixStream::connect(path)
         .with_context(|| format!("failed to connect to notify socket {}", path.display()))?;
-    if let Some(report) = report {
-        let mut payload =
-            veila_common::ipc::encode_message(report).context("failed to encode latency report")?;
-        payload.push('\n');
-        stream
-            .write_all(payload.as_bytes())
-            .with_context(|| format!("failed to write readiness report to {}", path.display()))?;
-    } else {
-        stream
-            .write_all(&[1u8])
-            .with_context(|| format!("failed to write readiness byte to {}", path.display()))?;
-    }
+    let mut payload = veila_common::ipc::encode_message(message)
+        .context("failed to encode curtain startup message")?;
+    payload.push('\n');
+    stream
+        .write_all(payload.as_bytes())
+        .with_context(|| format!("failed to write startup message to {}", path.display()))?;
 
     Ok(())
 }

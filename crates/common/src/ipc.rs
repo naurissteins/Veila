@@ -86,6 +86,14 @@ pub struct LockLatencyReport {
     pub curtain: Option<CurtainLatencyReport>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CurtainStartupMessage {
+    SessionLocked,
+    Ready {
+        latency_report: Option<Box<CurtainLatencyReport>>,
+    },
+}
+
 /// Messages sent from UI-facing clients to the daemon.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
@@ -108,6 +116,9 @@ pub enum DaemonMessage {
     },
     AuthenticationBusy {
         attempt_id: u64,
+    },
+    Error {
+        reason: String,
     },
 }
 
@@ -226,10 +237,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        ClientMessage, CurtainControlMessage, CurtainLatencyReport, DaemonControlMessage,
-        DaemonControlResponse, DaemonMessage, DaemonReloadStatus, DaemonStatus, FingerprintStatus,
-        LatencyReportMode, LiveReloadStatus, LockLatencyReport, LockPowerStatusSnapshot,
-        PowerAction, Secret, decode_message, encode_message, encode_secret_message,
+        ClientMessage, CurtainControlMessage, CurtainLatencyReport, CurtainStartupMessage,
+        DaemonControlMessage, DaemonControlResponse, DaemonMessage, DaemonReloadStatus,
+        DaemonStatus, FingerprintStatus, LatencyReportMode, LiveReloadStatus, LockLatencyReport,
+        LockPowerStatusSnapshot, PowerAction, Secret, decode_message, encode_message,
+        encode_secret_message,
     };
 
     #[test]
@@ -294,6 +306,21 @@ mod tests {
         let encoded = encode_message(&message).expect("control message should encode");
         let decoded = decode_message::<CurtainControlMessage>(&encoded)
             .expect("control message should decode");
+
+        assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn round_trips_curtain_startup_messages() {
+        let message = CurtainStartupMessage::Ready {
+            latency_report: Some(Box::new(CurtainLatencyReport {
+                surface_count: 2,
+                ..CurtainLatencyReport::default()
+            })),
+        };
+        let encoded = encode_message(&message).expect("startup message should encode");
+        let decoded = decode_message::<CurtainStartupMessage>(&encoded)
+            .expect("startup message should decode");
 
         assert_eq!(decoded, message);
     }
