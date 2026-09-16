@@ -133,6 +133,13 @@ fn run_attempt(
             );
             let _ = sender.send(AuthEvent::Busy { attempt_id });
         }
+        DaemonMessage::Error { reason } => {
+            tracing::warn!(
+                attempt_id,
+                "daemon rejected authentication request: {reason}"
+            );
+            let _ = sender.send(AuthEvent::Failed { attempt_id });
+        }
     }
 
     Ok(())
@@ -290,6 +297,45 @@ mod tests {
                 retry_after_ms: Some(250),
                 failed_attempts: Some(2),
             }
+        );
+
+        daemon.join().expect("daemon stub");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn reports_failure_when_daemon_rejects_the_request_format() {
+        let path = unique_socket_path("auth-error-response");
+        let listener = UnixListener::bind(&path).expect("bind auth socket");
+        let daemon = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
+            let mut request = String::new();
+            reader.read_line(&mut request).expect("read request");
+
+            let response = encode_message(&DaemonMessage::Error {
+                reason: "unsupported request".to_string(),
+            })
+            .expect("encode response");
+            stream
+                .write_all(format!("{response}\n").as_bytes())
+                .expect("write response");
+            stream.flush().expect("flush response");
+        });
+
+        let (sender, receiver) = channel();
+        submit_password(
+            path.clone(),
+            11,
+            Secret::from(String::from("secret")),
+            sender,
+        );
+
+        assert_eq!(
+            receiver
+                .recv_timeout(RECV_TIMEOUT)
+                .expect("error response event"),
+            AuthEvent::Failed { attempt_id: 11 }
         );
 
         daemon.join().expect("daemon stub");

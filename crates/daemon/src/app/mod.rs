@@ -1,5 +1,6 @@
 mod battery;
 mod cache;
+mod connections;
 mod events;
 mod fingerprint;
 mod helpers;
@@ -26,7 +27,7 @@ use tokio::{
 use veila_common::{AppConfig, LoadedConfig};
 
 use self::events::{
-    handle_auth_connection, handle_auth_result, handle_control_connection, handle_curtain_exit,
+    handle_auth_message, handle_auth_result, handle_control_message, handle_curtain_exit,
     handle_lock_signal, handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
 };
 use self::helpers::{activate_and_log, current_username};
@@ -101,6 +102,10 @@ pub async fn run(
         AutoReloadWatcher::new(options.config_path.as_deref(), &runtime.loaded_config);
     let mut auto_reload_tick = time::interval(std::time::Duration::from_millis(250));
     auto_reload_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    let (auth_connection_sender, mut auth_connections) = tokio::sync::mpsc::unbounded_channel();
+    let (control_connection_sender, mut control_connections) =
+        tokio::sync::mpsc::unbounded_channel();
+    let mut curtain_wait_retry_at = None;
 
     tracing::info!(
         session = %session_path,
@@ -130,6 +135,7 @@ pub async fn run(
             now_playing_snapshot.as_ref(),
             options.force_emergency_ui,
             options.latency_report,
+            runtime.loaded_config.config.lock.acquire_timeout_seconds,
             runtime.daemon_config_load_ms,
             runtime.daemon_config_load_us,
             ActiveRuntime::new(
@@ -159,6 +165,7 @@ pub async fn run(
                 let initial_background_path = runtime.select_initial_background_path();
                 let daemon_config_load_ms = runtime.daemon_config_load_ms;
                 let daemon_config_load_us = runtime.daemon_config_load_us;
+                let acquire_timeout_seconds = runtime.loaded_config.config.lock.acquire_timeout_seconds;
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_lock_signal(
                     "logind",
@@ -170,6 +177,7 @@ pub async fn run(
                     now_playing_snapshot.as_ref(),
                     options.force_emergency_ui,
                     options.latency_report,
+                    acquire_timeout_seconds,
                     daemon_config_load_ms,
                     daemon_config_load_us,
                     slots,
@@ -233,46 +241,81 @@ pub async fn run(
                     }
                 }
             }
-            result = wait_for_curtain_exit(&mut runtime.curtain), if runtime.curtain.is_some() => {
-                let weather_snapshot = runtime.weather.current_snapshot();
-                let battery_snapshot = runtime.battery.current_snapshot();
-                let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                let initial_background_path = runtime.select_initial_background_path();
-                let daemon_config_load_ms = runtime.daemon_config_load_ms;
-                let daemon_config_load_us = runtime.daemon_config_load_us;
-                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-                handle_curtain_exit(
-                    result?,
-                    &session_proxy,
-                    options.config_path.as_deref(),
-                    initial_background_path.as_deref(),
-                    weather_snapshot.as_ref(),
-                    battery_snapshot.as_ref(),
-                    now_playing_snapshot.as_ref(),
-                    options.force_emergency_ui,
-                    options.latency_report,
-                    daemon_config_load_ms,
-                    daemon_config_load_us,
-                    slots,
-                    auth_policy,
-                    suspend_state,
-                ).await;
-                if !runtime.state.is_active() {
-                    runtime.last_power_status_snapshot = None;
-                    runtime.power_status_sent = false;
-                    runtime.fingerprint.stop().await;
+            result = wait_for_curtain_exit(&mut runtime.curtain), if runtime.curtain.is_some() && curtain_wait_retry_at.is_none_or(|retry_at| std::time::Instant::now() >= retry_at) => {
+                match result {
+                    Ok(status) => {
+                        curtain_wait_retry_at = None;
+                        let weather_snapshot = runtime.weather.current_snapshot();
+                        let battery_snapshot = runtime.battery.current_snapshot();
+                        let now_playing_snapshot = runtime.now_playing.current_snapshot();
+                        let initial_background_path = runtime.select_initial_background_path();
+                        let daemon_config_load_ms = runtime.daemon_config_load_ms;
+                        let daemon_config_load_us = runtime.daemon_config_load_us;
+                        let acquire_timeout_seconds = runtime.loaded_config.config.lock.acquire_timeout_seconds;
+                        let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
+                        handle_curtain_exit(
+                            status,
+                            &session_proxy,
+                            options.config_path.as_deref(),
+                            initial_background_path.as_deref(),
+                            weather_snapshot.as_ref(),
+                            battery_snapshot.as_ref(),
+                            now_playing_snapshot.as_ref(),
+                            options.force_emergency_ui,
+                            options.latency_report,
+                            acquire_timeout_seconds,
+                            daemon_config_load_ms,
+                            daemon_config_load_us,
+                            slots,
+                            auth_policy,
+                            suspend_state,
+                        ).await;
+                        if !runtime.state.is_active() {
+                            runtime.last_power_status_snapshot = None;
+                            runtime.power_status_sent = false;
+                            runtime.fingerprint.stop().await;
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!("failed while waiting for curtain process: {error:#}");
+                        curtain_wait_retry_at = Some(
+                            std::time::Instant::now() + std::time::Duration::from_millis(250),
+                        );
+                    }
                 }
             }
             result = accept_auth_connection(&mut runtime.auth_listener), if runtime.state.is_active() && runtime.auth_listener.is_some() => {
-                handle_auth_connection(
+                match result {
+                    Ok(stream) => {
+                        if let Some(generation) = runtime.auth_socket_path.clone() {
+                            connections::spawn_auth_reader(
+                                stream,
+                                generation,
+                                auth_connection_sender.clone(),
+                            );
+                        } else {
+                            tracing::warn!("discarding auth connection without an active socket generation");
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!("failed to accept auth connection: {error:#}");
+                    }
+                }
+            }
+            Some(connection) = auth_connections.recv() => {
+                if runtime.auth_socket_path.as_ref() != Some(&connection.generation) {
+                    tracing::debug!("discarding auth request from an inactive lock generation");
+                    continue;
+                }
+                handle_auth_message(
                     &username,
                     &runtime.auth_sender,
                     &mut runtime.auth_state,
                     &mut runtime.suspend_state,
                     &manager_proxy,
                     runtime.active_latency_report,
-                    result?,
-                ).await?;
+                    connection,
+                ).await;
             }
             result = receive_auth_result(&mut runtime.auth_results), if runtime.auth_results.is_some() => {
                 let Some(result) = result else {
@@ -293,6 +336,17 @@ pub async fn run(
                 ).await;
             }
             result = accept_control_connection(&mut control_listener) => {
+                match result {
+                    Ok(stream) => connections::spawn_control_reader(
+                        stream,
+                        control_connection_sender.clone(),
+                    ),
+                    Err(error) => {
+                        tracing::warn!("failed to accept daemon control connection: {error:#}");
+                    }
+                }
+            }
+            Some(connection) = control_connections.recv() => {
                 let weather = runtime.weather.clone();
                 let battery = runtime.battery.clone();
                 let now_playing = runtime.now_playing.clone();
@@ -311,8 +365,9 @@ pub async fn run(
                     fingerprint,
                     slots,
                 } = runtime.control_inputs();
-                if handle_control_connection(
-                    result?,
+                match handle_control_message(
+                    connection.stream,
+                    connection.message,
                     &options,
                     &session_proxy,
                     &session_path,
@@ -332,8 +387,12 @@ pub async fn run(
                     auth_policy,
                     daemon_config_load_ms,
                     daemon_config_load_us,
-                ).await? {
-                    break;
+                ).await {
+                    Ok(true) => break,
+                    Ok(false) => {}
+                    Err(error) => {
+                        tracing::warn!("failed to handle daemon control request: {error:#}");
+                    }
                 }
             }
             result = now_playing_updates.changed() => {

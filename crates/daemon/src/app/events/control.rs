@@ -26,8 +26,9 @@ use super::super::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) async fn handle_control_connection(
+pub(crate) async fn handle_control_message(
     mut stream: UnixStream,
+    message: DaemonControlMessage,
     options: &DaemonOptions,
     session_proxy: &logind::SessionProxy<'_>,
     session_path: &str,
@@ -60,10 +61,6 @@ pub(crate) async fn handle_control_connection(
         active_latency_report,
     } = slots;
 
-    let Some(message) = ipc::read_daemon_control_message(&mut stream).await? else {
-        return Ok(false);
-    };
-
     let (response, stop_requested) = match message {
         DaemonControlMessage::LockNow {
             wait_ready,
@@ -89,6 +86,7 @@ pub(crate) async fn handle_control_connection(
                     now_playing_snapshot,
                     force_emergency_ui,
                     latency_report,
+                    loaded_config.config.lock.acquire_timeout_seconds,
                     daemon_config_load_ms,
                     daemon_config_load_us,
                     ActiveRuntime::new(
