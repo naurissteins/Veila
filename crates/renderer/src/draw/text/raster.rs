@@ -1,6 +1,7 @@
 use std::{cell::RefCell, thread_local};
 
 use cosmic_text::{Buffer, Wrap};
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::PixelBuffer;
 
@@ -47,6 +48,27 @@ pub(super) fn draw_text_lines(
     };
 
     draw_cached_text_raster(buffer, x, y, &raster);
+}
+
+pub(super) fn draw_sensitive_text_lines(
+    buffer: &mut impl PixelBuffer,
+    x: i32,
+    y: i32,
+    lines: &[String],
+    style: TextStyle,
+    color: ClearColor,
+) {
+    if lines.iter().all(String::is_empty) {
+        return;
+    }
+
+    let text = Zeroizing::new(lines.join("\n"));
+    let Some(mut raster) = rasterize_text(&text, style, color) else {
+        return;
+    };
+
+    draw_cached_text_raster(buffer, x, y, &raster);
+    raster.pixels.zeroize();
 }
 
 pub(super) fn visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBounds> {
@@ -289,4 +311,29 @@ fn premultiply(channel: u8, alpha: u8) -> u8 {
 fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
     let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
     blended.min(u16::from(u8::MAX)) as u8
+}
+
+#[cfg(test)]
+mod sensitive_tests {
+    use crate::{ClearColor, FrameSize, SoftwareBuffer};
+
+    use super::{TEXT_RASTER_CACHE, TextStyle};
+    use crate::draw::text::fit_sensitive_single_line_text;
+
+    #[test]
+    fn sensitive_text_bypasses_the_shared_raster_cache() {
+        TEXT_RASTER_CACHE.with(|cache| cache.borrow_mut().clear());
+        let block = fit_sensitive_single_line_text(
+            "hunter2",
+            TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
+            128,
+        );
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(128, 48)).expect("buffer");
+
+        block.draw(&mut buffer, 0, 0);
+
+        let contains_secret = TEXT_RASTER_CACHE
+            .with(|cache| cache.borrow().iter().any(|(key, _)| key.text == "hunter2"));
+        assert!(!contains_secret);
+    }
 }

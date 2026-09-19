@@ -650,7 +650,7 @@ impl ShellState {
         dynamic: bool,
     ) {
         let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
-            Some(self.text_layout_cache.borrow_mut().revealed_secret_block(
+            Some(self.text_layout_cache.borrow().revealed_secret_block(
                 self.secret.expose(),
                 self.revealed_secret_text_style(),
                 rect.width.saturating_sub(92) as u32,
@@ -690,7 +690,7 @@ impl ShellState {
         };
         let widget = InputWidget {
             rect,
-            secret_len: self.secret.char_count(),
+            secret_len: self.displayed_secret_len(),
             focused: self.focused,
             shell_style: self.input_style(),
             mask_style: self.mask_style(),

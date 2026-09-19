@@ -319,6 +319,7 @@ impl ShellState {
         Self {
             mode: ShellMode::Rich,
             secret: Secret::new(),
+            submitted_secret_len: 0,
             secret_selected: false,
             caps_lock_active: false,
             keyboard_layout_label: None,

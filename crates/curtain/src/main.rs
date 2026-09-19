@@ -1,5 +1,6 @@
 use std::fmt;
 
+use anyhow::Context;
 use time::{OffsetDateTime, UtcOffset};
 use tracing_subscriber::fmt::time::FormatTime;
 
@@ -20,6 +21,7 @@ impl FormatTime for ShortLocalTime {
 }
 
 fn main() -> anyhow::Result<()> {
+    nix::sys::prctl::set_dumpable(false).context("failed to disable curtain core dumps")?;
     let options = veila_curtain::CurtainOptions::parse_args(std::env::args())?;
 
     tracing_subscriber::fmt()

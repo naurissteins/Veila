@@ -20,7 +20,7 @@ use crate::shell::theme::{
 };
 
 #[test]
-fn edits_and_submits_password_text() {
+fn submitting_moves_password_out_of_the_shell() {
     let mut shell = ShellState::default();
 
     assert_eq!(
@@ -35,7 +35,15 @@ fn edits_and_submits_password_text() {
         shell.handle_key(ShellKey::Enter),
         ShellAction::Submit(Secret::from(String::from("ab")))
     );
-    assert_eq!(shell.handle_key(ShellKey::Backspace), ShellAction::None);
+    assert!(shell.secret.is_empty());
+    assert_eq!(shell.displayed_secret_len(), 2);
+
+    shell.authentication_busy();
+    assert_eq!(shell.displayed_secret_len(), 0);
+    assert_eq!(
+        shell.handle_key(ShellKey::Character('a')),
+        ShellAction::None
+    );
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
         ShellAction::Submit(Secret::from(String::from("a")))

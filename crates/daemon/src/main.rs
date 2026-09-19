@@ -28,6 +28,7 @@ impl FormatTime for ShortLocalTime {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    nix::sys::prctl::set_dumpable(false).context("failed to disable daemon core dumps")?;
     let options = veila_daemon::DaemonOptions::parse_args(std::env::args())?;
     let _log_guard = init_tracing(&options)?;
 

@@ -7,43 +7,64 @@ use zeroize::Zeroize;
 pub const SECRET_CAPACITY: usize = 512;
 
 /// Plaintext authentication material
-#[derive(Clone, PartialEq, Eq)]
-pub struct Secret(String);
+#[derive(PartialEq, Eq)]
+pub struct Secret {
+    value: String,
+    char_count: usize,
+}
 
 impl Secret {
     pub fn new() -> Self {
-        Self(String::with_capacity(SECRET_CAPACITY))
+        Self {
+            value: String::with_capacity(SECRET_CAPACITY),
+            char_count: 0,
+        }
     }
 
     /// Returns the plaintext. Each call site is somewhere the secret can escape, so keep them few
     pub fn expose(&self) -> &str {
-        &self.0
+        &self.value
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.value.is_empty()
     }
 
     pub fn char_count(&self) -> usize {
-        self.0.chars().count()
+        self.char_count
     }
 
     pub fn push(&mut self, character: char) {
-        self.0.push(character);
+        self.value.push(character);
+        self.char_count = self.char_count.saturating_add(1);
     }
 
     pub fn pop(&mut self) {
-        self.0.pop();
+        if self.value.pop().is_some() {
+            self.char_count = self.char_count.saturating_sub(1);
+        }
     }
 
     pub fn clear(&mut self) {
-        self.0.zeroize();
-        self.0.reserve(SECRET_CAPACITY);
+        self.value.zeroize();
+        self.value.reserve(SECRET_CAPACITY);
+        self.char_count = 0;
+    }
+
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
+
+    pub fn duplicate(&self) -> Self {
+        let mut duplicate = Self::new();
+        duplicate.value.push_str(&self.value);
+        duplicate.char_count = self.char_count;
+        duplicate
     }
 
     #[cfg(test)]
     fn capacity(&self) -> usize {
-        self.0.capacity()
+        self.value.capacity()
     }
 }
 
@@ -56,7 +77,8 @@ impl Default for Secret {
 impl From<String> for Secret {
     fn from(mut value: String) -> Self {
         let mut secret = Self::new();
-        secret.0.push_str(&value);
+        secret.value.push_str(&value);
+        secret.char_count = value.chars().count();
         value.zeroize();
         secret
     }
@@ -70,7 +92,8 @@ impl fmt::Debug for Secret {
 
 impl Drop for Secret {
     fn drop(&mut self) {
-        self.0.zeroize();
+        self.value.zeroize();
+        self.char_count = 0;
     }
 }
 
@@ -79,7 +102,7 @@ impl Serialize for Secret {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.0)
+        serializer.serialize_str(&self.value)
     }
 }
 
@@ -143,6 +166,28 @@ mod tests {
 
         assert_eq!(secret.expose(), "abc");
         assert_eq!(secret.char_count(), 3);
+    }
+
+    #[test]
+    fn take_moves_the_secret_and_replaces_it_with_a_reserved_empty_buffer() {
+        let mut secret = Secret::from(String::from("hunter2"));
+
+        let taken = secret.take();
+
+        assert_eq!(taken.expose(), "hunter2");
+        assert!(secret.is_empty());
+        assert_eq!(secret.char_count(), 0);
+        assert!(secret.capacity() >= SECRET_CAPACITY);
+    }
+
+    #[test]
+    fn duplicate_is_an_explicit_owned_copy() {
+        let secret = Secret::from(String::from("pāssword"));
+
+        let duplicate = secret.duplicate();
+
+        assert_eq!(duplicate.expose(), secret.expose());
+        assert_eq!(duplicate.char_count(), 8);
     }
 
     #[test]

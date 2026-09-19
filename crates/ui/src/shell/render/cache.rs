@@ -2,11 +2,11 @@ use veila_common::ClockStyle;
 use veila_renderer::{
     icon::WeatherIcon,
     text::{
-        TextBlock, TextBounds, TextStyle, fit_single_line_text, fit_wrapped_text,
-        measure_visible_text_bounds, single_line_text_block,
+        SensitiveTextBlock, TextBlock, TextBounds, TextStyle, fit_sensitive_single_line_text,
+        fit_single_line_text, fit_wrapped_text, measure_visible_text_bounds,
+        single_line_text_block,
     },
 };
-use zeroize::Zeroize;
 
 use super::{
     layout::SceneMetrics,
@@ -23,7 +23,6 @@ pub(crate) struct TextLayoutCache {
     pub(super) power_status: CachedTextBlock,
     pub(super) username: CachedTextBlock,
     pub(super) placeholder: CachedTextBlock,
-    pub(super) revealed_secret: CachedTextBlock,
     pub(super) status: CachedTextBlock,
     pub(super) now_playing_title: CachedTextBlock,
     pub(super) now_playing_artist: CachedTextBlock,
@@ -37,17 +36,6 @@ pub(crate) struct TextLayoutCache {
 pub(super) struct CachedTextBlock {
     pub(super) key: Option<CachedTextKey>,
     pub(super) block: Option<TextBlock>,
-}
-
-impl TextLayoutCache {
-    /// Drops the cached revealed-password layout, zeroing the plaintext held in its cache key
-    pub(crate) fn forget_revealed_secret(&mut self) {
-        if let Some(key) = self.revealed_secret.key.as_mut() {
-            key.text.zeroize();
-        }
-        self.revealed_secret.key = None;
-        self.revealed_secret.block = None;
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,12 +156,12 @@ impl TextLayoutCache {
     }
 
     pub(super) fn revealed_secret_block(
-        &mut self,
+        &self,
         secret: &str,
         style: TextStyle,
         max_width: u32,
-    ) -> TextBlock {
-        self.revealed_secret.resolve(secret, style, max_width, 1)
+    ) -> SensitiveTextBlock {
+        fit_sensitive_single_line_text(secret, style, max_width)
     }
 
     pub(super) fn input_status_block(
@@ -377,31 +365,5 @@ impl CachedTextBounds {
         self.key = Some(key);
         self.bounds = Some(bounds);
         bounds
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use veila_renderer::{ClearColor, text::TextStyle};
-
-    use super::TextLayoutCache;
-
-    #[test]
-    fn forgetting_the_revealed_secret_drops_the_cached_plaintext() {
-        let mut cache = TextLayoutCache::default();
-        cache.revealed_secret_block(
-            "hunter2",
-            TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
-            512,
-        );
-        assert!(cache.revealed_secret.key.is_some());
-
-        cache.forget_revealed_secret();
-
-        assert!(
-            cache.revealed_secret.key.is_none(),
-            "cache key still holds the revealed password"
-        );
-        assert!(cache.revealed_secret.block.is_none());
     }
 }

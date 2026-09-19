@@ -38,11 +38,11 @@ impl ConversationAdapter for PasswordConversation {
     fn info_msg(&self, _message: impl AsRef<OsStr>) {}
 }
 
-pub fn authenticate(username: &str, password: &Secret) -> Result<()> {
+pub fn authenticate(username: &str, password: Secret) -> Result<()> {
     let service = pam_service();
     let conversation = PasswordConversation {
         username: username.to_string(),
-        password: password.clone(),
+        password,
     };
 
     let mut transaction = TransactionBuilder::new_with_service(&service)

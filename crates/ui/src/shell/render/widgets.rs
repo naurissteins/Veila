@@ -7,7 +7,7 @@ use veila_renderer::{
     icon::{AssetIcon, IconStyle, draw_icon},
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
-    text::TextBlock,
+    text::{SensitiveTextBlock, TextBlock},
 };
 
 use crate::shell::render::styles::percent_to_alpha;
@@ -28,7 +28,7 @@ pub(super) struct InputWidget {
     pub shell_style: PillStyle,
     pub mask_style: MaskedInputStyle,
     pub placeholder: Option<TextBlock>,
-    pub revealed_secret: Option<TextBlock>,
+    pub revealed_secret: Option<SensitiveTextBlock>,
     pub inline_status: Option<TextBlock>,
     pub right_adornment: InputRightAdornment,
 }
@@ -235,7 +235,7 @@ pub(super) fn draw_input_content(buffer: &mut impl PixelBuffer, widget: &InputWi
         inline_status.draw(buffer, x, y);
     } else if let Some(revealed_secret) = widget.revealed_secret.as_ref() {
         let x = content_rect.x + widget.mask_style.horizontal_padding.saturating_sub(4);
-        let y = content_rect.y + (content_rect.height - revealed_secret.height as i32) / 2 - 1;
+        let y = content_rect.y + (content_rect.height - revealed_secret.height() as i32) / 2 - 1;
         revealed_secret.draw(buffer, x, y);
     } else {
         if widget.secret_len == 0

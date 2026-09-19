@@ -85,8 +85,8 @@ fn run_attempt(
         .set_read_timeout(Some(AUTH_RESPONSE_TIMEOUT))
         .context("failed to set auth response timeout")?;
     let mut payload = encode_secret_message(&ClientMessage::SubmitPassword { attempt_id, secret })?;
-    payload.push('\n');
-    stream.write_all(payload.as_bytes())?;
+    payload.push(b'\n');
+    stream.write_all(&payload)?;
     stream.flush()?;
     drop(payload);
     tracing::debug!(

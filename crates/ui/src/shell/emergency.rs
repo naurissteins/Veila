@@ -114,7 +114,7 @@ impl ShellState {
     }
 
     fn render_emergency_input_content(&self, buffer: &mut impl PixelBuffer, rect: Rect) {
-        if self.secret.is_empty() {
+        if self.displayed_secret_len() == 0 {
             let placeholder = fit_single_line_text(
                 "Password",
                 TextStyle::new_px(MUTED, 16 * self.render_scale.max(1)).with_line_spacing(0),
@@ -131,7 +131,7 @@ impl ShellState {
         draw_masked_input(
             buffer,
             Rect::new(rect.x, rect.y, rect.width, rect.height),
-            self.secret.char_count(),
+            self.displayed_secret_len(),
             self.focused,
             self.emergency_mask_style(),
         );
