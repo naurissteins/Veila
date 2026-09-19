@@ -152,7 +152,7 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
         .saturating_duration_since(started_at)
         .as_micros()
         .min(u128::from(u64::MAX)) as u64;
-    let result = tokio::task::spawn_blocking(move || pam::authenticate(&username, &secret)).await;
+    let result = tokio::task::spawn_blocking(move || pam::authenticate(&username, secret)).await;
     let elapsed_ms = auth_started_at
         .elapsed()
         .as_millis()

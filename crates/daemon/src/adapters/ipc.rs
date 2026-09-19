@@ -12,13 +12,12 @@ use tokio::{
 };
 use veila_common::ipc::{
     ClientMessage, DaemonControlMessage, DaemonControlResponse, DaemonMessage, LineAccumulator,
-    LineProgress, decode_message, encode_message,
+    LineProgress, SECRET_MESSAGE_CAPACITY, decode_message, encode_message,
 };
 use zeroize::{Zeroize, Zeroizing};
 
 const SOCKET_MODE: u32 = 0o600;
 const RUNTIME_DIR_MODE: u32 = 0o700;
-const SECRET_LINE_CAPACITY: usize = 2 * 1024;
 
 pub async fn bind_listener(path: &Path) -> Result<UnixListener> {
     if path.exists() {
@@ -281,7 +280,7 @@ fn verify_peer_uid(stream: &UnixStream) -> Result<()> {
 async fn read_bounded_line(stream: &mut UnixStream, label: &str) -> Result<Option<String>> {
     // Pre-sized so an auth request lands without the buffer reallocating, which would strand a
     // cleartext copy of the password in freed memory that zeroizing can no longer reach
-    let mut accumulator = LineAccumulator::with_capacity(SECRET_LINE_CAPACITY);
+    let mut accumulator = LineAccumulator::with_capacity(SECRET_MESSAGE_CAPACITY);
     let mut chunk = Zeroizing::new([0_u8; 1024]);
 
     loop {

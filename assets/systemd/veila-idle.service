@@ -11,6 +11,7 @@ EnvironmentFile=-%h/.config/veila/idle.env
 ExecStart=/usr/bin/veila idle --lock-after=${VEILA_IDLE_LOCK_AFTER} $VEILA_IDLE_SLEEP_FLAG
 Restart=on-failure
 RestartSec=2
+LimitCORE=0
 PassEnvironment=WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET
 
 [Install]

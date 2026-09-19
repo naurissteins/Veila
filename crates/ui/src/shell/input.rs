@@ -97,12 +97,15 @@ impl ShellState {
                     visible_after: started_at + Duration::from_millis(PENDING_STATUS_DELAY_MS),
                     shown: false,
                 };
-                ShellAction::Submit(self.secret.clone())
+                self.submitted_secret_len = self.secret.char_count();
+                ShellAction::Submit(self.secret.take())
             }
         }
     }
 
     pub fn authentication_busy(&mut self) {
+        self.submitted_secret_len = 0;
+        self.reveal_secret = false;
         self.status = ShellStatus::Idle;
     }
 
@@ -246,10 +249,17 @@ impl ShellState {
         }
     }
 
-    /// Clears the secret and the revealed-password layout together
     fn clear_secret(&mut self) {
         self.secret.clear();
-        self.text_layout_cache.borrow_mut().forget_revealed_secret();
+        self.submitted_secret_len = 0;
+    }
+
+    pub(super) fn displayed_secret_len(&self) -> usize {
+        if matches!(self.status, ShellStatus::Pending { .. }) {
+            self.submitted_secret_len
+        } else {
+            self.secret.char_count()
+        }
     }
 
     fn refresh_on_secret_empty_transition(&mut self, was_empty: bool) {

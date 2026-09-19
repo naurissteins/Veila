@@ -1,19 +1,20 @@
 mod context;
 mod layout;
 mod raster;
+mod sensitive;
 
 #[cfg(test)]
 mod tests;
 
-use cosmic_text::{FamilyOwned, Style as CosmicFontStyle};
-
 use crate::{ClearColor, PixelBuffer, ShadowStyle};
+use cosmic_text::{FamilyOwned, Style as CosmicFontStyle};
 
 pub use context::{
     bundled_clock_font_family, bundled_clock_font_postscript_name, resolve_font_family,
 };
 use layout::{font_size, layout_text_block, line_height, scale_component};
 use raster::{draw_text_lines, visible_text_bounds};
+pub use sensitive::{SensitiveTextBlock, fit_sensitive_single_line_text};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TextBounds {

@@ -309,20 +309,3 @@ fn large_standard_clock_stays_single_line() {
     assert_eq!(clock.primary.lines.len(), 1);
     assert_eq!(date.lines.len(), 1);
 }
-
-#[test]
-fn text_layout_cache_reuses_matching_revealed_secret_layout() {
-    let mut cache = TextLayoutCache::default();
-    let style = TextStyle::new(ClearColor::rgba(240, 244, 250, 236), 2);
-
-    let first = cache.revealed_secret_block("secret", style.clone(), 212);
-    let cached = cache
-        .revealed_secret
-        .block
-        .clone()
-        .expect("cached revealed secret block");
-    let second = cache.revealed_secret_block("secret", style, 212);
-
-    assert_eq!(first, second);
-    assert_eq!(cached, second);
-}

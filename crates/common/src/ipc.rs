@@ -10,6 +10,8 @@ use crate::secret::Secret;
 
 pub use line::{IPC_MAX_LINE_BYTES, LineAccumulator, LineProgress};
 
+pub const SECRET_MESSAGE_CAPACITY: usize = 2 * 1024;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockPowerStatusSnapshot {
     pub suspend_remaining_seconds: u64,
@@ -95,7 +97,7 @@ pub enum CurtainStartupMessage {
 }
 
 /// Messages sent from UI-facing clients to the daemon.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
     SubmitPassword { attempt_id: u64, secret: Secret },
     CancelAuthentication,
@@ -219,11 +221,13 @@ where
     serde_json::to_string(message).map_err(Into::into)
 }
 
-pub fn encode_secret_message<T>(message: &T) -> Result<Zeroizing<String>>
+pub fn encode_secret_message<T>(message: &T) -> Result<Zeroizing<Vec<u8>>>
 where
     T: Serialize,
 {
-    encode_message(message).map(Zeroizing::new)
+    let mut payload = Zeroizing::new(Vec::with_capacity(SECRET_MESSAGE_CAPACITY));
+    serde_json::to_writer(&mut *payload, message)?;
+    Ok(payload)
 }
 
 /// Decodes an IPC message from JSON for the initial control channel
@@ -267,10 +271,25 @@ mod tests {
             secret: Secret::from(String::from("hunter2")),
         };
         let encoded = encode_secret_message(&message).expect("secret message should encode");
+        let encoded = std::str::from_utf8(&encoded).expect("secret message should be utf-8");
         let decoded =
-            decode_message::<ClientMessage>(&encoded).expect("secret message should decode");
+            decode_message::<ClientMessage>(encoded).expect("secret message should decode");
 
         assert_eq!(decoded, message);
+    }
+
+    #[test]
+    fn secret_message_has_room_for_framing_without_reallocation() {
+        let message = ClientMessage::SubmitPassword {
+            attempt_id: 4,
+            secret: Secret::from("x".repeat(crate::SECRET_CAPACITY)),
+        };
+        let mut encoded = encode_secret_message(&message).expect("secret message should encode");
+        let allocation = encoded.as_ptr();
+
+        encoded.push(b'\n');
+
+        assert_eq!(encoded.as_ptr(), allocation);
     }
 
     #[test]
