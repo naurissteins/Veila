@@ -29,10 +29,21 @@ pub(super) fn render_image(
         .iter_mut()
         .zip(composed.pixels())
     {
-        target.copy_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
+        target.copy_from_slice(&[
+            composite_over_fallback(pixel[2], fallback.blue, pixel[3]),
+            composite_over_fallback(pixel[1], fallback.green, pixel[3]),
+            composite_over_fallback(pixel[0], fallback.red, pixel[3]),
+            u8::MAX,
+        ]);
     }
 
     Ok(buffer)
+}
+
+fn composite_over_fallback(source: u8, fallback: u8, alpha: u8) -> u8 {
+    let alpha = u16::from(alpha);
+    let inverse_alpha = u16::from(u8::MAX) - alpha;
+    ((u16::from(source) * alpha + u16::from(fallback) * inverse_alpha + 127) / 255) as u8
 }
 
 fn render_image_fill(image: &RgbaImage, size: FrameSize) -> RgbaImage {

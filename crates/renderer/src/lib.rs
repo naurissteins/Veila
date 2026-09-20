@@ -114,6 +114,8 @@ pub enum RendererError {
     InvalidFrameSize(FrameSize),
     #[error("frame size must not be empty")]
     EmptyFrame,
+    #[error("partial frame rendering requires a previously committed frame")]
+    MissingCommittedFrame,
     #[error("buffer size mismatch: target {target:?}, overlay {overlay:?}")]
     BufferSizeMismatch {
         target: FrameSize,

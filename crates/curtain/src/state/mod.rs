@@ -2,6 +2,7 @@ mod interaction;
 mod memory;
 mod power;
 mod profiler;
+mod redraw;
 mod repeat;
 mod resume;
 
@@ -68,6 +69,7 @@ pub(crate) use veila_common::{duration_ms_between, elapsed_ms, elapsed_us};
 
 pub(crate) use power::ScreenOffState;
 pub(crate) use profiler::{DirtyRenderTimingSample, RenderProfiler, RenderTimingSample};
+pub(crate) use redraw::{PendingRedraw, RedrawKind};
 pub(crate) use repeat::KeyRepeatState;
 pub(crate) use resume::ResumeInputState;
 
@@ -83,6 +85,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_has_layers: bool,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
+    pub(crate) pending_redraw: PendingRedraw,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
     pub(crate) preferred_scale: i32,
     pub(crate) preferred_fractional_scale: Option<u32>,
@@ -544,6 +547,7 @@ impl CurtainApp {
             scene_base_revision: 0,
             scene_base_has_layers: false,
             shm_pool: None,
+            pending_redraw: PendingRedraw::default(),
             output_power,
             preferred_scale: 1,
             preferred_fractional_scale: None,
