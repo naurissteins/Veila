@@ -115,6 +115,22 @@ fn scales_images_into_argb8888_buffers() {
 }
 
 #[test]
+fn composites_transparent_wallpaper_pixels_over_the_fallback() {
+    let image = RgbaImage::from_pixel(1, 1, Rgba([255, 0, 0, 128]));
+    let asset = BackgroundAsset {
+        kind: BackgroundKind::Image {
+            image: Arc::new(image),
+            fallback: ClearColor::opaque(0, 0, 255),
+        },
+        treatment: BackgroundTreatment::default(),
+    };
+
+    let buffer = asset.render(FrameSize::new(1, 1)).expect("buffer");
+
+    assert_eq!(buffer.pixels(), &[127, 0, 128, 255]);
+}
+
+#[test]
 fn cover_dimensions_fill_target() {
     assert_eq!(cover_dimensions(4000, 3000, 1920, 1080), (1920, 1440));
     assert_eq!(cover_dimensions(3000, 4000, 1920, 1080), (1920, 2560));

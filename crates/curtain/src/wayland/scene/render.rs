@@ -4,7 +4,9 @@ use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
 use veila_renderer::{PixelBuffer, copy_rect_from, shm};
 
-use crate::state::{CurtainApp, DirtyRenderTimingSample, RenderTimingSample, SurfaceSize};
+use crate::state::{
+    CurtainApp, DirtyRenderTimingSample, RedrawKind, RenderTimingSample, SurfaceSize,
+};
 
 impl CurtainApp {
     pub(crate) fn render_surface_with_emergency_fallback(
@@ -69,7 +71,11 @@ impl CurtainApp {
             .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
             .unwrap_or(0);
 
-        if !ui_visible && !first_frame && !background_refreshed {
+        if !ui_visible
+            && !first_frame
+            && !background_refreshed
+            && !self.lock_surfaces[index].pending_redraw.requires_full()
+        {
             return Ok(());
         }
 
@@ -116,7 +122,7 @@ impl CurtainApp {
         let mut dynamic_overlay_ms = 0;
         let ui_shell = &self.ui_shell;
         self.configure_viewport_for_surface(index, size);
-        let commit_result = {
+        let frame_result = {
             let lock_surface = &mut self.lock_surfaces[index];
             lock_surface
                 .shm_pool
@@ -139,8 +145,13 @@ impl CurtainApp {
                     },
                 )
         }
-        .map_err(|error| anyhow!("failed to render and commit software buffer: {error}"));
-        commit_result?;
+        .map_err(|error| anyhow!("failed to render and commit software buffer: {error}"))?;
+        if !self.lock_surfaces[index]
+            .pending_redraw
+            .record_result(RedrawKind::Full, frame_result)
+        {
+            return Ok(());
+        }
         self.note_first_frame_committed(first_frame);
 
         if let Some(started_at) = total_started_at {
@@ -234,7 +245,7 @@ impl CurtainApp {
         let ui_shell = &self.ui_shell;
         self.configure_viewport_for_surface(index, size);
         let commit_started_at = timing_enabled.then(Instant::now);
-        let damaged = {
+        let (frame_result, damaged) = {
             let lock_surface = &mut self.lock_surfaces[index];
             let mut damaged = dirty_rect;
             lock_surface
@@ -262,9 +273,15 @@ impl CurtainApp {
                         Ok(Some(damaged))
                     },
                 )
-                .map(|_| damaged)
+                .map(|frame_result| (frame_result, damaged))
         }
         .map_err(|error| anyhow!("failed to render and commit auth dirty region: {error}"))?;
+        if !self.lock_surfaces[index]
+            .pending_redraw
+            .record_result(RedrawKind::AuthDirty, frame_result)
+        {
+            return Ok(());
+        }
 
         if let Some(started_at) = total_started_at {
             let commit_ms = commit_started_at
@@ -347,7 +364,7 @@ impl CurtainApp {
 
         let commit_started_at = timing_enabled.then(Instant::now);
         self.configure_viewport_for_surface(index, size);
-        let commit_result = self.lock_surfaces[index]
+        let frame_result = self.lock_surfaces[index]
             .shm_pool
             .as_mut()
             // Assigned immediately above when None
@@ -360,7 +377,13 @@ impl CurtainApp {
             )
             .map_err(|error| anyhow!("failed to commit software buffer: {error}"));
         self.lock_surfaces[index].background = Some(background);
-        commit_result?;
+        let frame_result = frame_result?;
+        if !self.lock_surfaces[index]
+            .pending_redraw
+            .record_result(RedrawKind::Full, frame_result)
+        {
+            return Ok(());
+        }
         self.note_first_frame_committed(first_frame);
 
         if let Some(started_at) = total_started_at {

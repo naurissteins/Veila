@@ -35,16 +35,16 @@ smithay_client_toolkit::reexports::client::delegate_noop!(
 
 impl Dispatch<WlBuffer, ShmBufferRelease> for CurtainApp {
     fn event(
-        _state: &mut Self,
-        proxy: &WlBuffer,
+        state: &mut Self,
+        _proxy: &WlBuffer,
         event: wl_buffer::Event,
         data: &ShmBufferRelease,
         _conn: &Connection,
-        _qhandle: &QueueHandle<Self>,
+        qhandle: &QueueHandle<Self>,
     ) {
         if matches!(event, wl_buffer::Event::Release) {
             data.mark_released();
-            proxy.destroy();
+            state.render_pending_surface(data.surface(), qhandle);
         }
     }
 }
