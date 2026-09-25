@@ -30,10 +30,9 @@ use self::events::{
     handle_auth_message, handle_auth_result, handle_control_message, handle_curtain_exit,
     handle_lock_signal, handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
 };
-use self::helpers::{activate_and_log, current_username};
+use self::helpers::current_username;
 use self::runtime::{
-    ActiveRuntime, accept_auth_connection, accept_control_connection, receive_auth_result,
-    wait_for_curtain_exit,
+    accept_auth_connection, accept_control_connection, receive_auth_result, wait_for_curtain_exit,
 };
 use self::state::{AppRuntime, ControlInputs};
 use self::watch::{AutoReloadTrigger, AutoReloadWatcher, effective_auto_reload_debounce_ms};
@@ -110,50 +109,11 @@ pub async fn run(
     tracing::info!(
         session = %session_path,
         session_id_override = options.session_id.as_deref().unwrap_or("none"),
-        manual_lock = options.lock_now,
-        force_emergency_ui = options.force_emergency_ui,
-        latency_report = ?options.latency_report,
         daemon_config_load_ms,
         daemon_config_load_us,
         config = runtime.loaded_config.path.as_deref().map(|path| path.display().to_string()).unwrap_or_else(|| "defaults".to_string()),
-        "veilad ready"
+        "daemon ready"
     );
-
-    if options.lock_now {
-        tracing::info!("manual lock requested via --lock-now");
-        runtime.active_latency_report = options.latency_report;
-        let now_playing_snapshot = runtime.now_playing.current_snapshot();
-        let initial_background_path = runtime.select_initial_background_path();
-        activate_and_log(
-            "manual",
-            &session_proxy,
-            &mut runtime.state,
-            options.config_path.as_deref(),
-            initial_background_path.as_deref(),
-            runtime.weather.current_snapshot().as_ref(),
-            runtime.battery.current_snapshot().as_ref(),
-            now_playing_snapshot.as_ref(),
-            options.force_emergency_ui,
-            options.latency_report,
-            runtime.loaded_config.config.lock.acquire_timeout_seconds,
-            runtime.daemon_config_load_ms,
-            runtime.daemon_config_load_us,
-            ActiveRuntime::new(
-                &mut runtime.curtain,
-                &mut runtime.auth_listener,
-                &mut runtime.auth_socket_path,
-                &mut runtime.control_socket_path,
-                &mut runtime.auth_results,
-                &mut runtime.auth_sender,
-            ),
-            runtime.auth_policy,
-            &mut runtime.auth_state,
-            &mut runtime.suspend_state,
-        )
-        .await
-        .context("failed to activate manual lock")?;
-        runtime.fingerprint.reset_for_new_lock().await;
-    }
 
     loop {
         tokio::select! {
@@ -175,8 +135,6 @@ pub async fn run(
                     weather_snapshot.as_ref(),
                     battery_snapshot.as_ref(),
                     now_playing_snapshot.as_ref(),
-                    options.force_emergency_ui,
-                    options.latency_report,
                     acquire_timeout_seconds,
                     daemon_config_load_ms,
                     daemon_config_load_us,
@@ -261,8 +219,6 @@ pub async fn run(
                             weather_snapshot.as_ref(),
                             battery_snapshot.as_ref(),
                             now_playing_snapshot.as_ref(),
-                            options.force_emergency_ui,
-                            options.latency_report,
                             acquire_timeout_seconds,
                             daemon_config_load_ms,
                             daemon_config_load_us,
@@ -728,6 +684,6 @@ pub async fn run(
     shutdown_runtime(&session_proxy, slots, auth_policy).await;
 
     let _ = std::fs::remove_file(&daemon_control_socket_path);
-    tracing::info!("veilad exiting");
+    tracing::info!("daemon exiting");
     Ok(())
 }

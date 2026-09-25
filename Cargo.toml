@@ -1,3 +1,23 @@
+[package]
+name = "veila"
+description = "Secure, elegant, and fast Wayland screen locker"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+veila-curtain = { path = "crates/curtain" }
+veila-daemon = { path = "crates/daemon" }
+anyhow = { workspace = true }
+nix = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
+
 [workspace]
 resolver = "2"
 members = [
@@ -33,6 +53,7 @@ tiny-skia = "0.12"
 tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt", "signal", "sync", "time"] }
 toml = "1"
 tracing = "0.1"
+tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = { version = "3", default-features = true, features = ["json"] }
 wayland-protocols-wlr = "0.3"

@@ -9,7 +9,10 @@ mod theme;
 
 use anyhow::{Result, bail};
 
-use crate::{DaemonOptions, adapters::ipc, app};
+use crate::{
+    DaemonOptions,
+    adapters::{ipc, process::DAEMON_PROCESS_NAME},
+};
 
 use config::print_config_validation;
 use daemon::{
@@ -25,13 +28,9 @@ use theme::{
     unset_theme_and_reload,
 };
 
-pub const fn component_name() -> &'static str {
-    "veilad"
-}
-
 pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
     veila_common::ipc::DaemonHealth {
-        component: component_name().to_string(),
+        component: DAEMON_PROCESS_NAME.to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build_profile: if cfg!(debug_assertions) {
             "debug".to_string()
@@ -40,145 +39,6 @@ pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
         },
         target_os: std::env::consts::OS.to_string(),
         target_arch: std::env::consts::ARCH.to_string(),
-    }
-}
-
-pub async fn run(options: DaemonOptions) -> Result<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
-
-    if options.background_prewarm_only {
-        app::run_background_prewarm_once(options.config_path.as_deref()).await?;
-        return Ok(());
-    }
-
-    let control_mode_count = usize::from(options.lock_now)
-        + usize::from(options.current_theme)
-        + usize::from(options.print_theme.is_some())
-        + usize::from(options.set_theme.is_some())
-        + usize::from(options.unset_theme)
-        + usize::from(options.stop)
-        + usize::from(options.list_themes)
-        + usize::from(options.status)
-        + usize::from(options.health)
-        + usize::from(options.doctor)
-        + usize::from(options.check_config)
-        + usize::from(options.init_config)
-        + usize::from(options.version)
-        + usize::from(options.reload_config)
-        + usize::from(options.idle)
-        + usize::from(options.logs);
-    if control_mode_count > 1 {
-        bail!(
-            "use only one of --lock-now, --current-theme, --print-theme, --set-theme, --unset-theme, --stop, --list-themes, --status, --health, --doctor, --check-config, --version, --reload-config, idle, or logs at a time"
-        );
-    }
-    if options.wait_ready && !options.lock_now {
-        bail!("--wait-ready can only be used with --lock-now");
-    }
-    if options.force_emergency_ui && !options.lock_now {
-        bail!("--force-emergency-ui can only be used with --lock-now");
-    }
-    if options.latency_report.is_enabled() && !options.lock_now {
-        bail!("--latency-report can only be used with --lock-now");
-    }
-
-    if options.current_theme {
-        print_current_theme(options.config_path.as_deref())?;
-        return Ok(());
-    }
-
-    if let Some(theme) = options.print_theme.as_deref() {
-        print_theme_source(theme, options.config_path.as_deref())?;
-        return Ok(());
-    }
-
-    if options.list_themes {
-        print_available_themes()?;
-        return Ok(());
-    }
-
-    if options.doctor {
-        print_doctor_report(
-            options.config_path.as_deref(),
-            options.session_id.as_deref(),
-        )
-        .await;
-        return Ok(());
-    }
-
-    if options.check_config {
-        print_config_validation(options.config_path.as_deref())?;
-        return Ok(());
-    }
-
-    if options.version {
-        print_version_info();
-        return Ok(());
-    }
-
-    let daemon_socket_path = ipc::daemon_socket_path()?;
-
-    if let Some(theme) = options.set_theme.as_deref() {
-        set_theme_and_reload(theme, options.config_path.as_deref(), &daemon_socket_path).await?;
-        return Ok(());
-    }
-
-    if options.unset_theme {
-        unset_theme_and_reload(options.config_path.as_deref(), &daemon_socket_path).await?;
-        return Ok(());
-    }
-
-    if options.stop {
-        stop_running_daemon(&daemon_socket_path).await?;
-        println!("stopped=true");
-        return Ok(());
-    }
-
-    if options.status {
-        print_running_status(&daemon_socket_path).await?;
-        return Ok(());
-    }
-
-    if options.health {
-        print_running_health(&daemon_socket_path).await?;
-        return Ok(());
-    }
-
-    if options.reload_config {
-        reload_running_config(&daemon_socket_path).await?;
-        return Ok(());
-    }
-
-    match ipc::bind_single_instance_listener(&daemon_socket_path).await {
-        Ok(control_listener) => app::run(options, control_listener, daemon_socket_path).await,
-        Err(error) => {
-            if options.lock_now && daemon_socket_path.exists() {
-                let response = ipc::send_daemon_control_message(
-                    &daemon_socket_path,
-                    &veila_common::ipc::DaemonControlMessage::LockNow {
-                        wait_ready: options.wait_ready,
-                        force_emergency_ui: options.force_emergency_ui,
-                        latency_report: options.latency_report,
-                        sleep_transition: false,
-                    },
-                )
-                .await?;
-                match response {
-                    veila_common::ipc::DaemonControlResponse::Accepted => {}
-                    veila_common::ipc::DaemonControlResponse::Locked { .. }
-                        if options.wait_ready => {}
-                    veila_common::ipc::DaemonControlResponse::Error { reason } => bail!(reason),
-                    _ => bail!("daemon did not acknowledge forwarded lock request"),
-                }
-                tracing::info!(path = %daemon_socket_path.display(), "forwarded lock request to running daemon");
-                Ok(())
-            } else {
-                Err(error)
-            }
-        }
     }
 }
 
@@ -334,56 +194,10 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
     Ok(())
 }
 
-fn print_help() {
-    println!(
-        "\
-Veila daemon
-
-Usage:
-  {name} [options]
-
-General:
-  -h, --help                 Show this help text
-  -v, --version              Print the local Veila version
-      --config=<path>        Use a specific config file
-      --log-file=<path>      Append daemon logs to a file when starting the daemon
-      --session-id=<id>      Override the logind session id
-
-Legacy control:
-      --lock-now             Trigger an immediate lock
-      --wait-ready           Return only after the secure lock is active
-      --force-emergency-ui   Lock with the built-in emergency unlock prompt
-      --latency-report[=verbose]
-                             Print startup timing details after --wait-ready
-      --reload-config        Ask a running daemon to reload config from disk
-      --status               Print daemon runtime status
-      --health               Print daemon build and platform info
-      --doctor               Check local runtime prerequisites without locking
-      --check-config         Validate config files without starting the daemon
-      --stop                 Stop the running daemon
-
-Themes:
-      --list-themes          List bundled themes
-      --current-theme        Print the active theme selection
-      --print-theme=<name>   Print a theme source file
-      --set-theme=<name>     Set the active theme in config.toml
-      --unset-theme          Remove the top-level theme key from config.toml
-
-Notes:
-  Prefer `veila lock`, `veila status`, `veila reload`, and `veila theme ...` for user-facing control.
-  Only one control action can be used at a time.
-  If no control action is given, {name} starts the daemon.
-  --log-file only affects that daemon-start path.
-  --set-theme creates config.toml automatically if it does not exist.
-",
-        name = component_name()
-    );
-}
-
 fn print_control_help() {
     println!(
         "\
-Veila control CLI
+Veila screen locker
 
 Usage:
   veila <command> [options]
@@ -397,6 +211,8 @@ General:
                              Combine with `lock --wait-ready` to print startup timings
 
 Commands:
+  daemon [options]           Start the daemon (see `veila daemon --help`)
+  preview --preview-png=PATH Render the lockscreen to a PNG without locking
   lock [--wait-ready]        Ask the running daemon to lock now
   status                     Print daemon runtime status
   health                     Print daemon build and platform info
@@ -422,7 +238,7 @@ Themes:
   theme unset                Remove the top-level theme key from config.toml
 
 Notes:
-  This command never starts the daemon. Start it with `veilad`, a user service, or your compositor config.
+  Control commands never start the daemon. Start it with `veila daemon`, a user service, or your compositor config.
   `--wait-ready` can be combined with `veila lock` to block until the secure lock is active.
   `veila idle` defaults to 300 seconds when --lock-after is omitted.
   `veila idle --lock-before-sleep` uses a logind delay inhibitor while preparing the lock.

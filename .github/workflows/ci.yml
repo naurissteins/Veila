@@ -83,7 +83,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev libxkbcommon-dev
-      - run: cargo build -p veila-curtain
+      - run: cargo build --bin veila
       - name: Render bundled theme previews
         run: |
           mkdir -p target/theme-previews
@@ -95,7 +95,7 @@ jobs:
             if grep -q '^mode = "file"' "$theme_path"; then
               printf '\n[background]\nmode = "solid"\n' >> "$config_path"
             fi
-            ./target/debug/veila-curtain \
+            ./target/debug/veila preview \
               --config "$config_path" \
               --preview-png "$preview_path" \
               --preview-size 1920x1080 \

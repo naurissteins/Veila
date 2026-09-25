@@ -19,7 +19,7 @@ fi
 
 status_output="$("$veila_bin" "$@" status 2>&1)" || {
   printf '%s\n' "$status_output" >&2
-  echo "error: veilad must be running before latency check" >&2
+  echo "error: veila daemon must be running before latency check" >&2
   exit 1
 }
 

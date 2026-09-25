@@ -23,8 +23,6 @@ pub(crate) async fn handle_lock_signal(
     weather_snapshot: Option<&WeatherSnapshot>,
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
-    force_emergency_ui: bool,
-    latency_report: LatencyReportMode,
     acquire_timeout_seconds: u64,
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
@@ -49,7 +47,7 @@ pub(crate) async fn handle_lock_signal(
         return;
     }
 
-    *active_latency_report = latency_report;
+    *active_latency_report = LatencyReportMode::Disabled;
     if let Err(error) = activate_and_log(
         trigger,
         session_proxy,
@@ -59,8 +57,8 @@ pub(crate) async fn handle_lock_signal(
         weather_snapshot,
         battery_snapshot,
         now_playing_snapshot,
-        force_emergency_ui,
-        latency_report,
+        false,
+        LatencyReportMode::Disabled,
         acquire_timeout_seconds,
         daemon_config_load_ms,
         daemon_config_load_us,
@@ -137,8 +135,6 @@ pub(crate) async fn handle_curtain_exit(
     weather_snapshot: Option<&WeatherSnapshot>,
     battery_snapshot: Option<&BatterySnapshot>,
     now_playing_snapshot: Option<&NowPlayingSnapshot>,
-    force_emergency_ui: bool,
-    latency_report: LatencyReportMode,
     acquire_timeout_seconds: u64,
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
@@ -175,7 +171,7 @@ pub(crate) async fn handle_curtain_exit(
         *state = LockState::Unlocked;
         tracing::error!("curtain exited while the session should be locked; attempting restart");
 
-        *active_latency_report = latency_report;
+        *active_latency_report = LatencyReportMode::Disabled;
         if let Err(error) = activate_and_log(
             "restart",
             session_proxy,
@@ -185,8 +181,8 @@ pub(crate) async fn handle_curtain_exit(
             weather_snapshot,
             battery_snapshot,
             now_playing_snapshot,
-            force_emergency_ui,
-            latency_report,
+            false,
+            LatencyReportMode::Disabled,
             acquire_timeout_seconds,
             daemon_config_load_ms,
             daemon_config_load_us,

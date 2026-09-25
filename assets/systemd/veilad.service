@@ -5,7 +5,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/veilad
+ExecStart=/usr/bin/veila daemon
 Restart=on-failure
 RestartSec=2
 LimitCORE=0

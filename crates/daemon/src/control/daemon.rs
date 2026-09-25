@@ -172,7 +172,7 @@ fn reload_effect_message(status: &veila_common::ipc::DaemonReloadStatus) -> &'st
 fn ensure_running_daemon(daemon_socket_path: &std::path::Path) -> Result<()> {
     if !daemon_socket_path.exists() {
         bail!(
-            "veilad is not running; daemon socket does not exist at {}",
+            "veila daemon is not running; daemon socket does not exist at {}",
             daemon_socket_path.display()
         );
     }

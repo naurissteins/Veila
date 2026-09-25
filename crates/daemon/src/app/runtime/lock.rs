@@ -262,10 +262,7 @@ async fn activate_lock_attempt(
                 };
                 remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                 return Err(AttemptFailure::retryable(
-                    anyhow!(
-                        "curtain exited before readiness with status {status}. \
-        If you ran `cargo run -p veila-daemon` after changing curtain startup arguments or shared runtime wiring, rebuild the workspace with `cargo build --workspace` so `target/debug/veila-curtain` matches the daemon"
-                    ),
+                    anyhow!("curtain exited before readiness with status {status}"),
                     session_locked,
                 ));
             }

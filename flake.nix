@@ -50,18 +50,14 @@
               runHook preInstall
 
               veila_bin="$(find target -type f -path '*/release/veila' -print -quit)"
-              veilad_bin="$(find target -type f -path '*/release/veilad' -print -quit)"
-              curtain_bin="$(find target -type f -path '*/release/veila-curtain' -print -quit)"
 
-              if [ -z "$veila_bin" ] || [ -z "$veilad_bin" ] || [ -z "$curtain_bin" ]; then
-                echo "failed to find release binaries under target/"
+              if [ -z "$veila_bin" ]; then
+                echo "failed to find the veila release binary under target/"
                 find target -maxdepth 4 -type f -perm -0100 -print
                 exit 1
               fi
 
               install -Dm755 "$veila_bin" "$out/bin/veila"
-              install -Dm755 "$veilad_bin" "$out/bin/veilad"
-              install -Dm755 "$curtain_bin" "$out/bin/veila-curtain"
               install -Dm644 docs/man/veila.1 "$out/share/man/man1/veila.1"
 
               mkdir -p "$out/share/veila"
@@ -70,15 +66,10 @@
               cp -R assets/systemd "$out/share/veila/"
               cp -R assets/themes "$out/share/veila/"
 
-              wrapProgram "$out/bin/veila-curtain" \
-                --set VEILA_ASSET_DIR "$out/share/veila"
-
               wrapProgram "$out/bin/veila" \
                 --set VEILA_ASSET_DIR "$out/share/veila"
 
-              wrapProgram "$out/bin/veilad" \
-                --set VEILA_ASSET_DIR "$out/share/veila" \
-                --set VEILA_CURTAIN_BIN "$out/bin/veila-curtain"
+              ln -s veila "$out/bin/veilad"
 
               runHook postInstall
             '';
@@ -164,7 +155,7 @@
               wantedBy = [ "graphical-session.target" ];
               serviceConfig = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/veilad";
+                ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
                 PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
@@ -255,7 +246,7 @@
               };
               Service = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/veilad";
+                ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
                 PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
@@ -300,11 +291,6 @@
           veilad = {
             type = "app";
             program = "${package}/bin/veilad";
-          };
-
-          veila-curtain = {
-            type = "app";
-            program = "${package}/bin/veila-curtain";
           };
 
           default = self.apps.${system}.veila;

@@ -195,7 +195,7 @@ pub(super) fn build_daemon_status(
 }
 
 pub(super) fn build_daemon_health() -> DaemonHealth {
-    crate::local_build_info()
+    crate::control::local_build_info()
 }
 
 fn current_unix_ms() -> Option<u64> {

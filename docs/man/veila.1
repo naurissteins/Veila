@@ -1,42 +1,45 @@
 .TH VEILA 1 "May 2026" "Veila 0.4.0" "User Commands"
 .SH NAME
-veila \- control CLI for the Veila Wayland screen locker
+veila \- secure Wayland screen locker
 .SH SYNOPSIS
 .B veila
 .RI [ command ]
 .RI [ options ]
 .br
-.B veilad
+.B veila daemon
 .RI [ options ]
 .br
-.B veila-curtain
+.B veila preview
+.BI --preview-png= PATH
 .RI [ options ]
 .SH DESCRIPTION
 .B Veila
 is a native Wayland screen locker built around the secure
 .B ext-session-lock-v1
-protocol. The user-facing
+protocol. It ships as a single
 .B veila
-command talks to a running
-.B veilad
-daemon. It does not start the daemon by itself.
+binary.
 .PP
-Start
-.B veilad
-from a user service or compositor startup command, then use
+Start the daemon with
+.B veila daemon
+from a user service or compositor startup command, then use the other
 .B veila
-to request locks, inspect state, validate configuration, view logs, and manage theme selection.
+commands to request locks, inspect state, validate configuration, view logs, and manage theme selection. Control commands talk to the running daemon and never start it by themselves.
 .PP
-The
+For every lock the daemon starts a separate secure curtain process from the same binary. That process owns the session-lock surfaces and appears as
 .B veila-curtain
-binary owns the secure lock surfaces and is normally spawned by the daemon. Direct curtain launches are intended for preview and emergency testing.
-For theme preview flags such as
-.B --preview-png
-and
-.BR --preview-size ,
-run
-.BR "veila-curtain --help" .
+in process listings.
 .SH COMMANDS
+.TP
+.B daemon
+Start the Veila daemon. See
+.BR DAEMON .
+.TP
+.B preview --preview-png=PATH
+Render the lockscreen to a PNG without locking the session. Run
+.B veila preview --help
+for the preview options such as
+.BR --preview-size .
 .TP
 .B lock
 Ask the running daemon to lock the current logind session.
@@ -129,21 +132,18 @@ Limit the number of log lines.
 .B --daemon, --curtain, --ui, --idle, --all
 Select which packaged service or process logs to show.
 .SH DAEMON
-.B veilad
-starts the daemon when no control action is supplied. It also accepts legacy control flags such as
-.B --lock-now,
-.B --reload-config,
-.B --status,
-.B --health,
-.B --doctor,
-.B --check-config,
-and
-.BR --stop .
-Prefer the
+.B veila daemon
+accepts only startup options. Use the other
 .B veila
-subcommands for user-facing control.
+commands to control a running daemon.
 .PP
-Useful daemon-only options include:
+The former
+.B veilad
+command name still starts the daemon for one release when it points at the
+.B veila
+binary, and logs a deprecation warning.
+.PP
+Daemon options:
 .TP
 .BI --config= PATH
 Load a specific config file.
@@ -186,9 +186,6 @@ Packaged idle helper user service.
 .B VEILA_ASSET_DIR
 Overrides the packaged asset directory.
 .TP
-.B VEILA_CURTAIN_BIN
-Overrides the curtain binary path used by the daemon.
-.TP
 .B RUST_LOG
 Controls tracing verbosity for development and troubleshooting.
 .SH SECURITY NOTES
@@ -200,7 +197,10 @@ Unlock authority stays with the daemon and logind state. The UI forwards authent
 .SH EXAMPLES
 .TP
 Start the daemon manually:
-.B veilad
+.B veila daemon
+.TP
+Render a preview screenshot:
+.B veila preview --preview-png=/tmp/veila.png --preview-size=1920x1080
 .TP
 Lock and wait for readiness:
 .B veila lock --wait-ready

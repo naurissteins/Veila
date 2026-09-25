@@ -33,7 +33,7 @@ pub async fn bind_single_instance_listener(path: &Path) -> Result<UnixListener> 
         match UnixStream::connect(path).await {
             Ok(_) => {
                 return Err(anyhow!(
-                    "veilad is already running and listening on {}",
+                    "veila daemon is already running and listening on {}",
                     path.display()
                 ));
             }
