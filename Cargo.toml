@@ -30,7 +30,7 @@ smithay-client-toolkit = { version = "0.20", default-features = false, features 
 thiserror = "2"
 time = { version = "0.3", features = ["local-offset"] }
 tiny-skia = "0.12"
-tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt", "signal", "sync", "time"] }
 toml = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

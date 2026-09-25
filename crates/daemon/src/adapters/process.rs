@@ -1,6 +1,4 @@
 use std::{
-    io::Write,
-    os::unix::net::UnixStream,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -11,6 +9,8 @@ use nix::{
     unistd::Pid,
 };
 use tokio::{
+    io::AsyncWriteExt,
+    net::UnixStream,
     process::{Child, Command},
     time::timeout,
 };
@@ -20,6 +20,8 @@ use veila_common::{
 };
 
 use super::ipc;
+
+const CURTAIN_CONTROL_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_curtain(
@@ -93,6 +95,7 @@ pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u6
         &CurtainControlMessage::Unlock { attempt_id },
         "unlock request",
     )
+    .await
 }
 
 pub async fn request_curtain_reload(control_socket: &Path) -> Result<()> {
@@ -101,6 +104,7 @@ pub async fn request_curtain_reload(control_socket: &Path) -> Result<()> {
         &CurtainControlMessage::ReloadConfig,
         "reload request",
     )
+    .await
 }
 
 pub async fn request_curtain_arm_resume_input_guard(control_socket: &Path) -> Result<()> {
@@ -109,6 +113,7 @@ pub async fn request_curtain_arm_resume_input_guard(control_socket: &Path) -> Re
         &CurtainControlMessage::ArmResumeInputGuard,
         "resume input guard request",
     )
+    .await
 }
 
 pub async fn request_curtain_mark_resumed(control_socket: &Path) -> Result<()> {
@@ -117,6 +122,7 @@ pub async fn request_curtain_mark_resumed(control_socket: &Path) -> Result<()> {
         &CurtainControlMessage::MarkResumed,
         "resume completed request",
     )
+    .await
 }
 
 pub async fn request_curtain_now_playing_update(
@@ -130,6 +136,7 @@ pub async fn request_curtain_now_playing_update(
         },
         "now playing update",
     )
+    .await
 }
 
 pub async fn request_curtain_power_status_update(
@@ -143,6 +150,7 @@ pub async fn request_curtain_power_status_update(
         },
         "power status update",
     )
+    .await
 }
 
 pub async fn request_curtain_fingerprint_status_update(
@@ -156,27 +164,44 @@ pub async fn request_curtain_fingerprint_status_update(
         },
         "fingerprint status update",
     )
+    .await
 }
 
-fn send_curtain_control_message(
+async fn send_curtain_control_message(
     control_socket: &Path,
     message: &CurtainControlMessage,
     label: &str,
 ) -> Result<()> {
-    let mut stream = UnixStream::connect(control_socket).with_context(|| {
+    let mut payload =
+        encode_message(message).with_context(|| format!("failed to encode {label}"))?;
+    payload.push('\n');
+
+    timeout(
+        CURTAIN_CONTROL_TIMEOUT,
+        write_curtain_control_payload(control_socket, payload.as_bytes(), label),
+    )
+    .await
+    .with_context(|| format!("timed out sending {label}"))?
+}
+
+async fn write_curtain_control_payload(
+    control_socket: &Path,
+    payload: &[u8],
+    label: &str,
+) -> Result<()> {
+    let mut stream = UnixStream::connect(control_socket).await.with_context(|| {
         format!(
             "failed to connect to curtain control socket {}",
             control_socket.display()
         )
     })?;
-    let mut payload =
-        encode_message(message).with_context(|| format!("failed to encode {label}"))?;
-    payload.push('\n');
     stream
-        .write_all(payload.as_bytes())
+        .write_all(payload)
+        .await
         .with_context(|| format!("failed to write {label}"))?;
     stream
         .flush()
+        .await
         .with_context(|| format!("failed to flush {label}"))
 }
 
