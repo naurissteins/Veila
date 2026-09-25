@@ -31,12 +31,10 @@ require_file() {
 }
 
 require_file target/release/veila
-require_file target/release/veilad
-require_file target/release/veila-curtain
 require_file LICENSE
 require_file README.md
 require_file docs/man/veila.1
-require_file assets/systemd/veilad.service
+require_file assets/systemd/veila.service
 require_file assets/systemd/veila-idle.service
 
 rm -rf "$staging" "$deb_path"
@@ -51,10 +49,10 @@ mkdir -p \
   "$output_dir"
 
 install -m755 target/release/veila "$staging/usr/bin/veila"
-install -m755 target/release/veilad "$staging/usr/bin/veilad"
-install -m755 target/release/veila-curtain "$staging/usr/bin/veila-curtain"
+ln -s veila "$staging/usr/bin/veilad"
 
-install -m644 assets/systemd/veilad.service "$staging/usr/lib/systemd/user/veilad.service"
+install -m644 assets/systemd/veila.service "$staging/usr/lib/systemd/user/veila.service"
+ln -s veila.service "$staging/usr/lib/systemd/user/veilad.service"
 install -m644 assets/systemd/veila-idle.service "$staging/usr/lib/systemd/user/veila-idle.service"
 install -m644 README.md "$staging/usr/share/doc/veila/README.md"
 install -m644 LICENSE "$staging/usr/share/doc/veila/copyright"

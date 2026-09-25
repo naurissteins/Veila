@@ -76,7 +76,9 @@ Run the compositor idle helper. If
 is omitted, the default delay is 300 seconds.
 .TP
 .B logs
-Show recent packaged systemd user service logs.
+Show recent logs from the packaged
+.B veila.service
+user service.
 .TP
 .B theme list
 List bundled theme presets.
@@ -176,8 +178,14 @@ Packaged assets, including bundled themes, fonts, icons, and systemd unit files.
 .I /etc/pam.d/veila
 PAM service used for password authentication.
 .TP
+.I /usr/lib/systemd/user/veila.service
+Packaged daemon user service. It runs
+.BR "veila daemon" .
+.TP
 .I /usr/lib/systemd/user/veilad.service
-Packaged daemon user service.
+Compatibility alias for
+.B veila.service
+so existing enablements keep working. It will be removed in a future release.
 .TP
 .I /usr/lib/systemd/user/veila-idle.service
 Packaged idle helper user service.
@@ -212,7 +220,7 @@ Create a starter config:
 .B veila init --theme default
 .TP
 Enable packaged user services:
-.B systemctl --user enable --now veilad.service
+.B systemctl --user enable --now veila.service
 .SH SEE ALSO
 .BR systemctl (1),
 .BR journalctl (1),

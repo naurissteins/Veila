@@ -28,6 +28,9 @@ use theme::{
     unset_theme_and_reload,
 };
 
+const DAEMON_SERVICE: &str = "veila.service";
+const IDLE_SERVICE: &str = "veila-idle.service";
+
 pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
     veila_common::ipc::DaemonHealth {
         component: DAEMON_PROCESS_NAME.to_string(),

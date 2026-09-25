@@ -1,65 +1,117 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    process::Command,
 };
 
-use super::{CheckStatus, DoctorSummary};
+use super::{
+    super::{DAEMON_SERVICE, IDLE_SERVICE},
+    CheckStatus, DoctorSummary,
+    systemd::{ShowError, UnitState, print_unit_state, show_user_unit},
+};
 
-const IDLE_SERVICE: &str = "veila-idle.service";
+const LEGACY_DAEMON_SERVICE: &str = "veilad.service";
 const LOCK_AFTER_KEY: &str = "VEILA_IDLE_LOCK_AFTER";
 const SLEEP_FLAG_KEY: &str = "VEILA_IDLE_SLEEP_FLAG";
+
+pub(super) fn check_daemon_service(summary: &mut DoctorSummary) {
+    check_legacy_daemon_enablement(summary);
+
+    let Some(state) = show_unit(DAEMON_SERVICE, "daemon_service", summary) else {
+        return;
+    };
+
+    match (
+        state.load.as_deref(),
+        state.active.as_deref(),
+        state.unit_file.as_deref(),
+    ) {
+        (Some("loaded"), Some("active"), _) => summary.record(
+            "daemon_service",
+            CheckStatus::Ok,
+            "veila.service is loaded and active",
+        ),
+        (Some("loaded"), Some(active), Some("enabled")) => summary.record(
+            "daemon_service",
+            CheckStatus::Warning,
+            format!("veila.service is enabled but its active state is {active}"),
+        ),
+        (Some("loaded"), _, _) => summary.record(
+            "daemon_service",
+            CheckStatus::Ok,
+            "veila.service is installed but not running; fine when your compositor starts `veila daemon`",
+        ),
+        (Some("not-found"), _, _) => summary.record(
+            "daemon_service",
+            CheckStatus::Warning,
+            "veila.service is not installed in the user service manager",
+        ),
+        _ => summary.record(
+            "daemon_service",
+            CheckStatus::Warning,
+            "veila.service state could not be determined",
+        ),
+    }
+}
+
+fn check_legacy_daemon_enablement(summary: &mut DoctorSummary) {
+    let links = legacy_daemon_links(&user_unit_config_dir());
+    if links.is_empty() {
+        println!("daemon_service.legacy_enablement=none");
+        return;
+    }
+
+    for link in &links {
+        println!("daemon_service.legacy_enablement={}", link.display());
+    }
+    summary.record(
+        "daemon_service_legacy",
+        CheckStatus::Warning,
+        format!(
+            "{LEGACY_DAEMON_SERVICE} is still enabled under its old name; it keeps working for now, but migrate with `rm {}` and `systemctl --user enable {DAEMON_SERVICE}`",
+            links
+                .iter()
+                .map(|link| link.display().to_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+        ),
+    );
+}
+
+fn legacy_daemon_links(unit_config_dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(unit_config_dir) else {
+        return Vec::new();
+    };
+
+    let mut links: Vec<PathBuf> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "wants")
+        })
+        .map(|path| path.join(LEGACY_DAEMON_SERVICE))
+        .filter(|link| link.symlink_metadata().is_ok())
+        .collect();
+    links.sort();
+    links
+}
+
+fn user_unit_config_dir() -> PathBuf {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
+        .unwrap_or_else(|| PathBuf::from("~/.config"))
+        .join("systemd/user")
+}
 
 pub(super) fn check_idle_service(summary: &mut DoctorSummary) {
     check_idle_env(summary);
 
-    let output = Command::new("systemctl")
-        .args([
-            "--user",
-            "show",
-            IDLE_SERVICE,
-            "--property=LoadState",
-            "--property=ActiveState",
-            "--property=SubState",
-            "--property=UnitFileState",
-            "--property=FragmentPath",
-            "--no-pager",
-        ])
-        .output();
-
-    let output = match output {
-        Ok(output) => output,
-        Err(error) => {
-            println!("idle_service.systemctl=unavailable");
-            summary.record(
-                "idle_service",
-                CheckStatus::Warning,
-                format!("failed to run systemctl --user: {error}"),
-            );
-            return;
-        }
+    let Some(state) = show_unit(IDLE_SERVICE, "idle_service", summary) else {
+        return;
     };
 
-    if !output.status.success() {
-        println!("idle_service.systemctl=error");
-        summary.record(
-            "idle_service",
-            CheckStatus::Warning,
-            command_failure_detail(&output.stderr),
-        );
-        return;
-    }
-
-    println!("idle_service.systemctl=ok");
-    let properties = parse_systemctl_show(&String::from_utf8_lossy(&output.stdout));
-    let load_state = print_property(&properties, "LoadState", "idle_service.load_state");
-    let active_state = print_property(&properties, "ActiveState", "idle_service.active_state");
-    print_property(&properties, "SubState", "idle_service.sub_state");
-    let unit_file_state =
-        print_property(&properties, "UnitFileState", "idle_service.unit_file_state");
-    print_property(&properties, "FragmentPath", "idle_service.fragment_path");
-
-    match (load_state.as_deref(), active_state.as_deref()) {
+    match (state.load.as_deref(), state.active.as_deref()) {
         (Some("loaded"), Some("active")) => summary.record(
             "idle_service",
             CheckStatus::Ok,
@@ -80,7 +132,7 @@ pub(super) fn check_idle_service(summary: &mut DoctorSummary) {
             CheckStatus::Warning,
             format!("veila-idle.service load state is {load}"),
         ),
-        _ if unit_file_state.as_deref() == Some("enabled") => summary.record(
+        _ if state.unit_file.as_deref() == Some("enabled") => summary.record(
             "idle_service",
             CheckStatus::Warning,
             "veila-idle.service is enabled but state could not be determined",
@@ -90,6 +142,25 @@ pub(super) fn check_idle_service(summary: &mut DoctorSummary) {
             CheckStatus::Warning,
             "veila-idle.service state could not be determined",
         ),
+    }
+}
+
+fn show_unit(unit: &str, prefix: &str, summary: &mut DoctorSummary) -> Option<UnitState> {
+    match show_user_unit(unit) {
+        Ok(properties) => {
+            println!("{prefix}.systemctl=ok");
+            Some(print_unit_state(&properties, prefix))
+        }
+        Err(ShowError::Unavailable(detail)) => {
+            println!("{prefix}.systemctl=unavailable");
+            summary.record(prefix, CheckStatus::Warning, detail);
+            None
+        }
+        Err(ShowError::Failed(detail)) => {
+            println!("{prefix}.systemctl=error");
+            summary.record(prefix, CheckStatus::Warning, detail);
+            None
+        }
     }
 }
 
@@ -207,41 +278,12 @@ fn parse_positive_seconds(value: &str) -> Option<u64> {
     value.parse::<u64>().ok().filter(|seconds| *seconds > 0)
 }
 
-fn parse_systemctl_show(output: &str) -> HashMap<String, String> {
-    let mut properties = HashMap::new();
-    for line in output.lines() {
-        if let Some((key, value)) = line.split_once('=') {
-            properties.insert(key.to_string(), value.to_string());
-        }
-    }
-    properties
-}
-
-fn print_property(
-    properties: &HashMap<String, String>,
-    key: &str,
-    output_key: &str,
-) -> Option<String> {
-    let value = properties
-        .get(key)
-        .filter(|value| !value.is_empty())
-        .cloned();
-    println!("{output_key}={}", value.as_deref().unwrap_or("unknown"));
-    value
-}
-
-fn command_failure_detail(stderr: &[u8]) -> String {
-    let detail = String::from_utf8_lossy(stderr).trim().to_string();
-    if detail.is_empty() {
-        "systemctl --user show veila-idle.service failed".to_string()
-    } else {
-        format!("systemctl --user show veila-idle.service failed: {detail}")
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{LOCK_AFTER_KEY, SLEEP_FLAG_KEY, parse_env_content, parse_positive_seconds};
+    use super::{
+        LEGACY_DAEMON_SERVICE, LOCK_AFTER_KEY, SLEEP_FLAG_KEY, legacy_daemon_links,
+        parse_env_content, parse_positive_seconds,
+    };
 
     #[test]
     fn parses_idle_env_values() {
@@ -272,5 +314,38 @@ mod tests {
         assert_eq!(parse_positive_seconds("0"), None);
         assert_eq!(parse_positive_seconds("600"), Some(600));
         assert_eq!(parse_positive_seconds("oops"), None);
+    }
+
+    #[test]
+    fn finds_legacy_daemon_enablement_links() {
+        let root = std::env::temp_dir().join(format!(
+            "veila-doctor-legacy-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let wants = root.join("graphical-session.target.wants");
+        std::fs::create_dir_all(&wants).expect("wants dir");
+        std::fs::create_dir_all(root.join("default.target.wants")).expect("other wants dir");
+        std::os::unix::fs::symlink(
+            "/usr/lib/systemd/user/veilad.service",
+            wants.join(LEGACY_DAEMON_SERVICE),
+        )
+        .expect("dangling legacy link");
+        std::os::unix::fs::symlink(
+            "/usr/lib/systemd/user/veila.service",
+            wants.join("veila.service"),
+        )
+        .expect("current link");
+
+        assert_eq!(
+            legacy_daemon_links(&root),
+            vec![wants.join(LEGACY_DAEMON_SERVICE)]
+        );
+        assert!(legacy_daemon_links(&root.join("missing")).is_empty());
+
+        std::fs::remove_dir_all(root).ok();
     }
 }

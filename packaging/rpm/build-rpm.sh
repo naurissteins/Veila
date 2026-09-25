@@ -76,8 +76,7 @@ low lock latency, and a small runtime footprint.
 %install
 install -d %{buildroot}%{_bindir}
 install -m755 bin/veila %{buildroot}%{_bindir}/veila
-install -m755 bin/veilad %{buildroot}%{_bindir}/veilad
-install -m755 bin/veila-curtain %{buildroot}%{_bindir}/veila-curtain
+ln -s veila %{buildroot}%{_bindir}/veilad
 
 install -d %{buildroot}%{_datadir}/veila
 cp -a share/veila/fonts %{buildroot}%{_datadir}/veila/
@@ -86,7 +85,8 @@ cp -a share/veila/systemd %{buildroot}%{_datadir}/veila/
 cp -a share/veila/themes %{buildroot}%{_datadir}/veila/
 
 install -d %{buildroot}/usr/lib/systemd/user
-install -m644 share/veila/systemd/veilad.service %{buildroot}/usr/lib/systemd/user/veilad.service
+install -m644 share/veila/systemd/veila.service %{buildroot}/usr/lib/systemd/user/veila.service
+ln -s veila.service %{buildroot}/usr/lib/systemd/user/veilad.service
 install -m644 share/veila/systemd/veila-idle.service %{buildroot}/usr/lib/systemd/user/veila-idle.service
 
 install -d %{buildroot}%{_sysconfdir}/pam.d
@@ -108,7 +108,7 @@ install -m644 LICENSE %{buildroot}%{_licensedir}/%{name}/LICENSE
 %config(noreplace) %{_sysconfdir}/pam.d/veila
 %{_bindir}/veila
 %{_bindir}/veilad
-%{_bindir}/veila-curtain
+/usr/lib/systemd/user/veila.service
 /usr/lib/systemd/user/veilad.service
 /usr/lib/systemd/user/veila-idle.service
 %{_datadir}/veila/fonts

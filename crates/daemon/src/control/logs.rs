@@ -9,6 +9,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use veila_common::AppConfig;
 
+use super::{DAEMON_SERVICE, IDLE_SERVICE};
 use crate::{
     DaemonOptions,
     adapters::process::{CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME},
@@ -157,35 +158,32 @@ fn print_recent_file_lines(path: &Path, lines: u32) -> Result<()> {
 fn apply_target(command: &mut Command, target: LogTarget) {
     match target {
         LogTarget::LockService => {
-            command.arg("-u").arg("veilad.service");
+            command.arg("-u").arg(DAEMON_SERVICE);
         }
         LogTarget::All => {
             command
                 .arg("-u")
-                .arg("veilad.service")
+                .arg(DAEMON_SERVICE)
                 .arg("-u")
-                .arg("veila-idle.service");
+                .arg(IDLE_SERVICE);
         }
         LogTarget::Daemon => {
             command
                 .arg("-u")
-                .arg("veilad.service")
+                .arg(DAEMON_SERVICE)
                 .arg(format!("_COMM={DAEMON_PROCESS_NAME}"));
         }
         LogTarget::Curtain => {
             command
                 .arg("-u")
-                .arg("veilad.service")
+                .arg(DAEMON_SERVICE)
                 .arg(format!("_COMM={CURTAIN_PROCESS_NAME}"));
         }
         LogTarget::Ui => {
-            command
-                .arg("-u")
-                .arg("veilad.service")
-                .arg("--grep=veila_ui");
+            command.arg("-u").arg(DAEMON_SERVICE).arg("--grep=veila_ui");
         }
         LogTarget::Idle => {
-            command.arg("-u").arg("veila-idle.service");
+            command.arg("-u").arg(IDLE_SERVICE);
         }
     }
 }
