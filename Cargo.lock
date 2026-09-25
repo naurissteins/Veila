@@ -2107,7 +2107,6 @@ version = "0.4.4"
 dependencies = [
  "time",
  "tracing",
- "tracing-subscriber",
  "veila-common",
  "veila-renderer",
  "zeroize",

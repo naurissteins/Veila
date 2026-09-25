@@ -1,15 +1,11 @@
 [package]
 name = "veila-ui"
-description = "Password and lock scene UI process for Veila"
+description = "Password and lock scene UI library for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-
-[[bin]]
-name = "veila-ui"
-path = "src/main.rs"
 
 [dependencies]
 veila-common = { path = "../common" }
@@ -17,4 +13,3 @@ zeroize = { workspace = true }
 veila-renderer = { path = "../renderer" }
 time = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }

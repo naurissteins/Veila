@@ -39,3 +39,8 @@ wayland-protocols-wlr = "0.3"
 xkbcommon = "0.8"
 zeroize = "1"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
