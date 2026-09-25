@@ -225,7 +225,7 @@ fn parses_control_config_argument_after_command() {
 fn rejects_control_daemon_only_option() {
     let error = DaemonOptions::parse_control_args([
         "veila".to_string(),
-        "--log-file=/tmp/veilad.log".to_string(),
+        "--log-file=/tmp/veila.log".to_string(),
     ])
     .expect_err("daemon-only option should fail");
 

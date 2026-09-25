@@ -83,7 +83,7 @@ const fn default_allow_empty_password() -> bool {
 }
 
 fn default_lock_log_file_path() -> PathBuf {
-    PathBuf::from("~/.local/state/veila/veilad.log")
+    PathBuf::from("~/.local/state/veila/veila.log")
 }
 
 const fn default_auth_backoff_max_seconds() -> u64 {
