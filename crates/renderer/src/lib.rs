@@ -127,6 +127,8 @@ pub enum RendererError {
     ShmPool(#[from] smithay_client_toolkit::shm::CreatePoolError),
     #[error(transparent)]
     Image(#[from] image::ImageError),
+    #[error("failed to return released buffer slot memory: {0}")]
+    SlotTrim(nix::errno::Errno),
 }
 
 /// Shared result type for rendering operations.

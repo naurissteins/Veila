@@ -2112,6 +2112,7 @@ version = "0.4.4"
 dependencies = [
  "cosmic-text",
  "image",
+ "nix",
  "resvg",
  "smithay-client-toolkit",
  "thiserror",

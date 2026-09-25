@@ -10,6 +10,8 @@ struct SurfaceMemorySummary {
     software_buffer_count: u8,
     software_buffers_kib: u64,
     shm_pool_estimated_kib: u64,
+    shm_pool_trimmed_kib: u64,
+    shm_pool_retired_kib: u64,
     shm_pool_slots: usize,
     estimated_persistent_kib: u64,
     has_background: bool,
@@ -20,6 +22,8 @@ struct CurtainMemorySummary {
     rss_kib: Option<u64>,
     software_buffers_kib: u64,
     shm_pool_estimated_kib: u64,
+    shm_pool_trimmed_kib: u64,
+    shm_pool_retired_kib: u64,
     shm_pool_slots: usize,
     estimated_persistent_kib: u64,
     ui_visible_surfaces: usize,
@@ -36,6 +40,8 @@ impl CurtainApp {
             rss_kib = summary.rss_kib,
             software_buffers_kib = summary.software_buffers_kib,
             shm_pool_estimated_kib = summary.shm_pool_estimated_kib,
+            shm_pool_trimmed_kib = summary.shm_pool_trimmed_kib,
+            shm_pool_retired_kib = summary.shm_pool_retired_kib,
             shm_pool_slots = summary.shm_pool_slots,
             estimated_persistent_kib = summary.estimated_persistent_kib,
             "curtain memory summary"
@@ -51,6 +57,8 @@ impl CurtainApp {
                 software_buffer_count = surface.software_buffer_count,
                 software_buffers_kib = surface.software_buffers_kib,
                 shm_pool_estimated_kib = surface.shm_pool_estimated_kib,
+                shm_pool_trimmed_kib = surface.shm_pool_trimmed_kib,
+                shm_pool_retired_kib = surface.shm_pool_retired_kib,
                 shm_pool_slots = surface.shm_pool_slots,
                 estimated_persistent_kib = surface.estimated_persistent_kib,
                 has_background = surface.has_background,
@@ -78,6 +86,8 @@ impl CurtainApp {
     fn memory_summary(&self) -> CurtainMemorySummary {
         let mut software_buffers_kib = 0_u64;
         let mut shm_pool_estimated_kib = 0_u64;
+        let mut shm_pool_trimmed_kib = 0_u64;
+        let mut shm_pool_retired_kib = 0_u64;
         let mut shm_pool_slots_total = 0_usize;
         let mut ui_visible_surfaces = 0_usize;
         let mut surfaces = Vec::with_capacity(self.lock_surfaces.len());
@@ -95,16 +105,15 @@ impl CurtainApp {
             let background_kib = software_buffer_kib(surface.background.as_ref());
             let scene_base_kib = software_buffer_kib(surface.scene_base.as_deref());
             let software_total_kib = background_kib + scene_base_kib;
-            let shm_pool_slots = surface
+            let shm = surface
                 .shm_pool
                 .as_ref()
-                .map(|pool| pool.slot_count())
-                .unwrap_or(0);
-            let shm_kib = surface
-                .shm_pool
-                .as_ref()
-                .map(|pool| (pool.reserved_bytes() / 1024) as u64)
-                .unwrap_or(0);
+                .map(|pool| pool.memory())
+                .unwrap_or_default();
+            let shm_pool_slots = shm.slots;
+            let shm_kib = bytes_to_kib(shm.current_bytes.saturating_add(shm.retired_bytes));
+            let trimmed_kib = bytes_to_kib(shm.trimmed_bytes);
+            let retired_kib = bytes_to_kib(shm.retired_bytes);
 
             software_buffers_kib = software_buffers_kib.saturating_add(background_kib);
             shm_pool_slots_total = shm_pool_slots_total.saturating_add(shm_pool_slots);
@@ -114,6 +123,8 @@ impl CurtainApp {
                 software_buffers_kib = software_buffers_kib.saturating_add(scene_base_kib);
             }
             shm_pool_estimated_kib = shm_pool_estimated_kib.saturating_add(shm_kib);
+            shm_pool_trimmed_kib = shm_pool_trimmed_kib.saturating_add(trimmed_kib);
+            shm_pool_retired_kib = shm_pool_retired_kib.saturating_add(retired_kib);
 
             let output = self
                 .output_state
@@ -131,6 +142,8 @@ impl CurtainApp {
                 software_buffer_count,
                 software_buffers_kib: software_total_kib,
                 shm_pool_estimated_kib: shm_kib,
+                shm_pool_trimmed_kib: trimmed_kib,
+                shm_pool_retired_kib: retired_kib,
                 shm_pool_slots,
                 estimated_persistent_kib: software_total_kib.saturating_add(shm_kib),
                 has_background: surface.background.is_some(),
@@ -142,6 +155,8 @@ impl CurtainApp {
             rss_kib: current_rss_kib(),
             software_buffers_kib,
             shm_pool_estimated_kib,
+            shm_pool_trimmed_kib,
+            shm_pool_retired_kib,
             shm_pool_slots: shm_pool_slots_total,
             estimated_persistent_kib: software_buffers_kib.saturating_add(shm_pool_estimated_kib),
             ui_visible_surfaces,
@@ -153,8 +168,12 @@ impl CurtainApp {
 fn software_buffer_kib(buffer: Option<&veila_renderer::SoftwareBuffer>) -> u64 {
     buffer
         .and_then(|buffer| buffer.size().byte_len())
-        .map(|byte_len| (byte_len / 1024) as u64)
+        .map(bytes_to_kib)
         .unwrap_or(0)
+}
+
+fn bytes_to_kib(bytes: usize) -> u64 {
+    (bytes / 1024) as u64
 }
 
 #[cfg(target_os = "linux")]

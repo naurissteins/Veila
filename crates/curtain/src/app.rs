@@ -108,6 +108,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         app.advance_input_repeat(&queue_handle);
         app.advance_background_slideshow(&queue_handle);
         app.advance_output_power();
+        app.advance_shm_trim();
         app.advance_animated_scene(&queue_handle);
         app.maybe_notify_startup();
         app.check_lock_deadline()?;

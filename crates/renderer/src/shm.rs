@@ -7,22 +7,36 @@ use smithay_client_toolkit::{
     },
     shm::{Shm, raw::RawPool},
 };
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Instant,
 };
 
-use crate::{FrameSize, RendererError, Result, SoftwareBuffer, SoftwareBufferView};
+use crate::{FrameSize, RendererError, Result, SoftwareBuffer, SoftwareBufferView, shape::Rect};
 
 mod slots;
+mod trim;
 
-use slots::{BufferSlot, SlotChoice, choose_slot, copy_slot_pixels};
+use slots::{BufferSlot, SlotChoice, SlotState, choose_slot, copy_slot_pixels};
 
 #[derive(Debug)]
 pub struct SurfaceBufferPool {
     shm: ShmHandle,
     current: PoolGeneration,
     retired: Vec<PoolGeneration>,
+    last_commit_at: Option<Instant>,
+    trim_disabled: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ShmPoolMemory {
+    pub slots: usize,
+    pub current_bytes: usize,
+    pub trimmed_bytes: usize,
+    pub retired_bytes: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -78,7 +92,19 @@ impl PoolGeneration {
     }
 
     fn has_busy_slots(&self) -> bool {
-        self.slots.iter().any(|slot| !slot.is_released())
+        self.slots
+            .iter()
+            .any(|slot| slot.state() == SlotState::Busy)
+    }
+
+    fn slot_states(&self) -> Vec<SlotState> {
+        self.slots.iter().map(BufferSlot::state).collect()
+    }
+
+    fn slot_offset(&self, index: usize, size: FrameSize) -> Result<usize> {
+        index
+            .checked_mul(self.slot_len)
+            .ok_or(RendererError::InvalidFrameSize(size))
     }
 }
 
@@ -89,6 +115,8 @@ impl SurfaceBufferPool {
             current: PoolGeneration::new(&shm, size)?,
             shm,
             retired: Vec::new(),
+            last_commit_at: None,
+            trim_disabled: false,
         })
     }
 
@@ -103,39 +131,22 @@ impl SurfaceBufferPool {
         D: Dispatch<wl_buffer::WlBuffer, ShmBufferRelease> + 'static,
     {
         let size = buffer.size();
-        if size.is_empty() {
-            return Err(RendererError::EmptyFrame);
-        }
-
         let byte_len = required_pool_len(size)?;
         let Some(slot_index) = self.next_buffer_slot(size, byte_len)? else {
             return Ok(FrameResult::Skipped);
         };
-        let offset = slot_index
-            .checked_mul(byte_len)
-            .ok_or(RendererError::InvalidFrameSize(size))?;
+        let offset = self.current.slot_offset(slot_index, size)?;
         self.current.pool.mmap()[offset..offset + byte_len].copy_from_slice(buffer.pixels());
 
-        let release = ShmBufferRelease {
-            released: self.current.slots[slot_index].release_flag(),
-            surface: surface.clone(),
-        };
-        let wl_buffer = self.current.pool.create_buffer(
-            offset as i32,
-            size.width as i32,
-            size.height as i32,
-            (size.width * 4) as i32,
-            wl_shm::Format::Argb8888,
-            release,
+        let damage = Rect::new(0, 0, size.width as i32, size.height as i32);
+        self.attach_slot(
             queue_handle,
+            surface,
+            size,
+            buffer_scale,
+            slot_index,
+            damage,
         );
-        surface.set_buffer_scale(buffer_scale.max(1));
-        surface.attach(Some(&wl_buffer), 0, 0);
-        surface.damage_buffer(0, 0, size.width as i32, size.height as i32);
-        surface.commit();
-        self.current.slots[slot_index].set_buffer(wl_buffer);
-        self.current.last_committed_slot = Some(slot_index);
-
         Ok(FrameResult::Committed)
     }
 
@@ -150,17 +161,11 @@ impl SurfaceBufferPool {
     where
         D: Dispatch<wl_buffer::WlBuffer, ShmBufferRelease> + 'static,
     {
-        if size.is_empty() {
-            return Err(RendererError::EmptyFrame);
-        }
-
         let byte_len = required_pool_len(size)?;
         let Some(slot_index) = self.next_buffer_slot(size, byte_len)? else {
             return Ok(FrameResult::Skipped);
         };
-        let offset = slot_index
-            .checked_mul(byte_len)
-            .ok_or(RendererError::InvalidFrameSize(size))?;
+        let offset = self.current.slot_offset(slot_index, size)?;
         {
             let mut buffer = SoftwareBufferView::new(
                 size,
@@ -172,26 +177,15 @@ impl SurfaceBufferPool {
             }
         }
 
-        let release = ShmBufferRelease {
-            released: self.current.slots[slot_index].release_flag(),
-            surface: surface.clone(),
-        };
-        let wl_buffer = self.current.pool.create_buffer(
-            offset as i32,
-            size.width as i32,
-            size.height as i32,
-            (size.width * 4) as i32,
-            wl_shm::Format::Argb8888,
-            release,
+        let damage = Rect::new(0, 0, size.width as i32, size.height as i32);
+        self.attach_slot(
             queue_handle,
+            surface,
+            size,
+            buffer_scale,
+            slot_index,
+            damage,
         );
-        surface.set_buffer_scale(buffer_scale.max(1));
-        surface.attach(Some(&wl_buffer), 0, 0);
-        surface.damage_buffer(0, 0, size.width as i32, size.height as i32);
-        surface.commit();
-        self.current.slots[slot_index].set_buffer(wl_buffer);
-        self.current.last_committed_slot = Some(slot_index);
-
         Ok(FrameResult::Committed)
     }
 
@@ -201,23 +195,17 @@ impl SurfaceBufferPool {
         surface: &WlSurface,
         size: FrameSize,
         buffer_scale: i32,
-        damage: crate::shape::Rect,
-        render: impl FnOnce(&mut SoftwareBufferView<'_>) -> Result<Option<crate::shape::Rect>>,
+        damage: Rect,
+        render: impl FnOnce(&mut SoftwareBufferView<'_>) -> Result<Option<Rect>>,
     ) -> Result<FrameResult>
     where
         D: Dispatch<wl_buffer::WlBuffer, ShmBufferRelease> + 'static,
     {
-        if size.is_empty() {
-            return Err(RendererError::EmptyFrame);
-        }
-
         let byte_len = required_pool_len(size)?;
         let Some(slot_index) = self.next_buffer_slot(size, byte_len)? else {
             return Ok(FrameResult::Skipped);
         };
-        let offset = slot_index
-            .checked_mul(byte_len)
-            .ok_or(RendererError::InvalidFrameSize(size))?;
+        let offset = self.current.slot_offset(slot_index, size)?;
         let Some(previous) = self.current.last_committed_slot else {
             self.current.slots[slot_index].abandon_render();
             return Err(RendererError::MissingCommittedFrame);
@@ -247,12 +235,58 @@ impl SurfaceBufferPool {
             return Ok(FrameResult::Committed);
         }
 
+        self.attach_slot(
+            queue_handle,
+            surface,
+            size,
+            buffer_scale,
+            slot_index,
+            damaged,
+        );
+        Ok(FrameResult::Committed)
+    }
+
+    pub fn memory(&self) -> ShmPoolMemory {
+        let mut memory = ShmPoolMemory {
+            slots: self.current.slots.len(),
+            ..ShmPoolMemory::default()
+        };
+        for slot in &self.current.slots {
+            if slot.state() == SlotState::Trimmed {
+                memory.trimmed_bytes += self.current.slot_len;
+            } else {
+                memory.current_bytes += self.current.slot_len;
+            }
+        }
+        for generation in &self.retired {
+            memory.slots += generation.slots.len();
+            memory.retired_bytes += generation.slot_len.saturating_mul(generation.slots.len());
+        }
+        memory
+    }
+
+    pub fn collect_released(&mut self) {
+        self.retired.retain(PoolGeneration::has_busy_slots);
+    }
+
+    fn attach_slot<D>(
+        &mut self,
+        queue_handle: &QueueHandle<D>,
+        surface: &WlSurface,
+        size: FrameSize,
+        buffer_scale: i32,
+        slot_index: usize,
+        damage: Rect,
+    ) where
+        D: Dispatch<wl_buffer::WlBuffer, ShmBufferRelease> + 'static,
+    {
+        let slot_len = self.current.slot_len;
         let release = ShmBufferRelease {
             released: self.current.slots[slot_index].release_flag(),
             surface: surface.clone(),
         };
         let wl_buffer = self.current.pool.create_buffer(
-            offset as i32,
+            (slot_index * slot_len) as i32,
             size.width as i32,
             size.height as i32,
             (size.width * 4) as i32,
@@ -262,32 +296,11 @@ impl SurfaceBufferPool {
         );
         surface.set_buffer_scale(buffer_scale.max(1));
         surface.attach(Some(&wl_buffer), 0, 0);
-        surface.damage_buffer(damaged.x, damaged.y, damaged.width, damaged.height);
+        surface.damage_buffer(damage.x, damage.y, damage.width, damage.height);
         surface.commit();
         self.current.slots[slot_index].set_buffer(wl_buffer);
         self.current.last_committed_slot = Some(slot_index);
-
-        Ok(FrameResult::Committed)
-    }
-
-    pub fn reserved_bytes(&self) -> usize {
-        std::iter::once(&self.current)
-            .chain(self.retired.iter())
-            .map(|generation| reserved_bytes_for_slots(generation.slot_len, generation.slots.len()))
-            .sum()
-    }
-
-    pub fn slot_count(&self) -> usize {
-        self.current.slots.len()
-            + self
-                .retired
-                .iter()
-                .map(|generation| generation.slots.len())
-                .sum::<usize>()
-    }
-
-    pub fn collect_released(&mut self) {
-        self.retired.retain(PoolGeneration::has_busy_slots);
+        self.last_commit_at = Some(Instant::now());
     }
 
     fn next_buffer_slot(&mut self, size: FrameSize, byte_len: usize) -> Result<Option<usize>> {
@@ -301,8 +314,8 @@ impl SurfaceBufferPool {
         }
 
         let choice = choose_slot(
-            self.current.slots.iter().map(BufferSlot::is_released),
-            self.current.slots.len(),
+            &self.current.slot_states(),
+            self.current.last_committed_slot,
             MAX_BUFFER_SLOTS,
         );
 
@@ -328,20 +341,6 @@ impl SurfaceBufferPool {
     }
 }
 
-pub fn commit_buffer<D>(
-    shm: &Shm,
-    queue_handle: &QueueHandle<D>,
-    surface: &WlSurface,
-    buffer: &SoftwareBuffer,
-) -> Result<()>
-where
-    D: Dispatch<wl_buffer::WlBuffer, ShmBufferRelease> + 'static,
-{
-    SurfaceBufferPool::new(shm, buffer.size())?
-        .commit_buffer(queue_handle, surface, buffer, 1)
-        .map(|_| ())
-}
-
 fn required_pool_len(size: crate::FrameSize) -> Result<usize> {
     if size.is_empty() {
         return Err(RendererError::EmptyFrame);
@@ -350,26 +349,17 @@ fn required_pool_len(size: crate::FrameSize) -> Result<usize> {
     size.byte_len().ok_or(RendererError::InvalidFrameSize(size))
 }
 
-fn reserved_bytes_for_slots(slot_len: usize, slots: usize) -> usize {
-    slot_len.saturating_mul(slots)
-}
-
 #[cfg(test)]
 mod tests {
     use crate::FrameSize;
 
-    use super::{MAX_BUFFER_SLOTS, required_pool_len, reserved_bytes_for_slots};
+    use super::{MAX_BUFFER_SLOTS, required_pool_len};
 
     #[test]
     fn required_pool_len_matches_frame_byte_len() {
         let size = FrameSize::new(64, 32);
 
         assert_eq!(required_pool_len(size).expect("byte len"), 64 * 32 * 4);
-    }
-
-    #[test]
-    fn reports_reserved_bytes_from_live_slots() {
-        assert_eq!(reserved_bytes_for_slots(64 * 32 * 4, 2), 64 * 32 * 4 * 2);
     }
 
     #[test]

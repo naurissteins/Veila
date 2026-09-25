@@ -5,9 +5,17 @@ use std::sync::{
 
 use smithay_client_toolkit::reexports::client::protocol::wl_buffer;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SlotState {
+    Busy,
+    Released,
+    Trimmed,
+}
+
 #[derive(Debug)]
 pub(super) struct BufferSlot {
     released: Arc<AtomicBool>,
+    trimmed: bool,
     buffer: Option<wl_buffer::WlBuffer>,
 }
 
@@ -15,12 +23,19 @@ impl BufferSlot {
     pub(super) fn new() -> Self {
         Self {
             released: Arc::new(AtomicBool::new(false)),
+            trimmed: false,
             buffer: None,
         }
     }
 
-    pub(super) fn is_released(&self) -> bool {
-        self.released.load(Ordering::Acquire)
+    pub(super) fn state(&self) -> SlotState {
+        if !self.released.load(Ordering::Acquire) {
+            SlotState::Busy
+        } else if self.trimmed {
+            SlotState::Trimmed
+        } else {
+            SlotState::Released
+        }
     }
 
     pub(super) fn release_flag(&self) -> Arc<AtomicBool> {
@@ -29,6 +44,7 @@ impl BufferSlot {
 
     pub(super) fn prepare_for_reuse(&mut self) {
         self.destroy_buffer();
+        self.trimmed = false;
         self.released.store(false, Ordering::Release);
     }
 
@@ -38,6 +54,11 @@ impl BufferSlot {
 
     pub(super) fn set_buffer(&mut self, buffer: wl_buffer::WlBuffer) {
         self.buffer = Some(buffer);
+    }
+
+    pub(super) fn mark_trimmed(&mut self) {
+        self.destroy_buffer();
+        self.trimmed = true;
     }
 
     fn destroy_buffer(&mut self) {
@@ -61,17 +82,21 @@ pub(super) enum SlotChoice {
 }
 
 pub(super) fn choose_slot(
-    released: impl Iterator<Item = bool>,
-    slot_count: usize,
+    states: &[SlotState],
+    last_committed: Option<usize>,
     max_slots: usize,
 ) -> SlotChoice {
-    for (index, is_released) in released.enumerate() {
-        if is_released {
-            return SlotChoice::Reuse(index);
-        }
+    let released = |index: &usize| states[*index] == SlotState::Released;
+    let preferred = last_committed
+        .filter(|index| *index < states.len())
+        .filter(released)
+        .or_else(|| (0..states.len()).find(released))
+        .or_else(|| states.iter().position(|state| *state == SlotState::Trimmed));
+    if let Some(index) = preferred {
+        return SlotChoice::Reuse(index);
     }
 
-    if slot_count >= max_slots {
+    if states.len() >= max_slots {
         SlotChoice::Skip
     } else {
         SlotChoice::Grow
@@ -108,6 +133,7 @@ pub(super) fn copy_slot_pixels(
 mod tests {
     use super::{
         SlotChoice::{Grow, Reuse, Skip},
+        SlotState::{Busy, Released, Trimmed},
         choose_slot, copy_slot_pixels,
     };
 
@@ -115,28 +141,46 @@ mod tests {
 
     #[test]
     fn grows_while_under_the_slot_cap() {
-        assert_eq!(choose_slot([].into_iter(), 0, MAX_BUFFER_SLOTS), Grow);
-        assert_eq!(choose_slot([false].into_iter(), 1, MAX_BUFFER_SLOTS), Grow);
+        assert_eq!(choose_slot(&[], None, MAX_BUFFER_SLOTS), Grow);
+        assert_eq!(choose_slot(&[Busy], Some(0), MAX_BUFFER_SLOTS), Grow);
     }
 
     #[test]
     fn reuses_the_first_released_slot() {
         assert_eq!(
-            choose_slot([false, true].into_iter(), 2, MAX_BUFFER_SLOTS),
+            choose_slot(&[Busy, Released], Some(0), MAX_BUFFER_SLOTS),
             Reuse(1)
         );
         assert_eq!(
-            choose_slot([true, true].into_iter(), 2, MAX_BUFFER_SLOTS),
+            choose_slot(&[Released, Released], None, MAX_BUFFER_SLOTS),
             Reuse(0)
         );
     }
 
     #[test]
-    fn skips_the_frame_rather_than_overwriting_a_busy_slot() {
+    fn prefers_the_released_last_committed_slot() {
         assert_eq!(
-            choose_slot([false, false].into_iter(), 2, MAX_BUFFER_SLOTS),
-            Skip
+            choose_slot(&[Released, Released], Some(1), MAX_BUFFER_SLOTS),
+            Reuse(1)
         );
+        assert_eq!(
+            choose_slot(&[Trimmed, Released], Some(1), MAX_BUFFER_SLOTS),
+            Reuse(1)
+        );
+    }
+
+    #[test]
+    fn reuses_a_trimmed_slot_before_growing_or_skipping() {
+        assert_eq!(
+            choose_slot(&[Trimmed, Busy], Some(1), MAX_BUFFER_SLOTS),
+            Reuse(0)
+        );
+        assert_eq!(choose_slot(&[Trimmed], None, MAX_BUFFER_SLOTS), Reuse(0));
+    }
+
+    #[test]
+    fn skips_the_frame_rather_than_overwriting_a_busy_slot() {
+        assert_eq!(choose_slot(&[Busy, Busy], Some(1), MAX_BUFFER_SLOTS), Skip);
     }
 
     #[test]
