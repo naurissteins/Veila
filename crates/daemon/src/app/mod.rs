@@ -4,11 +4,13 @@ mod connections;
 mod events;
 mod fingerprint;
 mod helpers;
+mod idle;
 mod memory;
 mod mpris;
 pub(crate) mod output_probe;
 mod prewarm;
 mod runtime;
+mod sleep;
 mod state;
 mod suspend;
 mod watch;
@@ -28,7 +30,7 @@ use veila_common::{AppConfig, LoadedConfig};
 
 use self::events::{
     handle_auth_message, handle_auth_result, handle_control_message, handle_curtain_exit,
-    handle_lock_signal, handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
+    handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
 };
 use self::helpers::current_username;
 use self::runtime::{
@@ -114,39 +116,24 @@ pub async fn run(
         config = runtime.loaded_config.path.as_deref().map(|path| path.display().to_string()).unwrap_or_else(|| "defaults".to_string()),
         "daemon ready"
     );
+    idle::warn_about_legacy_idle_service();
 
     loop {
+        runtime.idle.sync(&runtime.loaded_config.config.idle);
+        runtime
+            .sleep_lock
+            .sync(
+                &manager_proxy,
+                runtime.loaded_config.config.idle.lock_before_sleep,
+            )
+            .await;
+
         tokio::select! {
             Some(_) = lock_stream.next() => {
-                let was_active = runtime.state.is_active();
-                let weather_snapshot = runtime.weather.current_snapshot();
-                let battery_snapshot = runtime.battery.current_snapshot();
-                let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                let initial_background_path = runtime.select_initial_background_path();
-                let daemon_config_load_ms = runtime.daemon_config_load_ms;
-                let daemon_config_load_us = runtime.daemon_config_load_us;
-                let acquire_timeout_seconds = runtime.loaded_config.config.lock.acquire_timeout_seconds;
-                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-                handle_lock_signal(
-                    "logind",
-                    &session_proxy,
-                    options.config_path.as_deref(),
-                    initial_background_path.as_deref(),
-                    weather_snapshot.as_ref(),
-                    battery_snapshot.as_ref(),
-                    now_playing_snapshot.as_ref(),
-                    acquire_timeout_seconds,
-                    daemon_config_load_ms,
-                    daemon_config_load_us,
-                    slots,
-                    auth_policy,
-                    suspend_state,
-                ).await;
-                if !was_active && runtime.state.is_active() {
-                    runtime.last_power_status_snapshot = None;
-                    runtime.power_status_sent = false;
-                    runtime.fingerprint.reset_for_new_lock().await;
-                }
+                idle::activate_triggered_lock("logind", &mut runtime, &session_proxy, options.config_path.as_deref()).await;
+            }
+            () = runtime.idle.idled() => {
+                idle::activate_triggered_lock("idle", &mut runtime, &session_proxy, options.config_path.as_deref()).await;
             }
             Some(_) = unlock_stream.next() => {
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
@@ -164,35 +151,8 @@ pub async fn run(
             }
             Some(signal) = prepare_for_sleep_stream.next() => {
                 match signal.args() {
-                    Ok(args) if *args.start() => {
-                        if runtime.state.is_active()
-                            && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
-                        {
-                            match crate::adapters::process::request_curtain_arm_resume_input_guard(control_socket_path).await {
-                                Ok(()) => {}
-                                Err(error) => {
-                                    tracing::warn!("failed to arm curtain resume input guard before sleep: {error:#}");
-                                }
-                            }
-                        }
-                        runtime.fingerprint.pause_for_sleep().await;
-                        runtime
-                            .fingerprint
-                            .forward_status_updates(runtime.control_socket_path.as_ref())
-                            .await;
-                    }
-                    Ok(_) => {
-                        runtime.fingerprint.resume_after_sleep();
-                        if runtime.state.is_active()
-                            && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
-                        {
-                            match crate::adapters::process::request_curtain_mark_resumed(control_socket_path).await {
-                                Ok(()) => {}
-                                Err(error) => {
-                                    tracing::warn!("failed to mark curtain as resumed after sleep: {error:#}");
-                                }
-                            }
-                        }
+                    Ok(args) => {
+                        sleep::handle_prepare_for_sleep(*args.start(), &mut runtime, &session_proxy, &manager_proxy, options.config_path.as_deref()).await;
                     }
                     Err(error) => {
                         tracing::warn!("failed to decode logind PrepareForSleep signal: {error}");

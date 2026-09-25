@@ -87,7 +87,9 @@ fn apply_control_positionals(options: &mut DaemonOptions, positional: &[String])
             expect_no_extra_args(command, &positional[1..], || options.reload_config = true)
         }
         "stop" => expect_no_extra_args(command, &positional[1..], || options.stop = true),
-        "idle" => apply_idle_positionals(options, &positional[1..]),
+        "idle" => bail!(
+            "`veila idle` was removed; set `enabled = true` in the [idle] section of config.toml and run `veila reload`"
+        ),
         "logs" => apply_logs_positionals(options, &positional[1..]),
         "theme" => apply_theme_positionals(options, &positional[1..]),
         "daemon" | "preview" => {
@@ -126,38 +128,6 @@ fn apply_init_positionals(options: &mut DaemonOptions, args: &[String]) -> Resul
         }
 
         bail!("unexpected extra argument for init: {arg}");
-    }
-
-    Ok(())
-}
-
-fn apply_idle_positionals(options: &mut DaemonOptions, args: &[String]) -> Result<()> {
-    options.idle = true;
-    let mut index = 0;
-
-    while let Some(arg) = args.get(index) {
-        if let Some(value) = arg.strip_prefix("--lock-after=") {
-            options.idle_lock_after_seconds = Some(parse_nonzero_seconds(value, "--lock-after")?);
-            index += 1;
-            continue;
-        }
-
-        if arg == "--lock-after" {
-            let Some(value) = args.get(index + 1) else {
-                bail!("missing value for --lock-after");
-            };
-            options.idle_lock_after_seconds = Some(parse_nonzero_seconds(value, "--lock-after")?);
-            index += 2;
-            continue;
-        }
-
-        if arg == "--lock-before-sleep" {
-            options.idle_lock_before_sleep = true;
-            index += 1;
-            continue;
-        }
-
-        bail!("unexpected extra argument for idle: {arg}");
     }
 
     Ok(())
@@ -235,23 +205,12 @@ fn parse_log_lines(value: &str) -> Result<u32> {
 
 fn parse_log_target_flag(arg: &str) -> Option<LogTarget> {
     match arg {
-        "--all" => Some(LogTarget::All),
+        "--all" => Some(LogTarget::LockService),
         "--daemon" => Some(LogTarget::Daemon),
         "--curtain" => Some(LogTarget::Curtain),
         "--ui" => Some(LogTarget::Ui),
-        "--idle" => Some(LogTarget::Idle),
         _ => None,
     }
-}
-
-fn parse_nonzero_seconds(value: &str, label: &str) -> Result<u64> {
-    let seconds = value
-        .parse::<u64>()
-        .map_err(|_| anyhow::anyhow!("{label} must be a positive integer number of seconds"))?;
-    if seconds == 0 {
-        bail!("{label} must be at least 1 second");
-    }
-    Ok(seconds)
 }
 
 fn apply_theme_positionals(options: &mut DaemonOptions, args: &[String]) -> Result<()> {

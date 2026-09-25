@@ -13,6 +13,7 @@ use crate::VeilaError;
 mod bundled_defaults_tests;
 mod defaults_tests;
 mod file_loading_tests;
+mod idle_tests;
 mod nested_visual_fixture;
 mod nested_visual_tests;
 mod parsing_tests;

@@ -9,7 +9,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use veila_common::AppConfig;
 
-use super::{DAEMON_SERVICE, IDLE_SERVICE};
+use super::DAEMON_SERVICE;
 use crate::{
     DaemonOptions,
     adapters::process::{CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME},
@@ -160,13 +160,6 @@ fn apply_target(command: &mut Command, target: LogTarget) {
         LogTarget::LockService => {
             command.arg("-u").arg(DAEMON_SERVICE);
         }
-        LogTarget::All => {
-            command
-                .arg("-u")
-                .arg(DAEMON_SERVICE)
-                .arg("-u")
-                .arg(IDLE_SERVICE);
-        }
         LogTarget::Daemon => {
             command
                 .arg("-u")
@@ -181,9 +174,6 @@ fn apply_target(command: &mut Command, target: LogTarget) {
         }
         LogTarget::Ui => {
             command.arg("-u").arg(DAEMON_SERVICE).arg("--grep=veila_ui");
-        }
-        LogTarget::Idle => {
-            command.arg("-u").arg(IDLE_SERVICE);
         }
     }
 }

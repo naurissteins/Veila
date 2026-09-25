@@ -70,11 +70,6 @@ Ask the running daemon to reload configuration from disk.
 .B stop
 Stop the running daemon.
 .TP
-.B idle [--lock-after=N] [--lock-before-sleep]
-Run the compositor idle helper. If
-.B --lock-after
-is omitted, the default delay is 300 seconds.
-.TP
 .B logs
 Show recent logs from the packaged
 .B veila.service
@@ -131,8 +126,8 @@ or
 .BI --lines= N
 Limit the number of log lines.
 .TP
-.B --daemon, --curtain, --ui, --idle, --all
-Select which packaged service or process logs to show.
+.B --daemon, --curtain, --ui, --all
+Select which process logs to show.
 .SH DAEMON
 .B veila daemon
 accepts only startup options. Use the other
@@ -164,6 +159,19 @@ falling back to
 If no config file exists, Veila uses the bundled default theme and hardcoded safety defaults. Run
 .B veila init
 to create a starter config explicitly.
+.PP
+The
+.B [idle]
+section controls locking that the daemon triggers by itself:
+.B enabled
+(default false) locks after
+.B lock_after_seconds
+(default 300, clamped to 5..86400) of compositor-reported inactivity through
+.BR ext-idle-notify-v1 ,
+and
+.B lock_before_sleep
+(default true) locks the session before suspend while holding a logind delay inhibitor. Both apply live after
+.BR "veila reload" .
 .SH FILES
 .TP
 .I ~/.config/veila/config.toml
@@ -186,9 +194,6 @@ Packaged daemon user service. It runs
 Compatibility alias for
 .B veila.service
 so existing enablements keep working. It will be removed in a future release.
-.TP
-.I /usr/lib/systemd/user/veila-idle.service
-Packaged idle helper user service.
 .SH ENVIRONMENT
 .TP
 .B VEILA_ASSET_DIR

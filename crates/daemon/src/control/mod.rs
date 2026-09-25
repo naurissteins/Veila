@@ -1,7 +1,6 @@
 mod config;
 mod daemon;
 mod doctor;
-mod idle;
 mod init;
 mod logs;
 mod term;
@@ -20,7 +19,6 @@ use daemon::{
     reload_running_config, stop_running_daemon,
 };
 use doctor::print_doctor_report;
-use idle::run_idle_monitor;
 use init::init_config;
 use logs::print_logs;
 use theme::{
@@ -29,7 +27,6 @@ use theme::{
 };
 
 const DAEMON_SERVICE: &str = "veila.service";
-const IDLE_SERVICE: &str = "veila-idle.service";
 
 pub fn local_build_info() -> veila_common::ipc::DaemonHealth {
     veila_common::ipc::DaemonHealth {
@@ -65,7 +62,6 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         + usize::from(options.init_config)
         + usize::from(options.version)
         + usize::from(options.reload_config)
-        + usize::from(options.idle)
         + usize::from(options.logs);
     if control_mode_count > 1 {
         bail!("use only one veila command at a time");
@@ -137,7 +133,6 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
             options.wait_ready,
             options.force_emergency_ui,
             options.latency_report,
-            false,
         )
         .await?;
         if options.wait_ready {
@@ -183,16 +178,6 @@ pub async fn run_control(options: DaemonOptions) -> Result<()> {
         return Ok(());
     }
 
-    if options.idle {
-        run_idle_monitor(
-            &daemon_socket_path,
-            options.idle_lock_after_seconds,
-            options.idle_lock_before_sleep,
-        )
-        .await?;
-        return Ok(());
-    }
-
     print_control_help();
     Ok(())
 }
@@ -225,13 +210,11 @@ Commands:
        [--force]             Replace an existing config.toml
   reload                     Ask the running daemon to reload config from disk
   stop                       Stop the running daemon
-  idle [--lock-after=N]      Lock after compositor-reported idle time
-       [--lock-before-sleep] Also lock on logind PrepareForSleep
   logs [--follow]            Show recent systemd user journal logs
        [--file]
        [--since WHEN]
        [--lines N]
-       [--daemon|--curtain|--ui|--idle|--all]
+       [--daemon|--curtain|--ui|--all]
 
 Themes:
   theme list                 List bundled themes
@@ -243,8 +226,7 @@ Themes:
 Notes:
   Control commands never start the daemon. Start it with `veila daemon`, a user service, or your compositor config.
   `--wait-ready` can be combined with `veila lock` to block until the secure lock is active.
-  `veila idle` defaults to 300 seconds when --lock-after is omitted.
-  `veila idle --lock-before-sleep` uses a logind delay inhibitor while preparing the lock.
+  Idle and lock-before-sleep locking are configured in the [idle] section of config.toml.
 "
     );
 }

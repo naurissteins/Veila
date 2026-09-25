@@ -11,11 +11,9 @@ mod tests;
 pub enum LogTarget {
     #[default]
     LockService,
-    All,
     Daemon,
     Curtain,
     Ui,
-    Idle,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -43,9 +41,6 @@ pub struct DaemonOptions {
     pub init_theme: Option<String>,
     pub version: bool,
     pub reload_config: bool,
-    pub idle: bool,
-    pub idle_lock_after_seconds: Option<u64>,
-    pub idle_lock_before_sleep: bool,
     pub logs: bool,
     pub logs_file: bool,
     pub logs_follow: bool,

@@ -87,7 +87,6 @@ cp -a share/veila/themes %{buildroot}%{_datadir}/veila/
 install -d %{buildroot}/usr/lib/systemd/user
 install -m644 share/veila/systemd/veila.service %{buildroot}/usr/lib/systemd/user/veila.service
 ln -s veila.service %{buildroot}/usr/lib/systemd/user/veilad.service
-install -m644 share/veila/systemd/veila-idle.service %{buildroot}/usr/lib/systemd/user/veila-idle.service
 
 install -d %{buildroot}%{_sysconfdir}/pam.d
 install -m644 %{SOURCE1} %{buildroot}%{_sysconfdir}/pam.d/veila
@@ -110,7 +109,6 @@ install -m644 LICENSE %{buildroot}%{_licensedir}/%{name}/LICENSE
 %{_bindir}/veilad
 /usr/lib/systemd/user/veila.service
 /usr/lib/systemd/user/veilad.service
-/usr/lib/systemd/user/veila-idle.service
 %{_datadir}/veila/fonts
 %{_datadir}/veila/icons
 %{_datadir}/veila/systemd

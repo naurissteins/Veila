@@ -61,70 +61,6 @@ fn parses_control_reload_command() {
 }
 
 #[test]
-fn parses_control_idle_command() {
-    let options = DaemonOptions::parse_control_args(["veila".to_string(), "idle".to_string()])
-        .expect("arguments should parse");
-
-    assert!(options.idle);
-    assert_eq!(options.idle_lock_after_seconds, None);
-}
-
-#[test]
-fn parses_control_idle_command_with_lock_after_equals() {
-    let options = DaemonOptions::parse_control_args([
-        "veila".to_string(),
-        "idle".to_string(),
-        "--lock-after=600".to_string(),
-    ])
-    .expect("arguments should parse");
-
-    assert!(options.idle);
-    assert_eq!(options.idle_lock_after_seconds, Some(600));
-}
-
-#[test]
-fn parses_control_idle_command_with_lock_after_space() {
-    let options = DaemonOptions::parse_control_args([
-        "veila".to_string(),
-        "idle".to_string(),
-        "--lock-after".to_string(),
-        "60".to_string(),
-    ])
-    .expect("arguments should parse");
-
-    assert!(options.idle);
-    assert_eq!(options.idle_lock_after_seconds, Some(60));
-}
-
-#[test]
-fn parses_control_idle_command_with_lock_before_sleep() {
-    let options = DaemonOptions::parse_control_args([
-        "veila".to_string(),
-        "idle".to_string(),
-        "--lock-before-sleep".to_string(),
-    ])
-    .expect("arguments should parse");
-
-    assert!(options.idle);
-    assert!(options.idle_lock_before_sleep);
-}
-
-#[test]
-fn parses_control_idle_command_with_combined_options() {
-    let options = DaemonOptions::parse_control_args([
-        "veila".to_string(),
-        "idle".to_string(),
-        "--lock-after=120".to_string(),
-        "--lock-before-sleep".to_string(),
-    ])
-    .expect("arguments should parse");
-
-    assert!(options.idle);
-    assert_eq!(options.idle_lock_after_seconds, Some(120));
-    assert!(options.idle_lock_before_sleep);
-}
-
-#[test]
 fn parses_control_logs_command_defaults() {
     let options = DaemonOptions::parse_control_args(["veila".to_string(), "logs".to_string()])
         .expect("arguments should parse");
@@ -180,23 +116,11 @@ fn rejects_multiple_logs_targets() {
         "veila".to_string(),
         "logs".to_string(),
         "--daemon".to_string(),
-        "--idle".to_string(),
+        "--curtain".to_string(),
     ])
     .expect_err("multiple target filters should fail");
 
     assert!(error.to_string().contains("only one logs target"));
-}
-
-#[test]
-fn rejects_zero_idle_lock_after() {
-    let error = DaemonOptions::parse_control_args([
-        "veila".to_string(),
-        "idle".to_string(),
-        "--lock-after=0".to_string(),
-    ])
-    .expect_err("zero timeout should fail");
-
-    assert!(error.to_string().contains("at least 1 second"));
 }
 
 #[test]
@@ -306,4 +230,12 @@ fn rejects_control_daemon_only_option() {
     .expect_err("daemon-only option should fail");
 
     assert!(error.to_string().contains("unknown veila option"));
+}
+
+#[test]
+fn removed_idle_command_points_to_config() {
+    let error = DaemonOptions::parse_control_args(["veila".to_string(), "idle".to_string()])
+        .expect_err("idle command was removed");
+
+    assert!(error.to_string().contains("[idle] section of config.toml"));
 }

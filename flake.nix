@@ -124,7 +124,7 @@
             service.enable = lib.mkEnableOption "the Veila daemon (`veila daemon`) as a systemd user service";
 
             idle = {
-              enable = lib.mkEnableOption "the veila idle/sleep auto-lock helper";
+              enable = lib.mkEnableOption "idle auto-lock inside the Veila daemon (writes `[idle]` to config.toml and enables the daemon service)";
 
               lockAfter = lib.mkOption {
                 type = lib.types.ints.positive;
@@ -135,7 +135,7 @@
               lockBeforeSleep = lib.mkOption {
                 type = lib.types.bool;
                 default = true;
-                description = "Also lock before the system goes to sleep.";
+                description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the daemon runs.";
               };
             };
           };
@@ -163,25 +163,12 @@
               };
             };
 
-            systemd.user.services.veila-idle = lib.mkIf cfg.idle.enable {
-              description = "Veila idle and sleep lock monitor";
-              after = [
-                "graphical-session.target"
-                "veila.service"
-              ];
-              partOf = [ "graphical-session.target" ];
-              wantedBy = [ "graphical-session.target" ];
-              serviceConfig = {
-                Type = "simple";
-                ExecStart =
-                  "${cfg.package}/bin/veila idle --lock-after=${toString cfg.idle.lockAfter}"
-                  + lib.optionalString cfg.idle.lockBeforeSleep " --lock-before-sleep";
-                Restart = "on-failure";
-                RestartSec = 2;
-                LimitCORE = 0;
-                PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
+            programs.veila.settings.idle =
+              lib.mkIf (cfg.idle.enable || !cfg.idle.lockBeforeSleep) {
+                enabled = lib.mkDefault cfg.idle.enable;
+                lock_after_seconds = lib.mkDefault cfg.idle.lockAfter;
+                lock_before_sleep = lib.mkDefault cfg.idle.lockBeforeSleep;
               };
-            };
           };
         };
 
@@ -217,7 +204,7 @@
             service.enable = lib.mkEnableOption "the Veila daemon (`veila daemon`) as a systemd user service";
 
             idle = {
-              enable = lib.mkEnableOption "the veila idle/sleep auto-lock helper";
+              enable = lib.mkEnableOption "idle auto-lock inside the Veila daemon (writes `[idle]` to config.toml and enables the daemon service)";
 
               lockAfter = lib.mkOption {
                 type = lib.types.ints.positive;
@@ -228,7 +215,7 @@
               lockBeforeSleep = lib.mkOption {
                 type = lib.types.bool;
                 default = true;
-                description = "Also lock before the system goes to sleep.";
+                description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the daemon runs.";
               };
             };
           };
@@ -257,27 +244,12 @@
               Install.WantedBy = [ "graphical-session.target" ];
             };
 
-            systemd.user.services.veila-idle = lib.mkIf cfg.idle.enable {
-              Unit = {
-                Description = "Veila idle and sleep lock monitor";
-                After = [
-                  "graphical-session.target"
-                  "veila.service"
-                ];
-                PartOf = [ "graphical-session.target" ];
+            programs.veila.settings.idle =
+              lib.mkIf (cfg.idle.enable || !cfg.idle.lockBeforeSleep) {
+                enabled = lib.mkDefault cfg.idle.enable;
+                lock_after_seconds = lib.mkDefault cfg.idle.lockAfter;
+                lock_before_sleep = lib.mkDefault cfg.idle.lockBeforeSleep;
               };
-              Service = {
-                Type = "simple";
-                ExecStart =
-                  "${cfg.package}/bin/veila idle --lock-after=${toString cfg.idle.lockAfter}"
-                  + lib.optionalString cfg.idle.lockBeforeSleep " --lock-before-sleep";
-                Restart = "on-failure";
-                RestartSec = 2;
-                LimitCORE = 0;
-                PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
-              };
-              Install.WantedBy = [ "graphical-session.target" ];
-            };
           };
         };
 

@@ -35,7 +35,6 @@ require_file LICENSE
 require_file README.md
 require_file docs/man/veila.1
 require_file assets/systemd/veila.service
-require_file assets/systemd/veila-idle.service
 
 rm -rf "$staging" "$deb_path"
 mkdir -p \
@@ -53,7 +52,6 @@ ln -s veila "$staging/usr/bin/veilad"
 
 install -m644 assets/systemd/veila.service "$staging/usr/lib/systemd/user/veila.service"
 ln -s veila.service "$staging/usr/lib/systemd/user/veilad.service"
-install -m644 assets/systemd/veila-idle.service "$staging/usr/lib/systemd/user/veila-idle.service"
 install -m644 README.md "$staging/usr/share/doc/veila/README.md"
 install -m644 LICENSE "$staging/usr/share/doc/veila/copyright"
 install -m644 docs/man/veila.1 "$staging/usr/share/man/man1/veila.1"
