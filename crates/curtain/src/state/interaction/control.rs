@@ -32,6 +32,8 @@ impl CurtainApp {
                     );
                     self.now_playing_snapshot = snapshot.clone();
                     self.ui_shell.set_now_playing_snapshot(snapshot);
+                    self.artwork_last_attempt = None;
+                    self.maybe_start_artwork_load();
                     self.render_all_surfaces(queue_handle);
                 }
                 ControlEvent::UpdatePowerStatus { snapshot } => {

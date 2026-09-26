@@ -1,9 +1,12 @@
-use std::{cell::RefCell, path::PathBuf};
+use std::{
+    cell::RefCell,
+    path::{Path, PathBuf},
+};
 
 use veila_common::{
     BatterySnapshot, InputRevealMode, NowPlayingSnapshot, Secret, WeatherSnapshot, WeatherUnit,
 };
-use veila_renderer::{ClearColor, avatar::AvatarAsset};
+use veila_renderer::{ClearColor, avatar::AvatarAsset, cover::CoverArtAsset};
 
 use super::{
     ClockState, NowPlayingTransition, ShellMode, ShellState, ShellStatus, ShellTheme,
@@ -414,7 +417,14 @@ impl ShellState {
     }
 
     pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {
-        let next = now_playing_widget_data(snapshot);
+        let mut next = now_playing_widget_data(snapshot);
+        if let (Some(current), Some(next)) = (self.now_playing.as_ref(), next.as_mut())
+            && current.artwork_path == next.artwork_path
+            && current.title == next.title
+            && current.artist == next.artist
+        {
+            next.artwork = current.artwork.clone();
+        }
         if same_widget_data(self.now_playing.as_ref(), next.as_ref()) {
             return;
         }
@@ -424,6 +434,31 @@ impl ShellState {
             started_at: std::time::Instant::now(),
         });
         self.now_playing = next;
+    }
+
+    pub fn pending_now_playing_artwork_path(&self) -> Option<&Path> {
+        if !self.theme.now_playing_enabled
+            || !self.theme.now_playing_artwork_enabled
+            || self.theme.now_playing_artwork_position.is_none()
+        {
+            return None;
+        }
+        let now_playing = self.now_playing.as_ref()?;
+        if now_playing.artwork.is_some() {
+            return None;
+        }
+        now_playing.artwork_path.as_deref()
+    }
+
+    pub fn set_now_playing_artwork(&mut self, path: &Path, artwork: CoverArtAsset) -> bool {
+        let Some(now_playing) = self.now_playing.as_mut() else {
+            return false;
+        };
+        if now_playing.artwork_path.as_deref() != Some(path) || now_playing.artwork.is_some() {
+            return false;
+        }
+        now_playing.artwork = Some(artwork);
+        true
     }
 
     pub fn apply_theme(

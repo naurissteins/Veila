@@ -105,6 +105,7 @@ impl CurtainApp {
         self.avatar_path = avatar_path.clone();
         self.avatar_load_started = false;
         self.avatar_load_needed = false;
+        self.artwork_last_attempt = None;
         self.ui_shell.apply_theme_with_username_and_weather(
             theme,
             Some(config.visuals.input_placeholder()),
@@ -140,5 +141,6 @@ impl CurtainApp {
         self.render_all_surfaces(queue_handle);
         self.maybe_power_off_secondary_outputs();
         self.maybe_start_background_render();
+        self.maybe_start_artwork_load();
     }
 }

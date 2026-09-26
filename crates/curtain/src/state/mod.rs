@@ -199,6 +199,8 @@ pub(crate) struct CurtainApp {
     pub(crate) avatar_path: Option<PathBuf>,
     pub(crate) avatar_load_started: bool,
     pub(crate) avatar_load_needed: bool,
+    pub(crate) artwork_in_flight: Option<(PathBuf, Option<NowPlayingSnapshot>)>,
+    pub(crate) artwork_last_attempt: Option<(PathBuf, Instant)>,
     pub(crate) lock_wait_timeout: Duration,
     pub(crate) startup_started_at: Instant,
     lock_started_at: Instant,
@@ -273,6 +275,7 @@ impl CurtainApp {
         let config = loaded_config.config;
         let emergency_active = force_emergency_ui || emergency_reason.is_some();
         let theme = ShellTheme::from_config(&config);
+        veila_renderer::text::configure_font_warmup(theme.font_warmup_families());
         let background_color = if emergency_active {
             EMERGENCY_BACKGROUND
         } else {
@@ -451,6 +454,8 @@ impl CurtainApp {
             avatar_path,
             avatar_load_started: false,
             avatar_load_needed,
+            artwork_in_flight: None,
+            artwork_last_attempt: None,
             lock_wait_timeout,
             startup_started_at,
             lock_started_at: Instant::now(),

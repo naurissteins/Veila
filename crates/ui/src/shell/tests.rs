@@ -1010,6 +1010,74 @@ fn now_playing_widget_uses_snapshot_data() {
 }
 
 #[test]
+fn deferred_artwork_applies_only_to_current_path_and_survives_metadata_refresh() {
+    use veila_renderer::cover::CoverArtAsset;
+
+    let mut shell = ShellState::new(
+        ShellTheme {
+            now_playing_enabled: true,
+            now_playing_artwork_enabled: true,
+            now_playing_artwork_position: Some(WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Center,
+                x: 0,
+                y: 0,
+                target: WidgetPositionTarget::Screen,
+            }),
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let first_path = std::path::PathBuf::from("/tmp/veila-first-cover.png");
+    let second_path = std::path::PathBuf::from("/tmp/veila-second-cover.png");
+    let snapshot = |path: &std::path::Path, title: &str| NowPlayingSnapshot {
+        title: title.to_owned(),
+        artist: None,
+        artwork_path: Some(path.to_path_buf()),
+        fetched_at_unix: 0,
+    };
+
+    shell.set_now_playing_snapshot(Some(snapshot(&first_path, "Track")));
+    assert_eq!(
+        shell.pending_now_playing_artwork_path(),
+        Some(first_path.as_path())
+    );
+    shell.set_now_playing_snapshot(Some(snapshot(&second_path, "Track")));
+    let artwork_path = std::env::temp_dir().join(format!(
+        "veila-deferred-cover-test-{}.png",
+        std::process::id()
+    ));
+    let png = [
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1,
+        13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
+    std::fs::write(&artwork_path, png).expect("write cover");
+    let artwork = CoverArtAsset::load(&artwork_path, 32).expect("load cover");
+    let _ = std::fs::remove_file(&artwork_path);
+    assert!(!shell.set_now_playing_artwork(&first_path, artwork.clone()));
+    assert!(shell.set_now_playing_artwork(&second_path, artwork));
+    assert!(shell.pending_now_playing_artwork_path().is_none());
+
+    shell.set_now_playing_snapshot(Some(snapshot(&second_path, "Track")));
+    assert!(
+        shell
+            .now_playing
+            .as_ref()
+            .is_some_and(|data| data.artwork.is_some())
+    );
+    assert!(shell.pending_now_playing_artwork_path().is_none());
+
+    shell.set_now_playing_snapshot(Some(snapshot(&second_path, "Another track")));
+    assert_eq!(
+        shell.pending_now_playing_artwork_path(),
+        Some(second_path.as_path())
+    );
+}
+
+#[test]
 fn battery_widget_uses_snapshot_data() {
     let shell = ShellState::new_with_username_and_weather(
         Default::default(),

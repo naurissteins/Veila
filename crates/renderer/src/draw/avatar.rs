@@ -352,31 +352,37 @@ fn load_cached_avatar_at(path: &Path, cache_home: Option<&Path>) -> Result<Optio
         return Ok(None);
     };
 
-    let mut header = [0u8; 16];
-    file.read_exact(&mut header)?;
-    if &header[..8] != AVATAR_CACHE_MAGIC {
-        return Ok(None);
+    let avatar = (|| {
+        let mut header = [0u8; 16];
+        file.read_exact(&mut header).ok()?;
+        if &header[..8] != AVATAR_CACHE_MAGIC {
+            return None;
+        }
+
+        let width = u32::from_le_bytes([header[8], header[9], header[10], header[11]]);
+        let height = u32::from_le_bytes([header[12], header[13], header[14], header[15]]);
+        if width == 0
+            || height == 0
+            || width > MAX_PREPARED_AVATAR_SIZE
+            || height > MAX_PREPARED_AVATAR_SIZE
+        {
+            return None;
+        }
+        let size = tiny_skia::IntSize::from_wh(width, height)?;
+        let byte_len = FrameSize::new(width, height).byte_len()?;
+        let expected_len = 16u64.checked_add(u64::try_from(byte_len).ok()?)?;
+        if file.metadata().ok()?.len() != expected_len {
+            return None;
+        }
+
+        let mut data = vec![0; byte_len];
+        file.read_exact(&mut data).ok()?;
+        Pixmap::from_vec(data, size)
+    })();
+    if avatar.is_none() {
+        let _ = fs::remove_file(cache_path);
     }
-
-    // Infallible: the header was read with read_exact into a fixed 16-byte array
-    let width = u32::from_le_bytes(header[8..12].try_into().expect("width slice"));
-    let height = u32::from_le_bytes(header[12..16].try_into().expect("height slice"));
-    let size = tiny_skia::IntSize::from_wh(width, height).ok_or(
-        RendererError::InvalidFrameSize(FrameSize::new(width, height)),
-    )?;
-    let Some(byte_len) = FrameSize::new(width, height).byte_len() else {
-        return Err(RendererError::InvalidFrameSize(FrameSize::new(
-            width, height,
-        )));
-    };
-
-    let mut data = vec![0; byte_len];
-    file.read_exact(&mut data)?;
-    Pixmap::from_vec(data, size)
-        .ok_or(RendererError::InvalidFrameSize(FrameSize::new(
-            width, height,
-        )))
-        .map(Some)
+    Ok(avatar)
 }
 
 fn store_cached_avatar(path: &Path, pixmap: &Pixmap) -> Result<()> {
@@ -519,6 +525,30 @@ mod tests {
         assert_eq!(cached.width(), pixmap.width());
         assert_eq!(cached.height(), pixmap.height());
         assert_eq!(cached.data(), pixmap.data());
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rejects_truncated_avatar_cache_before_allocating_pixels() {
+        let root =
+            std::env::temp_dir().join(format!("veila-avatar-cache-invalid-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("cache root");
+        let avatar_path = root.join("avatar.png");
+        std::fs::write(&avatar_path, b"stub").expect("avatar file");
+        let cache_path = super::avatar_cache_path(&avatar_path, Some(&root)).expect("cache path");
+        std::fs::create_dir_all(cache_path.parent().expect("cache dir")).expect("cache dir");
+        let mut cache = Vec::from(super::AVATAR_CACHE_MAGIC.as_slice());
+        cache.extend_from_slice(&512u32.to_le_bytes());
+        cache.extend_from_slice(&512u32.to_le_bytes());
+        std::fs::write(&cache_path, cache).expect("invalid cache");
+
+        assert!(
+            load_cached_avatar_at(&avatar_path, Some(&root))
+                .expect("cache miss")
+                .is_none()
+        );
+        assert!(!cache_path.exists());
 
         let _ = std::fs::remove_dir_all(root);
     }

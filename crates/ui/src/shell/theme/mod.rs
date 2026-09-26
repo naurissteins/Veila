@@ -1,4 +1,5 @@
 mod color;
+mod font_warmup;
 #[cfg(test)]
 mod tests;
 

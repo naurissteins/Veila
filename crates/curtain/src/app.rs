@@ -14,6 +14,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     }
 
     let startup_started_at = Instant::now();
+    veila_renderer::text::start_font_warmup();
 
     let wayland_connect_started_at = Instant::now();
     let connection =

@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::{io::BufReader, path::Path, sync::Arc};
 
-use image::{ImageReader, RgbaImage};
+use image::{ImageReader, Limits, RgbaImage, imageops::FilterType};
 use tiny_skia::{FillRule, FilterQuality, Mask, PathBuilder, Pixmap, PixmapPaint, Transform};
 
 use crate::{FrameSize, PixelBuffer, RendererError, Result};
@@ -9,17 +9,40 @@ use super::skia::draw_overlay;
 
 #[derive(Debug, Clone)]
 pub enum CoverArtAsset {
-    Image(Pixmap),
+    Image(Arc<Pixmap>),
 }
 
+const MAX_COVER_FILE_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_COVER_SOURCE_DIMENSION: u32 = 4_096;
+const MAX_COVER_PIXMAP_DIMENSION: u32 = 2_048;
+
 impl CoverArtAsset {
-    pub fn load(path: &Path) -> Result<Self> {
-        let image = ImageReader::open(path)?
-            .with_guessed_format()?
-            .decode()?
-            .to_rgba8();
-        let pixmap = rgba_to_pixmap(image)?;
-        Ok(Self::Image(pixmap))
+    pub fn load(path: &Path, max_dimension: u32) -> Result<Self> {
+        let file = std::fs::File::open(path)?;
+        if file.metadata()?.len() > MAX_COVER_FILE_BYTES {
+            return Err(RendererError::Io(std::io::Error::other(
+                "cover art file exceeds the size limit",
+            )));
+        }
+        let mut reader = ImageReader::new(BufReader::new(file)).with_guessed_format()?;
+        let mut limits = Limits::default();
+        limits.max_image_width = Some(MAX_COVER_SOURCE_DIMENSION);
+        limits.max_image_height = Some(MAX_COVER_SOURCE_DIMENSION);
+        limits.max_alloc = Some(MAX_COVER_FILE_BYTES);
+        reader.limits(limits);
+        let image = reader.decode()?;
+        let side = image.width().min(image.height());
+        let left = (image.width() - side) / 2;
+        let top = (image.height() - side) / 2;
+        let square = image.crop_imm(left, top, side, side);
+        let max_dimension = max_dimension.clamp(1, MAX_COVER_PIXMAP_DIMENSION);
+        let prepared = if side > max_dimension {
+            square.resize_exact(max_dimension, max_dimension, FilterType::Triangle)
+        } else {
+            square
+        };
+        let pixmap = rgba_to_pixmap(prepared.to_rgba8())?;
+        Ok(Self::Image(Arc::new(pixmap)))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -165,7 +188,7 @@ mod tests {
             }
         }
         let pixmap = rgba_to_pixmap(image).expect("pixmap");
-        let asset = CoverArtAsset::Image(pixmap);
+        let asset = CoverArtAsset::Image(std::sync::Arc::new(pixmap));
         let mut buffer =
             SoftwareBuffer::solid(FrameSize::new(80, 80), ClearColor::opaque(0, 0, 0)).unwrap();
 
@@ -183,9 +206,36 @@ mod tests {
         let _ = fs::remove_file(&path);
         fs::write(&path, ONE_PIXEL_PNG).expect("write png");
 
-        let result = CoverArtAsset::load(&path);
+        let result = CoverArtAsset::load(&path, 64);
 
         let _ = fs::remove_file(path);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn bounds_prepared_artwork_to_widget_size() {
+        let path =
+            std::env::temp_dir().join(format!("veila-cover-size-{}.png", std::process::id()));
+        let image = RgbaImage::from_pixel(128, 64, Rgba([255, 0, 0, 255]));
+        image.save(&path).expect("save artwork");
+
+        let asset = CoverArtAsset::load(&path, 32).expect("load artwork");
+        let _ = fs::remove_file(path);
+
+        let CoverArtAsset::Image(pixmap) = asset;
+        assert_eq!((pixmap.width(), pixmap.height()), (32, 32));
+    }
+
+    #[test]
+    fn rejects_artwork_above_source_dimension_limit() {
+        let path =
+            std::env::temp_dir().join(format!("veila-cover-limit-{}.png", std::process::id()));
+        let image = RgbaImage::from_pixel(4_097, 1, Rgba([255, 0, 0, 255]));
+        image.save(&path).expect("save artwork");
+
+        let result = CoverArtAsset::load(&path, 32);
+        let _ = fs::remove_file(path);
+
+        assert!(result.is_err());
     }
 }

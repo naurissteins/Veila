@@ -5,10 +5,12 @@ use std::{
     time::Instant,
 };
 
+use veila_common::NowPlayingSnapshot;
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     avatar::AvatarAsset,
     background::{BackgroundAsset, BackgroundTreatment, load_cached_render, store_cached_render},
+    cover::CoverArtAsset,
 };
 
 #[derive(Debug, Clone)]
@@ -27,6 +29,12 @@ pub(crate) enum BackgroundEvent {
     AvatarReady {
         path: Option<PathBuf>,
         asset: AvatarAsset,
+        elapsed_ms: u128,
+    },
+    ArtworkReady {
+        path: PathBuf,
+        snapshot: Option<NowPlayingSnapshot>,
+        asset: Option<CoverArtAsset>,
         elapsed_ms: u128,
     },
     Failed {
@@ -94,6 +102,30 @@ pub(crate) fn spawn_avatar_loader(path: Option<PathBuf>, sender: Sender<Backgrou
         let asset = veila_ui::load_avatar(path.clone());
         let _ = sender.send(BackgroundEvent::AvatarReady {
             path,
+            asset,
+            elapsed_ms: started_at.elapsed().as_millis(),
+        });
+    });
+}
+
+pub(crate) fn spawn_artwork_loader(
+    path: PathBuf,
+    snapshot: Option<NowPlayingSnapshot>,
+    max_dimension: u32,
+    sender: Sender<BackgroundEvent>,
+) {
+    thread::spawn(move || {
+        let started_at = Instant::now();
+        let asset = match CoverArtAsset::load(&path, max_dimension) {
+            Ok(asset) => Some(asset),
+            Err(error) => {
+                tracing::debug!(path = %path.display(), "failed to load now playing artwork: {error}");
+                None
+            }
+        };
+        let _ = sender.send(BackgroundEvent::ArtworkReady {
+            path,
+            snapshot,
             asset,
             elapsed_ms: started_at.elapsed().as_millis(),
         });

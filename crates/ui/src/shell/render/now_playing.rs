@@ -8,6 +8,26 @@ const NOW_PLAYING_ARTWORK_DEFAULT_SIZE: i32 = 44;
 const NOW_PLAYING_ARTWORK_MIN_SIZE: i32 = 32;
 const NOW_PLAYING_ARTWORK_AUTO_MAX_SIZE: i32 = 160;
 
+fn artwork_size(size: FrameSize, render_scale: u32, configured_size: Option<i32>) -> i32 {
+    let scale = render_scale.max(1) as i32;
+    let min_size = NOW_PLAYING_ARTWORK_MIN_SIZE.saturating_mul(scale);
+    configured_size.map_or_else(
+        || {
+            NOW_PLAYING_ARTWORK_DEFAULT_SIZE
+                .saturating_mul(scale)
+                .clamp(
+                    min_size,
+                    NOW_PLAYING_ARTWORK_AUTO_MAX_SIZE.saturating_mul(scale),
+                )
+        },
+        |configured_size| {
+            let viewport_max =
+                min_size.max((size.width.min(size.height) as i32).saturating_mul(4) / 5);
+            configured_size.clamp(min_size, viewport_max)
+        },
+    )
+}
+
 impl ShellState {
     pub(super) fn render_now_playing_widget(
         &self,
@@ -131,24 +151,20 @@ impl ShellState {
     }
 
     fn now_playing_artwork_size(&self, size: FrameSize) -> i32 {
-        let scale = self.render_scale.max(1) as i32;
-        let min_size = NOW_PLAYING_ARTWORK_MIN_SIZE.saturating_mul(scale);
-
-        self.theme.now_playing_artwork_size.map_or_else(
-            || {
-                NOW_PLAYING_ARTWORK_DEFAULT_SIZE
-                    .saturating_mul(scale)
-                    .clamp(
-                        min_size,
-                        NOW_PLAYING_ARTWORK_AUTO_MAX_SIZE.saturating_mul(scale),
-                    )
-            },
-            |configured_size| {
-                let viewport_max =
-                    min_size.max((size.width.min(size.height) as i32).saturating_mul(4) / 5);
-                configured_size.clamp(min_size, viewport_max)
-            },
+        artwork_size(
+            size,
+            self.render_scale.max(1),
+            self.theme.now_playing_artwork_size,
         )
+    }
+
+    pub fn now_playing_artwork_decode_size(&self, size: FrameSize, scale: u32) -> u32 {
+        let scale = scale.max(1);
+        let configured = self
+            .theme
+            .now_playing_artwork_size
+            .map(|value| value.saturating_mul(scale as i32));
+        artwork_size(size, scale, configured).max(1) as u32
     }
 
     fn now_playing_artwork_radius(&self, artwork_size: i32) -> i32 {
@@ -396,6 +412,12 @@ mod tests {
 
         assert_eq!(
             shell.now_playing_artwork_size(FrameSize::new(5120, 2880)),
+            350
+        );
+
+        let base_shell = ShellState::new(theme, None, None, true);
+        assert_eq!(
+            base_shell.now_playing_artwork_decode_size(FrameSize::new(5120, 2880), 2),
             350
         );
     }

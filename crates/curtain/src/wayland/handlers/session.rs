@@ -38,6 +38,7 @@ impl SessionLockHandler for CurtainApp {
         self.maybe_notify_startup();
         self.maybe_notify_ready();
         self.flush_pending_pre_ready_redraw(qh);
+        self.maybe_start_artwork_load();
     }
 
     fn finished(

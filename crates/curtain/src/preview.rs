@@ -20,6 +20,7 @@ use veila_renderer::{
         BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
         GeneratedBackground,
     },
+    cover::CoverArtAsset,
 };
 use veila_ui::{ShellState, ShellTheme};
 
@@ -101,6 +102,23 @@ pub(crate) fn render_preview(options: CurtainOptions) -> Result<()> {
     if options.force_emergency_ui {
         shell.activate_emergency();
         buffer.clear(ClearColor::opaque(12, 14, 18));
+    }
+    if !shell.emergency_active()
+        && let Some(path) = shell
+            .pending_now_playing_artwork_path()
+            .map(Path::to_path_buf)
+    {
+        match CoverArtAsset::load(
+            &path,
+            shell.now_playing_artwork_decode_size(preview_size, 1),
+        ) {
+            Ok(artwork) => {
+                shell.set_now_playing_artwork(&path, artwork);
+            }
+            Err(error) => {
+                tracing::debug!(path = %path.display(), "failed to load preview artwork: {error}")
+            }
+        }
     }
     if let Some(preview_time) = options.preview_time {
         shell.set_preview_time(preview_clock_datetime(preview_time));

@@ -10,36 +10,48 @@ use image::RgbaImage;
 use crate::{FrameSize, RendererError, Result};
 
 const CACHE_MAGIC: &[u8; 8] = b"KWYIMG01";
+const MAX_CACHED_DIMENSION: u32 = 16_384;
 
 pub(crate) fn load_cached_rgba(path: &Path) -> Result<Option<RgbaImage>> {
-    let cache_path = cache_path(path, None)?;
+    load_cached_rgba_at(path, None)
+}
+
+fn load_cached_rgba_at(path: &Path, cache_home: Option<&Path>) -> Result<Option<RgbaImage>> {
+    let cache_path = cache_path(path, cache_home)?;
     let Ok(mut file) = fs::File::open(&cache_path) else {
         return Ok(None);
     };
 
-    let mut header = [0u8; 16];
-    file.read_exact(&mut header)
-        .map_err(image::ImageError::from)?;
-    if &header[..8] != CACHE_MAGIC {
-        return Ok(None);
+    let image = (|| {
+        let mut header = [0u8; 16];
+        file.read_exact(&mut header).ok()?;
+        if &header[..8] != CACHE_MAGIC {
+            return None;
+        }
+
+        let width = u32::from_le_bytes([header[8], header[9], header[10], header[11]]);
+        let height = u32::from_le_bytes([header[12], header[13], header[14], header[15]]);
+        if width == 0
+            || height == 0
+            || width > MAX_CACHED_DIMENSION
+            || height > MAX_CACHED_DIMENSION
+        {
+            return None;
+        }
+        let byte_len = FrameSize::new(width, height).byte_len()?;
+        let expected_len = 16u64.checked_add(u64::try_from(byte_len).ok()?)?;
+        if file.metadata().ok()?.len() != expected_len {
+            return None;
+        }
+
+        let mut pixels = vec![0; byte_len];
+        file.read_exact(&mut pixels).ok()?;
+        RgbaImage::from_raw(width, height, pixels)
+    })();
+    if image.is_none() {
+        let _ = fs::remove_file(cache_path);
     }
-
-    let size = FrameSize::new(
-        // Infallible: the header was read with read_exact into a fixed 16-byte array
-        u32::from_le_bytes(header[8..12].try_into().expect("width slice")),
-        u32::from_le_bytes(header[12..16].try_into().expect("height slice")),
-    );
-    let Some(byte_len) = size.byte_len() else {
-        return Err(RendererError::InvalidFrameSize(size));
-    };
-
-    let mut pixels = vec![0; byte_len];
-    file.read_exact(&mut pixels)
-        .map_err(image::ImageError::from)?;
-
-    RgbaImage::from_raw(size.width, size.height, pixels)
-        .ok_or(RendererError::InvalidFrameSize(size))
-        .map(Some)
+    Ok(image)
 }
 
 pub(crate) fn store_cached_rgba(path: &Path, image: &RgbaImage) -> Result<()> {
@@ -133,14 +145,14 @@ fn stable_hash(input: String) -> u64 {
 mod tests {
     use std::{
         fs,
-        io::{Read, Write},
+        io::Write,
         path::Path,
         time::{SystemTime, UNIX_EPOCH},
     };
 
     use image::{Rgba, RgbaImage};
 
-    use super::cache_path;
+    use super::{CACHE_MAGIC, cache_path, load_cached_rgba_at};
 
     #[test]
     fn round_trips_decoded_source_cache() {
@@ -166,23 +178,27 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
-    fn load_cached_rgba_at(
-        path: &Path,
-        cache_home: Option<&Path>,
-    ) -> super::Result<Option<RgbaImage>> {
-        let cache_path = cache_path(path, cache_home)?;
-        let Ok(mut file) = fs::File::open(&cache_path) else {
-            return Ok(None);
-        };
+    #[test]
+    fn rejects_truncated_source_cache_before_allocating_pixels() {
+        let root =
+            std::env::temp_dir().join(format!("veila-source-cache-invalid-{}", std::process::id()));
+        fs::create_dir_all(root.join("veila/source-images")).expect("cache dir");
+        let wallpaper = root.join("wallpaper.png");
+        fs::write(&wallpaper, b"stub").expect("wallpaper file");
+        let path = cache_path(&wallpaper, Some(&root)).expect("cache path");
+        let mut cache = Vec::from(CACHE_MAGIC.as_slice());
+        cache.extend_from_slice(&16_000u32.to_le_bytes());
+        cache.extend_from_slice(&16_000u32.to_le_bytes());
+        fs::write(&path, cache).expect("invalid cache");
 
-        let mut header = [0u8; 16];
-        file.read_exact(&mut header).expect("header");
-        let width = u32::from_le_bytes(header[8..12].try_into().expect("width"));
-        let height = u32::from_le_bytes(header[12..16].try_into().expect("height"));
-        let mut pixels = vec![0; (width as usize) * (height as usize) * 4];
-        file.read_exact(&mut pixels).expect("pixels");
+        assert!(
+            load_cached_rgba_at(&wallpaper, Some(&root))
+                .expect("cache miss")
+                .is_none()
+        );
+        assert!(!path.exists());
 
-        Ok(RgbaImage::from_raw(width, height, pixels))
+        let _ = fs::remove_dir_all(root);
     }
 
     fn store_cached_rgba_at(
