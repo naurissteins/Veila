@@ -9,42 +9,45 @@ use super::super::CurtainApp;
 const UNLOCK_DELIVERY_GRACE: Duration = Duration::from_secs(10);
 
 impl CurtainApp {
-    pub(crate) fn drain_auth_events(&mut self, queue_handle: &QueueHandle<Self>) {
-        while let Ok(event) = self.auth_events.try_recv() {
-            match event {
-                AuthEvent::Accepted { attempt_id } => {
-                    tracing::info!(
-                        attempt_id,
-                        "waiting for daemon-driven unlock after auth success"
-                    );
-                    self.auth_accepted_at = Some(Instant::now());
-                }
-                AuthEvent::Rejected {
+    pub(crate) fn auth_watchdog_due_in(&self, now: Instant) -> Option<Duration> {
+        self.auth_accepted_at
+            .map(|accepted_at| (accepted_at + UNLOCK_DELIVERY_GRACE).saturating_duration_since(now))
+    }
+
+    pub(crate) fn handle_auth_event(&mut self, event: AuthEvent, queue_handle: &QueueHandle<Self>) {
+        match event {
+            AuthEvent::Accepted { attempt_id } => {
+                tracing::info!(
                     attempt_id,
-                    retry_after_ms,
-                    failed_attempts,
-                } => {
-                    self.auth_in_flight = false;
-                    tracing::info!(attempt_id, "updating UI after authentication rejection");
-                    self.ui_shell
-                        .authentication_rejected(retry_after_ms, failed_attempts);
-                    self.render_all_surfaces(queue_handle);
-                }
-                AuthEvent::Busy { attempt_id } => {
-                    self.auth_in_flight = false;
-                    tracing::debug!(attempt_id, "updating UI after authentication busy response");
-                    self.ui_shell.authentication_busy();
-                    self.render_all_surfaces(queue_handle);
-                }
-                AuthEvent::Failed { attempt_id } => {
-                    self.auth_in_flight = false;
-                    tracing::warn!(
-                        attempt_id,
-                        "authentication attempt produced no verdict; releasing the input guard"
-                    );
-                    self.ui_shell.authentication_rejected(None, None);
-                    self.render_all_surfaces(queue_handle);
-                }
+                    "waiting for daemon-driven unlock after auth success"
+                );
+                self.auth_accepted_at = Some(Instant::now());
+            }
+            AuthEvent::Rejected {
+                attempt_id,
+                retry_after_ms,
+                failed_attempts,
+            } => {
+                self.auth_in_flight = false;
+                tracing::info!(attempt_id, "updating UI after authentication rejection");
+                self.ui_shell
+                    .authentication_rejected(retry_after_ms, failed_attempts);
+                self.render_all_surfaces(queue_handle);
+            }
+            AuthEvent::Busy { attempt_id } => {
+                self.auth_in_flight = false;
+                tracing::debug!(attempt_id, "updating UI after authentication busy response");
+                self.ui_shell.authentication_busy();
+                self.render_all_surfaces(queue_handle);
+            }
+            AuthEvent::Failed { attempt_id } => {
+                self.auth_in_flight = false;
+                tracing::warn!(
+                    attempt_id,
+                    "authentication attempt produced no verdict; releasing the input guard"
+                );
+                self.ui_shell.authentication_rejected(None, None);
+                self.render_all_surfaces(queue_handle);
             }
         }
     }

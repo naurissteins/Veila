@@ -576,6 +576,7 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
         started_at: std::time::Instant::now(),
         visible_after: std::time::Instant::now(),
         shown: true,
+        displayed_phase: 0,
     };
     let style = shell.status_text_style();
 
@@ -594,6 +595,7 @@ fn pending_status_style_prefers_state_specific_status_override() {
         started_at: std::time::Instant::now(),
         visible_after: std::time::Instant::now(),
         shown: true,
+        displayed_phase: 0,
     };
 
     let style = shell.status_text_style();

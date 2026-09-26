@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use super::{
     ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellStatus,
@@ -8,7 +8,6 @@ use super::{
 const DEFAULT_NOW_PLAYING_FADE_DURATION_MS: u64 = 450;
 const PENDING_STATUS_DELAY_MS: u64 = 1_000;
 const ACTIVE_ANIMATION_POLL_INTERVAL_MS: u64 = 80;
-const IDLE_ANIMATION_POLL_INTERVAL_MS: u64 = 250;
 
 impl ShellState {
     pub fn handle_key(&mut self, key: ShellKey) -> ShellAction {
@@ -96,6 +95,7 @@ impl ShellState {
                     started_at,
                     visible_after: started_at + Duration::from_millis(PENDING_STATUS_DELAY_MS),
                     shown: false,
+                    displayed_phase: 0,
                 };
                 self.submitted_secret_len = self.secret.char_count();
                 ShellAction::Submit(self.secret.take())
@@ -137,7 +137,8 @@ impl ShellState {
     }
 
     pub fn advance_animated_state_update(&mut self) -> ShellAnimationUpdate {
-        let mut changed = self.clock.refresh();
+        let mut changed =
+            (self.theme.clock_enabled || self.theme.date_enabled) && self.clock.refresh();
         changed |= self.clear_expired_power_confirmation(Instant::now());
         let fade_duration = self.now_playing_fade_duration();
         if let Some(transition) = self.now_playing_transition.as_ref() {
@@ -147,18 +148,39 @@ impl ShellState {
             }
         }
         if let ShellStatus::Pending {
+            started_at,
             visible_after,
             shown,
+            displayed_phase,
             ..
         } = &mut self.status
         {
-            if !*shown && Instant::now() >= *visible_after {
+            let now = Instant::now();
+            if !*shown {
+                if now < *visible_after {
+                    return if changed {
+                        ShellAnimationUpdate::Full
+                    } else {
+                        ShellAnimationUpdate::None
+                    };
+                }
                 *shown = true;
+                *displayed_phase = spinner_phase(*started_at, now);
+                return if changed {
+                    ShellAnimationUpdate::Full
+                } else {
+                    ShellAnimationUpdate::AuthDirty
+                };
             }
+            let phase = spinner_phase(*started_at, now);
+            let phase_changed = phase != *displayed_phase;
+            *displayed_phase = phase;
             return if changed {
                 ShellAnimationUpdate::Full
-            } else {
+            } else if phase_changed {
                 ShellAnimationUpdate::AuthDirty
+            } else {
+                ShellAnimationUpdate::None
             };
         }
         let ShellStatus::Rejected {
@@ -197,20 +219,66 @@ impl ShellState {
             return None;
         };
 
-        Some(
-            ((started_at.elapsed().as_millis() / u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS)) % 8)
-                as u8,
-        )
+        Some(spinner_phase(*started_at, Instant::now()))
     }
 
-    pub fn animation_poll_interval(&self) -> Duration {
-        if matches!(self.status, ShellStatus::Pending { .. })
-            || self.now_playing_transition.is_some()
-        {
-            return Duration::from_millis(ACTIVE_ANIMATION_POLL_INTERVAL_MS);
-        }
+    pub fn next_animation_in(&self, now: Instant) -> Option<Duration> {
+        let next_minute = (self.theme.clock_enabled || self.theme.date_enabled).then(|| {
+            let since_epoch = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default();
+            Duration::from_secs(60 - since_epoch.as_secs() % 60)
+                .saturating_sub(Duration::from_nanos(u64::from(since_epoch.subsec_nanos())))
+        });
+        let pending = match self.status {
+            ShellStatus::Pending {
+                visible_after,
+                shown: false,
+                ..
+            } => Some(visible_after.saturating_duration_since(now)),
+            ShellStatus::Pending {
+                started_at,
+                shown: true,
+                ..
+            } => {
+                let phase_nanos = u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS) * 1_000_000;
+                let elapsed_nanos = now.saturating_duration_since(started_at).as_nanos();
+                Some(Duration::from_nanos(
+                    (phase_nanos - elapsed_nanos % phase_nanos) as u64,
+                ))
+            }
+            _ => None,
+        };
+        let retry = match self.status {
+            ShellStatus::Rejected {
+                retry_until: Some(retry_until),
+                ..
+            } => {
+                let remaining = retry_until.saturating_duration_since(now);
+                let nanosecond_remainder = remaining.subsec_nanos();
+                Some(if remaining.is_zero() {
+                    Duration::ZERO
+                } else if nanosecond_remainder == 0 {
+                    Duration::from_secs(1)
+                } else {
+                    Duration::from_nanos(u64::from(nanosecond_remainder))
+                })
+            }
+            _ => None,
+        };
+        let fade = self.now_playing_transition.as_ref().map(|transition| {
+            (transition.started_at + self.now_playing_fade_duration())
+                .saturating_duration_since(now)
+                .min(Duration::from_millis(ACTIVE_ANIMATION_POLL_INTERVAL_MS))
+        });
+        let confirmation = self
+            .power_confirmation
+            .map(|confirmation| confirmation.expires_at.saturating_duration_since(now));
 
-        Duration::from_millis(IDLE_ANIMATION_POLL_INTERVAL_MS)
+        [next_minute, pending, retry, fade, confirmation]
+            .into_iter()
+            .flatten()
+            .min()
     }
 
     pub(super) fn now_playing_fade_progress(&self) -> Option<u8> {
@@ -267,4 +335,10 @@ impl ShellState {
             self.bump_static_scene_revision();
         }
     }
+}
+
+fn spinner_phase(started_at: Instant, now: Instant) -> u8 {
+    ((now.saturating_duration_since(started_at).as_millis()
+        / u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS))
+        % 8) as u8
 }

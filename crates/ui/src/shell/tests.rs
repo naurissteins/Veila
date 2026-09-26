@@ -405,7 +405,7 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
 }
 
 #[test]
-fn pending_state_requests_active_animation_polling() {
+fn pending_state_waits_for_status_delay_before_animation() {
     let mut shell = ShellState::default();
 
     assert_eq!(
@@ -413,8 +413,51 @@ fn pending_state_requests_active_animation_polling() {
         ShellAction::Submit(Secret::new())
     );
 
-    assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
+    assert!(matches!(
+        shell.next_animation_in(Instant::now()),
+        Some(timeout) if timeout <= Duration::from_secs(1)
+    ));
+    assert_ne!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::AuthDirty
+    );
     assert!(shell.pending_spinner_phase().is_some());
+}
+
+#[test]
+fn visible_pending_state_redraws_only_for_a_new_spinner_phase() {
+    let theme = ShellTheme {
+        clock_enabled: false,
+        date_enabled: false,
+        ..ShellTheme::default()
+    };
+    let mut shell = ShellState::new(theme, None, None, true);
+    let now = Instant::now();
+    shell.status = ShellStatus::Pending {
+        started_at: now - Duration::from_millis(2_020),
+        visible_after: now - Duration::from_secs(1),
+        shown: true,
+        displayed_phase: 1,
+    };
+
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+    assert!(matches!(
+        shell.next_animation_in(Instant::now()),
+        Some(timeout) if timeout <= Duration::from_millis(80)
+    ));
+    if let ShellStatus::Pending {
+        displayed_phase, ..
+    } = &mut shell.status
+    {
+        *displayed_phase = 0;
+    }
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::AuthDirty
+    );
 }
 
 #[test]
@@ -1418,7 +1461,7 @@ fn now_playing_transition_uses_configured_fade_duration() {
 }
 
 #[test]
-fn now_playing_transition_requests_active_animation_polling() {
+fn now_playing_transition_requests_active_animation_timer() {
     let mut shell = ShellState::default();
     shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
         title: String::from("Track"),
@@ -1427,5 +1470,17 @@ fn now_playing_transition_requests_active_animation_polling() {
         fetched_at_unix: 1,
     }));
 
-    assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
+    assert!(matches!(
+        shell.next_animation_in(Instant::now()),
+        Some(timeout) if timeout <= Duration::from_millis(80)
+    ));
+}
+
+#[test]
+fn disabled_clock_and_date_leave_idle_shell_without_deadline() {
+    let mut shell = ShellState::default();
+    shell.theme.clock_enabled = false;
+    shell.theme.date_enabled = false;
+
+    assert_eq!(shell.next_animation_in(Instant::now()), None);
 }

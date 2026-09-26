@@ -1,10 +1,10 @@
 use std::{
     path::{Path, PathBuf},
-    sync::mpsc::Sender,
     thread,
     time::Instant,
 };
 
+use calloop::channel::Sender;
 use veila_common::NowPlayingSnapshot;
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,

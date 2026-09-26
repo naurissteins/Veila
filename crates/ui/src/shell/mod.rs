@@ -56,6 +56,7 @@ enum ShellStatus {
         started_at: Instant,
         visible_after: Instant,
         shown: bool,
+        displayed_phase: u8,
     },
     Rejected {
         retry_until: Option<Instant>,

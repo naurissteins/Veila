@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
+use calloop::channel::Event as ChannelEvent;
 use calloop::signals::{Signal, Signals};
 use smithay_client_toolkit::reexports::client::{Connection, globals::registry_queue_init};
 
@@ -37,7 +38,7 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     let loop_handle = event_loop.handle();
 
     let app_init_started_at = Instant::now();
-    let mut app = CurtainApp::new(
+    let (mut app, event_sources) = CurtainApp::new(
         connection.clone(),
         &globals,
         &queue_handle,
@@ -95,16 +96,45 @@ pub fn run(options: CurtainOptions) -> Result<()> {
         connection,
         event_queue,
     )
-    .insert(loop_handle)
+    .insert(loop_handle.clone())
     .context("failed to insert Wayland source into event loop")?;
+
+    let control_queue = queue_handle.clone();
+    loop_handle
+        .insert_source(event_sources.control, move |(), _, app| {
+            app.drain_control_events(&control_queue);
+        })
+        .map_err(|error| error.error)
+        .context("failed to insert curtain control source into event loop")?;
+    let auth_queue = queue_handle.clone();
+    loop_handle
+        .insert_source(event_sources.auth, move |event, _, app| {
+            if let ChannelEvent::Msg(event) = event {
+                app.drain_control_events(&auth_queue);
+                if !app.exit_requested {
+                    app.handle_auth_event(event, &auth_queue);
+                }
+            }
+        })
+        .map_err(|error| error.error)
+        .context("failed to insert curtain authentication source into event loop")?;
+    let background_queue = queue_handle.clone();
+    loop_handle
+        .insert_source(event_sources.background, move |event, _, app| {
+            if let ChannelEvent::Msg(event) = event {
+                app.drain_control_events(&background_queue);
+                if !app.exit_requested {
+                    app.handle_background_event(event, &background_queue);
+                }
+            }
+        })
+        .map_err(|error| error.error)
+        .context("failed to insert curtain background source into event loop")?;
 
     while !app.can_stop() {
         event_loop
-            .dispatch(app.animation_poll_interval(), &mut app)
+            .dispatch(app.next_event_timeout(), &mut app)
             .context("curtain event loop failed")?;
-        app.drain_control_events(&queue_handle);
-        app.drain_background_events(&queue_handle);
-        app.drain_auth_events(&queue_handle);
         app.advance_auth_watchdog(&queue_handle);
         app.advance_input_repeat(&queue_handle);
         app.advance_background_slideshow(&queue_handle);

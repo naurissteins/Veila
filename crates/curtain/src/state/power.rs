@@ -97,6 +97,11 @@ impl ScreenOffState {
     pub(crate) fn enabled(&self) -> bool {
         self.delay.is_some()
     }
+
+    pub(crate) fn disable(&mut self) {
+        self.delay = None;
+        self.last_activity_at = None;
+    }
 }
 
 impl CurtainApp {
@@ -139,6 +144,9 @@ impl CurtainApp {
         if self.set_outputs_power_mode(zwlr_output_power_v1::Mode::Off) {
             self.screen_off.mark_outputs_powered_off();
             tracing::info!("powered off locked outputs after inactivity");
+        } else {
+            self.screen_off.disable();
+            tracing::warn!("locked output power-off is unavailable; disabling its timer");
         }
     }
 
@@ -334,5 +342,16 @@ mod tests {
         assert_eq!(format_countdown_seconds(60), "1m");
         assert_eq!(format_countdown_seconds(65), "1m 5s");
         assert_eq!(format_countdown_duration(Duration::from_secs(600)), "10m");
+    }
+
+    #[test]
+    fn unavailable_power_control_disables_repeated_deadlines() {
+        let now = Instant::now();
+        let mut state = ScreenOffState::new(Some(Duration::from_secs(5)));
+        state.arm(now);
+        state.disable();
+
+        assert_eq!(state.due_in(now + Duration::from_secs(5), true), None);
+        assert!(!state.outputs_powered_off());
     }
 }

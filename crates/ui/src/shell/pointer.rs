@@ -236,7 +236,7 @@ impl ShellState {
     pub(super) fn clear_expired_power_confirmation(&mut self, now: Instant) -> bool {
         if self
             .power_confirmation
-            .is_some_and(|confirmation| now > confirmation.expires_at)
+            .is_some_and(|confirmation| now >= confirmation.expires_at)
         {
             self.power_confirmation = None;
             return true;

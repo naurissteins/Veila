@@ -5,47 +5,51 @@ use super::super::{ControlEvent, CurtainApp};
 impl CurtainApp {
     pub(crate) fn drain_control_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.control_events.try_recv() {
-            match event {
-                ControlEvent::Unlock { attempt_id } => {
-                    if let Some(attempt_id) = attempt_id {
-                        tracing::info!(attempt_id, "received curtain unlock request from daemon");
-                    } else {
-                        tracing::info!("received curtain unlock request from daemon");
-                    }
-                    self.authorize_unlock();
-                    self.request_exit();
+            self.handle_control_event(event, queue_handle);
+        }
+    }
+
+    fn handle_control_event(&mut self, event: ControlEvent, queue_handle: &QueueHandle<Self>) {
+        match event {
+            ControlEvent::Unlock { attempt_id } => {
+                if let Some(attempt_id) = attempt_id {
+                    tracing::info!(attempt_id, "received curtain unlock request from daemon");
+                } else {
+                    tracing::info!("received curtain unlock request from daemon");
                 }
-                ControlEvent::Reload => {
-                    tracing::info!("received curtain reload request from daemon");
-                    self.reload_config(queue_handle);
-                }
-                ControlEvent::ArmResumeInputGuard => {
-                    self.resume_input.arm();
-                }
-                ControlEvent::MarkResumed => {
-                    self.resume_input.mark_resumed();
-                }
-                ControlEvent::UpdateNowPlaying { snapshot } => {
-                    tracing::debug!(
-                        has_snapshot = snapshot.is_some(),
-                        "received live now playing update from daemon"
-                    );
-                    self.now_playing_snapshot = snapshot.clone();
-                    self.ui_shell.set_now_playing_snapshot(snapshot);
-                    self.artwork_last_attempt = None;
-                    self.maybe_start_artwork_load();
+                self.authorize_unlock();
+                self.request_exit();
+            }
+            ControlEvent::Reload => {
+                tracing::info!("received curtain reload request from daemon");
+                self.reload_config(queue_handle);
+            }
+            ControlEvent::ArmResumeInputGuard => {
+                self.resume_input.arm();
+            }
+            ControlEvent::MarkResumed => {
+                self.resume_input.mark_resumed();
+            }
+            ControlEvent::UpdateNowPlaying { snapshot } => {
+                tracing::debug!(
+                    has_snapshot = snapshot.is_some(),
+                    "received live now playing update from daemon"
+                );
+                self.now_playing_snapshot = snapshot.clone();
+                self.ui_shell.set_now_playing_snapshot(snapshot);
+                self.artwork_last_attempt = None;
+                self.maybe_start_artwork_load();
+                self.render_all_surfaces(queue_handle);
+            }
+            ControlEvent::UpdatePowerStatus { snapshot } => {
+                self.remote_power_status = snapshot;
+                if self.refresh_power_status_text() {
                     self.render_all_surfaces(queue_handle);
                 }
-                ControlEvent::UpdatePowerStatus { snapshot } => {
-                    self.remote_power_status = snapshot;
-                    if self.refresh_power_status_text() {
-                        self.render_all_surfaces(queue_handle);
-                    }
-                }
-                ControlEvent::UpdateFingerprintStatus { status } => {
-                    if self.ui_shell.set_fingerprint_status(status) {
-                        self.render_all_surfaces(queue_handle);
-                    }
+            }
+            ControlEvent::UpdateFingerprintStatus { status } => {
+                if self.ui_shell.set_fingerprint_status(status) {
+                    self.render_all_surfaces(queue_handle);
                 }
             }
         }

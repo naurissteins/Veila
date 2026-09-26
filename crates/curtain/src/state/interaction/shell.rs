@@ -5,7 +5,7 @@ use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey};
 
 use crate::{
     ipc::auth::{request_power_action, submit_password},
-    keyboard_cache::store_keyboard_layout_label,
+    keyboard_cache::start_keyboard_layout_writer,
 };
 
 use super::super::CurtainApp;
@@ -74,11 +74,16 @@ impl CurtainApp {
         label: Option<String>,
         queue_handle: &QueueHandle<Self>,
     ) {
-        if let Some(label) = label.as_deref() {
-            store_keyboard_layout_label(label);
-        }
-
+        let write_label = label.clone();
         if self.ui_shell.set_keyboard_layout_label(label) {
+            if let Some(label) = write_label {
+                if self.keyboard_label_sender.is_none() {
+                    self.keyboard_label_sender = start_keyboard_layout_writer();
+                }
+                if let Some(sender) = self.keyboard_label_sender.as_ref() {
+                    let _ = sender.send(label);
+                }
+            }
             self.render_all_surfaces(queue_handle);
         }
     }

@@ -11,11 +11,15 @@ mod shm_trim;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
-    sync::mpsc::{Receiver, Sender, channel},
+    sync::mpsc::{Receiver as ControlReceiver, Sender as KeyboardSender},
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, anyhow, bail};
+use calloop::{
+    channel::{Channel, Sender, channel},
+    ping::{PingSource, make_ping},
+};
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
@@ -63,7 +67,7 @@ use crate::{
     CurtainOptions,
     background::{BackgroundEvent, BackgroundSlideshow},
     ipc::auth::AuthEvent,
-    ipc::control::{ControlEvent, spawn_listener},
+    ipc::control::{ControlEvent, ControlSender, spawn_listener},
     keyboard_cache::load_keyboard_layout_label,
 };
 
@@ -196,11 +200,10 @@ pub(crate) struct CurtainApp {
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
-    auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
     pub(crate) background_sender: Sender<BackgroundEvent>,
-    pub(crate) background_events: Receiver<BackgroundEvent>,
-    control_events: Receiver<ControlEvent>,
+    keyboard_label_sender: Option<KeyboardSender<String>>,
+    control_events: ControlReceiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_generated: Option<GeneratedBackground>,
     pub(crate) generated_pending_sizes: Vec<veila_renderer::FrameSize>,
@@ -265,6 +268,12 @@ pub(crate) struct CurtainApp {
     pub(crate) first_frame_committed_at: Option<Instant>,
 }
 
+pub(crate) struct CurtainEventSources {
+    pub(crate) auth: Channel<AuthEvent>,
+    pub(crate) background: Channel<BackgroundEvent>,
+    pub(crate) control: PingSource,
+}
+
 impl CurtainApp {
     pub(crate) fn daemon_socket_path(&self) -> Option<PathBuf> {
         self.daemon_socket.clone()
@@ -276,10 +285,13 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
         options: CurtainOptions,
         startup_started_at: Instant,
-    ) -> Result<Self> {
+    ) -> Result<(Self, CurtainEventSources)> {
         let (auth_sender, auth_events) = channel();
         let (background_sender, background_events) = channel();
-        let (control_sender, control_events) = channel();
+        let (control_sender, control_events) = std::sync::mpsc::channel();
+        let (control_ping, control_source) =
+            make_ping().context("failed to create control wake source")?;
+        let control_sender = ControlSender::new(control_sender, control_ping);
         let force_emergency_ui = options.force_emergency_ui;
         let mut emergency_reason = None;
         let loaded_config = match AppConfig::load(options.config_path.as_deref()) {
@@ -417,7 +429,7 @@ impl CurtainApp {
                 .context("failed to start curtain control listener")?;
         }
 
-        Ok(Self {
+        let app = Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
                 .context("compositor does not advertise wl_compositor")?,
@@ -445,10 +457,9 @@ impl CurtainApp {
                 config.background.outputs.clone()
             },
             slideshow,
-            auth_events,
             auth_sender,
             background_sender,
-            background_events,
+            keyboard_label_sender: None,
             control_events,
             background_asset,
             background_generated,
@@ -520,7 +531,15 @@ impl CurtainApp {
             pending_pre_ready_redraw: false,
             first_frame_committed_at: None,
             lock_acquisition_started: false,
-        })
+        };
+        Ok((
+            app,
+            CurtainEventSources {
+                auth: auth_events,
+                background: background_events,
+                control: control_source,
+            },
+        ))
     }
 
     pub(crate) fn acquire_lock(&mut self, queue_handle: &QueueHandle<Self>) -> Result<()> {

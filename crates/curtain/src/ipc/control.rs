@@ -9,6 +9,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
+use calloop::ping::Ping;
 
 use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
@@ -39,7 +40,27 @@ const ACCEPT_BACKOFF_MIN: Duration = Duration::from_millis(50);
 const ACCEPT_BACKOFF_MAX: Duration = Duration::from_secs(1);
 const CONTROL_READ_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub(crate) fn spawn_listener(socket_path: PathBuf, sender: Sender<ControlEvent>) -> Result<()> {
+pub(crate) struct ControlSender {
+    sender: Sender<ControlEvent>,
+    ping: Ping,
+}
+
+impl ControlSender {
+    pub(crate) fn new(sender: Sender<ControlEvent>, ping: Ping) -> Self {
+        Self { sender, ping }
+    }
+
+    fn send(
+        &self,
+        event: ControlEvent,
+    ) -> std::result::Result<(), std::sync::mpsc::SendError<ControlEvent>> {
+        self.sender.send(event)?;
+        self.ping.ping();
+        Ok(())
+    }
+}
+
+pub(crate) fn spawn_listener(socket_path: PathBuf, sender: ControlSender) -> Result<()> {
     if socket_path.exists() {
         std::fs::remove_file(&socket_path).with_context(|| {
             format!(
@@ -94,7 +115,7 @@ fn bind_secured(socket_path: &std::path::Path) -> Result<UnixListener> {
 }
 
 /// Runs until an unlock is delivered or the curtain drops the receiver
-fn run_listener(listener: UnixListener, owner_uid: u32, sender: Sender<ControlEvent>) {
+fn run_listener(listener: UnixListener, owner_uid: u32, sender: ControlSender) {
     let mut accept_backoff = ACCEPT_BACKOFF_MIN;
 
     loop {
@@ -194,7 +215,7 @@ mod tests {
     use nix::unistd::Uid;
     use veila_common::ipc::{CurtainControlMessage, encode_message};
 
-    use super::{ControlEvent, run_listener};
+    use super::{ControlEvent, ControlSender, run_listener};
 
     const RECV_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -224,13 +245,38 @@ mod tests {
     }
 
     #[test]
+    fn control_sender_wakes_calloop() {
+        let (sender, receiver) = channel();
+        let (ping, source) = calloop::ping::make_ping().expect("control wake source");
+        let mut event_loop = calloop::EventLoop::<bool>::try_new().expect("event loop");
+        event_loop
+            .handle()
+            .insert_source(source, |(), _, woke| *woke = true)
+            .expect("ping source");
+        let sender = ControlSender::new(sender, ping);
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(20));
+            sender.send(ControlEvent::Reload).expect("send reload");
+        });
+
+        let mut woke = false;
+        event_loop
+            .dispatch(Some(RECV_TIMEOUT), &mut woke)
+            .expect("control dispatch");
+
+        assert!(woke);
+        assert_eq!(receiver.try_recv(), Ok(ControlEvent::Reload));
+    }
+
+    #[test]
     fn delivers_unlock_after_malformed_connections() {
         let path = unique_socket_path("control-resilience");
         let listener = UnixListener::bind(&path).expect("bind control socket");
         let (sender, receiver) = channel();
+        let (ping, _source) = calloop::ping::make_ping().expect("control wake source");
         let handle = thread::spawn({
             let owner_uid = Uid::effective().as_raw();
-            move || run_listener(listener, owner_uid, sender)
+            move || run_listener(listener, owner_uid, ControlSender::new(sender, ping))
         });
 
         // Each of these previously killed the listener thread for the rest of the lock session
@@ -260,9 +306,10 @@ mod tests {
         let path = unique_socket_path("control-continuity");
         let listener = UnixListener::bind(&path).expect("bind control socket");
         let (sender, receiver) = channel();
+        let (ping, _source) = calloop::ping::make_ping().expect("control wake source");
         let handle = thread::spawn({
             let owner_uid = Uid::effective().as_raw();
-            move || run_listener(listener, owner_uid, sender)
+            move || run_listener(listener, owner_uid, ControlSender::new(sender, ping))
         });
 
         let reload = encode_message(&CurtainControlMessage::ReloadConfig).expect("encode reload");
@@ -291,9 +338,10 @@ mod tests {
         let path = unique_socket_path("control-shutdown");
         let listener = UnixListener::bind(&path).expect("bind control socket");
         let (sender, receiver) = channel::<ControlEvent>();
+        let (ping, _source) = calloop::ping::make_ping().expect("control wake source");
         let handle = thread::spawn({
             let owner_uid = Uid::effective().as_raw();
-            move || run_listener(listener, owner_uid, sender)
+            move || run_listener(listener, owner_uid, ControlSender::new(sender, ping))
         });
 
         drop(receiver);
