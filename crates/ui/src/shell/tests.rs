@@ -1273,6 +1273,13 @@ fn static_scene_cache_variant_ignores_conditional_backdrop_visibility() {
         .static_scene_cache_variant(1)
         .expect("static scene variant");
     assert_eq!(visible_variant, hidden_variant);
+
+    shell.focused = false;
+    shell.bump_static_scene_revision();
+    let unfocused_variant = shell
+        .static_scene_cache_variant(1)
+        .expect("static scene variant");
+    assert_ne!(unfocused_variant, visible_variant);
 }
 
 #[test]

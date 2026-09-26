@@ -451,12 +451,10 @@ impl CurtainApp {
             return;
         };
 
-        if size.fractional_scale.is_some() {
-            viewport.set_destination(size.logical_width as i32, size.logical_height as i32);
-        }
+        viewport.set_destination(size.logical_width as i32, size.logical_height as i32);
     }
 
-    fn note_first_frame_committed(&mut self, first_frame: bool) {
+    pub(super) fn note_first_frame_committed(&mut self, first_frame: bool) {
         if !first_frame || self.first_frame_committed_at.is_some() {
             return;
         }

@@ -126,13 +126,17 @@ pub(super) fn render_generated(
 
 fn render_gradient(size: FrameSize, gradient: BackgroundGradient) -> Result<SoftwareBuffer> {
     let mut buffer = SoftwareBuffer::new(size)?;
+    if size.is_empty() {
+        return Ok(buffer);
+    }
 
     let width_span = size.width.saturating_sub(1).max(1);
     let height_span = size.height.saturating_sub(1).max(1);
 
-    for y in 0..size.height {
+    let row_len = size.width as usize * 4;
+    for (y, row) in buffer.pixels_mut().chunks_exact_mut(row_len).enumerate() {
         let ty = y as f32 / height_span as f32;
-        for x in 0..size.width {
+        for (x, pixel) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let tx = x as f32 / width_span as f32;
             let color = bilerp_color(
                 gradient.top_left,
@@ -142,8 +146,7 @@ fn render_gradient(size: FrameSize, gradient: BackgroundGradient) -> Result<Soft
                 tx,
                 ty,
             );
-            let offset = ((y * size.width + x) * 4) as usize;
-            buffer.pixels_mut()[offset..offset + 4].copy_from_slice(&color.to_argb8888_bytes());
+            pixel.copy_from_slice(&color.to_argb8888_bytes());
         }
     }
 
@@ -152,6 +155,9 @@ fn render_gradient(size: FrameSize, gradient: BackgroundGradient) -> Result<Soft
 
 fn render_radial(size: FrameSize, radial: BackgroundRadial) -> Result<SoftwareBuffer> {
     let mut buffer = SoftwareBuffer::new(size)?;
+    if size.is_empty() {
+        return Ok(buffer);
+    }
     let width_span = size.width.saturating_sub(1).max(1) as f32;
     let height_span = size.height.saturating_sub(1).max(1) as f32;
     let center_x = radial.center_x.min(100) as f32 / 100.0;
@@ -160,15 +166,16 @@ fn render_radial(size: FrameSize, radial: BackgroundRadial) -> Result<SoftwareBu
     let max_distance = max_corner_distance(center_x, center_y);
     let radius = (max_distance * radius_scale).max(f32::EPSILON);
 
-    for y in 0..size.height {
+    let row_len = size.width as usize * 4;
+    for (y, row) in buffer.pixels_mut().chunks_exact_mut(row_len).enumerate() {
         let py = y as f32 / height_span;
-        for x in 0..size.width {
+        let dy_squared = (py - center_y).powi(2);
+        for (x, pixel) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let px = x as f32 / width_span;
-            let distance = ((px - center_x).powi(2) + (py - center_y).powi(2)).sqrt();
+            let distance = ((px - center_x).powi(2) + dy_squared).sqrt();
             let t = smoothstep((distance / radius).clamp(0.0, 1.0));
             let color = lerp_color(radial.center, radial.edge, t);
-            let offset = ((y * size.width + x) * 4) as usize;
-            buffer.pixels_mut()[offset..offset + 4].copy_from_slice(&color.to_argb8888_bytes());
+            pixel.copy_from_slice(&color.to_argb8888_bytes());
         }
     }
 
@@ -191,17 +198,22 @@ fn render_layered(size: FrameSize, layered: BackgroundLayered) -> Result<Softwar
 
 fn apply_layered_blob(buffer: &mut SoftwareBuffer, blob: BackgroundLayeredBlob) {
     let size = buffer.size();
+    if size.is_empty() {
+        return;
+    }
     let width_span = size.width.saturating_sub(1).max(1) as f32;
     let height_span = size.height.saturating_sub(1).max(1) as f32;
     let center_x = blob.x.min(100) as f32 / 100.0;
     let center_y = blob.y.min(100) as f32 / 100.0;
     let radius = (blob.size.clamp(1, 100) as f32 / 100.0).max(f32::EPSILON);
 
-    for y in 0..size.height {
+    let row_len = size.width as usize * 4;
+    for (y, row) in buffer.pixels_mut().chunks_exact_mut(row_len).enumerate() {
         let py = y as f32 / height_span;
-        for x in 0..size.width {
+        let dy_squared = (py - center_y).powi(2);
+        for (x, pixel) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let px = x as f32 / width_span;
-            let distance = ((px - center_x).powi(2) + (py - center_y).powi(2)).sqrt();
+            let distance = ((px - center_x).powi(2) + dy_squared).sqrt();
             let t = (distance / radius).clamp(0.0, 1.0);
             let alpha = 1.0 - smoothstep(t);
             if alpha <= 0.0 {
@@ -212,8 +224,7 @@ fn apply_layered_blob(buffer: &mut SoftwareBuffer, blob: BackgroundLayeredBlob) 
                 .color
                 .with_alpha(((f32::from(blob.color.alpha) * alpha).round() as u16).min(255) as u8)
                 .to_argb8888_bytes();
-            let offset = ((y * size.width + x) * 4) as usize;
-            blend_argb8888_pixel(&mut buffer.pixels_mut()[offset..offset + 4], &src);
+            blend_argb8888_pixel(pixel, &src);
         }
     }
 }

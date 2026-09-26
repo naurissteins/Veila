@@ -89,19 +89,28 @@ impl ShellState {
             return None;
         }
 
-        self.has_visual_layers().then(|| {
-            format!(
-                "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
-                scale.max(1),
-                self.theme,
-                self.hint_text,
-                self.reveal_hint_text,
-                self.username_text,
-                self.auth_revealed,
-                self.focused,
-                self.avatar.cache_key(),
-            )
-        })
+        if !self.has_visual_layers() {
+            return None;
+        }
+        let scale = scale.max(1);
+        if let Some(variant) = self.static_scene_variant_cache.borrow().get(&scale) {
+            return Some(variant.clone());
+        }
+        let variant = format!(
+            "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+            scale,
+            self.theme,
+            self.hint_text,
+            self.reveal_hint_text,
+            self.username_text,
+            self.auth_revealed,
+            self.focused,
+            self.avatar.cache_key(),
+        );
+        self.static_scene_variant_cache
+            .borrow_mut()
+            .insert(scale, variant.clone());
+        Some(variant)
     }
 
     pub(super) fn backdrop_visible(&self, backdrop: &crate::shell::theme::Backdrop) -> bool {
@@ -338,6 +347,7 @@ impl ShellState {
             power_confirmation: None,
             requested_power_action: None,
             static_scene_revision: 1,
+            static_scene_variant_cache: RefCell::new(std::collections::HashMap::new()),
             focused: true,
             status: ShellStatus::Idle,
             clock: ClockState::current(theme.clock_format, theme.date_format),

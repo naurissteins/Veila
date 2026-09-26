@@ -18,6 +18,17 @@ impl CurtainApp {
         if let Some(pool) = self.lock_surfaces[index].shm_pool.as_mut() {
             pool.collect_released();
         }
+        if self.lock_surfaces[index]
+            .shm_pool
+            .as_ref()
+            .is_some_and(veila_renderer::shm::SurfaceBufferPool::has_committed_frame)
+            && self.lock_surfaces[index]
+                .placeholder_pool
+                .as_ref()
+                .is_some_and(|pool| !pool.has_busy_buffers())
+        {
+            self.lock_surfaces[index].placeholder_pool = None;
+        }
         let Some(redraw) = self.lock_surfaces[index].pending_redraw.take() else {
             return;
         };
@@ -36,6 +47,8 @@ impl CurtainApp {
             self.failure_reason =
                 Some(format!("failed to render pending curtain frame: {error:#}"));
             self.exit_requested = true;
+        } else if self.session_locked && !self.rich_scene_ready {
+            self.finish_initial_scene(queue_handle);
         }
     }
 }

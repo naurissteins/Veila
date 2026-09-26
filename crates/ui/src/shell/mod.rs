@@ -15,7 +15,7 @@ mod weather;
 pub use avatar::{has_avatar_candidate, load_avatar, load_cached_avatar};
 pub use theme::ShellTheme;
 
-use std::{cell::RefCell, time::Instant};
+use std::{cell::RefCell, collections::HashMap, time::Instant};
 
 use battery::BatteryWidgetData;
 use clock::ClockState;
@@ -110,6 +110,7 @@ pub struct ShellState {
     power_confirmation: Option<PowerConfirmation>,
     requested_power_action: Option<PowerAction>,
     static_scene_revision: u64,
+    static_scene_variant_cache: RefCell<HashMap<u32, String>>,
     focused: bool,
     status: ShellStatus,
     clock: ClockState,
@@ -147,6 +148,7 @@ impl Clone for ShellState {
             power_confirmation: self.power_confirmation,
             requested_power_action: self.requested_power_action,
             static_scene_revision: self.static_scene_revision,
+            static_scene_variant_cache: RefCell::new(HashMap::new()),
             focused: self.focused,
             status: self.status.clone(),
             clock: self.clock.clone(),

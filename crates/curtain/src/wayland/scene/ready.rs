@@ -1,11 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use smithay_client_toolkit::{
-    output::OutputInfo,
-    reexports::client::QueueHandle,
-    session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
-};
+use smithay_client_toolkit::{output::OutputInfo, reexports::client::QueueHandle};
 
 use crate::state::{CurtainApp, SurfaceSize, duration_ms_between, elapsed_ms, elapsed_us};
 
@@ -13,74 +9,6 @@ const STARTUP_NOTIFY_RETRY_INTERVAL: std::time::Duration = std::time::Duration::
 const STARTUP_NOTIFY_GRACE: std::time::Duration = std::time::Duration::from_secs(2);
 
 impl CurtainApp {
-    pub(crate) fn configure_surface(
-        &mut self,
-        queue_handle: &QueueHandle<Self>,
-        surface: SessionLockSurface,
-        configure: SessionLockSurfaceConfigure,
-    ) {
-        let Some(index) = self
-            .lock_surfaces
-            .iter()
-            .position(|entry| entry.surface.wl_surface() == surface.wl_surface())
-        else {
-            tracing::warn!("configure received for unknown session-lock surface");
-            return;
-        };
-
-        let size = self.resolve_surface_size(index, configure.new_size);
-        let was_unconfigured = self.lock_surfaces[index].size.is_none();
-        self.lock_surfaces[index].size = Some(size);
-        self.log_surface_size(index, configure.new_size, size);
-        if was_unconfigured && !self.first_surface_configured_logged {
-            self.first_surface_configured_logged = true;
-            self.first_surface_configured_at = Some(std::time::Instant::now());
-            self.latency_timings.first_surface_configured_ms =
-                self.first_surface_configured_at.map(elapsed_ms);
-            self.latency_timings.first_surface_configured_us =
-                self.first_surface_configured_at.map(elapsed_us);
-            tracing::info!(
-                startup_elapsed_ms = elapsed_ms(self.startup_started_at),
-                startup_elapsed_us = elapsed_us(self.startup_started_at),
-                "first lock surface configured"
-            );
-        }
-        if !self.all_surfaces_configured_logged
-            && !self.lock_surfaces.is_empty()
-            && self.lock_surfaces.iter().all(|entry| entry.size.is_some())
-        {
-            self.all_surfaces_configured_logged = true;
-            let all_surfaces_configured_at = std::time::Instant::now();
-            self.all_surfaces_configured_at = Some(all_surfaces_configured_at);
-            self.latency_timings.all_surfaces_configured_ms =
-                Some(elapsed_ms(self.startup_started_at));
-            self.latency_timings.all_surfaces_configured_us =
-                Some(elapsed_us(self.startup_started_at));
-            tracing::info!(
-                surfaces = self.lock_surfaces.len(),
-                startup_elapsed_ms = elapsed_ms(self.startup_started_at),
-                startup_elapsed_us = elapsed_us(self.startup_started_at),
-                first_to_all_surfaces_ms = duration_ms_between(
-                    self.first_surface_configured_at,
-                    all_surfaces_configured_at,
-                ),
-                "all lock surfaces configured"
-            );
-        }
-        self.maybe_start_background_render();
-
-        if let Err(error) =
-            self.render_surface_with_emergency_fallback(&surface, size, queue_handle)
-        {
-            self.failure_reason = Some(format!("failed to render curtain surface: {error:#}"));
-            self.exit_requested = true;
-            return;
-        }
-
-        self.maybe_notify_ready();
-        self.flush_pending_pre_ready_redraw(queue_handle);
-    }
-
     pub(crate) fn render_all_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
         if !self.ready_notified {
             if !self.pending_pre_ready_redraw {
@@ -141,7 +69,7 @@ impl CurtainApp {
         let became_ready = if self.ready_notified {
             false
         } else {
-            if !self.session_locked || self.lock_surfaces.is_empty() {
+            if !self.session_locked || !self.rich_scene_ready || self.lock_surfaces.is_empty() {
                 return;
             }
 
@@ -324,7 +252,7 @@ impl CurtainApp {
             .filter(|scale| *scale > 0)
     }
 
-    fn log_surface_size(&self, index: usize, requested: (u32, u32), size: SurfaceSize) {
+    pub(super) fn log_surface_size(&self, index: usize, requested: (u32, u32), size: SurfaceSize) {
         let info = self.output_state.info(&self.lock_surfaces[index].output);
         let output = info
             .as_ref()

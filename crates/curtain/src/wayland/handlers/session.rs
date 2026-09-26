@@ -36,9 +36,7 @@ impl SessionLockHandler for CurtainApp {
         self.session_locked = true;
         self.screen_off.arm(session_locked_at);
         self.maybe_notify_startup();
-        self.maybe_notify_ready();
-        self.flush_pending_pre_ready_redraw(qh);
-        self.maybe_start_artwork_load();
+        self.render_initial_scene(qh);
     }
 
     fn finished(
@@ -128,8 +126,7 @@ impl Dispatch<wp_fractional_scale_v1::WpFractionalScaleV1, wl_surface::WlSurface
             "rerendering lock surface after fractional scale change"
         );
         state.lock_surfaces[index].size = Some(size);
-        let lock_surface = state.lock_surfaces[index].surface.clone();
-        if let Err(error) = state.render_surface(&lock_surface, size, qh) {
+        if let Err(error) = state.redraw_scaled_surface(index, size, qh) {
             state.failure_reason = Some(format!(
                 "failed to rerender fractionally scaled curtain surface: {error:#}"
             ));
@@ -174,7 +171,7 @@ impl OutputHandler for CurtainApp {
     fn output_destroyed(
         &mut self,
         _conn: &Connection,
-        _queue_handle: &QueueHandle<Self>,
+        queue_handle: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     ) {
         for surface in &mut self.lock_surfaces {
@@ -211,6 +208,9 @@ impl OutputHandler for CurtainApp {
                 tracing::info!("woke remaining locked outputs after output topology changed");
             }
             self.maybe_power_off_secondary_outputs();
+        }
+        if self.session_locked && !self.rich_scene_ready {
+            self.render_initial_scene(queue_handle);
         }
     }
 }
@@ -256,8 +256,7 @@ impl CompositorHandler for CurtainApp {
             "rerendering lock surface after scale change"
         );
         self.lock_surfaces[index].size = Some(size);
-        let lock_surface = self.lock_surfaces[index].surface.clone();
-        if let Err(error) = self.render_surface(&lock_surface, size, qh) {
+        if let Err(error) = self.redraw_scaled_surface(index, size, qh) {
             self.failure_reason = Some(format!(
                 "failed to rerender scaled curtain surface: {error:#}"
             ));

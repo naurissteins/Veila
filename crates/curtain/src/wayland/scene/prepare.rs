@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use veila_renderer::{
-    FrameSize, PixelBuffer,
+    ClearColor, FrameSize, PixelBuffer, SoftwareBuffer,
     background::{
         load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
         load_cached_render_variant,
@@ -82,16 +82,47 @@ impl CurtainApp {
                     );
                 }
             }
+            if !self.generated_pending_sizes.contains(&frame_size) {
+                self.generated_pending_sizes.push(frame_size);
+            }
         }
 
         self.lock_surfaces[index].background = Some(
-            self.background_asset
-                .render(frame_size)
-                .map_err(|error| anyhow!("failed to render background asset: {error}"))?,
+            if self.background_generated.is_some() && selected_path.is_none() {
+                SoftwareBuffer::solid(frame_size, self.generated_fallback_color())?
+            } else {
+                self.background_asset
+                    .render(frame_size)
+                    .map_err(|error| anyhow!("failed to render background asset: {error}"))?
+            },
         );
         self.lock_surfaces[index].background_path = selected_path;
 
         Ok(true)
+    }
+
+    pub(super) fn opaque_generated_preview(&self, size: FrameSize) -> Result<SoftwareBuffer> {
+        let preview = self.background_asset.render(size)?;
+        let mut opaque = SoftwareBuffer::solid(size, self.background_color.with_alpha(u8::MAX))?;
+        opaque.blend_from(&preview)?;
+        Ok(opaque)
+    }
+
+    fn generated_fallback_color(&self) -> ClearColor {
+        let Ok(sample) = self.opaque_generated_preview(FrameSize::new(5, 5)) else {
+            return self.background_color.with_alpha(u8::MAX);
+        };
+        let mut channels = [0u32; 3];
+        for pixel in sample.pixels().as_chunks::<4>().0 {
+            channels[0] += u32::from(pixel[0]);
+            channels[1] += u32::from(pixel[1]);
+            channels[2] += u32::from(pixel[2]);
+        }
+        ClearColor::opaque(
+            (channels[2] / 25) as u8,
+            (channels[1] / 25) as u8,
+            (channels[0] / 25) as u8,
+        )
     }
 
     fn scene_base_matches(
@@ -171,38 +202,6 @@ impl CurtainApp {
             return Ok(Some(false));
         }
 
-        if let Some(variant) = self.static_scene_cache_variant_for_surface(scale) {
-            if let Some(path) = selected_path.as_deref() {
-                if let Ok(Some(buffer)) = load_cached_render_variant(
-                    path,
-                    frame_size,
-                    self.background_treatment,
-                    &variant,
-                ) {
-                    self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
-                    self.lock_surfaces[index].scene_base_revision = revision;
-                    self.lock_surfaces[index].scene_base_has_layers = true;
-                    self.lock_surfaces[index].background = None;
-                    self.lock_surfaces[index].background_path = selected_path;
-                    return Ok(Some(true));
-                }
-            } else if let Some(generated) = self.background_generated
-                && let Ok(Some(buffer)) = load_cached_generated_render_variant(
-                    generated,
-                    frame_size,
-                    self.background_treatment,
-                    &variant,
-                )
-            {
-                self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
-                self.lock_surfaces[index].scene_base_revision = revision;
-                self.lock_surfaces[index].scene_base_has_layers = true;
-                self.lock_surfaces[index].background = None;
-                self.lock_surfaces[index].background_path = None;
-                return Ok(Some(true));
-            }
-        }
-
         if let Some((buffer, has_layers)) = self
             .lock_surfaces
             .iter()
@@ -229,6 +228,29 @@ impl CurtainApp {
             self.lock_surfaces[index].background = None;
             self.lock_surfaces[index].background_path = selected_path;
             return Ok(Some(true));
+        }
+
+        if let Some(variant) = self.static_scene_cache_variant_for_surface(scale) {
+            let cached = if let Some(path) = selected_path.as_deref() {
+                load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
+            } else if let Some(generated) = self.background_generated {
+                load_cached_generated_render_variant(
+                    generated,
+                    frame_size,
+                    self.background_treatment,
+                    &variant,
+                )
+            } else {
+                Ok(None)
+            };
+            if let Ok(Some(buffer)) = cached {
+                self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
+                self.lock_surfaces[index].scene_base_revision = revision;
+                self.lock_surfaces[index].scene_base_has_layers = true;
+                self.lock_surfaces[index].background = None;
+                self.lock_surfaces[index].background_path = selected_path;
+                return Ok(Some(true));
+            }
         }
 
         if let Some(variant) = self.backdrop_cache_variant_for_surface(scale) {

@@ -127,6 +127,10 @@ impl SurfaceBufferPool {
         self.current.last_committed_slot.is_some()
     }
 
+    pub fn has_busy_buffers(&self) -> bool {
+        self.current.has_busy_slots() || self.retired.iter().any(PoolGeneration::has_busy_slots)
+    }
+
     pub fn commit_buffer<D>(
         &mut self,
         queue_handle: &QueueHandle<D>,

@@ -87,6 +87,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_has_layers: bool,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
+    pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
     pub(crate) pending_redraw: PendingRedraw,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
     pub(crate) preferred_scale: i32,
@@ -150,6 +151,25 @@ impl SurfaceSize {
             self.scale.max(1)
         }
     }
+
+    pub(crate) fn placeholder_buffer(self, has_viewport: bool) -> (veila_renderer::FrameSize, i32) {
+        if has_viewport {
+            (veila_renderer::FrameSize::new(1, 1), 1)
+        } else {
+            (self.buffer, self.buffer_scale_for_commit())
+        }
+    }
+
+    pub(crate) fn generated_placeholder_size(self) -> veila_renderer::FrameSize {
+        let width = self.logical_width.max(1);
+        let height = self.logical_height.max(1);
+        let longest = width.max(height);
+        let preview_longest = longest.min(160);
+        veila_renderer::FrameSize::new(
+            (u64::from(width) * u64::from(preview_longest) / u64::from(longest)).max(1) as u32,
+            (u64::from(height) * u64::from(preview_longest) / u64::from(longest)).max(1) as u32,
+        )
+    }
 }
 
 pub(crate) struct CurtainApp {
@@ -183,6 +203,7 @@ pub(crate) struct CurtainApp {
     control_events: Receiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_generated: Option<GeneratedBackground>,
+    pub(crate) generated_pending_sizes: Vec<veila_renderer::FrameSize>,
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
     pub(crate) ui_output_mode: OutputUiMode,
@@ -206,6 +227,7 @@ pub(crate) struct CurtainApp {
     lock_started_at: Instant,
     lock_acquisition_started: bool,
     pub(crate) session_locked: bool,
+    pub(crate) rich_scene_ready: bool,
     pub(crate) session_locked_at: Option<Instant>,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
@@ -430,6 +452,7 @@ impl CurtainApp {
             control_events,
             background_asset,
             background_generated,
+            generated_pending_sizes: Vec::new(),
             background_treatment,
             background_color,
             ui_output_mode: if emergency_active {
@@ -460,6 +483,7 @@ impl CurtainApp {
             startup_started_at,
             lock_started_at: Instant::now(),
             session_locked: false,
+            rich_scene_ready: false,
             session_locked_at: None,
             session_finished: false,
             exit_requested: false,
@@ -562,6 +586,7 @@ impl CurtainApp {
             scene_base_revision: 0,
             scene_base_has_layers: false,
             shm_pool: None,
+            placeholder_pool: None,
             pending_redraw: PendingRedraw::default(),
             output_power,
             preferred_scale: 1,
@@ -628,6 +653,7 @@ impl CurtainApp {
         self.background_outputs.clear();
         self.slideshow = None;
         self.background_generated = None;
+        self.generated_pending_sizes.clear();
         self.background_treatment = BackgroundTreatment::default();
         self.background_color = EMERGENCY_BACKGROUND;
         self.background_asset = BackgroundAsset::load(
@@ -975,6 +1001,37 @@ mod tests {
         assert_eq!(size.buffer.height, 2160);
         assert_eq!(size.buffer_scale_for_commit(), 1);
         assert_eq!(size.fractional_scale, Some(150));
+    }
+
+    #[test]
+    fn placeholder_covers_scaled_output_with_and_without_viewporter() {
+        let size = SurfaceSize::new_with_fractional_scale(1920, 1080, 2, None);
+
+        assert_eq!(
+            size.placeholder_buffer(true),
+            (veila_renderer::FrameSize::new(1, 1), 1)
+        );
+        assert_eq!(size.placeholder_buffer(false), (size.buffer, 2));
+    }
+
+    #[test]
+    fn generated_placeholder_preserves_aspect_ratio_with_bounded_area() {
+        let landscape = SurfaceSize::new_with_fractional_scale(3840, 2160, 2, None);
+        let portrait = SurfaceSize::new_with_fractional_scale(1080, 1920, 1, None);
+        let tiny = SurfaceSize::new_with_fractional_scale(80, 40, 1, None);
+
+        assert_eq!(
+            landscape.generated_placeholder_size(),
+            veila_renderer::FrameSize::new(160, 90)
+        );
+        assert_eq!(
+            portrait.generated_placeholder_size(),
+            veila_renderer::FrameSize::new(90, 160)
+        );
+        assert_eq!(
+            tiny.generated_placeholder_size(),
+            veila_renderer::FrameSize::new(80, 40)
+        );
     }
 
     #[test]

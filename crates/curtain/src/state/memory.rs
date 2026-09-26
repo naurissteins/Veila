@@ -105,11 +105,18 @@ impl CurtainApp {
             let background_kib = software_buffer_kib(surface.background.as_ref());
             let scene_base_kib = software_buffer_kib(surface.scene_base.as_deref());
             let software_total_kib = background_kib + scene_base_kib;
-            let shm = surface
+            let mut shm = surface
                 .shm_pool
                 .as_ref()
                 .map(|pool| pool.memory())
                 .unwrap_or_default();
+            if let Some(placeholder) = surface.placeholder_pool.as_ref() {
+                let placeholder_memory = placeholder.memory();
+                shm.slots += placeholder_memory.slots;
+                shm.current_bytes += placeholder_memory.current_bytes;
+                shm.trimmed_bytes += placeholder_memory.trimmed_bytes;
+                shm.retired_bytes += placeholder_memory.retired_bytes;
+            }
             let shm_pool_slots = shm.slots;
             let shm_kib = bytes_to_kib(shm.current_bytes.saturating_add(shm.retired_bytes));
             let trimmed_kib = bytes_to_kib(shm.trimmed_bytes);

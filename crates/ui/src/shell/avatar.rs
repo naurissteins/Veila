@@ -89,5 +89,6 @@ fn default_face_path() -> Option<PathBuf> {
 impl ShellState {
     pub(super) fn bump_static_scene_revision(&mut self) {
         self.static_scene_revision = self.static_scene_revision.saturating_add(1);
+        self.static_scene_variant_cache.get_mut().clear();
     }
 }

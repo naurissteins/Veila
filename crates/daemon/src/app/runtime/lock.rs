@@ -384,6 +384,7 @@ fn log_latency_report(report: &LockLatencyReport) {
         first_surface_configured_us = curtain.and_then(|report| report.first_surface_configured_us),
         all_surfaces_configured_ms = curtain.and_then(|report| report.all_surfaces_configured_ms),
         all_surfaces_configured_us = curtain.and_then(|report| report.all_surfaces_configured_us),
+        placeholder_committed_us = curtain.and_then(|report| report.placeholder_committed_us),
         session_locked_ms = curtain.and_then(|report| report.session_locked_ms),
         session_locked_us = curtain.and_then(|report| report.session_locked_us),
         first_frame_ms = curtain.and_then(|report| report.first_frame_ms),

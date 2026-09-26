@@ -302,6 +302,10 @@ fn print_latency_report(report: &veila_common::ipc::LockLatencyReport, verbose: 
             "all_surfaces_configured_us={}",
             optional_us(curtain.all_surfaces_configured_us)
         );
+        println!(
+            "placeholder_committed_us={}",
+            optional_us(curtain.placeholder_committed_us)
+        );
     }
     println!(
         "session_locked_ms={}",

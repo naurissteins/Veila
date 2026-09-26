@@ -4,7 +4,10 @@ mod slideshow;
 pub(crate) use loader::BackgroundEvent;
 pub(crate) use slideshow::BackgroundSlideshow;
 
-use loader::{spawn_artwork_loader, spawn_avatar_loader, spawn_loader, spawn_preloader};
+use loader::{
+    spawn_artwork_loader, spawn_avatar_loader, spawn_generated_loader, spawn_loader,
+    spawn_preloader,
+};
 use smithay_client_toolkit::reexports::client::QueueHandle;
 use std::time::{Duration, Instant};
 use veila_renderer::FrameSize;
@@ -74,6 +77,49 @@ impl CurtainApp {
 
                         surface.background = Some(buffer);
                         surface.background_path = Some(path.clone());
+                        surface.scene_base = None;
+                        surface.scene_base_revision = 0;
+                        surface.scene_base_has_layers = false;
+                        changed = true;
+                    }
+                    if changed {
+                        self.render_all_surfaces(queue_handle);
+                    }
+                }
+                BackgroundEvent::GeneratedBuffersReady {
+                    generated,
+                    treatment,
+                    buffers,
+                    elapsed_ms,
+                } => {
+                    if self.background_generated != Some(generated)
+                        || self.background_treatment != treatment
+                    {
+                        continue;
+                    }
+                    tracing::info!(
+                        elapsed_ms,
+                        rendered_sizes = buffers.len(),
+                        "loaded generated curtain background"
+                    );
+                    let mut changed = false;
+                    for index in 0..self.lock_surfaces.len() {
+                        if self.background_path_for_surface(index).is_some() {
+                            continue;
+                        }
+                        let surface = &mut self.lock_surfaces[index];
+                        let Some(size) = surface.size.map(|size| size.buffer) else {
+                            continue;
+                        };
+                        let Some(buffer) = buffers
+                            .iter()
+                            .find(|(candidate, _)| *candidate == size)
+                            .map(|(_, buffer)| buffer.clone())
+                        else {
+                            continue;
+                        };
+                        surface.background = Some(buffer);
+                        surface.background_path = None;
                         surface.scene_base = None;
                         surface.scene_base_revision = 0;
                         surface.scene_base_has_layers = false;
@@ -201,17 +247,46 @@ impl CurtainApp {
             return;
         };
 
-        if specs.is_empty() {
+        let generated_sizes: Vec<_> = self
+            .generated_pending_sizes
+            .iter()
+            .copied()
+            .filter(|size| {
+                self.lock_surfaces
+                    .iter()
+                    .enumerate()
+                    .any(|(index, surface)| {
+                        self.background_path_for_surface(index).is_none()
+                            && surface
+                                .size
+                                .is_some_and(|surface_size| surface_size.buffer == *size)
+                    })
+            })
+            .collect();
+
+        if specs.is_empty() && generated_sizes.is_empty() {
             return;
         }
 
         self.background_render_started = true;
+        self.generated_pending_sizes.clear();
         for spec in specs {
             spawn_loader(
                 spec.path,
                 self.background_color,
                 self.background_treatment,
                 spec.sizes,
+                self.background_sender.clone(),
+            );
+        }
+        if let Some(generated) = self.background_generated
+            && !generated_sizes.is_empty()
+        {
+            spawn_generated_loader(
+                generated,
+                self.background_color,
+                self.background_treatment,
+                generated_sizes,
                 self.background_sender.clone(),
             );
         }
@@ -274,6 +349,7 @@ impl CurtainApp {
 
     pub(crate) fn reset_background_source_state(&mut self) {
         self.background_render_started = false;
+        self.generated_pending_sizes.clear();
         for surface in &mut self.lock_surfaces {
             surface.background_path = None;
             surface.background = None;

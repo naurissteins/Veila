@@ -9,7 +9,10 @@ use veila_common::NowPlayingSnapshot;
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     avatar::AvatarAsset,
-    background::{BackgroundAsset, BackgroundTreatment, load_cached_render, store_cached_render},
+    background::{
+        BackgroundAsset, BackgroundTreatment, GeneratedBackground, load_cached_generated_render,
+        load_cached_render, store_cached_generated_render, store_cached_render,
+    },
     cover::CoverArtAsset,
 };
 
@@ -20,6 +23,12 @@ pub(crate) enum BackgroundEvent {
         buffers: Vec<(FrameSize, SoftwareBuffer)>,
         elapsed_ms: u128,
         cache_hit: bool,
+    },
+    GeneratedBuffersReady {
+        generated: GeneratedBackground,
+        treatment: BackgroundTreatment,
+        buffers: Vec<(FrameSize, SoftwareBuffer)>,
+        elapsed_ms: u128,
     },
     AssetReady {
         path: PathBuf,
@@ -92,6 +101,58 @@ pub(crate) fn spawn_loader(
                     elapsed_ms: render_started_at.elapsed().as_millis(),
                 });
             }
+        }
+    });
+}
+
+pub(crate) fn spawn_generated_loader(
+    generated: GeneratedBackground,
+    fallback: ClearColor,
+    treatment: BackgroundTreatment,
+    sizes: Vec<FrameSize>,
+    sender: Sender<BackgroundEvent>,
+) {
+    thread::spawn(move || {
+        let started_at = Instant::now();
+        let asset = match BackgroundAsset::load(None, fallback, Some(generated), treatment) {
+            Ok(asset) => asset,
+            Err(error) => {
+                let _ = sender.send(BackgroundEvent::Failed {
+                    error: error.to_string(),
+                    elapsed_ms: started_at.elapsed().as_millis(),
+                });
+                return;
+            }
+        };
+        let mut buffers = Vec::new();
+        for size in unique_sizes(sizes) {
+            let buffer = match load_cached_generated_render(generated, size, treatment) {
+                Ok(Some(buffer)) => Ok(buffer),
+                _ => asset.render(size).inspect(|buffer| {
+                    if let Err(error) =
+                        store_cached_generated_render(generated, size, treatment, buffer)
+                    {
+                        tracing::debug!("failed to cache generated background: {error:#}");
+                    }
+                }),
+            };
+            match buffer {
+                Ok(buffer) => buffers.push((size, buffer)),
+                Err(error) => {
+                    let _ = sender.send(BackgroundEvent::Failed {
+                        error: error.to_string(),
+                        elapsed_ms: started_at.elapsed().as_millis(),
+                    });
+                }
+            }
+        }
+        if !buffers.is_empty() {
+            let _ = sender.send(BackgroundEvent::GeneratedBuffersReady {
+                generated,
+                treatment,
+                buffers,
+                elapsed_ms: started_at.elapsed().as_millis(),
+            });
         }
     });
 }
