@@ -68,6 +68,14 @@ impl ShellState {
         Some(variant)
     }
 
+    pub fn backdrop_cache_variant_scaled(&self, scale: u32) -> Option<String> {
+        let variant = self.backdrop_cache_variant()?;
+        if scale <= 1 {
+            return Some(variant);
+        }
+        Some(format!("{variant}:render-scale:{scale}"))
+    }
+
     pub fn has_visual_layers(&self) -> bool {
         if self.emergency_active() {
             return false;

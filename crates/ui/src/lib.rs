@@ -2,6 +2,7 @@
 
 //! UI scene state and rendering helpers for Veila.
 
+pub mod background;
 mod shell;
 
 pub use shell::{
