@@ -55,13 +55,6 @@ impl Secret {
         std::mem::take(self)
     }
 
-    pub fn duplicate(&self) -> Self {
-        let mut duplicate = Self::new();
-        duplicate.value.push_str(&self.value);
-        duplicate.char_count = self.char_count;
-        duplicate
-    }
-
     #[cfg(test)]
     fn capacity(&self) -> usize {
         self.value.capacity()
@@ -178,16 +171,6 @@ mod tests {
         assert!(secret.is_empty());
         assert_eq!(secret.char_count(), 0);
         assert!(secret.capacity() >= SECRET_CAPACITY);
-    }
-
-    #[test]
-    fn duplicate_is_an_explicit_owned_copy() {
-        let secret = Secret::from(String::from("pāssword"));
-
-        let duplicate = secret.duplicate();
-
-        assert_eq!(duplicate.expose(), secret.expose());
-        assert_eq!(duplicate.char_count(), 8);
     }
 
     #[test]

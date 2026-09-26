@@ -1,9 +1,9 @@
 use super::{
-    SceneTextInputs, ShellState, TextLayoutCache,
+    SceneTextInputs, TextLayoutCache,
     layout::SceneMetrics,
     model::{LayoutRole, SceneWidget},
 };
-use crate::shell::{ShellAction, ShellKey, ShellStatus, ShellTheme};
+use crate::shell::{ShellAction, ShellKey, ShellState, ShellStatus, ShellTheme};
 use veila_common::{ClockStyle, HorizontalAlign, VerticalAlign, WeatherCondition, WeatherSnapshot};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,

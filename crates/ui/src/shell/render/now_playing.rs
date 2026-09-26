@@ -1,6 +1,7 @@
 use veila_renderer::{FrameSize, PixelBuffer, shape::Rect, text::TextBlock};
 
-use super::super::{NowPlayingWidgetData, ShellState};
+use super::super::NowPlayingWidgetData;
+use super::RenderContext;
 use super::{NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout, TextLayoutCache};
 
 const NOW_PLAYING_TEXT_WIDTH_CAP: i32 = 640;
@@ -28,16 +29,17 @@ fn artwork_size(size: FrameSize, render_scale: u32, configured_size: Option<i32>
     )
 }
 
-impl ShellState {
+impl RenderContext<'_> {
     pub(super) fn render_now_playing_widget(
         &self,
         buffer: &mut impl PixelBuffer,
         _layout: &SceneLayout,
     ) {
-        let fade_progress = self.now_playing_fade_progress();
+        let fade_progress = self.shell.now_playing_fade_progress();
         if !self.theme.now_playing_enabled
-            || (self.now_playing.is_none()
+            || (self.shell.now_playing.is_none()
                 && self
+                    .shell
                     .now_playing_transition
                     .as_ref()
                     .and_then(|transition| transition.previous.as_ref())
@@ -46,14 +48,14 @@ impl ShellState {
             return;
         }
 
-        if let Some(transition) = self.now_playing_transition.as_ref()
+        if let Some(transition) = self.shell.now_playing_transition.as_ref()
             && let Some(previous) = transition.previous.as_ref()
         {
             let fade_out = 100u8.saturating_sub(fade_progress.unwrap_or(100));
             self.draw_now_playing_snapshot(buffer, previous, fade_out);
         }
 
-        if let Some(now_playing) = self.now_playing.as_ref() {
+        if let Some(now_playing) = self.shell.now_playing.as_ref() {
             let fade_in = fade_progress.unwrap_or(100);
             self.draw_now_playing_snapshot(buffer, now_playing, fade_in);
         }
@@ -158,15 +160,6 @@ impl ShellState {
         )
     }
 
-    pub fn now_playing_artwork_decode_size(&self, size: FrameSize, scale: u32) -> u32 {
-        let scale = scale.max(1);
-        let configured = self
-            .theme
-            .now_playing_artwork_size
-            .map(|value| value.saturating_mul(scale as i32));
-        artwork_size(size, scale, configured).max(1) as u32
-    }
-
     fn now_playing_artwork_radius(&self, artwork_size: i32) -> i32 {
         self.theme
             .now_playing_artwork_radius
@@ -268,10 +261,21 @@ fn combine_optional_fade(base: Option<u8>, fade_percent: u8) -> Option<u8> {
     Some(((u16::from(base.unwrap_or(100).min(100)) * u16::from(fade_percent.min(100))) / 100) as u8)
 }
 
+impl crate::shell::ShellState {
+    pub fn now_playing_artwork_decode_size(&self, size: FrameSize, scale: u32) -> u32 {
+        let scale = scale.max(1);
+        let configured = self
+            .theme
+            .now_playing_artwork_size
+            .map(|value| value.saturating_mul(scale as i32));
+        artwork_size(size, scale, configured).max(1) as u32
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::shell::ShellTheme;
+    use crate::shell::{ShellState, ShellTheme};
     use veila_common::{NowPlayingSnapshot, WeatherUnit};
 
     #[test]
@@ -300,6 +304,7 @@ mod tests {
         );
 
         let layout = shell
+            .render_context()
             .now_playing_snapshot_layout(
                 FrameSize::new(1280, 720),
                 shell.now_playing.as_ref().expect("now playing snapshot"),
@@ -339,26 +344,8 @@ mod tests {
                 fetched_at_unix: 0,
             }),
         );
-        let mut scaled_shell = ShellState::new_with_username_and_widgets(
-            theme.scaled_for_render(2),
-            None,
-            None,
-            None,
-            true,
-            None,
-            None,
-            WeatherUnit::default(),
-            None,
-            Some(NowPlayingSnapshot {
-                title: title.to_owned(),
-                artist: None,
-                artwork_path: None,
-                fetched_at_unix: 0,
-            }),
-        );
-        scaled_shell.render_scale = 2;
-
         let title_line = shell
+            .render_context()
             .now_playing_snapshot_layout(
                 FrameSize::new(2560, 1440),
                 shell.now_playing.as_ref().expect("now playing snapshot"),
@@ -367,18 +354,17 @@ mod tests {
             .and_then(|layout| layout.title)
             .and_then(|title| title.block.lines.into_iter().next())
             .expect("title should render");
-        let scaled_title_line = scaled_shell
-            .now_playing_snapshot_layout(
-                FrameSize::new(5120, 2880),
-                scaled_shell
-                    .now_playing
-                    .as_ref()
-                    .expect("now playing snapshot"),
-                100,
-            )
-            .and_then(|layout| layout.title)
-            .and_then(|title| title.block.lines.into_iter().next())
-            .expect("scaled title should render");
+        let scaled_title_line = shell.with_render_scale(2, |context| {
+            context
+                .now_playing_snapshot_layout(
+                    FrameSize::new(5120, 2880),
+                    shell.now_playing.as_ref().expect("now playing snapshot"),
+                    100,
+                )
+                .and_then(|layout| layout.title)
+                .and_then(|title| title.block.lines.into_iter().next())
+                .expect("scaled title should render")
+        });
 
         assert_eq!(title_line, scaled_title_line);
     }
@@ -396,7 +382,9 @@ mod tests {
         );
 
         assert_eq!(
-            shell.now_playing_artwork_size(FrameSize::new(2560, 1440)),
+            shell
+                .render_context()
+                .now_playing_artwork_size(FrameSize::new(2560, 1440)),
             175
         );
     }
@@ -407,11 +395,11 @@ mod tests {
             now_playing_artwork_size: Some(175),
             ..ShellTheme::default()
         };
-        let mut shell = ShellState::new(theme.scaled_for_render(2), None, None, true);
-        shell.render_scale = 2;
+        let shell = ShellState::new(theme.clone(), None, None, true);
 
         assert_eq!(
-            shell.now_playing_artwork_size(FrameSize::new(5120, 2880)),
+            shell.with_render_scale(2, |context| context
+                .now_playing_artwork_size(FrameSize::new(5120, 2880))),
             350
         );
 
@@ -435,7 +423,9 @@ mod tests {
         );
 
         assert_eq!(
-            shell.now_playing_artwork_size(FrameSize::new(800, 600)),
+            shell
+                .render_context()
+                .now_playing_artwork_size(FrameSize::new(800, 600)),
             480
         );
     }
@@ -452,6 +442,6 @@ mod tests {
             true,
         );
 
-        assert_eq!(shell.now_playing_artwork_radius(350), 175);
+        assert_eq!(shell.render_context().now_playing_artwork_radius(350), 175);
     }
 }

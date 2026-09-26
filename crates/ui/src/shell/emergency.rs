@@ -5,7 +5,7 @@ use veila_renderer::{
     text::{TextStyle, fit_single_line_text},
 };
 
-use super::{ShellState, ShellStatus};
+use super::{ShellStatus, render::RenderContext};
 
 const BACKGROUND: ClearColor = ClearColor::opaque(12, 14, 18);
 const FOREGROUND: ClearColor = ClearColor::rgba(244, 247, 251, 242);
@@ -15,25 +15,15 @@ const BORDER: ClearColor = ClearColor::rgba(150, 164, 184, 184);
 const PENDING: ClearColor = ClearColor::rgba(147, 197, 253, 226);
 const REJECTED: ClearColor = ClearColor::rgba(248, 113, 113, 230);
 
-impl ShellState {
+impl RenderContext<'_> {
     pub fn render_emergency(&self, buffer: &mut impl PixelBuffer) {
         buffer.clear(BACKGROUND);
         self.render_emergency_overlay(buffer);
     }
 
-    pub fn render_emergency_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_emergency_scale(scale, |shell| shell.render_emergency(buffer));
-    }
-
     pub fn render_emergency_overlay(&self, buffer: &mut impl PixelBuffer) {
         self.render_emergency_static_overlay(buffer);
         self.render_emergency_dynamic_overlay(buffer);
-    }
-
-    pub fn render_emergency_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_emergency_scale(scale, |shell| {
-            shell.render_emergency_overlay(buffer);
-        });
     }
 
     pub fn render_emergency_static_overlay(&self, buffer: &mut impl PixelBuffer) {
@@ -62,16 +52,6 @@ impl ShellState {
         draw_pill(buffer, layout.input, self.emergency_input_style());
     }
 
-    pub fn render_emergency_static_overlay_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.with_emergency_scale(scale, |shell| {
-            shell.render_emergency_static_overlay(buffer);
-        });
-    }
-
     pub fn render_emergency_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
         let layout = EmergencyLayout::new(buffer.size(), self.render_scale.max(1));
         self.render_emergency_input_content(buffer, layout.input);
@@ -91,30 +71,8 @@ impl ShellState {
         }
     }
 
-    pub fn render_emergency_dynamic_overlay_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.with_emergency_scale(scale, |shell| {
-            shell.render_emergency_dynamic_overlay(buffer);
-        });
-    }
-
-    fn with_emergency_scale(&self, scale: u32, render: impl FnOnce(&ShellState)) {
-        let scale = scale.max(1);
-        if scale == 1 {
-            render(self);
-            return;
-        }
-
-        let mut scaled = self.clone();
-        scaled.render_scale = scale;
-        render(&scaled);
-    }
-
     fn render_emergency_input_content(&self, buffer: &mut impl PixelBuffer, rect: Rect) {
-        if self.displayed_secret_len() == 0 {
+        if self.shell.displayed_secret_len() == 0 {
             let placeholder = fit_single_line_text(
                 "Password",
                 TextStyle::new_px(MUTED, 16 * self.render_scale.max(1)).with_line_spacing(0),
@@ -131,16 +89,16 @@ impl ShellState {
         draw_masked_input(
             buffer,
             Rect::new(rect.x, rect.y, rect.width, rect.height),
-            self.displayed_secret_len(),
-            self.focused,
+            self.shell.displayed_secret_len(),
+            self.shell.focused,
             self.emergency_mask_style(),
         );
     }
 
     fn emergency_input_style(&self) -> PillStyle {
-        let border = if matches!(self.status, ShellStatus::Rejected { .. }) {
+        let border = if matches!(self.shell.status, ShellStatus::Rejected { .. }) {
             REJECTED
-        } else if self.focused {
+        } else if self.shell.focused {
             BORDER
         } else {
             BORDER.with_alpha(128)
@@ -161,7 +119,7 @@ impl ShellState {
     }
 
     fn emergency_status_text(&self) -> Option<String> {
-        match &self.status {
+        match &self.shell.status {
             ShellStatus::Idle => None,
             ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
             ShellStatus::Rejected {
@@ -175,7 +133,7 @@ impl ShellState {
     }
 
     fn emergency_status_color(&self) -> ClearColor {
-        match self.status {
+        match self.shell.status {
             ShellStatus::Pending { .. } => PENDING,
             ShellStatus::Rejected { .. } => REJECTED,
             ShellStatus::Idle => MUTED,

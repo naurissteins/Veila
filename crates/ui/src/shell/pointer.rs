@@ -30,7 +30,9 @@ impl ShellState {
         let x = x.floor() as i32;
         let y = y.floor() as i32;
         let power_hovered = self.power_action_at(frame_width, frame_height, x, y);
-        let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
+        let toggle_rect = self
+            .render_context()
+            .reveal_toggle_rect_for_frame(frame_width, frame_height);
         let hovered = self.input_visible() && power_hovered.is_none() && toggle_rect.contains(x, y);
         let changed =
             self.reveal_toggle_hovered != hovered || self.power_button_hovered != power_hovered;
@@ -98,7 +100,9 @@ impl ShellState {
         }
 
         let selection_changed = self.set_secret_selected(false);
-        let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
+        let toggle_rect = self
+            .render_context()
+            .reveal_toggle_rect_for_frame(frame_width, frame_height);
         let pressed = toggle_rect.contains(x, y);
         let changed = selection_changed
             || self.reveal_toggle_pressed != pressed
@@ -151,7 +155,9 @@ impl ShellState {
             return true;
         }
 
-        let toggle_rect = self.reveal_toggle_rect_for_frame(frame_width, frame_height);
+        let toggle_rect = self
+            .render_context()
+            .reveal_toggle_rect_for_frame(frame_width, frame_height);
         let hovered = self.input_visible() && power_hovered.is_none() && toggle_rect.contains(x, y);
         let toggled = self.reveal_toggle_pressed && hovered;
         let changed = self.reveal_toggle_pressed
@@ -205,7 +211,9 @@ impl ShellState {
     ) -> Option<PowerAction> {
         let size = FrameSize::new(frame_width.max(0) as u32, frame_height.max(0) as u32);
         self.theme.power_buttons.iter().find_map(|button| {
-            let rect = self.power_button_rect(size, button.action)?;
+            let rect = self
+                .render_context()
+                .power_button_rect(size, button.action)?;
             rect.contains(x, y).then_some(button.action)
         })
     }

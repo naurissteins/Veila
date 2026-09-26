@@ -1,4 +1,6 @@
+mod api;
 mod cache;
+mod context;
 mod indicators;
 mod layout;
 mod model;
@@ -10,8 +12,6 @@ mod tests;
 mod widgets;
 
 pub(super) use cache::TextLayoutCache;
-
-use std::cell::RefCell;
 
 use veila_common::{BackdropMode, LayerKind};
 use veila_common::{BackdropShowWhen, StatusDisplayMode};
@@ -29,8 +29,8 @@ use self::{
     },
     model::{AuthGroup, LayoutRole, SceneModel, SceneTextBlocks, StandardSceneConfig},
 };
-use super::ShellState;
 use crate::shell::theme::WidgetPositionTarget;
+pub(super) use context::{RenderContext, ScaledRenderCache};
 
 const NOW_PLAYING_MAX_TEXT_WIDTH: u32 = 318;
 const NOW_PLAYING_MIN_TEXT_WIDTH: i32 = 64;
@@ -51,7 +51,7 @@ struct SceneLayout {
     floating_weather: Option<model::SceneWeatherBlocks>,
 }
 
-impl ShellState {
+impl RenderContext<'_> {
     fn scene_layout(&self, size: veila_renderer::FrameSize) -> SceneLayout {
         let metrics = SceneMetrics::new(
             size.width as i32,
@@ -60,8 +60,8 @@ impl ShellState {
             self.theme.input_height,
             self.theme.avatar_size,
         );
-        let identity_visible = self.identity_visible();
-        let input_visible = self.input_visible();
+        let identity_visible = self.shell.identity_visible();
+        let input_visible = self.shell.input_visible();
         let text_blocks = self.scene_text_blocks(metrics);
         let status_mode_external = self.theme.status_mode == StatusDisplayMode::External;
         let floating_avatar = self.theme.avatar_enabled && self.theme.avatar_position.is_some();
@@ -125,32 +125,36 @@ impl ShellState {
         );
         let anchors = role_anchors_with_groups(RoleAnchorInput {
             frame_height: size.height as i32,
-            hero_height: model.anchor_height_for_role(LayoutRole::Hero, metrics, &self.status),
+            hero_height: model.anchor_height_for_role(
+                LayoutRole::Hero,
+                metrics,
+                &self.shell.status,
+            ),
             auth_anchor_height: model.anchor_height_for_role(
                 LayoutRole::Auth,
                 metrics,
-                &self.status,
+                &self.shell.status,
             ),
             auth_render_height: model.total_height_for_role(
                 LayoutRole::Auth,
                 metrics,
-                &self.status,
+                &self.shell.status,
             ),
             auth_groups: AuthGroupHeights {
                 identity: model.anchor_height_for_auth_group(
                     AuthGroup::Identity,
                     metrics,
-                    &self.status,
+                    &self.shell.status,
                 ),
                 input_anchor: model.anchor_height_for_auth_group(
                     AuthGroup::Input,
                     metrics,
-                    &self.status,
+                    &self.shell.status,
                 ),
                 input_render: model.total_height_for_auth_group(
                     AuthGroup::Input,
                     metrics,
-                    &self.status,
+                    &self.shell.status,
                 ),
             },
             footer_heights: FooterHeights {
@@ -186,7 +190,7 @@ impl ShellState {
     }
 
     pub fn render_backdrops(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             return;
         }
 
@@ -194,7 +198,7 @@ impl ShellState {
     }
 
     pub fn render_static_backdrops(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             return;
         }
 
@@ -202,32 +206,11 @@ impl ShellState {
     }
 
     pub fn render_dynamic_backdrops(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             return;
         }
 
         self.render_backdrops_matching(buffer, |show_when| show_when != BackdropShowWhen::Always);
-    }
-
-    pub fn render_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        let scale = scale.max(1);
-        if scale == 1 {
-            self.render_backdrops(buffer);
-            return;
-        }
-
-        let mut scaled = self.clone();
-        scaled.theme = self.theme.scaled_for_render(scale);
-        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
-        scaled.render_backdrops(buffer);
-    }
-
-    pub fn render_static_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_scaled_theme(scale, |shell| shell.render_static_backdrops(buffer));
-    }
-
-    pub fn render_dynamic_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_scaled_theme(scale, |shell| shell.render_dynamic_backdrops(buffer));
     }
 
     fn render_backdrops_matching(
@@ -236,7 +219,7 @@ impl ShellState {
         matches_show_when: impl Fn(BackdropShowWhen) -> bool,
     ) {
         for backdrop in &self.theme.backdrops {
-            if !matches_show_when(backdrop.show_when) || !self.backdrop_visible(backdrop) {
+            if !matches_show_when(backdrop.show_when) || !self.shell.backdrop_visible(backdrop) {
                 continue;
             }
             let rect = self.backdrop_rect(buffer.size(), backdrop.clone());
@@ -260,19 +243,6 @@ impl ShellState {
                 .with_rotation(backdrop.rotate),
             );
         }
-    }
-
-    fn with_scaled_theme(&self, scale: u32, render: impl FnOnce(&ShellState)) {
-        let scale = scale.max(1);
-        if scale == 1 {
-            render(self);
-            return;
-        }
-
-        let mut scaled = self.clone();
-        scaled.theme = self.theme.scaled_for_render(scale);
-        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
-        render(&scaled);
     }
 
     pub fn render_layers(&self, buffer: &mut impl PixelBuffer) {
@@ -330,19 +300,6 @@ impl ShellState {
             );
             block.draw(buffer, text_x, text_y);
         }
-    }
-
-    pub fn render_layers_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        let scale = scale.max(1);
-        if scale == 1 {
-            self.render_layers(buffer);
-            return;
-        }
-
-        let mut scaled = self.clone();
-        scaled.theme = self.theme.scaled_for_render(scale);
-        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
-        scaled.render_layers(buffer);
     }
 
     pub(super) fn backdrop_rect(
@@ -426,19 +383,19 @@ impl ShellState {
     }
 
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
-        let identity_visible = self.identity_visible();
-        let input_visible = self.input_visible();
+        let identity_visible = self.shell.identity_visible();
+        let input_visible = self.shell.input_visible();
         let status_mode_external = self.theme.status_mode == StatusDisplayMode::External;
-        let clock_text = self.clock.primary_text(self.theme.clock_style);
-        let clock_secondary_text = self.clock.secondary_text(self.theme.clock_style);
+        let clock_text = self.shell.clock.primary_text(self.theme.clock_style);
+        let clock_secondary_text = self.shell.clock.secondary_text(self.theme.clock_style);
         let clock_style = self.clock_text_style(metrics);
-        let clock_meridiem_text = self.clock.meridiem_text();
+        let clock_meridiem_text = self.shell.clock.meridiem_text();
         let clock_meridiem_style = self.clock_meridiem_text_style(metrics);
         let clock_meridiem_x = self.theme.clock_meridiem_x;
         let clock_meridiem_y = self.theme.clock_meridiem_y;
-        let date_text = self.clock.date_text();
+        let date_text = self.shell.clock.date_text();
         let date_style = self.date_text_style();
-        let username_text = self.username_text.as_deref();
+        let username_text = self.shell.username_text.as_deref();
         let username_style = self.username_text_style();
         let placeholder_style = self.placeholder_text_style();
         let status_text = if input_visible && status_mode_external {
@@ -446,13 +403,13 @@ impl ShellState {
         } else {
             (!input_visible).then(|| self.status_text()).flatten()
         };
-        let hidden_reveal_hint = self.hidden_reveal_hint();
+        let hidden_reveal_hint = self.shell.hidden_reveal_hint();
         let status_style = if hidden_reveal_hint.is_some() && status_text.is_none() {
             self.reveal_text_style()
         } else {
             self.status_text_style()
         };
-        let weather = self.weather.as_ref();
+        let weather = self.shell.weather.as_ref();
         let weather_temperature_style = self.weather_temperature_text_style();
         let weather_location_style = self.weather_location_text_style();
 
@@ -485,7 +442,7 @@ impl ShellState {
                 placeholder_text: input_visible.then_some(()).and(
                     self.theme
                         .placeholder_enabled
-                        .then_some(self.hint_text.as_str()),
+                        .then_some(self.shell.hint_text.as_str()),
                 ),
                 placeholder_style,
                 status_text: if input_visible {

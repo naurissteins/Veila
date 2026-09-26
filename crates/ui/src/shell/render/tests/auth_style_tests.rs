@@ -5,7 +5,7 @@ use veila_common::Secret;
 fn unfocused_input_style_uses_configured_input_border() {
     let mut shell = ShellState::default();
     shell.set_focus(false);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(style.fill.alpha, 10);
     assert!(style.border.is_none());
@@ -14,7 +14,7 @@ fn unfocused_input_style_uses_configured_input_border() {
 #[test]
 fn default_input_style_uses_input_border() {
     let shell = ShellState::default();
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert!(style.border.is_none());
 }
@@ -23,7 +23,7 @@ fn default_input_style_uses_input_border() {
 fn focused_input_style_uses_input_border() {
     let mut shell = ShellState::new(ShellTheme::default(), None, None, true);
     shell.set_focus(true);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert!(style.border.is_none());
 }
@@ -38,7 +38,7 @@ fn explicit_input_alpha_is_preserved() {
     };
     let mut shell = ShellState::new(theme, None, None, true);
     shell.set_focus(false);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(style.fill.alpha, 51);
     assert_eq!(style.border.expect("input border").color.alpha, 64);
@@ -51,7 +51,7 @@ fn input_style_uses_configured_radius() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(style.radius, 18);
 }
@@ -63,7 +63,7 @@ fn input_style_uses_configured_border_width() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(style.border.expect("input border").thickness, 4);
 }
@@ -75,7 +75,7 @@ fn input_style_allows_disabling_border() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert!(style.border.is_none());
 }
@@ -94,7 +94,7 @@ fn rejected_input_style_uses_rejected_status_color_for_border() {
         failed_attempts: Some(1),
     };
 
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(
         style.border.expect("input border").color,
@@ -114,7 +114,7 @@ fn selected_input_style_strengthens_fill_and_border() {
     shell.handle_key(ShellKey::Character('a'));
     shell.handle_key(ShellKey::SelectAll);
 
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(style.fill.alpha, 88);
     assert_eq!(style.border.expect("input border").color.alpha, 148);
@@ -130,7 +130,7 @@ fn explicit_input_opacity_is_preserved_without_style_boost() {
     };
     let mut shell = ShellState::new(theme, None, None, true);
     shell.set_focus(false);
-    let style = shell.input_style();
+    let style = shell.render_context().input_style();
 
     assert_eq!(style.fill.alpha, 26);
     assert_eq!(style.border.expect("input border").color.alpha, 31);
@@ -143,7 +143,7 @@ fn avatar_style_uses_configured_placeholder_padding() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.placeholder_padding, Some(16));
 }
@@ -155,7 +155,7 @@ fn avatar_style_uses_configured_radius() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.radius, Some(18));
 }
@@ -167,7 +167,7 @@ fn avatar_style_uses_configured_icon_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.placeholder, ClearColor::rgba(232, 238, 249, 224));
 }
@@ -179,7 +179,7 @@ fn toggle_style_uses_configured_eye_icon_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.toggle_style();
+    let style = shell.render_context().toggle_style();
 
     assert_eq!(style.color, ClearColor::rgba(244, 248, 255, 132));
 }
@@ -191,7 +191,7 @@ fn toggle_style_uses_opaque_eye_fallback_alpha() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.toggle_style();
+    let style = shell.render_context().toggle_style();
 
     assert_eq!(style.color, ClearColor::rgba(244, 248, 255, 132));
 }
@@ -203,18 +203,15 @@ fn toggle_style_preserves_explicit_eye_icon_alpha_when_unset() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.toggle_style();
+    let style = shell.render_context().toggle_style();
 
     assert_eq!(style.color.alpha, 92);
 }
 
 #[test]
 fn toggle_style_scales_padding_for_hidpi_render() {
-    let shell = ShellState {
-        render_scale: 2,
-        ..ShellState::default()
-    };
-    let style = shell.toggle_style();
+    let shell = ShellState::default();
+    let style = shell.with_render_scale(2, |context| context.toggle_style());
 
     assert_eq!(style.padding, 8);
 }
@@ -226,18 +223,15 @@ fn mask_style_uses_configured_input_mask_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.mask_style();
+    let style = shell.render_context().mask_style();
 
     assert_eq!(style.bullet, ClearColor::opaque(169, 196, 255));
 }
 
 #[test]
 fn mask_style_scales_spacing_for_hidpi_render() {
-    let shell = ShellState {
-        render_scale: 2,
-        ..ShellState::default()
-    };
-    let style = shell.mask_style();
+    let shell = ShellState::default();
+    let style = shell.with_render_scale(2, |context| context.mask_style());
 
     assert_eq!(style.bullet_size, 14);
     assert_eq!(style.spacing, 32);
@@ -251,7 +245,7 @@ fn avatar_style_uses_configured_ring_width() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.ring.expect("avatar ring").thickness, 4);
 }
@@ -264,7 +258,7 @@ fn avatar_style_uses_configured_ring_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(
         style.ring.expect("avatar ring").color,
@@ -281,7 +275,7 @@ fn avatar_style_softens_fallback_ring_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(
         style.ring.expect("avatar ring").color,
@@ -297,7 +291,7 @@ fn avatar_style_preserves_explicit_ring_alpha() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.ring.expect("avatar ring").color.alpha, 48);
 }
@@ -309,7 +303,7 @@ fn avatar_style_allows_disabling_ring() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert!(style.ring.is_none());
 }
@@ -321,7 +315,7 @@ fn avatar_style_preserves_explicit_background_alpha() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.background.alpha, 80);
 }
@@ -333,7 +327,7 @@ fn avatar_style_preserves_opaque_backgrounds() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.avatar_style();
+    let style = shell.render_context().avatar_style();
 
     assert_eq!(style.background.alpha, 255);
 }
@@ -367,7 +361,7 @@ fn username_style_uses_configured_alpha_and_size() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.username_text_style();
+    let style = shell.render_context().username_text_style();
 
     assert_eq!(style.color.alpha, 184);
     assert_eq!(style.font_size_px, Some(22));
@@ -381,7 +375,7 @@ fn username_style_uses_configured_font_family_and_weight() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.username_text_style();
+    let style = shell.render_context().username_text_style();
 
     assert!(
         style
@@ -400,7 +394,7 @@ fn username_style_uses_configured_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.username_text_style();
+    let style = shell.render_context().username_text_style();
 
     assert_eq!(style.color.red, 215);
     assert_eq!(style.color.green, 227);
@@ -416,7 +410,7 @@ fn username_style_preserves_explicit_foreground_alpha_when_unset() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.username_text_style();
+    let style = shell.render_context().username_text_style();
 
     assert_eq!(style.color.alpha, 90);
     assert_eq!(style.font_size_px, Some(28));
@@ -430,7 +424,7 @@ fn placeholder_style_uses_fallback_alpha_for_opaque_muted_colors() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.placeholder_text_style();
+    let style = shell.render_context().placeholder_text_style();
 
     assert_eq!(style.color.alpha, 154);
     assert_eq!(style.font_size_px, Some(16));
@@ -443,7 +437,7 @@ fn placeholder_style_uses_configured_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.placeholder_text_style();
+    let style = shell.render_context().placeholder_text_style();
 
     assert_eq!(style.color.red, 134);
     assert_eq!(style.color.green, 148);
@@ -460,8 +454,8 @@ fn input_text_styles_use_configured_font_family_and_weight() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let placeholder_style = shell.placeholder_text_style();
-    let revealed_secret_style = shell.revealed_secret_text_style();
+    let placeholder_style = shell.render_context().placeholder_text_style();
+    let revealed_secret_style = shell.render_context().revealed_secret_text_style();
 
     assert!(
         placeholder_style
@@ -490,7 +484,7 @@ fn status_style_uses_fallback_alpha_for_opaque_colors() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.status_text_style();
+    let style = shell.render_context().status_text_style();
 
     assert_eq!(style.color.alpha, 224);
     assert_eq!(style.scale, 2);
@@ -503,7 +497,7 @@ fn status_style_uses_configured_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.status_text_style();
+    let style = shell.render_context().status_text_style();
 
     assert_eq!(style.color.red, 255);
     assert_eq!(style.color.green, 224);
@@ -519,7 +513,7 @@ fn placeholder_style_preserves_explicit_muted_alpha_when_unset() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.placeholder_text_style();
+    let style = shell.render_context().placeholder_text_style();
 
     assert_eq!(style.color.alpha, 90);
 }
@@ -535,7 +529,7 @@ fn reveal_style_uses_configured_color_alpha_and_font() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.reveal_text_style();
+    let style = shell.render_context().reveal_text_style();
 
     assert_eq!(style.color.red, 214);
     assert_eq!(style.color.green, 227);
@@ -560,7 +554,10 @@ fn reveal_style_uses_configured_color_alpha_and_font() {
 fn reveal_style_falls_back_to_placeholder_style_defaults() {
     let shell = ShellState::default();
 
-    assert_eq!(shell.reveal_text_style(), shell.placeholder_text_style());
+    assert_eq!(
+        shell.render_context().reveal_text_style(),
+        shell.render_context().placeholder_text_style()
+    );
 }
 
 #[test]
@@ -578,7 +575,7 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
         shown: true,
         displayed_phase: 0,
     };
-    let style = shell.status_text_style();
+    let style = shell.render_context().status_text_style();
 
     assert_eq!(style.color.alpha, 90);
 }
@@ -598,7 +595,7 @@ fn pending_status_style_prefers_state_specific_status_override() {
         displayed_phase: 0,
     };
 
-    let style = shell.status_text_style();
+    let style = shell.render_context().status_text_style();
 
     assert_eq!(style.color.red, 12);
     assert_eq!(style.color.green, 34);
@@ -620,7 +617,7 @@ fn rejected_status_style_prefers_state_specific_status_override() {
         failed_attempts: None,
     };
 
-    let style = shell.status_text_style();
+    let style = shell.render_context().status_text_style();
 
     assert_eq!(style.color.red, 180);
     assert_eq!(style.color.green, 40);
@@ -636,7 +633,7 @@ fn caps_lock_icon_style_uses_dedicated_override() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.caps_lock_icon_style();
+    let style = shell.render_context().caps_lock_icon_style();
 
     assert_eq!(style.color.red, 255);
     assert_eq!(style.color.green, 211);
@@ -646,11 +643,8 @@ fn caps_lock_icon_style_uses_dedicated_override() {
 
 #[test]
 fn caps_lock_icon_style_scales_padding_for_hidpi_render() {
-    let shell = ShellState {
-        render_scale: 2,
-        ..ShellState::default()
-    };
-    let style = shell.caps_lock_icon_style();
+    let shell = ShellState::default();
+    let style = shell.with_render_scale(2, |context| context.caps_lock_icon_style());
 
     assert_eq!(style.padding, 8);
 }
@@ -664,7 +658,7 @@ fn pending_status_text_stays_hidden_until_delay_elapses() {
     let action = shell.handle_key(ShellKey::Enter);
     assert_eq!(action, ShellAction::Submit(Secret::from(String::from("a"))));
 
-    assert_eq!(shell.status_text(), None);
+    assert_eq!(shell.render_context().status_text(), None);
 }
 
 #[test]
@@ -677,7 +671,7 @@ fn pending_status_text_appears_after_delay() {
 
     assert!(shell.advance_animated_state());
     assert_eq!(
-        shell.status_text().as_deref(),
+        shell.render_context().status_text().as_deref(),
         Some("Checking authentication")
     );
 }

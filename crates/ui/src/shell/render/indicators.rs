@@ -5,19 +5,20 @@ use veila_renderer::{
     shape::Rect,
 };
 
-use super::super::{ShellState, ShellStatus};
+use super::super::ShellStatus;
+use super::RenderContext;
 use super::{
     styles,
     widgets::{draw_chip_block, draw_icon_chip, top_right_chip_diameter},
 };
 
-impl ShellState {
+impl RenderContext<'_> {
     pub(super) fn render_top_right_indicators(&self, buffer: &mut impl PixelBuffer) {
         self.render_power_buttons(buffer);
 
         let power_block = (self.theme.power_status_enabled
-            && matches!(self.status, ShellStatus::Idle))
-        .then_some(self.power_status_text.as_deref())
+            && matches!(self.shell.status, ShellStatus::Idle))
+        .then_some(self.shell.power_status_text.as_deref())
         .flatten()
         .map(|text| {
             self.text_layout_cache.borrow_mut().power_status_block(
@@ -27,7 +28,7 @@ impl ShellState {
             )
         });
         let keyboard_block = if self.theme.keyboard_enabled {
-            self.keyboard_layout_label.as_deref().map(|label| {
+            self.shell.keyboard_layout_label.as_deref().map(|label| {
                 self.text_layout_cache.borrow_mut().keyboard_layout_block(
                     label,
                     self.keyboard_layout_text_style(),
@@ -88,7 +89,7 @@ impl ShellState {
         }
 
         if self.theme.battery_enabled
-            && let Some(battery) = self.battery.as_ref()
+            && let Some(battery) = self.shell.battery.as_ref()
             && let Some(position) = self.theme.battery_position
         {
             let battery_icon_size = self.theme.battery_size.unwrap_or(18).clamp(12, 96);
@@ -129,7 +130,7 @@ impl ShellState {
                 continue;
             };
             let mut button_color = button.color.unwrap_or(self.theme.foreground);
-            if self.power_confirmation_action() == Some(button.action) {
+            if self.shell.power_confirmation_action() == Some(button.action) {
                 button_color = self.theme.pending;
             }
             let icon_style = veila_renderer::icon::IconStyle::new(button_color);

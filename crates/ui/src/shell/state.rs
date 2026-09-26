@@ -371,7 +371,7 @@ impl ShellState {
             avatar,
             preview_grid_enabled: false,
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
-            render_scale: 1,
+            scaled_render_cache: RefCell::default(),
         }
     }
 
@@ -533,6 +533,8 @@ impl ShellState {
     ) {
         let reveal_on_interaction = theme.input_reveal_on_interaction;
         self.theme = theme;
+        self.scaled_render_cache.get_mut().clear();
+        *self.text_layout_cache.get_mut() = TextLayoutCache::default();
         self.clock = ClockState::current(self.theme.clock_format, self.theme.date_format);
         self.hint_text = input_placeholder
             .filter(|hint| !hint.trim().is_empty())

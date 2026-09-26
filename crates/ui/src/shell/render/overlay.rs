@@ -1,13 +1,11 @@
-use std::cell::RefCell;
-
 use veila_renderer::{
     FrameSize, PixelBuffer,
     shape::{Rect, fill_rect},
 };
 
-use super::super::{ShellState, ShellStatus};
+use super::super::ShellStatus;
 use super::{
-    SceneLayout, TextLayoutCache,
+    RenderContext, SceneLayout,
     layout::{SceneMetrics, hero_block_x},
     model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
@@ -17,9 +15,19 @@ use super::{
     },
 };
 
-impl ShellState {
+impl RenderContext<'_> {
+    pub(super) fn render_auth_dirty_overlay(&self, buffer: &mut impl PixelBuffer) {
+        if self.shell.emergency_active() {
+            self.render_emergency_dynamic_overlay(buffer);
+            return;
+        }
+        let layout = self.scene_layout(buffer.size());
+        self.render_auth_or_input_group(buffer, &layout, true);
+        self.render_floating_input_widgets(buffer, &layout, true);
+    }
+
     pub fn render(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             self.render_emergency(buffer);
             return;
         }
@@ -28,17 +36,8 @@ impl ShellState {
         self.render_overlay(buffer);
     }
 
-    pub fn render_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        if self.emergency_active() {
-            self.render_emergency_scaled(buffer, scale);
-            return;
-        }
-
-        self.with_render_scale(scale, |shell| shell.render(buffer));
-    }
-
     pub fn render_overlay(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             self.render_emergency_overlay(buffer);
             return;
         }
@@ -48,17 +47,8 @@ impl ShellState {
         self.render_dynamic_overlay(buffer);
     }
 
-    pub fn render_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        if self.emergency_active() {
-            self.render_emergency_overlay_scaled(buffer, scale);
-            return;
-        }
-
-        self.with_render_scale(scale, |shell| shell.render_overlay(buffer));
-    }
-
     pub fn render_static_overlay(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             self.render_emergency_static_overlay(buffer);
             return;
         }
@@ -67,7 +57,7 @@ impl ShellState {
     }
 
     pub fn render_static_overlay_without_layers(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             self.render_emergency_static_overlay(buffer);
             return;
         }
@@ -100,32 +90,8 @@ impl ShellState {
         );
     }
 
-    pub fn render_static_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        if self.emergency_active() {
-            self.render_emergency_static_overlay_scaled(buffer, scale);
-            return;
-        }
-
-        self.with_render_scale(scale, |shell| shell.render_static_overlay(buffer));
-    }
-
-    pub fn render_static_overlay_without_layers_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        if self.emergency_active() {
-            self.render_emergency_static_overlay_scaled(buffer, scale);
-            return;
-        }
-
-        self.with_render_scale(scale, |shell| {
-            shell.render_static_overlay_without_layers(buffer);
-        });
-    }
-
     pub fn render_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
-        if self.emergency_active() {
+        if self.shell.emergency_active() {
             self.render_emergency_dynamic_overlay(buffer);
             return;
         }
@@ -156,54 +122,6 @@ impl ShellState {
         self.render_preview_grid_overlay(buffer);
     }
 
-    pub fn render_dynamic_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        if self.emergency_active() {
-            self.render_emergency_dynamic_overlay_scaled(buffer, scale);
-            return;
-        }
-
-        self.with_render_scale(scale, |shell| shell.render_dynamic_overlay(buffer));
-    }
-
-    pub fn render_auth_dirty_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        if self.emergency_active() {
-            self.render_emergency_dynamic_overlay_scaled(buffer, scale);
-            return;
-        }
-
-        self.with_render_scale(scale, |shell| {
-            let layout = shell.scene_layout(buffer.size());
-            shell.render_auth_or_input_group(buffer, &layout, true);
-            shell.render_floating_input_widgets(buffer, &layout, true);
-        });
-    }
-
-    pub fn auth_dirty_rect_scaled(&self, size: FrameSize, scale: u32) -> Option<Rect> {
-        if self.emergency_active() {
-            return None;
-        }
-
-        let mut rect = None;
-        self.with_render_scale(scale, |shell| {
-            rect = shell.auth_dirty_rect(size);
-        });
-        rect
-    }
-
-    fn with_render_scale(&self, scale: u32, render: impl FnOnce(&ShellState)) {
-        let scale = scale.max(1);
-        if scale == 1 {
-            render(self);
-            return;
-        }
-
-        let mut scaled = self.clone();
-        scaled.render_scale = scale;
-        scaled.theme = self.theme.scaled_for_render(scale);
-        scaled.text_layout_cache = RefCell::new(TextLayoutCache::default());
-        render(&scaled);
-    }
-
     fn render_role(
         &self,
         buffer: &mut impl PixelBuffer,
@@ -216,7 +134,7 @@ impl ShellState {
 
         for section in layout.model.sections_for_role(role) {
             self.render_section(buffer, layout.metrics, section, y, dynamic);
-            y += section.height(layout.metrics, &self.status) + section.gap_after;
+            y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
         }
     }
 
@@ -233,7 +151,7 @@ impl ShellState {
         let mut y = start_y;
         for section in layout.model.sections_for_auth_group(AuthGroup::Identity) {
             self.render_section(buffer, layout.metrics, section, y, dynamic);
-            y += section.height(layout.metrics, &self.status) + section.gap_after;
+            y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
         }
     }
 
@@ -247,7 +165,7 @@ impl ShellState {
             let mut y = layout.anchors.auth_y;
             for section in layout.model.sections_for_auth_group(AuthGroup::Input) {
                 self.render_section(buffer, layout.metrics, section, y, dynamic);
-                y += section.height(layout.metrics, &self.status) + section.gap_after;
+                y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
             }
         } else {
             self.render_role(
@@ -299,7 +217,7 @@ impl ShellState {
             let rect = self.positioned_rect(buffer.size(), position, size, size);
             draw_avatar_widget(
                 buffer,
-                &self.avatar,
+                &self.shell.avatar,
                 rect.x + size / 2,
                 rect.y,
                 size as u32,
@@ -382,7 +300,7 @@ impl ShellState {
     }
 
     fn render_preview_grid_overlay(&self, buffer: &mut impl PixelBuffer) {
-        if !self.preview_grid_enabled {
+        if !self.shell.preview_grid_enabled {
             return;
         }
 
@@ -506,7 +424,7 @@ impl ShellState {
         None
     }
 
-    fn auth_dirty_rect(&self, size: FrameSize) -> Option<Rect> {
+    pub(super) fn auth_dirty_rect(&self, size: FrameSize) -> Option<Rect> {
         let layout = self.scene_layout(size);
         let mut dirty = None;
 
@@ -560,7 +478,7 @@ impl ShellState {
                 }
                 _ => {}
             }
-            y += section.height(layout.metrics, &self.status) + section.gap_after;
+            y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
         }
 
         dirty
@@ -623,7 +541,7 @@ impl ShellState {
             SceneWidget::Avatar if !dynamic && self.theme.avatar_enabled => {
                 draw_avatar_widget(
                     buffer,
-                    &self.avatar,
+                    &self.shell.avatar,
                     metrics.auth_center_x,
                     y + self.theme.avatar_offset_y.unwrap_or(0),
                     metrics.avatar_size as u32,
@@ -649,9 +567,9 @@ impl ShellState {
         placeholder: Option<veila_renderer::text::TextBlock>,
         dynamic: bool,
     ) {
-        let revealed_secret = if self.reveal_secret && !self.secret.is_empty() {
+        let revealed_secret = if self.shell.reveal_secret && !self.shell.secret.is_empty() {
             Some(self.text_layout_cache.borrow().revealed_secret_block(
-                self.secret.expose(),
+                self.shell.secret.expose(),
                 self.revealed_secret_text_style(),
                 rect.width.saturating_sub(92) as u32,
             ))
@@ -669,20 +587,20 @@ impl ShellState {
         } else {
             None
         };
-        let right_adornment = if let Some(phase) = self.pending_spinner_phase() {
+        let right_adornment = if let Some(phase) = self.shell.pending_spinner_phase() {
             InputRightAdornment::Spinner {
                 phase,
                 style: self.toggle_style(),
             }
-        } else if self.caps_lock_active && self.theme.caps_lock_enabled {
+        } else if self.shell.caps_lock_active && self.theme.caps_lock_enabled {
             InputRightAdornment::CapsLock {
                 style: self.caps_lock_icon_style(),
             }
         } else if self.theme.eye_enabled {
             InputRightAdornment::Toggle {
-                hovered: self.reveal_toggle_hovered,
-                pressed: self.reveal_toggle_pressed,
-                reveal_secret: self.reveal_secret,
+                hovered: self.shell.reveal_toggle_hovered,
+                pressed: self.shell.reveal_toggle_pressed,
+                reveal_secret: self.shell.reveal_secret,
                 style: self.toggle_style(),
             }
         } else {
@@ -690,8 +608,8 @@ impl ShellState {
         };
         let widget = InputWidget {
             rect,
-            secret_len: self.displayed_secret_len(),
-            focused: self.focused,
+            secret_len: self.shell.displayed_secret_len(),
+            focused: self.shell.focused,
             shell_style: self.input_style(),
             mask_style: self.mask_style(),
             placeholder,
@@ -741,7 +659,7 @@ impl ShellState {
                         veila_renderer::shape::Rect::new(0, 0, 0, 0)
                     };
                 }
-                y += section.height(layout.metrics, &self.status) + section.gap_after;
+                y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
             }
         } else {
             for section in layout.model.sections_for_role(LayoutRole::Auth) {
@@ -752,7 +670,7 @@ impl ShellState {
                         veila_renderer::shape::Rect::new(0, 0, 0, 0)
                     };
                 }
-                y += section.height(layout.metrics, &self.status) + section.gap_after;
+                y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
             }
         }
 
@@ -760,7 +678,7 @@ impl ShellState {
     }
 
     pub(crate) fn status_text(&self) -> Option<String> {
-        match &self.status {
+        match &self.shell.status {
             ShellStatus::Idle => self.fingerprint_status_text(),
             ShellStatus::Pending { shown, .. } => {
                 shown.then(|| String::from("Checking authentication"))
@@ -777,14 +695,14 @@ impl ShellState {
     }
 
     pub(crate) fn inline_input_status_text(&self) -> Option<String> {
-        if !self.input_visible()
+        if !self.shell.input_visible()
             || !self.theme.status_enabled
             || self.theme.status_mode != veila_common::StatusDisplayMode::Inline
         {
             return None;
         }
 
-        match &self.status {
+        match &self.shell.status {
             ShellStatus::Idle => None,
             ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
             ShellStatus::Rejected {
@@ -800,11 +718,11 @@ impl ShellState {
     }
 
     fn input_shell_is_dynamic(&self) -> bool {
-        self.secret_selected || matches!(self.status, ShellStatus::Rejected { .. })
+        self.shell.secret_selected || matches!(self.shell.status, ShellStatus::Rejected { .. })
     }
 
     fn fingerprint_status_text(&self) -> Option<String> {
-        match self.fingerprint_status.as_ref()? {
+        match self.shell.fingerprint_status.as_ref()? {
             veila_common::FingerprintStatus::Ready => {
                 Some(String::from("Touch fingerprint reader"))
             }

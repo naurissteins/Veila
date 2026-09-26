@@ -22,7 +22,7 @@ use std::{cell::RefCell, collections::HashMap, time::Instant};
 use battery::BatteryWidgetData;
 use clock::ClockState;
 use now_playing::NowPlayingWidgetData;
-use render::TextLayoutCache;
+use render::{ScaledRenderCache, TextLayoutCache};
 use veila_common::{FingerprintStatus, PowerAction, Secret};
 use veila_renderer::avatar::AvatarAsset;
 use weather::WeatherWidgetData;
@@ -127,47 +127,7 @@ pub struct ShellState {
     avatar: AvatarAsset,
     preview_grid_enabled: bool,
     text_layout_cache: RefCell<TextLayoutCache>,
-    render_scale: u32,
-}
-
-impl Clone for ShellState {
-    fn clone(&self) -> Self {
-        Self {
-            mode: self.mode,
-            secret: self.secret.duplicate(),
-            submitted_secret_len: self.submitted_secret_len,
-            secret_selected: self.secret_selected,
-            caps_lock_active: self.caps_lock_active,
-            keyboard_layout_label: self.keyboard_layout_label.clone(),
-            battery: self.battery.clone(),
-            power_status_text: self.power_status_text.clone(),
-            fingerprint_status: self.fingerprint_status,
-            reveal_secret: self.reveal_secret,
-            auth_revealed: self.auth_revealed,
-            reveal_toggle_hovered: self.reveal_toggle_hovered,
-            reveal_toggle_pressed: self.reveal_toggle_pressed,
-            power_button_hovered: self.power_button_hovered,
-            power_button_pressed: self.power_button_pressed,
-            power_confirmation: self.power_confirmation,
-            requested_power_action: self.requested_power_action,
-            static_scene_revision: self.static_scene_revision,
-            static_scene_variant_cache: RefCell::new(HashMap::new()),
-            focused: self.focused,
-            status: self.status.clone(),
-            clock: self.clock.clone(),
-            theme: self.theme.clone(),
-            hint_text: self.hint_text.clone(),
-            reveal_hint_text: self.reveal_hint_text.clone(),
-            username_text: self.username_text.clone(),
-            weather: self.weather.clone(),
-            now_playing: self.now_playing.clone(),
-            now_playing_transition: self.now_playing_transition.clone(),
-            avatar: self.avatar.clone(),
-            preview_grid_enabled: self.preview_grid_enabled,
-            text_layout_cache: self.text_layout_cache.clone(),
-            render_scale: self.render_scale,
-        }
-    }
+    scaled_render_cache: RefCell<ScaledRenderCache>,
 }
 
 impl Default for ShellState {

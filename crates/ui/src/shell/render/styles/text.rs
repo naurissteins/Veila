@@ -5,7 +5,7 @@ use veila_renderer::text::{
 };
 
 use super::{
-    super::{ShellState, layout::SceneMetrics},
+    super::{RenderContext, layout::SceneMetrics},
     color::{header_color, secondary_text_color, username_color},
 };
 
@@ -24,7 +24,7 @@ const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
 const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
 const MAX_KEYBOARD_FONT_SIZE_PX: u32 = 512;
 
-impl ShellState {
+impl RenderContext<'_> {
     pub(crate) fn keyboard_layout_text_style(&self) -> TextStyle {
         let style = TextStyle::new_px(
             secondary_text_color(
@@ -200,7 +200,7 @@ impl ShellState {
     }
 
     pub(crate) fn status_text_style(&self) -> TextStyle {
-        let color = match self.status {
+        let color = match self.shell.status {
             ShellStatus::Pending { .. } => self
                 .theme
                 .status_pending_color
@@ -217,7 +217,7 @@ impl ShellState {
     }
 
     pub(crate) fn input_status_text_style(&self) -> TextStyle {
-        let color = match self.status {
+        let color = match self.shell.status {
             ShellStatus::Pending { .. } => self
                 .theme
                 .status_pending_color

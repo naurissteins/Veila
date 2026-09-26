@@ -36,6 +36,8 @@ pub(crate) struct TextLayoutCache {
 pub(super) struct CachedTextBlock {
     pub(super) key: Option<CachedTextKey>,
     pub(super) block: Option<TextBlock>,
+    #[cfg(test)]
+    pub(super) resolutions: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -263,6 +265,10 @@ impl CachedTextBlock {
             return block.clone();
         }
 
+        #[cfg(test)]
+        {
+            self.resolutions += 1;
+        }
         let block = single_line_text_block(text, style);
         self.key = Some(key);
         self.block = Some(block.clone());
@@ -298,6 +304,10 @@ impl CachedTextBlock {
             return block.clone();
         }
 
+        #[cfg(test)]
+        {
+            self.resolutions += 1;
+        }
         let block = fit_wrapped_text(text, style, max_width, min_scale);
         self.key = Some(key);
         self.block = Some(block.clone());
@@ -329,6 +339,10 @@ impl CachedTextBlock {
             return block.clone();
         }
 
+        #[cfg(test)]
+        {
+            self.resolutions += 1;
+        }
         let block = fit_single_line_text(text, style, max_width);
         self.key = Some(key);
         self.block = Some(block.clone());
