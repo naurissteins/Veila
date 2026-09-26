@@ -1,3 +1,5 @@
+use crate::blend_component;
+
 use std::{cell::RefCell, thread_local};
 
 use cosmic_text::{Buffer, Wrap};
@@ -308,11 +310,6 @@ fn blend_argb8888_pixel(dst: &mut [u8], src: &[u8]) {
 
 fn premultiply(channel: u8, alpha: u8) -> u8 {
     ((u16::from(channel) * u16::from(alpha) + 127) / 255) as u8
-}
-
-fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
-    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
-    blended.min(u16::from(u8::MAX)) as u8
 }
 
 #[cfg(test)]

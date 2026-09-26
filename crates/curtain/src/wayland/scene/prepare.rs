@@ -253,7 +253,10 @@ impl CurtainApp {
             }
         }
 
-        if let Some(variant) = self.backdrop_cache_variant_for_surface(scale) {
+        if let Some(variant) = self
+            .ui_shell
+            .backdrop_cache_variant_scaled(scale.max(1) as u32)
+        {
             if let Some(path) = selected_path.as_deref() {
                 if let Ok(Some(mut buffer)) = load_cached_render_variant(
                     path,
@@ -289,15 +292,6 @@ impl CurtainApp {
         }
 
         Ok(None)
-    }
-
-    fn backdrop_cache_variant_for_surface(&self, scale: i32) -> Option<String> {
-        let variant = self.ui_shell.backdrop_cache_variant()?;
-        if scale <= 1 {
-            return Some(variant);
-        }
-
-        Some(format!("{variant}:render-scale:{scale}"))
     }
 
     fn static_scene_cache_variant_for_surface(&self, scale: i32) -> Option<String> {

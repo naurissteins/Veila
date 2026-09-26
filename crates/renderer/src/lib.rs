@@ -3,6 +3,7 @@
 //! Shared rendering primitives used by Veila components.
 
 mod blur;
+mod cache;
 
 pub mod background;
 pub mod draw;
@@ -363,7 +364,7 @@ fn blend_pixel(dst: &mut [u8], src: &[u8]) {
     }
 }
 
-fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+pub(crate) fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
     let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
     blended.min(u16::from(u8::MAX)) as u8
 }

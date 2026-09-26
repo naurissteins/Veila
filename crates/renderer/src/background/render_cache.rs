@@ -1,3 +1,5 @@
+use crate::cache::stable_hash;
+
 use std::{
     fs,
     io::{Read, Write},
@@ -217,12 +219,12 @@ fn cache_path(
     variant: Option<&str>,
     cache_home: Option<&Path>,
 ) -> Result<PathBuf> {
-    let key = stable_hash(cache_source_key(source, size)?);
-    let key = stable_hash(format!(
+    let key = stable_hash(&cache_source_key(source, size)?);
+    let key = stable_hash(&format!(
         "{key}:{:?}:{:?}:{:?}:{:?}",
         treatment.blur_radius, treatment.dim_strength, treatment.tint, treatment.scaling
     ));
-    let key = stable_hash(format!("{key}:{}", variant.unwrap_or_default()));
+    let key = stable_hash(&format!("{key}:{}", variant.unwrap_or_default()));
 
     Ok(cache_root(cache_home)?.join(format!("{key:016x}.argb")))
 }
@@ -443,29 +445,7 @@ fn layered_blob_key(blob: Option<super::BackgroundLayeredBlob>) -> String {
 }
 
 fn cache_root(cache_home: Option<&Path>) -> Result<PathBuf> {
-    let base = cache_home
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from))
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .ok_or_else(|| {
-            RendererError::Image(image::ImageError::IoError(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "failed to resolve XDG cache directory",
-            )))
-        })?;
-
-    Ok(base.join("veila").join("backgrounds"))
-}
-
-fn stable_hash(input: String) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-
-    for byte in input.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-
-    hash
+    Ok(crate::cache::root(cache_home, "backgrounds").map_err(image::ImageError::IoError)?)
 }
 
 #[cfg(test)]

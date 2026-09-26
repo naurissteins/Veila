@@ -2,14 +2,17 @@ use anyhow::Context;
 use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_common::AppConfig;
 use veila_renderer::background::BackgroundAsset;
-use veila_ui::ShellTheme;
+use veila_ui::{
+    ShellTheme,
+    background::{background_generated, background_treatment},
+};
 use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 
 use crate::{
     background::BackgroundSlideshow,
     state::{
-        CurtainApp, background_generated, background_treatment, effective_battery_snapshot,
-        effective_weather_location, effective_weather_snapshot,
+        CurtainApp, effective_battery_snapshot, effective_weather_location,
+        effective_weather_snapshot,
     },
 };
 

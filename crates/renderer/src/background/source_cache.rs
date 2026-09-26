@@ -1,3 +1,5 @@
+use crate::cache::stable_hash;
+
 use std::{
     fs,
     io::{Read, Write},
@@ -105,7 +107,7 @@ fn cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
-    let key = stable_hash(format!(
+    let key = stable_hash(&format!(
         "{}:{}:{}",
         path.display(),
         metadata.len(),
@@ -116,29 +118,7 @@ fn cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn cache_root(cache_home: Option<&Path>) -> Result<PathBuf> {
-    let base = cache_home
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from))
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .ok_or_else(|| {
-            RendererError::Image(image::ImageError::IoError(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "failed to resolve XDG cache directory",
-            )))
-        })?;
-
-    Ok(base.join("veila").join("source-images"))
-}
-
-fn stable_hash(input: String) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-
-    for byte in input.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-
-    hash
+    Ok(crate::cache::root(cache_home, "source-images").map_err(image::ImageError::IoError)?)
 }
 
 #[cfg(test)]

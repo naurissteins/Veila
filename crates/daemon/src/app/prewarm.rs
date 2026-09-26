@@ -1,31 +1,26 @@
+mod layers;
+mod report;
+use layers::{prewarm_generated_backgrounds, prewarm_layered_backgrounds};
+use report::{
+    GeneratedPrewarmReport, LayeredPrewarmReport, PrewarmReport, PrewarmResult,
+    RenderedPrewarmReport, ScenePrewarmReport, log_generated_prewarm_report, log_prewarm_report,
+    log_scene_prewarm_report,
+};
+
 use std::{
     path::{Path, PathBuf},
     time::Instant,
 };
 
-use veila_common::{
-    AppConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig, HorizontalAlign,
-    LayerVisualConfig, RgbColor, VerticalAlign,
-    config::{
-        BackgroundLayeredBaseMode, BackgroundLayeredConfig,
-        BackgroundScaling as ConfigBackgroundScaling,
-    },
-    elapsed_ms,
-};
+use veila_common::{AppConfig, BackdropVisualConfig, LayerVisualConfig, RgbColor, elapsed_ms};
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
-    background::{
-        BackgroundAsset, BackgroundGradient, BackgroundLayered, BackgroundLayeredBase,
-        BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
-        GeneratedBackground, RenderCacheSummary, SourceCacheStatus,
-        load_cached_generated_render_variant, load_cached_render_variant, prewarm_rendered,
-        prewarm_rendered_generated, prewarm_source, store_cached_generated_render_variant,
-        store_cached_render_variant,
-    },
-    draw::layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
-    shape::Rect,
+    background::{BackgroundTreatment, GeneratedBackground, prewarm_rendered, prewarm_source},
 };
-use veila_ui::{ShellState, ShellTheme};
+use veila_ui::{
+    ShellState, ShellTheme,
+    background::{background_generated, background_treatment},
+};
 
 use crate::app::output_probe;
 
@@ -63,12 +58,11 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
     let fallback = to_clear_color(config.background.color);
     let generated = background_generated(&config.background);
     let treatment = background_treatment(&config.background);
-    let backdrops = backdrop_prewarm_specs(&config);
     let scene = ScenePrewarmConfig::from_config(&config);
     let started_at = Instant::now();
     let rss_kib_before = memory::current_rss_kib();
     let join_result = tokio::task::spawn_blocking(move || {
-        prewarm_backgrounds(background, generated, fallback, treatment, backdrops, scene)
+        prewarm_backgrounds(background, generated, fallback, treatment, scene)
     })
     .await;
 
@@ -123,109 +117,22 @@ fn prewarm_inputs(config: &AppConfig) -> BackgroundPrewarmInputs {
     }
 }
 
-fn log_prewarm_report(report: PrewarmReport, prewarm_helper: bool) {
-    tracing::info!(
-        prewarm_helper,
-        path = %report.path.display(),
-        elapsed_ms = report.source_elapsed_ms,
-        cache_status = match report.source_status {
-            SourceCacheStatus::Hit => "hit",
-            SourceCacheStatus::Warmed => "warmed",
-        },
-        "background source prewarm finished"
-    );
-
-    if let Some(rendered) = report.rendered {
-        tracing::info!(
-            prewarm_helper,
-            path = %report.path.display(),
-            elapsed_ms = rendered.elapsed_ms,
-            probed_outputs = rendered.probed_outputs,
-            cache_hits = rendered.summary.cache_hits,
-            warmed_sizes = rendered.summary.warmed_sizes,
-            "background render prewarm finished"
-        );
-    }
-
-    if let Some(layered) = report.layered {
-        tracing::info!(
-            prewarm_helper,
-            path = %report.path.display(),
-            elapsed_ms = layered.elapsed_ms,
-            probed_outputs = layered.probed_outputs,
-            cache_hits = layered.cache_hits,
-            warmed_sizes = layered.warmed_sizes,
-            "layered background prewarm finished"
-        );
-    }
-}
-
-fn log_generated_prewarm_report(
-    report: GeneratedPrewarmReport,
-    started_at: Instant,
-    prewarm_helper: bool,
-) {
-    tracing::info!(
-        prewarm_helper,
-        elapsed_ms = report.rendered.elapsed_ms,
-        probed_outputs = report.rendered.probed_outputs,
-        cache_hits = report.rendered.summary.cache_hits,
-        warmed_sizes = report.rendered.summary.warmed_sizes,
-        generated_mode = report.mode,
-        "generated background render prewarm finished"
-    );
-
-    if let Some(layered) = report.layered {
-        tracing::info!(
-            prewarm_helper,
-            elapsed_ms = layered.elapsed_ms,
-            probed_outputs = layered.probed_outputs,
-            cache_hits = layered.cache_hits,
-            warmed_sizes = layered.warmed_sizes,
-            generated_mode = report.mode,
-            "generated layered background prewarm finished"
-        );
-    }
-
-    tracing::debug!(
-        prewarm_helper,
-        total_elapsed_ms = elapsed_ms(started_at),
-        generated_mode = report.mode,
-        "generated background prewarm completed"
-    );
-}
-
-fn log_scene_prewarm_report(report: ScenePrewarmReport, prewarm_helper: bool) {
-    tracing::info!(
-        prewarm_helper,
-        elapsed_ms = report.elapsed_ms,
-        probed_outputs = report.probed_outputs,
-        warmed_sizes = report.warmed_sizes,
-        "static scene prewarm finished"
-    );
-}
-
 fn prewarm_backgrounds(
     background: veila_common::config::BackgroundConfig,
     generated: Option<GeneratedBackground>,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
-    backdrops: Vec<BackdropPrewarmSpec>,
     scene: ScenePrewarmConfig,
 ) -> PrewarmResult {
     let outputs = output_probe::current_outputs().unwrap_or_default();
     let scene_shell = scene.into_shell();
-    let static_scene = scene_shell
-        .static_scene_cache_variant(1)
-        .is_some()
-        .then_some(&scene_shell);
     let wallpapers = prewarm_jobs(&background, &outputs)
         .into_iter()
-        .map(|job| prewarm_wallpaper(job, fallback, treatment, &backdrops, static_scene))
+        .map(|job| prewarm_wallpaper(job, fallback, treatment, &scene_shell))
         .collect();
     let generated = generated.and_then(|generated| {
         let sizes = generated_sizes(&background, &outputs);
-        prewarm_generated_backgrounds(generated, treatment, &backdrops, &sizes, static_scene)
+        prewarm_generated_backgrounds(generated, treatment, &scene_shell, &sizes)
     });
     let scene = prewarm_static_scene(&scene_shell, &outputs);
 
@@ -240,8 +147,7 @@ fn prewarm_wallpaper(
     job: PrewarmJob,
     fallback: ClearColor,
     treatment: BackgroundTreatment,
-    backdrops: &[BackdropPrewarmSpec],
-    static_scene: Option<&ShellState>,
+    shell: &ShellState,
 ) -> Result<PrewarmReport, (PathBuf, anyhow::Error)> {
     let source_started_at = Instant::now();
     match prewarm_source(&job.path) {
@@ -249,14 +155,8 @@ fn prewarm_wallpaper(
             let source_elapsed_ms = elapsed_ms(source_started_at);
             let rendered =
                 prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.buffer_sizes());
-            let layered = prewarm_layered_backgrounds(
-                &job.path,
-                fallback,
-                treatment,
-                backdrops,
-                &job.sizes,
-                static_scene,
-            );
+            let layered =
+                prewarm_layered_backgrounds(&job.path, fallback, treatment, shell, &job.sizes);
             Ok(PrewarmReport {
                 path: job.path,
                 source_status: status,
@@ -285,227 +185,6 @@ fn prewarm_rendered_backgrounds(
         elapsed_ms: elapsed_ms(started_at),
         probed_outputs: sizes.len(),
         summary,
-    })
-}
-
-fn prewarm_layered_backgrounds(
-    path: &Path,
-    fallback: ClearColor,
-    treatment: BackgroundTreatment,
-    backdrops: &[BackdropPrewarmSpec],
-    sizes: &[PrewarmSize],
-    static_scene: Option<&ShellState>,
-) -> Option<LayeredPrewarmReport> {
-    if sizes.is_empty() || (backdrops.is_empty() && static_scene.is_none()) {
-        return None;
-    }
-
-    let started_at = Instant::now();
-    let asset = BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?;
-    let mut cache_hits = 0usize;
-    let mut warmed_sizes = 0usize;
-
-    for size in sizes.iter().copied() {
-        let scaled_backdrops = scaled_backdrop_specs(backdrops, size.scale);
-        let variant = backdrop_variant(backdrops, size.scale);
-        let mut base_buffer = None;
-
-        if !backdrops.is_empty() {
-            if load_cached_render_variant(path, size.buffer, treatment, &variant)
-                .ok()
-                .flatten()
-                .is_some()
-            {
-                cache_hits += 1;
-            } else {
-                let mut buffer = asset.render(size.buffer).ok()?;
-                apply_backdrop_specs(&scaled_backdrops, &mut buffer);
-                store_cached_render_variant(path, size.buffer, treatment, &buffer, &variant)
-                    .ok()?;
-                warmed_sizes += 1;
-                base_buffer = Some(buffer);
-            }
-        }
-
-        if let Some(scene) = static_scene
-            && let Some(scene_variant) = scene.static_scene_cache_variant(size.scale.max(1) as u32)
-        {
-            if load_cached_render_variant(path, size.buffer, treatment, &scene_variant)
-                .ok()
-                .flatten()
-                .is_some()
-            {
-                cache_hits += 1;
-                continue;
-            }
-
-            let mut buffer = match base_buffer.take() {
-                Some(buffer) => buffer,
-                None if !backdrops.is_empty() => {
-                    if let Some(buffer) =
-                        load_cached_render_variant(path, size.buffer, treatment, &variant)
-                            .ok()
-                            .flatten()
-                    {
-                        buffer
-                    } else {
-                        let mut buffer = asset.render(size.buffer).ok()?;
-                        apply_backdrop_specs(&scaled_backdrops, &mut buffer);
-                        buffer
-                    }
-                }
-                None => asset.render(size.buffer).ok()?,
-            };
-            scene.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
-            store_cached_render_variant(path, size.buffer, treatment, &buffer, &scene_variant)
-                .ok()?;
-            warmed_sizes += 1;
-        }
-    }
-
-    Some(LayeredPrewarmReport {
-        elapsed_ms: elapsed_ms(started_at),
-        probed_outputs: sizes.len(),
-        cache_hits,
-        warmed_sizes,
-    })
-}
-
-fn prewarm_generated_backgrounds(
-    generated: GeneratedBackground,
-    treatment: BackgroundTreatment,
-    backdrops: &[BackdropPrewarmSpec],
-    sizes: &[PrewarmSize],
-    static_scene: Option<&ShellState>,
-) -> Option<GeneratedPrewarmReport> {
-    if sizes.is_empty() {
-        return None;
-    }
-
-    let started_at = Instant::now();
-    let buffer_sizes = unique_buffer_sizes(sizes);
-    let summary = prewarm_rendered_generated(generated, treatment, &buffer_sizes).ok()?;
-    let rendered = RenderedPrewarmReport {
-        elapsed_ms: elapsed_ms(started_at),
-        probed_outputs: sizes.len(),
-        summary,
-    };
-    let layered =
-        prewarm_generated_layered_backgrounds(generated, treatment, backdrops, sizes, static_scene);
-
-    Some(GeneratedPrewarmReport {
-        mode: generated.mode_name(),
-        rendered,
-        layered,
-    })
-}
-
-fn prewarm_generated_layered_backgrounds(
-    generated: GeneratedBackground,
-    treatment: BackgroundTreatment,
-    backdrops: &[BackdropPrewarmSpec],
-    sizes: &[PrewarmSize],
-    static_scene: Option<&ShellState>,
-) -> Option<LayeredPrewarmReport> {
-    if sizes.is_empty() || (backdrops.is_empty() && static_scene.is_none()) {
-        return None;
-    }
-
-    let started_at = Instant::now();
-    let asset = BackgroundAsset::load(
-        None,
-        ClearColor::opaque(0, 0, 0),
-        Some(generated),
-        treatment,
-    )
-    .ok()?;
-    let mut cache_hits = 0usize;
-    let mut warmed_sizes = 0usize;
-
-    for size in sizes.iter().copied() {
-        let scaled_backdrops = scaled_backdrop_specs(backdrops, size.scale);
-        let variant = backdrop_variant(backdrops, size.scale);
-        let mut base_buffer = None;
-
-        if !backdrops.is_empty() {
-            if load_cached_generated_render_variant(generated, size.buffer, treatment, &variant)
-                .ok()
-                .flatten()
-                .is_some()
-            {
-                cache_hits += 1;
-            } else {
-                let mut buffer = asset.render(size.buffer).ok()?;
-                apply_backdrop_specs(&scaled_backdrops, &mut buffer);
-                store_cached_generated_render_variant(
-                    generated,
-                    size.buffer,
-                    treatment,
-                    &buffer,
-                    &variant,
-                )
-                .ok()?;
-                warmed_sizes += 1;
-                base_buffer = Some(buffer);
-            }
-        }
-
-        if let Some(scene) = static_scene
-            && let Some(scene_variant) = scene.static_scene_cache_variant(size.scale.max(1) as u32)
-        {
-            if load_cached_generated_render_variant(
-                generated,
-                size.buffer,
-                treatment,
-                &scene_variant,
-            )
-            .ok()
-            .flatten()
-            .is_some()
-            {
-                cache_hits += 1;
-                continue;
-            }
-
-            let mut buffer = match base_buffer.take() {
-                Some(buffer) => buffer,
-                None if !backdrops.is_empty() => {
-                    if let Some(buffer) = load_cached_generated_render_variant(
-                        generated,
-                        size.buffer,
-                        treatment,
-                        &variant,
-                    )
-                    .ok()
-                    .flatten()
-                    {
-                        buffer
-                    } else {
-                        let mut buffer = asset.render(size.buffer).ok()?;
-                        apply_backdrop_specs(&scaled_backdrops, &mut buffer);
-                        buffer
-                    }
-                }
-                None => asset.render(size.buffer).ok()?,
-            };
-            scene.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
-            store_cached_generated_render_variant(
-                generated,
-                size.buffer,
-                treatment,
-                &buffer,
-                &scene_variant,
-            )
-            .ok()?;
-            warmed_sizes += 1;
-        }
-    }
-
-    Some(LayeredPrewarmReport {
-        elapsed_ms: elapsed_ms(started_at),
-        probed_outputs: sizes.len(),
-        cache_hits,
-        warmed_sizes,
     })
 }
 
@@ -585,44 +264,6 @@ fn prewarm_jobs(
     jobs
 }
 
-fn scaled_backdrop_specs(
-    backdrops: &[BackdropPrewarmSpec],
-    scale: i32,
-) -> Vec<BackdropPrewarmSpec> {
-    let scale = scale.max(1);
-    backdrops
-        .iter()
-        .map(|backdrop| BackdropPrewarmSpec {
-            mode: backdrop.mode,
-            show_when: backdrop.show_when,
-            visible: backdrop.visible,
-            width: scale_i32(backdrop.width, scale),
-            height: scale_i32(backdrop.height, scale),
-            halign: backdrop.halign,
-            valign: backdrop.valign,
-            x: scale_i32(backdrop.x, scale),
-            y: scale_i32(backdrop.y, scale),
-            full_width: backdrop.full_width,
-            full_height: backdrop.full_height,
-            inset_top: scale_i32(backdrop.inset_top, scale),
-            inset_bottom: scale_i32(backdrop.inset_bottom, scale),
-            inset_left: scale_i32(backdrop.inset_left, scale),
-            inset_right: scale_i32(backdrop.inset_right, scale),
-            rotate: backdrop.rotate,
-            z: backdrop.z,
-            color: backdrop.color,
-            blur_strength: backdrop.blur_strength,
-            radius: scale_i32(backdrop.radius, scale),
-            border_color: backdrop.border_color,
-            border_width: scale_i32(backdrop.border_width, scale),
-        })
-        .collect()
-}
-
-fn scale_i32(value: i32, scale: i32) -> i32 {
-    value.saturating_mul(scale)
-}
-
 fn merge_prewarm_job(jobs: &mut Vec<PrewarmJob>, path: PathBuf, sizes: &[PrewarmSize]) {
     if let Some(job) = jobs.iter_mut().find(|job| job.path == path) {
         for size in sizes {
@@ -662,275 +303,8 @@ fn generated_sizes(
     sizes
 }
 
-fn apply_backdrop_specs(
-    backdrops: &[BackdropPrewarmSpec],
-    buffer: &mut veila_renderer::SoftwareBuffer,
-) {
-    let frame_width = buffer.size().width as i32;
-    let frame_height = buffer.size().height as i32;
-
-    for backdrop in backdrops {
-        if !backdrop.visible {
-            continue;
-        }
-
-        let mode = match backdrop.mode {
-            BackdropMode::Solid => BackdropLayerMode::Solid,
-            BackdropMode::Blur => BackdropLayerMode::Blur,
-        };
-        let rect = backdrop_rect(frame_width, frame_height, backdrop);
-
-        draw_backdrop_layer(
-            buffer,
-            rect,
-            BackdropLayerStyle::new(
-                mode,
-                BackdropLayerShape::Panel,
-                backdrop.color,
-                backdrop.blur_strength,
-                backdrop.radius,
-                backdrop.border_color,
-                backdrop.border_width,
-            )
-            .with_rotation(backdrop.rotate),
-        );
-    }
-}
-
-fn backdrop_prewarm_specs(config: &AppConfig) -> Vec<BackdropPrewarmSpec> {
-    let mut backdrops = config
-        .visuals
-        .backdrop
-        .iter()
-        .filter(|backdrop| backdrop.enabled.unwrap_or(true))
-        .map(|backdrop| BackdropPrewarmSpec {
-            mode: backdrop.mode.unwrap_or_default(),
-            show_when: backdrop.show_when.unwrap_or_default(),
-            visible: backdrop.show_when.unwrap_or_default() == BackdropShowWhen::Always,
-            color: to_clear_color(backdrop.color.unwrap_or(config.visuals.panel)),
-            blur_strength: backdrop.blur_strength.unwrap_or(12).min(24),
-            radius: i32::from(backdrop.radius.unwrap_or(0)).clamp(0, 160),
-            border_color: backdrop.border_color.map(to_clear_color),
-            border_width: i32::from(backdrop.border_width.unwrap_or(0)).clamp(0, 16),
-            full_width: backdrop.full_width.unwrap_or(false),
-            full_height: backdrop.full_height.unwrap_or(false),
-            inset_top: i32::from(backdrop.inset_top.unwrap_or(0)).clamp(0, 4_096),
-            inset_bottom: i32::from(backdrop.inset_bottom.unwrap_or(0)).clamp(0, 4_096),
-            inset_left: i32::from(backdrop.inset_left.unwrap_or(0)).clamp(0, 4_096),
-            inset_right: i32::from(backdrop.inset_right.unwrap_or(0)).clamp(0, 4_096),
-            width: i32::from(backdrop.width.unwrap_or(560)).max(1),
-            height: i32::from(backdrop.height.unwrap_or(600)).max(1),
-            halign: backdrop.position.halign.unwrap_or(HorizontalAlign::Center),
-            valign: backdrop.position.valign.unwrap_or(VerticalAlign::Top),
-            x: i32::from(backdrop.position.x.unwrap_or(0)),
-            y: i32::from(backdrop.position.y.unwrap_or(0)),
-            rotate: normalize_rotation(backdrop.rotate.unwrap_or(0)),
-            z: i32::from(backdrop.z.unwrap_or(0)),
-        })
-        .collect::<Vec<_>>();
-    backdrops.sort_by_key(|backdrop| backdrop.z);
-    backdrops
-}
-
-fn backdrop_variant(backdrops: &[BackdropPrewarmSpec], scale: i32) -> String {
-    use std::fmt::Write as _;
-
-    let mut variant = String::from("backdrop:v2");
-    for backdrop in backdrops {
-        let border = backdrop
-            .border_color
-            .unwrap_or_else(|| ClearColor::rgba(0, 0, 0, 0));
-        let _ = write!(
-            &mut variant,
-            ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
-            backdrop.mode,
-            backdrop.show_when as u8,
-            backdrop.visible as u8,
-            backdrop.halign,
-            backdrop.valign as u8,
-            backdrop.x,
-            backdrop.y,
-            backdrop.full_width as u8,
-            backdrop.full_height as u8,
-            backdrop.inset_top,
-            backdrop.inset_bottom,
-            backdrop.inset_left,
-            backdrop.inset_right,
-            backdrop.width,
-            backdrop.height,
-            backdrop.rotate,
-            backdrop.z,
-            backdrop.color.red,
-            backdrop.color.green,
-            backdrop.color.blue,
-            backdrop.color.alpha,
-            backdrop.blur_strength,
-            backdrop.radius,
-            backdrop.border_width,
-        );
-        let _ = write!(
-            &mut variant,
-            ":{}:{}:{}:{}",
-            border.red, border.green, border.blue, border.alpha
-        );
-    }
-    if scale > 1 {
-        let _ = write!(&mut variant, ":render-scale:{scale}");
-    }
-    variant
-}
-
-fn normalize_rotation(degrees: i16) -> i16 {
-    degrees.rem_euclid(360)
-}
-
-fn anchored_block_x(frame_width: i32, width: i32, halign: HorizontalAlign, x: i32) -> i32 {
-    match halign {
-        HorizontalAlign::Left => x,
-        HorizontalAlign::Center => (frame_width - width) / 2 + x,
-        HorizontalAlign::Right => frame_width - width + x,
-    }
-}
-
-fn backdrop_rect(frame_width: i32, frame_height: i32, backdrop: &BackdropPrewarmSpec) -> Rect {
-    let x = if backdrop.full_width {
-        backdrop.inset_left.min(frame_width)
-    } else {
-        anchored_block_x(frame_width, backdrop.width, backdrop.halign, backdrop.x)
-    };
-    let y = if backdrop.full_height {
-        backdrop.inset_top.min(frame_height)
-    } else {
-        anchored_block_y(frame_height, backdrop.height, backdrop.valign, backdrop.y)
-    };
-    let width = if backdrop.full_width {
-        (frame_width - backdrop.inset_left - backdrop.inset_right).max(0)
-    } else {
-        backdrop.width
-    };
-    let height = if backdrop.full_height {
-        (frame_height - backdrop.inset_top - backdrop.inset_bottom).max(0)
-    } else {
-        backdrop.height
-    };
-
-    Rect::new(x, y, width, height)
-}
-
-fn anchored_block_y(frame_height: i32, height: i32, valign: VerticalAlign, y: i32) -> i32 {
-    match valign {
-        VerticalAlign::Top => y,
-        VerticalAlign::Center => (frame_height - height) / 2 + y,
-        VerticalAlign::Bottom => frame_height - height + y,
-    }
-}
-
 fn to_clear_color(color: veila_common::RgbColor) -> ClearColor {
     ClearColor::rgba(color.0, color.1, color.2, color.3)
-}
-
-fn background_treatment(config: &veila_common::config::BackgroundConfig) -> BackgroundTreatment {
-    BackgroundTreatment {
-        blur_radius: config.blur_strength,
-        dim_strength: config.dim_strength,
-        tint: config.tint.map(to_clear_color),
-        scaling: to_background_scaling(config.scaling),
-    }
-}
-
-fn to_background_scaling(scaling: ConfigBackgroundScaling) -> BackgroundScaling {
-    match scaling {
-        ConfigBackgroundScaling::Fill => BackgroundScaling::Fill,
-        ConfigBackgroundScaling::Fit => BackgroundScaling::Fit,
-        ConfigBackgroundScaling::Center => BackgroundScaling::Center,
-        ConfigBackgroundScaling::Tile => BackgroundScaling::Tile,
-        ConfigBackgroundScaling::Stretch => BackgroundScaling::Stretch,
-    }
-}
-
-fn background_generated(
-    config: &veila_common::config::BackgroundConfig,
-) -> Option<GeneratedBackground> {
-    if let Some(gradient) = config.resolved_gradient() {
-        return Some(GeneratedBackground::Gradient(BackgroundGradient {
-            top_left: to_clear_color(gradient.top_left),
-            top_right: to_clear_color(gradient.top_right),
-            bottom_left: to_clear_color(gradient.bottom_left),
-            bottom_right: to_clear_color(gradient.bottom_right),
-        }));
-    }
-
-    if let Some(radial) = config.resolved_radial() {
-        return Some(GeneratedBackground::Radial(BackgroundRadial {
-            center: to_clear_color(radial.center),
-            edge: to_clear_color(radial.edge),
-            center_x: radial.center_x,
-            center_y: radial.center_y,
-            radius: radial.radius,
-        }));
-    }
-
-    config
-        .resolved_layered()
-        .map(|layered| GeneratedBackground::Layered(to_layered_background(&layered)))
-}
-
-fn to_layered_background(config: &BackgroundLayeredConfig) -> BackgroundLayered {
-    let base = match config.base.effective_mode() {
-        BackgroundLayeredBaseMode::Gradient => {
-            let gradient = config.base.gradient.clone().unwrap_or_default();
-            BackgroundLayeredBase::Gradient(BackgroundGradient {
-                top_left: to_clear_color(gradient.top_left),
-                top_right: to_clear_color(gradient.top_right),
-                bottom_left: to_clear_color(gradient.bottom_left),
-                bottom_right: to_clear_color(gradient.bottom_right),
-            })
-        }
-        BackgroundLayeredBaseMode::Radial => {
-            let radial = config.base.radial.clone().unwrap_or_default();
-            BackgroundLayeredBase::Radial(BackgroundRadial {
-                center: to_clear_color(radial.center),
-                edge: to_clear_color(radial.edge),
-                center_x: radial.center_x,
-                center_y: radial.center_y,
-                radius: radial.radius,
-            })
-        }
-        BackgroundLayeredBaseMode::Solid => {
-            BackgroundLayeredBase::Solid(to_clear_color(config.base.color))
-        }
-    };
-
-    let mut blobs = [None; 3];
-    for (slot, blob) in blobs.iter_mut().zip(config.blobs.iter().take(3)) {
-        *slot = Some(BackgroundLayeredBlob {
-            color: blob_color(blob.color, blob.opacity),
-            x: blob.x,
-            y: blob.y,
-            size: blob.size,
-        });
-    }
-
-    BackgroundLayered { base, blobs }
-}
-
-fn blob_color(color: RgbColor, opacity: u8) -> ClearColor {
-    let alpha = ((u16::from(color.3) * u16::from(opacity.min(100)) + 50) / 100) as u8;
-    ClearColor::rgba(color.0, color.1, color.2, alpha)
-}
-
-struct PrewarmReport {
-    path: PathBuf,
-    source_status: SourceCacheStatus,
-    source_elapsed_ms: u64,
-    rendered: Option<RenderedPrewarmReport>,
-    layered: Option<LayeredPrewarmReport>,
-}
-
-struct PrewarmResult {
-    wallpapers: Vec<Result<PrewarmReport, (PathBuf, anyhow::Error)>>,
-    generated: Option<GeneratedPrewarmReport>,
-    scene: Option<ScenePrewarmReport>,
 }
 
 struct PrewarmJob {
@@ -957,50 +331,6 @@ impl From<&output_probe::ProbedOutput> for PrewarmSize {
             scale: output.scale.max(1),
         }
     }
-}
-
-struct RenderedPrewarmReport {
-    elapsed_ms: u64,
-    probed_outputs: usize,
-    summary: RenderCacheSummary,
-}
-
-struct GeneratedPrewarmReport {
-    mode: &'static str,
-    rendered: RenderedPrewarmReport,
-    layered: Option<LayeredPrewarmReport>,
-}
-
-struct BackdropPrewarmSpec {
-    mode: BackdropMode,
-    show_when: BackdropShowWhen,
-    visible: bool,
-    width: i32,
-    height: i32,
-    halign: HorizontalAlign,
-    valign: VerticalAlign,
-    x: i32,
-    y: i32,
-    full_width: bool,
-    full_height: bool,
-    inset_top: i32,
-    inset_bottom: i32,
-    inset_left: i32,
-    inset_right: i32,
-    rotate: i16,
-    z: i32,
-    color: ClearColor,
-    blur_strength: u8,
-    radius: i32,
-    border_color: Option<ClearColor>,
-    border_width: i32,
-}
-
-struct LayeredPrewarmReport {
-    elapsed_ms: u64,
-    probed_outputs: usize,
-    cache_hits: usize,
-    warmed_sizes: usize,
 }
 
 struct ScenePrewarmConfig {
@@ -1042,12 +372,6 @@ impl ScenePrewarmConfig {
     }
 }
 
-struct ScenePrewarmReport {
-    elapsed_ms: u64,
-    probed_outputs: usize,
-    warmed_sizes: usize,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct BackgroundPrewarmInputs {
     background: veila_common::config::BackgroundConfig,
@@ -1057,208 +381,7 @@ struct BackgroundPrewarmInputs {
 }
 
 #[cfg(test)]
-mod tests {
-    use veila_common::{AppConfig, BackdropMode, BackdropShowWhen, HorizontalAlign, VerticalAlign};
-    use veila_renderer::{ClearColor, FrameSize};
+mod tests;
 
-    use crate::app::output_probe::ProbedOutput;
-
-    use super::{
-        BackdropPrewarmSpec, PrewarmSize, backdrop_rect, backdrop_variant, generated_sizes,
-        prewarm_inputs_changed, prewarm_jobs,
-    };
-
-    #[test]
-    fn detects_background_related_prewarm_changes() {
-        let current = AppConfig::from_toml_str(
-            r#"
-                [background]
-                mode = "file"
-                path = "/tmp/one.jpg"
-            "#,
-        )
-        .expect("current config");
-        let next = AppConfig::from_toml_str(
-            r#"
-                [background]
-                mode = "file"
-                path = "/tmp/two.jpg"
-            "#,
-        )
-        .expect("next config");
-
-        assert!(prewarm_inputs_changed(&current, &next));
-    }
-
-    #[test]
-    fn ignores_unrelated_reload_changes_for_prewarm() {
-        let current = AppConfig::from_toml_str(
-            r##"
-                [background]
-                mode = "gradient"
-
-                [visuals.clock]
-                color = "#FFFFFF"
-            "##,
-        )
-        .expect("current config");
-        let next = AppConfig::from_toml_str(
-            r##"
-                [background]
-                mode = "gradient"
-
-                [visuals.clock]
-                color = "#FF5353"
-            "##,
-        )
-        .expect("next config");
-
-        assert!(!prewarm_inputs_changed(&current, &next));
-    }
-
-    #[test]
-    fn detects_visual_layer_related_prewarm_changes() {
-        let current = AppConfig::from_toml_str(
-            r##"
-                [background]
-                mode = "gradient"
-
-                [[visuals.layer]]
-                kind = "icon"
-                text = "one"
-            "##,
-        )
-        .expect("current config");
-        let next = AppConfig::from_toml_str(
-            r##"
-                [background]
-                mode = "gradient"
-
-                [[visuals.layer]]
-                kind = "icon"
-                text = "two"
-            "##,
-        )
-        .expect("next config");
-
-        assert!(prewarm_inputs_changed(&current, &next));
-    }
-
-    #[test]
-    fn prewarm_jobs_use_scaled_output_buffer_sizes() {
-        let config = AppConfig::from_toml_str(
-            r#"
-                [background]
-                mode = "file"
-                path = "/tmp/wallpaper.jpg"
-            "#,
-        )
-        .expect("config");
-        let outputs = vec![ProbedOutput {
-            name: Some(String::from("DP-1")),
-            size: FrameSize::new(3840, 2160),
-            scale: 2,
-        }];
-
-        let jobs = prewarm_jobs(&config.background, &outputs);
-
-        assert_eq!(jobs.len(), 1);
-        assert_eq!(
-            jobs[0].sizes,
-            vec![PrewarmSize {
-                buffer: FrameSize::new(3840, 2160),
-                scale: 2
-            }]
-        );
-    }
-
-    #[test]
-    fn generated_prewarm_sizes_keep_scale_with_buffer_size() {
-        let config = AppConfig::from_toml_str(
-            r#"
-                [background]
-                mode = "gradient"
-            "#,
-        )
-        .expect("config");
-        let outputs = vec![ProbedOutput {
-            name: Some(String::from("DP-1")),
-            size: FrameSize::new(3840, 2160),
-            scale: 2,
-        }];
-
-        assert_eq!(
-            generated_sizes(&config.background, &outputs),
-            vec![PrewarmSize {
-                buffer: FrameSize::new(3840, 2160),
-                scale: 2
-            }]
-        );
-    }
-
-    #[test]
-    fn backdrop_rect_uses_full_height_geometry() {
-        let backdrop = BackdropPrewarmSpec {
-            mode: BackdropMode::Blur,
-            show_when: BackdropShowWhen::Always,
-            visible: true,
-            width: 540,
-            height: 600,
-            halign: HorizontalAlign::Left,
-            valign: VerticalAlign::Center,
-            x: 0,
-            y: 0,
-            full_width: false,
-            full_height: true,
-            inset_top: 24,
-            inset_bottom: 36,
-            inset_left: 0,
-            inset_right: 0,
-            rotate: 0,
-            z: 0,
-            color: ClearColor::rgba(0, 0, 0, 26),
-            blur_strength: 12,
-            radius: 0,
-            border_color: None,
-            border_width: 0,
-        };
-
-        assert_eq!(
-            backdrop_rect(3840, 2160, &backdrop),
-            veila_renderer::shape::Rect::new(0, 24, 540, 2100)
-        );
-    }
-
-    #[test]
-    fn backdrop_variant_tracks_runtime_geometry_fields() {
-        let backdrop = BackdropPrewarmSpec {
-            mode: BackdropMode::Blur,
-            show_when: BackdropShowWhen::Always,
-            visible: true,
-            width: 540,
-            height: 600,
-            halign: HorizontalAlign::Left,
-            valign: VerticalAlign::Center,
-            x: 0,
-            y: 0,
-            full_width: false,
-            full_height: true,
-            inset_top: 24,
-            inset_bottom: 36,
-            inset_left: 0,
-            inset_right: 0,
-            rotate: 12,
-            z: 0,
-            color: ClearColor::rgba(0, 0, 0, 26),
-            blur_strength: 12,
-            radius: 0,
-            border_color: Some(ClearColor::rgba(255, 255, 255, 24)),
-            border_width: 1,
-        };
-
-        assert_eq!(
-            backdrop_variant(&[backdrop], 2),
-            "backdrop:v2:Blur:0:1:Left:1:0:0:0:1:24:36:0:0:540:600:12:0:0:0:0:26:12:0:1:255:255:255:24:render-scale:2"
-        );
-    }
-}
+#[cfg(test)]
+mod parity_tests;

@@ -1,4 +1,6 @@
 mod avatar;
+#[cfg(test)]
+mod backdrop_cache_tests;
 mod battery;
 mod clock;
 mod emergency;
