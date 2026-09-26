@@ -903,6 +903,15 @@ fn caps_lock_toggle_does_not_change_static_scene_revision() {
 }
 
 #[test]
+fn setting_same_avatar_does_not_invalidate_static_scene() {
+    let mut shell = ShellState::default();
+    let revision = shell.static_scene_revision();
+
+    assert!(!shell.set_avatar(veila_renderer::avatar::AvatarAsset::placeholder()));
+    assert_eq!(shell.static_scene_revision(), revision);
+}
+
+#[test]
 fn keyboard_layout_toggle_does_not_change_static_scene_revision() {
     let mut shell = ShellState::default();
     let original = shell.static_scene_revision();

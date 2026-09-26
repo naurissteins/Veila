@@ -1,3 +1,4 @@
+use memmap2::Advice;
 use smithay_client_toolkit::{
     error::GlobalError,
     globals::ProvidesBoundGlobal,
@@ -83,8 +84,10 @@ impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for ShmHandle {
 impl PoolGeneration {
     fn new(shm: &ShmHandle, size: FrameSize) -> Result<Self> {
         let slot_len = required_pool_len(size)?;
+        let mut pool = RawPool::new(slot_len, shm)?;
+        let _ = pool.mmap().advise(Advice::HugePage);
         Ok(Self {
-            pool: RawPool::new(slot_len, shm)?,
+            pool,
             slot_len,
             slots: Vec::new(),
             last_committed_slot: None,
@@ -118,6 +121,10 @@ impl SurfaceBufferPool {
             last_commit_at: None,
             trim_disabled: false,
         })
+    }
+
+    pub fn has_committed_frame(&self) -> bool {
+        self.current.last_committed_slot.is_some()
     }
 
     pub fn commit_buffer<D>(
@@ -334,6 +341,7 @@ impl SurfaceBufferPool {
                     return Err(RendererError::InvalidFrameSize(size));
                 }
                 self.current.pool.resize(new_len)?;
+                let _ = self.current.pool.mmap().advise(Advice::HugePage);
                 self.current.slots.push(BufferSlot::new());
                 Ok(Some(index))
             }

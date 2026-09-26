@@ -104,6 +104,7 @@ impl CurtainApp {
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         self.avatar_path = avatar_path.clone();
         self.avatar_load_started = false;
+        self.avatar_load_needed = false;
         self.ui_shell.apply_theme_with_username_and_weather(
             theme,
             Some(config.visuals.input_placeholder()),

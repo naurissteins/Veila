@@ -198,6 +198,7 @@ pub(crate) struct CurtainApp {
     pub(crate) ui_shell: ShellState,
     pub(crate) avatar_path: Option<PathBuf>,
     pub(crate) avatar_load_started: bool,
+    pub(crate) avatar_load_needed: bool,
     pub(crate) lock_wait_timeout: Duration,
     pub(crate) startup_started_at: Instant,
     lock_started_at: Instant,
@@ -316,6 +317,10 @@ impl CurtainApp {
         };
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
+        let avatar_load_needed = matches!(
+            &cached_avatar,
+            veila_renderer::avatar::AvatarAsset::Placeholder
+        ) && veila_ui::has_avatar_candidate(avatar_path.as_deref());
         let weather_location = effective_weather_location(&config);
         let weather_snapshot =
             effective_weather_snapshot(&config, options.weather_snapshot.clone());
@@ -445,6 +450,7 @@ impl CurtainApp {
             ui_shell,
             avatar_path,
             avatar_load_started: false,
+            avatar_load_needed,
             lock_wait_timeout,
             startup_started_at,
             lock_started_at: Instant::now(),

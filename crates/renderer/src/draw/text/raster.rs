@@ -91,6 +91,7 @@ pub(super) fn visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBo
         let super::context::FontContext {
             font_system,
             swash_cache,
+            ..
         } = &mut *context;
         let mut cosmic_buffer = Buffer::new(font_system, font_metrics(&style));
         cosmic_buffer.set_wrap(Wrap::None);
@@ -162,6 +163,7 @@ fn rasterize_text(text: &str, style: TextStyle, color: ClearColor) -> Option<Tex
         let super::context::FontContext {
             font_system,
             swash_cache,
+            ..
         } = &mut *context;
         let mut cosmic_buffer = Buffer::new(font_system, font_metrics(&style));
         cosmic_buffer.set_wrap(Wrap::None);

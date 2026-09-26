@@ -42,7 +42,10 @@ impl CurtainApp {
 
         let timing_enabled = tracing::enabled!(tracing::Level::DEBUG);
         let total_started_at = timing_enabled.then(Instant::now);
-        let first_frame = self.lock_surfaces[index].shm_pool.is_none();
+        let first_frame = self.lock_surfaces[index]
+            .shm_pool
+            .as_ref()
+            .is_none_or(|pool| !pool.has_committed_frame());
         let frame_size = size.buffer;
         let render_scale = size.scale.max(1) as u32;
         let revision = self.ui_shell.static_scene_revision();
@@ -153,6 +156,9 @@ impl CurtainApp {
             return Ok(());
         }
         self.note_first_frame_committed(first_frame);
+        if first_frame {
+            self.connection.flush()?;
+        }
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -385,6 +391,9 @@ impl CurtainApp {
             return Ok(());
         }
         self.note_first_frame_committed(first_frame);
+        if first_frame {
+            self.connection.flush()?;
+        }
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {

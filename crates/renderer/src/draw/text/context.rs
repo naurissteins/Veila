@@ -1,4 +1,4 @@
-use std::{cell::RefCell, thread_local};
+use std::{cell::RefCell, collections::HashMap, thread_local};
 
 use cosmic_text::{FontSystem, SwashCache, fontdb::Database};
 
@@ -29,12 +29,14 @@ const BUNDLED_FONTS: [&[u8]; 4] = [
 pub(super) struct FontContext {
     pub(super) font_system: FontSystem,
     pub(super) swash_cache: SwashCache,
+    resolved_families: HashMap<String, Option<String>>,
 }
 
 thread_local! {
     pub(super) static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(FontContext {
         font_system: font_system_with_system_and_bundled_fonts(),
         swash_cache: SwashCache::new(),
+        resolved_families: HashMap::new(),
     });
 }
 
@@ -77,8 +79,15 @@ pub fn resolve_font_family(requested: &str) -> Option<String> {
     }
 
     FONT_CONTEXT.with(|context| {
-        let context = context.borrow();
-        resolve_font_family_in_db(context.font_system.db(), requested)
+        let mut context = context.borrow_mut();
+        if let Some(resolved) = context.resolved_families.get(requested) {
+            return resolved.clone();
+        }
+        let resolved = resolve_font_family_in_db(context.font_system.db(), requested);
+        context
+            .resolved_families
+            .insert(requested.to_owned(), resolved.clone());
+        resolved
     })
 }
 

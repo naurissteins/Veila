@@ -99,9 +99,12 @@ impl CurtainApp {
                         continue;
                     }
                     tracing::info!(elapsed_ms, "loaded deferred curtain avatar image");
-                    self.ui_shell.set_avatar(asset);
+                    let changed = self.ui_shell.set_avatar(asset);
                     self.avatar_load_started = false;
-                    self.render_all_surfaces(queue_handle);
+                    self.avatar_load_needed = false;
+                    if changed {
+                        self.render_all_surfaces(queue_handle);
+                    }
                 }
                 BackgroundEvent::Failed { error, elapsed_ms } => {
                     tracing::warn!(
@@ -114,7 +117,7 @@ impl CurtainApp {
     }
 
     pub(crate) fn maybe_start_avatar_load(&mut self) {
-        if self.avatar_load_started || !self.ready_notified {
+        if !self.avatar_load_needed || self.avatar_load_started || !self.ready_notified {
             return;
         }
 

@@ -41,6 +41,7 @@ calloop = { version = "0.14", features = ["signals"] }
 cosmic-text = "0.19"
 futures-util = "0.3"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+memmap2 = "0.9"
 nix = { version = "0.31", features = ["fs", "process", "signal", "socket", "user"] }
 nonstick = "0.1"
 resvg = { version = "0.47", default-features = false }
