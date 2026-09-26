@@ -251,3 +251,40 @@ fn weather_svg_icons_scale_alpha_without_recoloring() {
     assert_eq!(pixels[6], 30);
     assert_eq!(pixels[7], 64);
 }
+
+#[test]
+fn raster_cache_stays_bounded_and_evicted_icons_render_identically() {
+    ICON_RASTER_CACHE.with(|cache| cache.borrow_mut().clear());
+    let rect = Rect::new(0, 0, 16, 16);
+    let mut first = SoftwareBuffer::new(FrameSize::new(16, 16)).unwrap();
+    draw_icon(
+        &mut first,
+        rect,
+        AssetIcon::Eye,
+        IconStyle::new(ClearColor::opaque(0, 0, 0)),
+    );
+    for red in 1..=super::ICON_RASTER_CACHE_LIMIT {
+        let mut buffer = SoftwareBuffer::new(FrameSize::new(16, 16)).unwrap();
+        draw_icon(
+            &mut buffer,
+            rect,
+            AssetIcon::Eye,
+            IconStyle::new(ClearColor::opaque(red as u8, 0, 0)),
+        );
+    }
+    ICON_RASTER_CACHE.with(|cache| {
+        let cache = cache.borrow();
+        assert_eq!(cache.len(), super::ICON_RASTER_CACHE_LIMIT);
+        assert!(cache.iter().all(|entry| entry.key.color.red != 0));
+    });
+    let mut rerendered = SoftwareBuffer::new(FrameSize::new(16, 16)).unwrap();
+    draw_icon(
+        &mut rerendered,
+        rect,
+        AssetIcon::Eye,
+        IconStyle::new(ClearColor::opaque(0, 0, 0)),
+    );
+    assert_eq!(first, rerendered);
+    ICON_RASTER_CACHE
+        .with(|cache| assert_eq!(cache.borrow().len(), super::ICON_RASTER_CACHE_LIMIT));
+}

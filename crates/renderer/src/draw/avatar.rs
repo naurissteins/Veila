@@ -4,7 +4,6 @@ use std::{
     collections::hash_map::DefaultHasher,
     fs,
     hash::{Hash, Hasher},
-    io::{Read, Write},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
 };
@@ -349,42 +348,21 @@ fn load_cached_avatar(path: &Path) -> Result<Option<Pixmap>> {
 }
 
 fn load_cached_avatar_at(path: &Path, cache_home: Option<&Path>) -> Result<Option<Pixmap>> {
-    let cache_path = avatar_cache_path(path, cache_home)?;
-    let Ok(mut file) = fs::File::open(&cache_path) else {
+    let Ok(cache_path) = avatar_cache_path(path, cache_home) else {
         return Ok(None);
     };
-
-    let avatar = (|| {
-        let mut header = [0u8; 16];
-        file.read_exact(&mut header).ok()?;
-        if &header[..8] != AVATAR_CACHE_MAGIC {
-            return None;
-        }
-
-        let width = u32::from_le_bytes([header[8], header[9], header[10], header[11]]);
-        let height = u32::from_le_bytes([header[12], header[13], header[14], header[15]]);
-        if width == 0
-            || height == 0
-            || width > MAX_PREPARED_AVATAR_SIZE
-            || height > MAX_PREPARED_AVATAR_SIZE
-        {
-            return None;
-        }
-        let size = tiny_skia::IntSize::from_wh(width, height)?;
-        let byte_len = FrameSize::new(width, height).byte_len()?;
-        let expected_len = 16u64.checked_add(u64::try_from(byte_len).ok()?)?;
-        if file.metadata().ok()?.len() != expected_len {
-            return None;
-        }
-
-        let mut data = vec![0; byte_len];
-        file.read_exact(&mut data).ok()?;
-        Pixmap::from_vec(data, size)
-    })();
-    if avatar.is_none() {
-        let _ = fs::remove_file(cache_path);
-    }
-    Ok(avatar)
+    Ok(crate::cache::image::read_pixels(
+        &cache_path,
+        AVATAR_CACHE_MAGIC,
+        MAX_PREPARED_AVATAR_SIZE,
+        None,
+    )
+    .and_then(|(size, pixels)| {
+        Pixmap::from_vec(
+            pixels,
+            tiny_skia::IntSize::from_wh(size.width, size.height)?,
+        )
+    }))
 }
 
 fn store_cached_avatar(path: &Path, pixmap: &Pixmap) -> Result<()> {
@@ -393,28 +371,12 @@ fn store_cached_avatar(path: &Path, pixmap: &Pixmap) -> Result<()> {
 
 fn store_cached_avatar_at(path: &Path, pixmap: &Pixmap, cache_home: Option<&Path>) -> Result<()> {
     let cache_path = avatar_cache_path(path, cache_home)?;
-    let Some(cache_dir) = cache_path.parent() else {
-        return Err(RendererError::Io(std::io::Error::other(
-            "avatar cache path has no parent",
-        )));
-    };
-    fs::create_dir_all(cache_dir)?;
-
-    let temp_path = cache_dir.join(format!(
-        ".{}.tmp",
-        cache_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("avatar")
-    ));
-    let mut file = fs::File::create(&temp_path)?;
-    file.write_all(AVATAR_CACHE_MAGIC)?;
-    file.write_all(&pixmap.width().to_le_bytes())?;
-    file.write_all(&pixmap.height().to_le_bytes())?;
-    file.write_all(pixmap.data())?;
-    file.flush()?;
-    fs::rename(&temp_path, &cache_path)?;
-
+    crate::cache::image::write_pixels(
+        &cache_path,
+        AVATAR_CACHE_MAGIC,
+        FrameSize::new(pixmap.width(), pixmap.height()),
+        pixmap.data(),
+    )?;
     Ok(())
 }
 
@@ -528,7 +490,7 @@ mod tests {
                 .expect("cache miss")
                 .is_none()
         );
-        assert!(!cache_path.exists());
+        assert!(cache_path.exists());
 
         let _ = std::fs::remove_dir_all(root);
     }

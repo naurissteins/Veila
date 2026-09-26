@@ -30,7 +30,7 @@ pub(super) fn prewarm_layered_backgrounds(
     }
 
     let started_at = Instant::now();
-    let asset = BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?;
+    let mut asset = None;
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
@@ -46,7 +46,8 @@ pub(super) fn prewarm_layered_backgrounds(
             {
                 cache_hits += 1;
             } else {
-                let mut buffer = asset.render(size.buffer).ok()?;
+                let mut buffer =
+                    render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?;
                 shell.render_static_backdrops_scaled(&mut buffer, size.scale.max(1) as u32);
                 store_cached_render_variant(path, size.buffer, treatment, &buffer, variant).ok()?;
                 warmed_sizes += 1;
@@ -74,12 +75,15 @@ pub(super) fn prewarm_layered_backgrounds(
                     {
                         buffer
                     } else {
-                        let mut buffer = asset.render(size.buffer).ok()?;
+                        let mut buffer =
+                            render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?;
                         shell.render_static_backdrops_scaled(&mut buffer, size.scale.max(1) as u32);
                         buffer
                     }
                 }
-                (None, None) => asset.render(size.buffer).ok()?,
+                (None, None) => {
+                    render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?
+                }
             };
             shell.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
             store_cached_render_variant(path, size.buffer, treatment, &buffer, &scene_variant)
@@ -229,4 +233,17 @@ fn prewarm_generated_layered_backgrounds(
         cache_hits,
         warmed_sizes,
     })
+}
+
+fn render_wallpaper(
+    asset: &mut Option<BackgroundAsset>,
+    path: &Path,
+    fallback: ClearColor,
+    treatment: BackgroundTreatment,
+    size: veila_renderer::FrameSize,
+) -> Option<veila_renderer::SoftwareBuffer> {
+    if asset.is_none() {
+        *asset = Some(BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?);
+    }
+    asset.as_ref()?.render(size).ok()
 }

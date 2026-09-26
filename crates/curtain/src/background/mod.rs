@@ -132,16 +132,6 @@ impl CurtainApp {
                     self.render_all_surfaces(queue_handle);
                 }
             }
-            BackgroundEvent::AssetReady {
-                path,
-                asset,
-                elapsed_ms,
-            } => {
-                tracing::debug!(elapsed_ms, "loaded deferred curtain background asset");
-                if self.background_path.as_deref() == Some(path.as_path()) {
-                    self.background_asset = asset;
-                }
-            }
             BackgroundEvent::AvatarReady {
                 path,
                 asset,

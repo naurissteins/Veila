@@ -1,3 +1,8 @@
+mod atomic;
+pub(crate) mod image;
+mod prune;
+pub use prune::{CacheKind, CachePrunePolicy, CachePruneReport, prune_cache};
+
 use std::{
     io,
     path::{Path, PathBuf},

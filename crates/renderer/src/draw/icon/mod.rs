@@ -57,6 +57,8 @@ pub(super) struct IconRasterKey {
     pub(super) padding: i32,
 }
 
+const ICON_RASTER_CACHE_LIMIT: usize = 128;
+
 thread_local! {
     pub(super) static ICON_RASTER_CACHE: RefCell<Vec<CachedRasterIcon>> = const { RefCell::new(Vec::new()) };
 }
@@ -126,6 +128,9 @@ fn with_cached_icon_raster<T>(key: IconRasterKey, f: impl FnOnce(&CachedRasterIc
             .iter()
             .position(|entry| entry.key == key)
             .unwrap_or_else(|| {
+                if cache.len() >= ICON_RASTER_CACHE_LIMIT {
+                    cache.remove(0);
+                }
                 cache.push(CachedRasterIcon {
                     key,
                     pixels: rasterize_icon(key, icon_source(key.icon)),

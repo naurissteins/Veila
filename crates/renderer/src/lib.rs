@@ -3,7 +3,7 @@
 //! Shared rendering primitives used by Veila components.
 
 mod blur;
-mod cache;
+pub mod cache;
 
 pub mod background;
 pub mod draw;

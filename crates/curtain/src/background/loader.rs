@@ -30,11 +30,6 @@ pub(crate) enum BackgroundEvent {
         buffers: Vec<(FrameSize, SoftwareBuffer)>,
         elapsed_ms: u128,
     },
-    AssetReady {
-        path: PathBuf,
-        asset: BackgroundAsset,
-        elapsed_ms: u128,
-    },
     AvatarReady {
         path: Option<PathBuf>,
         asset: AvatarAsset,
@@ -76,13 +71,8 @@ pub(crate) fn spawn_loader(
 
         let render_started_at = Instant::now();
         match load_buffers(&path, fallback, treatment, unique_sizes, &cached_sizes) {
-            Ok((asset, rendered_buffers)) => {
+            Ok(rendered_buffers) => {
                 let asset_elapsed_ms = render_started_at.elapsed().as_millis();
-                let _ = sender.send(BackgroundEvent::AssetReady {
-                    path: path.clone(),
-                    asset,
-                    elapsed_ms: asset_elapsed_ms,
-                });
                 if rendered_buffers.is_empty() {
                     return;
                 }
@@ -211,7 +201,7 @@ pub(crate) fn spawn_preloader(
         }
 
         match load_buffers(&path, fallback, treatment, unique_sizes, &cached_sizes) {
-            Ok((_asset, rendered_buffers)) => {
+            Ok(rendered_buffers) => {
                 if !rendered_buffers.is_empty() {
                     store_cached_buffers(&path, treatment, &rendered_buffers);
                 }
@@ -232,18 +222,22 @@ fn load_buffers(
     treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
     cached_sizes: &[FrameSize],
-) -> veila_renderer::Result<(BackgroundAsset, Vec<(FrameSize, SoftwareBuffer)>)> {
+) -> veila_renderer::Result<Vec<(FrameSize, SoftwareBuffer)>> {
+    let sizes: Vec<_> = sizes
+        .into_iter()
+        .filter(|size| !cached_sizes.contains(size))
+        .collect();
+    if sizes.is_empty() {
+        return Ok(Vec::new());
+    }
     let asset = BackgroundAsset::load(Some(path), fallback, None, treatment)?;
     let mut buffers = Vec::with_capacity(sizes.len());
 
     for size in sizes {
-        if cached_sizes.contains(&size) {
-            continue;
-        }
         buffers.push((size, asset.render(size)?));
     }
 
-    Ok((asset, buffers))
+    Ok(buffers)
 }
 
 fn load_cached_buffers(
@@ -295,6 +289,20 @@ mod tests {
     use veila_renderer::FrameSize;
 
     use super::unique_sizes;
+
+    #[test]
+    fn cached_sizes_do_not_open_the_source() {
+        let size = FrameSize::new(16, 9);
+        let buffers = super::load_buffers(
+            std::path::Path::new("/nonexistent/veila-wallpaper.png"),
+            veila_renderer::ClearColor::opaque(0, 0, 0),
+            veila_renderer::background::BackgroundTreatment::default(),
+            vec![size],
+            &[size],
+        )
+        .expect("complete render cache needs no source");
+        assert!(buffers.is_empty());
+    }
 
     #[test]
     fn deduplicates_matching_output_sizes() {
