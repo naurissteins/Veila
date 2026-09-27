@@ -68,7 +68,7 @@ is supplied.
 Ask the running daemon to reload configuration from disk.
 .TP
 .B stop
-Stop the running daemon.
+Stop the running daemon when the session is unlocked. Returns an error while a lock is active.
 .TP
 .B logs
 Show recent logs from the packaged

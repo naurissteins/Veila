@@ -8,7 +8,7 @@ use veila_common::{
 use crate::{
     DaemonOptions,
     adapters::{ipc, logind},
-    domain::auth::AuthPolicy,
+    domain::{auth::AuthPolicy, lock_state::LockState},
 };
 
 use super::super::{
@@ -150,7 +150,7 @@ pub(crate) async fn handle_control_message(
         }
         DaemonControlMessage::Stop => {
             tracing::info!("received daemon stop request over control socket");
-            (DaemonControlResponse::Accepted, true)
+            stop_response(*state, curtain.is_some())
         }
         DaemonControlMessage::Status => (
             DaemonControlResponse::Status(build_daemon_status(
@@ -192,4 +192,41 @@ pub(crate) async fn handle_control_message(
     }
 
     Ok(stop_requested)
+}
+
+fn stop_response(state: LockState, curtain_running: bool) -> (DaemonControlResponse, bool) {
+    if state.is_active() || curtain_running {
+        // The daemon must remain available to authenticate the current lock.
+        return (
+            DaemonControlResponse::Error {
+                reason: "cannot stop Veila while the session is locked; unlock first".to_string(),
+            },
+            false,
+        );
+    }
+    (DaemonControlResponse::Accepted, true)
+}
+
+#[cfg(test)]
+mod tests {
+    use veila_common::ipc::DaemonControlResponse;
+
+    use super::{LockState, stop_response};
+
+    #[test]
+    fn stop_is_refused_during_every_active_lock_phase() {
+        for state in [LockState::Locking, LockState::Locked, LockState::Unlocking] {
+            let (response, stop_requested) = stop_response(state, true);
+            assert!(matches!(response, DaemonControlResponse::Error { .. }));
+            assert!(!stop_requested);
+        }
+        assert_eq!(
+            stop_response(LockState::Unlocked, false),
+            (DaemonControlResponse::Accepted, true)
+        );
+        assert!(matches!(
+            stop_response(LockState::Unlocked, true),
+            (DaemonControlResponse::Error { .. }, false)
+        ));
+    }
 }

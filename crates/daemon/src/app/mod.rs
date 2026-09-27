@@ -29,8 +29,8 @@ use tokio::{
 use veila_common::{AppConfig, LoadedConfig};
 
 use self::events::{
-    handle_auth_message, handle_auth_result, handle_control_message, handle_curtain_exit,
-    handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
+    ShutdownGate, handle_auth_message, handle_auth_result, handle_control_message,
+    handle_curtain_exit, handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
 };
 use self::helpers::current_username;
 use self::runtime::{
@@ -108,6 +108,8 @@ pub async fn run(
     let (control_connection_sender, mut control_connections) =
         tokio::sync::mpsc::unbounded_channel();
     let mut curtain_wait_retry_at = None;
+    let mut shutdown_gate = ShutdownGate::default();
+    let mut next_session_close_check = std::time::Instant::now();
 
     tracing::info!(
         session = %session_path,
@@ -120,6 +122,10 @@ pub async fn run(
     idle::warn_about_legacy_idle_service();
 
     loop {
+        if shutdown_gate.ready(runtime.state, runtime.curtain.is_some()) {
+            tracing::info!("pending daemon shutdown can finish after unlock");
+            break;
+        }
         runtime.idle.sync(&runtime.loaded_config.config.idle);
         runtime
             .sleep_lock
@@ -329,6 +335,17 @@ pub async fn run(
             }
             _ = auto_reload_tick.tick() => {
                 let now = std::time::Instant::now();
+                if shutdown_gate.is_requested() && now >= next_session_close_check {
+                    next_session_close_check = now + std::time::Duration::from_secs(5);
+                    if matches!(
+                        time::timeout(std::time::Duration::from_millis(200), session_proxy.state()).await,
+                        Ok(Ok(state)) if state == "closing"
+                    ) {
+                        // A closing logind session no longer needs an interactive lock daemon.
+                        tracing::info!("logind session is closing; finishing daemon shutdown");
+                        break;
+                    }
+                }
                 let suspend_decision = runtime.suspend_state.evaluate(
                     now,
                     runtime.state.is_active(),
@@ -641,11 +658,19 @@ pub async fn run(
             }
             _ = sigint.recv() => {
                 tracing::info!("received SIGINT");
-                break;
+                if shutdown_gate.request(runtime.state, runtime.curtain.is_some()) {
+                    break;
+                }
+                next_session_close_check = std::time::Instant::now();
+                tracing::info!("deferring daemon shutdown until the active lock is released");
             }
             _ = sigterm.recv() => {
                 tracing::info!("received SIGTERM");
-                break;
+                if shutdown_gate.request(runtime.state, runtime.curtain.is_some()) {
+                    break;
+                }
+                next_session_close_check = std::time::Instant::now();
+                tracing::info!("deferring daemon shutdown until the active lock is released");
             }
         }
     }

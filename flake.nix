@@ -158,6 +158,9 @@
                 ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
+                KillMode = "mixed";
+                SendSIGKILL = false;
+                TimeoutStopSec = "infinity";
                 LimitCORE = 0;
                 PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
               };
@@ -238,6 +241,9 @@
                 ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
+                KillMode = "mixed";
+                SendSIGKILL = false;
+                TimeoutStopSec = "infinity";
                 LimitCORE = 0;
                 PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
               };
