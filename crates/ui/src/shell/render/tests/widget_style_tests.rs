@@ -7,7 +7,7 @@ fn keyboard_layout_style_uses_configured_size() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.keyboard_layout_text_style();
+    let style = shell.render_context().keyboard_layout_text_style();
 
     assert_eq!(style.font_size_px, Some(24));
     assert_eq!(style.scale, 1);
@@ -21,7 +21,7 @@ fn keyboard_layout_style_uses_configured_color() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let style = shell.keyboard_layout_text_style();
+    let style = shell.render_context().keyboard_layout_text_style();
 
     assert_eq!(style.color.red, 232);
     assert_eq!(style.color.green, 238);
@@ -32,7 +32,7 @@ fn keyboard_layout_style_uses_configured_color() {
 #[test]
 fn keyboard_layout_style_defaults_to_geom() {
     let shell = ShellState::new(ShellTheme::default(), None, None, true);
-    let style = shell.keyboard_layout_text_style();
+    let style = shell.render_context().keyboard_layout_text_style();
 
     assert!(
         style
@@ -61,8 +61,8 @@ fn weather_styles_use_configured_font_size_px() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let temperature_style = shell.weather_temperature_text_style();
-    let location_style = shell.weather_location_text_style();
+    let temperature_style = shell.render_context().weather_temperature_text_style();
+    let location_style = shell.render_context().weather_location_text_style();
 
     assert_eq!(temperature_style.font_size_px, Some(42));
     assert_eq!(location_style.font_size_px, Some(22));
@@ -101,11 +101,14 @@ fn weather_styles_preserve_opaque_configured_colors() {
     let shell = ShellState::new(theme, None, None, true);
 
     assert_eq!(
-        shell.weather_temperature_text_style().color,
+        shell
+            .render_context()
+            .weather_temperature_text_style()
+            .color,
         ClearColor::opaque(249, 226, 175)
     );
     assert_eq!(
-        shell.weather_location_text_style().color,
+        shell.render_context().weather_location_text_style().color,
         ClearColor::opaque(249, 226, 175)
     );
 }
@@ -125,8 +128,8 @@ fn now_playing_styles_use_configured_theme_values() {
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
-    let title_style = shell.now_playing_title_text_style();
-    let artist_style = shell.now_playing_artist_text_style();
+    let title_style = shell.render_context().now_playing_title_text_style();
+    let artist_style = shell.render_context().now_playing_artist_text_style();
 
     assert_eq!(title_style.color, ClearColor::rgba(248, 251, 255, 208));
     assert_eq!(title_style.scale, 1);
@@ -163,11 +166,11 @@ fn now_playing_styles_preserve_opaque_configured_colors() {
     let shell = ShellState::new(theme, None, None, true);
 
     assert_eq!(
-        shell.now_playing_title_text_style().color,
+        shell.render_context().now_playing_title_text_style().color,
         ClearColor::opaque(249, 226, 175)
     );
     assert_eq!(
-        shell.now_playing_artist_text_style().color,
+        shell.render_context().now_playing_artist_text_style().color,
         ClearColor::opaque(203, 166, 247)
     );
 }

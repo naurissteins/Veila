@@ -3,12 +3,12 @@ use std::{
     os::unix::fs::MetadataExt,
     os::unix::net::UnixStream,
     path::{Path, PathBuf},
-    sync::mpsc::Sender,
     thread,
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, bail};
+use calloop::channel::Sender;
 
 use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
@@ -186,7 +186,6 @@ mod tests {
         io::{BufRead, BufReader, Write},
         os::unix::net::UnixListener,
         path::PathBuf,
-        sync::mpsc::channel,
         thread,
         time::{Duration, SystemTime, UNIX_EPOCH},
     };
@@ -195,8 +194,27 @@ mod tests {
     use veila_common::ipc::{DaemonMessage, encode_message};
 
     use super::{AuthEvent, submit_password};
+    use calloop::channel::{Channel, Event, channel};
 
     const RECV_TIMEOUT: Duration = Duration::from_secs(5);
+
+    fn receive_event(receiver: Channel<AuthEvent>) -> AuthEvent {
+        let mut event_loop =
+            calloop::EventLoop::<Option<AuthEvent>>::try_new().expect("event loop");
+        event_loop
+            .handle()
+            .insert_source(receiver, |event, _, received| {
+                if let Event::Msg(event) = event {
+                    *received = Some(event);
+                }
+            })
+            .expect("auth event source");
+        let mut received = None;
+        event_loop
+            .dispatch(Some(RECV_TIMEOUT), &mut received)
+            .expect("auth event dispatch");
+        received.expect("auth event before timeout")
+    }
 
     fn unique_socket_path(label: &str) -> PathBuf {
         let stamp = SystemTime::now()
@@ -220,12 +238,7 @@ mod tests {
             sender,
         );
 
-        assert_eq!(
-            receiver
-                .recv_timeout(RECV_TIMEOUT)
-                .expect("an unreachable daemon must still release the input guard"),
-            AuthEvent::Failed { attempt_id: 3 }
-        );
+        assert_eq!(receive_event(receiver), AuthEvent::Failed { attempt_id: 3 });
     }
 
     #[test]
@@ -247,12 +260,7 @@ mod tests {
             sender,
         );
 
-        assert_eq!(
-            receiver
-                .recv_timeout(RECV_TIMEOUT)
-                .expect("a silent daemon must still release the input guard"),
-            AuthEvent::Failed { attempt_id: 5 }
-        );
+        assert_eq!(receive_event(receiver), AuthEvent::Failed { attempt_id: 5 });
 
         daemon.join().expect("daemon stub");
         std::fs::remove_file(&path).ok();
@@ -289,9 +297,7 @@ mod tests {
         );
 
         assert_eq!(
-            receiver
-                .recv_timeout(RECV_TIMEOUT)
-                .expect("rejection event"),
+            receive_event(receiver),
             AuthEvent::Rejected {
                 attempt_id: 9,
                 retry_after_ms: Some(250),
@@ -332,9 +338,7 @@ mod tests {
         );
 
         assert_eq!(
-            receiver
-                .recv_timeout(RECV_TIMEOUT)
-                .expect("error response event"),
+            receive_event(receiver),
             AuthEvent::Failed { attempt_id: 11 }
         );
 

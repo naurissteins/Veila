@@ -12,6 +12,7 @@ env:
 jobs:
   fmt:
     name: Format
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -22,6 +23,7 @@ jobs:
 
   clippy:
     name: Clippy
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -37,6 +39,7 @@ jobs:
 
   check:
     name: Check
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -50,6 +53,7 @@ jobs:
 
   test:
     name: Test
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -63,6 +67,7 @@ jobs:
 
   dependencies:
     name: Dependencies
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -74,6 +79,7 @@ jobs:
 
   theme-previews:
     name: Theme Previews
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -83,7 +89,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev libxkbcommon-dev
-      - run: cargo build -p veila-curtain
+      - run: cargo build --bin veila
       - name: Render bundled theme previews
         run: |
           mkdir -p target/theme-previews
@@ -95,7 +101,7 @@ jobs:
             if grep -q '^mode = "file"' "$theme_path"; then
               printf '\n[background]\nmode = "solid"\n' >> "$config_path"
             fi
-            ./target/debug/veila-curtain \
+            ./target/debug/veila preview \
               --config "$config_path" \
               --preview-png "$preview_path" \
               --preview-size 1920x1080 \

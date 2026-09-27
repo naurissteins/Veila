@@ -1,4 +1,5 @@
 mod color;
+mod font_warmup;
 #[cfg(test)]
 mod tests;
 
@@ -9,7 +10,7 @@ use veila_common::{
     FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode, LayerKind, PowerAction,
     StatusDisplayMode, VerticalAlign, WidgetPositionConfig,
 };
-use veila_renderer::ClearColor;
+use veila_renderer::{ClearColor, RenderScale};
 
 use self::color::to_color;
 use super::PreviewGrid;
@@ -239,9 +240,13 @@ impl Default for ShellTheme {
 }
 
 impl ShellTheme {
+    #[cfg(test)]
     pub(crate) fn scaled_for_render(&self, scale: u32) -> Self {
-        let scale = scale.max(1);
-        if scale == 1 {
+        self.scaled_for_render_at(RenderScale::from_integer(scale))
+    }
+
+    pub(crate) fn scaled_for_render_at(&self, scale: RenderScale) -> Self {
+        if scale == RenderScale::ONE {
             return self.clone();
         }
 
@@ -351,19 +356,19 @@ impl ShellTheme {
     }
 }
 
-fn scale_u32_opt(value: Option<u32>, scale: u32) -> Option<u32> {
-    value.map(|value| value.saturating_mul(scale))
+fn scale_u32_opt(value: Option<u32>, scale: RenderScale) -> Option<u32> {
+    value.map(|value| scale.apply_u32(value))
 }
 
-fn scale_i32_opt(value: Option<i32>, scale: u32) -> Option<i32> {
+fn scale_i32_opt(value: Option<i32>, scale: RenderScale) -> Option<i32> {
     value.map(|value| scale_i32(value, scale))
 }
 
-fn scale_i32(value: i32, scale: u32) -> i32 {
-    value.saturating_mul(scale as i32)
+fn scale_i32(value: i32, scale: RenderScale) -> i32 {
+    scale.apply_i32(value)
 }
 
-fn scale_position(position: WidgetPosition, scale: u32) -> WidgetPosition {
+fn scale_position(position: WidgetPosition, scale: RenderScale) -> WidgetPosition {
     WidgetPosition {
         x: scale_i32(position.x, scale),
         y: scale_i32(position.y, scale),
@@ -371,7 +376,7 @@ fn scale_position(position: WidgetPosition, scale: u32) -> WidgetPosition {
     }
 }
 
-fn scale_backdrop(mut backdrop: Backdrop, scale: u32) -> Backdrop {
+fn scale_backdrop(mut backdrop: Backdrop, scale: RenderScale) -> Backdrop {
     backdrop.radius = scale_i32(backdrop.radius, scale);
     backdrop.border_width = scale_i32(backdrop.border_width, scale);
     backdrop.inset_top = scale_i32(backdrop.inset_top, scale);
@@ -384,8 +389,8 @@ fn scale_backdrop(mut backdrop: Backdrop, scale: u32) -> Backdrop {
     backdrop
 }
 
-fn scale_visual_layer(mut layer: VisualLayer, scale: u32) -> VisualLayer {
-    layer.font_size = layer.font_size.saturating_mul(scale);
+fn scale_visual_layer(mut layer: VisualLayer, scale: RenderScale) -> VisualLayer {
+    layer.font_size = scale.apply_u32(layer.font_size);
     layer.width = scale_i32_opt(layer.width, scale);
     layer.height = scale_i32_opt(layer.height, scale);
     layer.padding = scale_i32(layer.padding, scale);
@@ -394,7 +399,7 @@ fn scale_visual_layer(mut layer: VisualLayer, scale: u32) -> VisualLayer {
     layer
 }
 
-fn scale_power_button(mut button: PowerButton, scale: u32) -> PowerButton {
+fn scale_power_button(mut button: PowerButton, scale: RenderScale) -> PowerButton {
     button.position = button
         .position
         .map(|position| scale_position(position, scale));
@@ -404,7 +409,7 @@ fn scale_power_button(mut button: PowerButton, scale: u32) -> PowerButton {
     button
 }
 
-fn scale_grid(mut grid: PreviewGrid, scale: u32) -> PreviewGrid {
+fn scale_grid(mut grid: PreviewGrid, scale: RenderScale) -> PreviewGrid {
     grid.cell_size = scale_i32(grid.cell_size, scale);
     grid.major_every = grid.major_every.max(1);
     grid

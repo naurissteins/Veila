@@ -1,8 +1,9 @@
+use crate::cache::stable_hash;
+
 use std::{
     collections::hash_map::DefaultHasher,
     fs,
     hash::{Hash, Hasher},
-    io::{Read, Write},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
 };
@@ -347,36 +348,21 @@ fn load_cached_avatar(path: &Path) -> Result<Option<Pixmap>> {
 }
 
 fn load_cached_avatar_at(path: &Path, cache_home: Option<&Path>) -> Result<Option<Pixmap>> {
-    let cache_path = avatar_cache_path(path, cache_home)?;
-    let Ok(mut file) = fs::File::open(&cache_path) else {
+    let Ok(cache_path) = avatar_cache_path(path, cache_home) else {
         return Ok(None);
     };
-
-    let mut header = [0u8; 16];
-    file.read_exact(&mut header)?;
-    if &header[..8] != AVATAR_CACHE_MAGIC {
-        return Ok(None);
-    }
-
-    // Infallible: the header was read with read_exact into a fixed 16-byte array
-    let width = u32::from_le_bytes(header[8..12].try_into().expect("width slice"));
-    let height = u32::from_le_bytes(header[12..16].try_into().expect("height slice"));
-    let size = tiny_skia::IntSize::from_wh(width, height).ok_or(
-        RendererError::InvalidFrameSize(FrameSize::new(width, height)),
-    )?;
-    let Some(byte_len) = FrameSize::new(width, height).byte_len() else {
-        return Err(RendererError::InvalidFrameSize(FrameSize::new(
-            width, height,
-        )));
-    };
-
-    let mut data = vec![0; byte_len];
-    file.read_exact(&mut data)?;
-    Pixmap::from_vec(data, size)
-        .ok_or(RendererError::InvalidFrameSize(FrameSize::new(
-            width, height,
-        )))
-        .map(Some)
+    Ok(crate::cache::image::read_pixels(
+        &cache_path,
+        AVATAR_CACHE_MAGIC,
+        MAX_PREPARED_AVATAR_SIZE,
+        None,
+    )
+    .and_then(|(size, pixels)| {
+        Pixmap::from_vec(
+            pixels,
+            tiny_skia::IntSize::from_wh(size.width, size.height)?,
+        )
+    }))
 }
 
 fn store_cached_avatar(path: &Path, pixmap: &Pixmap) -> Result<()> {
@@ -385,28 +371,12 @@ fn store_cached_avatar(path: &Path, pixmap: &Pixmap) -> Result<()> {
 
 fn store_cached_avatar_at(path: &Path, pixmap: &Pixmap, cache_home: Option<&Path>) -> Result<()> {
     let cache_path = avatar_cache_path(path, cache_home)?;
-    let Some(cache_dir) = cache_path.parent() else {
-        return Err(RendererError::Io(std::io::Error::other(
-            "avatar cache path has no parent",
-        )));
-    };
-    fs::create_dir_all(cache_dir)?;
-
-    let temp_path = cache_dir.join(format!(
-        ".{}.tmp",
-        cache_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("avatar")
-    ));
-    let mut file = fs::File::create(&temp_path)?;
-    file.write_all(AVATAR_CACHE_MAGIC)?;
-    file.write_all(&pixmap.width().to_le_bytes())?;
-    file.write_all(&pixmap.height().to_le_bytes())?;
-    file.write_all(pixmap.data())?;
-    file.flush()?;
-    fs::rename(&temp_path, &cache_path)?;
-
+    crate::cache::image::write_pixels(
+        &cache_path,
+        AVATAR_CACHE_MAGIC,
+        FrameSize::new(pixmap.width(), pixmap.height()),
+        pixmap.data(),
+    )?;
     Ok(())
 }
 
@@ -418,7 +388,7 @@ fn avatar_cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> 
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
-    let key = stable_hash(format!(
+    let key = stable_hash(&format!(
         "{}:{}:{}:{}",
         path.display(),
         metadata.len(),
@@ -430,29 +400,7 @@ fn avatar_cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> 
 }
 
 fn avatar_cache_root(cache_home: Option<&Path>) -> Result<PathBuf> {
-    let base = cache_home
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from))
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .ok_or_else(|| {
-            RendererError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "failed to resolve XDG cache directory",
-            ))
-        })?;
-
-    Ok(base.join("veila").join("avatars"))
-}
-
-fn stable_hash(input: String) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-
-    for byte in input.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-
-    hash
+    Ok(crate::cache::root(cache_home, "avatars")?)
 }
 
 fn premultiply(channel: u8, alpha: u8) -> u8 {
@@ -519,6 +467,30 @@ mod tests {
         assert_eq!(cached.width(), pixmap.width());
         assert_eq!(cached.height(), pixmap.height());
         assert_eq!(cached.data(), pixmap.data());
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rejects_truncated_avatar_cache_before_allocating_pixels() {
+        let root =
+            std::env::temp_dir().join(format!("veila-avatar-cache-invalid-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("cache root");
+        let avatar_path = root.join("avatar.png");
+        std::fs::write(&avatar_path, b"stub").expect("avatar file");
+        let cache_path = super::avatar_cache_path(&avatar_path, Some(&root)).expect("cache path");
+        std::fs::create_dir_all(cache_path.parent().expect("cache dir")).expect("cache dir");
+        let mut cache = Vec::from(super::AVATAR_CACHE_MAGIC.as_slice());
+        cache.extend_from_slice(&512u32.to_le_bytes());
+        cache.extend_from_slice(&512u32.to_le_bytes());
+        std::fs::write(&cache_path, cache).expect("invalid cache");
+
+        assert!(
+            load_cached_avatar_at(&avatar_path, Some(&root))
+                .expect("cache miss")
+                .is_none()
+        );
+        assert!(cache_path.exists());
 
         let _ = std::fs::remove_dir_all(root);
     }

@@ -1,11 +1,11 @@
 use veila_renderer::{
-    ClearColor, FrameSize, PixelBuffer,
+    ClearColor, FrameSize, PixelBuffer, RenderScale,
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::{TextStyle, fit_single_line_text},
 };
 
-use super::{ShellState, ShellStatus};
+use super::{ShellStatus, render::RenderContext};
 
 const BACKGROUND: ClearColor = ClearColor::opaque(12, 14, 18);
 const FOREGROUND: ClearColor = ClearColor::rgba(244, 247, 251, 242);
@@ -15,14 +15,10 @@ const BORDER: ClearColor = ClearColor::rgba(150, 164, 184, 184);
 const PENDING: ClearColor = ClearColor::rgba(147, 197, 253, 226);
 const REJECTED: ClearColor = ClearColor::rgba(248, 113, 113, 230);
 
-impl ShellState {
+impl RenderContext<'_> {
     pub fn render_emergency(&self, buffer: &mut impl PixelBuffer) {
         buffer.clear(BACKGROUND);
         self.render_emergency_overlay(buffer);
-    }
-
-    pub fn render_emergency_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_emergency_scale(scale, |shell| shell.render_emergency(buffer));
     }
 
     pub fn render_emergency_overlay(&self, buffer: &mut impl PixelBuffer) {
@@ -30,22 +26,16 @@ impl ShellState {
         self.render_emergency_dynamic_overlay(buffer);
     }
 
-    pub fn render_emergency_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_emergency_scale(scale, |shell| {
-            shell.render_emergency_overlay(buffer);
-        });
-    }
-
     pub fn render_emergency_static_overlay(&self, buffer: &mut impl PixelBuffer) {
-        let layout = EmergencyLayout::new(buffer.size(), self.render_scale.max(1));
+        let layout = EmergencyLayout::new(buffer.size(), self.render_scale);
         let title = fit_single_line_text(
             "Unlock",
-            TextStyle::new_px(FOREGROUND, 28 * self.render_scale.max(1)).with_line_spacing(0),
+            TextStyle::new_px(FOREGROUND, self.render_scale.apply_u32(28)).with_line_spacing(0),
             layout.input.width as u32,
         );
         let hint = fit_single_line_text(
             "Emergency unlock mode",
-            TextStyle::new_px(MUTED, 15 * self.render_scale.max(1)).with_line_spacing(0),
+            TextStyle::new_px(MUTED, self.render_scale.apply_u32(15)).with_line_spacing(0),
             layout.input.width as u32,
         );
 
@@ -62,25 +52,18 @@ impl ShellState {
         draw_pill(buffer, layout.input, self.emergency_input_style());
     }
 
-    pub fn render_emergency_static_overlay_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.with_emergency_scale(scale, |shell| {
-            shell.render_emergency_static_overlay(buffer);
-        });
-    }
-
     pub fn render_emergency_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
-        let layout = EmergencyLayout::new(buffer.size(), self.render_scale.max(1));
+        let layout = EmergencyLayout::new(buffer.size(), self.render_scale);
         self.render_emergency_input_content(buffer, layout.input);
 
         if let Some(text) = self.emergency_status_text() {
             let block = fit_single_line_text(
                 &text,
-                TextStyle::new_px(self.emergency_status_color(), 15 * self.render_scale.max(1))
-                    .with_line_spacing(0),
+                TextStyle::new_px(
+                    self.emergency_status_color(),
+                    self.render_scale.apply_u32(15),
+                )
+                .with_line_spacing(0),
                 layout.input.width as u32,
             );
             block.draw(
@@ -91,33 +74,11 @@ impl ShellState {
         }
     }
 
-    pub fn render_emergency_dynamic_overlay_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.with_emergency_scale(scale, |shell| {
-            shell.render_emergency_dynamic_overlay(buffer);
-        });
-    }
-
-    fn with_emergency_scale(&self, scale: u32, render: impl FnOnce(&ShellState)) {
-        let scale = scale.max(1);
-        if scale == 1 {
-            render(self);
-            return;
-        }
-
-        let mut scaled = self.clone();
-        scaled.render_scale = scale;
-        render(&scaled);
-    }
-
     fn render_emergency_input_content(&self, buffer: &mut impl PixelBuffer, rect: Rect) {
-        if self.displayed_secret_len() == 0 {
+        if self.shell.displayed_secret_len() == 0 {
             let placeholder = fit_single_line_text(
                 "Password",
-                TextStyle::new_px(MUTED, 16 * self.render_scale.max(1)).with_line_spacing(0),
+                TextStyle::new_px(MUTED, self.render_scale.apply_u32(16)).with_line_spacing(0),
                 rect.width.saturating_sub(48) as u32,
             );
             placeholder.draw(
@@ -131,16 +92,16 @@ impl ShellState {
         draw_masked_input(
             buffer,
             Rect::new(rect.x, rect.y, rect.width, rect.height),
-            self.displayed_secret_len(),
-            self.focused,
+            self.shell.displayed_secret_len(),
+            self.shell.focused,
             self.emergency_mask_style(),
         );
     }
 
     fn emergency_input_style(&self) -> PillStyle {
-        let border = if matches!(self.status, ShellStatus::Rejected { .. }) {
+        let border = if matches!(self.shell.status, ShellStatus::Rejected { .. }) {
             REJECTED
-        } else if self.focused {
+        } else if self.shell.focused {
             BORDER
         } else {
             BORDER.with_alpha(128)
@@ -153,15 +114,15 @@ impl ShellState {
 
     fn emergency_mask_style(&self) -> MaskedInputStyle {
         let mut style = MaskedInputStyle::new(FOREGROUND);
-        let scale = self.render_scale.max(1) as i32;
-        style.bullet_size = style.bullet_size.saturating_mul(scale);
-        style.spacing = style.spacing.saturating_mul(scale);
+        let scale = self.render_scale;
+        style.bullet_size = scale.apply_i32(style.bullet_size);
+        style.spacing = scale.apply_i32(style.spacing);
         style.horizontal_padding = scaled(22, self.render_scale);
         style
     }
 
     fn emergency_status_text(&self) -> Option<String> {
-        match &self.status {
+        match &self.shell.status {
             ShellStatus::Idle => None,
             ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
             ShellStatus::Rejected {
@@ -175,7 +136,7 @@ impl ShellState {
     }
 
     fn emergency_status_color(&self) -> ClearColor {
-        match self.status {
+        match self.shell.status {
             ShellStatus::Pending { .. } => PENDING,
             ShellStatus::Rejected { .. } => REJECTED,
             ShellStatus::Idle => MUTED,
@@ -192,8 +153,7 @@ struct EmergencyLayout {
 }
 
 impl EmergencyLayout {
-    fn new(size: FrameSize, scale: u32) -> Self {
-        let scale = scale.max(1);
+    fn new(size: FrameSize, scale: RenderScale) -> Self {
         let width =
             (size.width as i32 - scaled(64, scale)).clamp(scaled(260, scale), scaled(440, scale));
         let height = scaled(56, scale);
@@ -211,6 +171,6 @@ impl EmergencyLayout {
     }
 }
 
-fn scaled(value: i32, scale: u32) -> i32 {
-    value.saturating_mul(scale.max(1) as i32)
+fn scaled(value: i32, scale: RenderScale) -> i32 {
+    scale.apply_i32(value)
 }

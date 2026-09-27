@@ -1,6 +1,4 @@
 use std::{
-    io::Write,
-    os::unix::net::UnixStream,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -11,6 +9,8 @@ use nix::{
     unistd::Pid,
 };
 use tokio::{
+    io::AsyncWriteExt,
+    net::UnixStream,
     process::{Child, Command},
     time::timeout,
 };
@@ -20,6 +20,15 @@ use veila_common::{
 };
 
 use super::ipc;
+
+const CURTAIN_CONTROL_TIMEOUT: Duration = Duration::from_secs(2);
+const SELF_EXE: &str = "/proc/self/exe";
+
+pub const CURTAIN_SUBCOMMAND: &str = "__curtain";
+pub const PREWARM_SUBCOMMAND: &str = "__prewarm";
+pub const DAEMON_PROCESS_NAME: &str = "veila-daemon";
+pub const CURTAIN_PROCESS_NAME: &str = "veila-curtain";
+pub const PREWARM_PROCESS_NAME: &str = "veila-prewarm";
 
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_curtain(
@@ -34,8 +43,7 @@ pub async fn spawn_curtain(
     force_emergency_ui: bool,
     latency_report: LatencyReportMode,
 ) -> Result<Child> {
-    let binary = curtain_binary_path()?;
-    let mut command = Command::new(&binary);
+    let mut command = self_exe_command(CURTAIN_PROCESS_NAME, CURTAIN_SUBCOMMAND);
     command.arg(format!("--notify-socket={}", notify_socket.display()));
     command.arg(format!("--daemon-socket={}", daemon_socket.display()));
     command.arg(format!("--control-socket={}", control_socket.display()));
@@ -80,11 +88,11 @@ pub async fn spawn_curtain(
         }
     }
 
-    tracing::info!(binary = %binary.display(), "spawning curtain");
+    tracing::info!("spawning curtain");
 
     command
         .spawn()
-        .with_context(|| format!("failed to spawn '{}'", binary.display()))
+        .context("failed to spawn the curtain process")
 }
 
 pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u64>) -> Result<()> {
@@ -93,6 +101,7 @@ pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u6
         &CurtainControlMessage::Unlock { attempt_id },
         "unlock request",
     )
+    .await
 }
 
 pub async fn request_curtain_reload(control_socket: &Path) -> Result<()> {
@@ -101,6 +110,7 @@ pub async fn request_curtain_reload(control_socket: &Path) -> Result<()> {
         &CurtainControlMessage::ReloadConfig,
         "reload request",
     )
+    .await
 }
 
 pub async fn request_curtain_arm_resume_input_guard(control_socket: &Path) -> Result<()> {
@@ -109,6 +119,7 @@ pub async fn request_curtain_arm_resume_input_guard(control_socket: &Path) -> Re
         &CurtainControlMessage::ArmResumeInputGuard,
         "resume input guard request",
     )
+    .await
 }
 
 pub async fn request_curtain_mark_resumed(control_socket: &Path) -> Result<()> {
@@ -117,6 +128,7 @@ pub async fn request_curtain_mark_resumed(control_socket: &Path) -> Result<()> {
         &CurtainControlMessage::MarkResumed,
         "resume completed request",
     )
+    .await
 }
 
 pub async fn request_curtain_now_playing_update(
@@ -130,6 +142,7 @@ pub async fn request_curtain_now_playing_update(
         },
         "now playing update",
     )
+    .await
 }
 
 pub async fn request_curtain_power_status_update(
@@ -143,6 +156,7 @@ pub async fn request_curtain_power_status_update(
         },
         "power status update",
     )
+    .await
 }
 
 pub async fn request_curtain_fingerprint_status_update(
@@ -156,27 +170,44 @@ pub async fn request_curtain_fingerprint_status_update(
         },
         "fingerprint status update",
     )
+    .await
 }
 
-fn send_curtain_control_message(
+async fn send_curtain_control_message(
     control_socket: &Path,
     message: &CurtainControlMessage,
     label: &str,
 ) -> Result<()> {
-    let mut stream = UnixStream::connect(control_socket).with_context(|| {
+    let mut payload =
+        encode_message(message).with_context(|| format!("failed to encode {label}"))?;
+    payload.push('\n');
+
+    timeout(
+        CURTAIN_CONTROL_TIMEOUT,
+        write_curtain_control_payload(control_socket, payload.as_bytes(), label),
+    )
+    .await
+    .with_context(|| format!("timed out sending {label}"))?
+}
+
+async fn write_curtain_control_payload(
+    control_socket: &Path,
+    payload: &[u8],
+    label: &str,
+) -> Result<()> {
+    let mut stream = UnixStream::connect(control_socket).await.with_context(|| {
         format!(
             "failed to connect to curtain control socket {}",
             control_socket.display()
         )
     })?;
-    let mut payload =
-        encode_message(message).with_context(|| format!("failed to encode {label}"))?;
-    payload.push('\n');
     stream
-        .write_all(payload.as_bytes())
+        .write_all(payload)
+        .await
         .with_context(|| format!("failed to write {label}"))?;
     stream
         .flush()
+        .await
         .with_context(|| format!("failed to flush {label}"))
 }
 
@@ -214,18 +245,16 @@ pub async fn wait_for_graceful_curtain_exit(
 }
 
 pub async fn spawn_background_prewarm_helper(config_path: Option<&Path>) -> Result<Child> {
-    let binary = daemon_binary_path()?;
-    let mut command = Command::new(&binary);
-    command.arg("--background-prewarm-only");
+    let mut command = self_exe_command(PREWARM_PROCESS_NAME, PREWARM_SUBCOMMAND);
     if let Some(config_path) = config_path {
         command.arg(format!("--config={}", config_path.display()));
     }
 
-    tracing::debug!(binary = %binary.display(), "spawning background prewarm helper");
+    tracing::debug!("spawning background prewarm helper");
 
     command
         .spawn()
-        .with_context(|| format!("failed to spawn '{}'", binary.display()))
+        .context("failed to spawn the background prewarm helper")
 }
 
 pub fn notify_socket_path() -> Result<PathBuf> {
@@ -236,32 +265,9 @@ pub fn control_socket_path() -> Result<PathBuf> {
     ipc::transient_socket_path("control")
 }
 
-fn curtain_binary_path() -> Result<PathBuf> {
-    if let Ok(path) = std::env::var("VEILA_CURTAIN_BIN") {
-        return Ok(PathBuf::from(path));
-    }
-
-    if let Ok(mut current_exe) = std::env::current_exe() {
-        current_exe.set_file_name("veila-curtain");
-        if current_exe.exists() {
-            return Ok(current_exe);
-        }
-    }
-
-    Ok(PathBuf::from("veila-curtain"))
-}
-
-fn daemon_binary_path() -> Result<PathBuf> {
-    if let Ok(path) = std::env::var("VEILAD_BIN") {
-        return Ok(PathBuf::from(path));
-    }
-
-    if let Ok(mut current_exe) = std::env::current_exe() {
-        current_exe.set_file_name("veilad");
-        if current_exe.exists() {
-            return Ok(current_exe);
-        }
-    }
-
-    Ok(PathBuf::from("veilad"))
+fn self_exe_command(process_name: &str, subcommand: &str) -> Command {
+    // Re-executing the running inode keeps daemon and curtain on one version across package upgrades.
+    let mut command = Command::new(SELF_EXE);
+    command.arg0(process_name).arg(subcommand);
+    command
 }

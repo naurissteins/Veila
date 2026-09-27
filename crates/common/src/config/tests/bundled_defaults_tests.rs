@@ -11,7 +11,7 @@ fn first_run_defaults_match_bundled_theme() {
     assert!(!config.lock.log_to_file);
     assert_eq!(
         config.lock.log_file_path,
-        std::path::PathBuf::from("~/.local/state/veila/veilad.log")
+        std::path::PathBuf::from("~/.local/state/veila/veila.log")
     );
     assert!(!config.lock.hide_cursor);
     assert!(config.lock.allow_empty_password);

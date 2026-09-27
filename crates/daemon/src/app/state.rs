@@ -20,8 +20,10 @@ use crate::domain::{
 use super::{
     battery::BatteryHandle,
     fingerprint::FingerprintHandle,
+    idle::IdleMonitor,
     mpris::NowPlayingHandle,
     runtime::AuthResult,
+    sleep::SleepLockInhibitor,
     suspend::{LockedSuspendState, suspend_delay_seconds},
     weather::WeatherHandle,
 };
@@ -50,6 +52,8 @@ pub(super) struct AppRuntime {
     pub(super) last_power_status_snapshot: Option<LockPowerStatusSnapshot>,
     pub(super) power_status_sent: bool,
     pub(super) fingerprint: FingerprintHandle,
+    pub(super) idle: IdleMonitor,
+    pub(super) sleep_lock: SleepLockInhibitor,
 }
 
 impl AppRuntime {
@@ -98,6 +102,8 @@ impl AppRuntime {
             last_power_status_snapshot: None,
             power_status_sent: false,
             fingerprint: FingerprintHandle::new(),
+            idle: IdleMonitor::default(),
+            sleep_lock: SleepLockInhibitor::default(),
         }
     }
 

@@ -1,87 +1,51 @@
+use crate::cache::stable_hash;
+
 use std::{
     fs,
-    io::{Read, Write},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
 };
 
 use image::RgbaImage;
 
-use crate::{FrameSize, RendererError, Result};
+use crate::{FrameSize, Result};
 
 const CACHE_MAGIC: &[u8; 8] = b"KWYIMG01";
+const MAX_CACHED_DIMENSION: u32 = 16_384;
+
+pub(super) fn has_cached_rgba(path: &Path) -> bool {
+    cache_path(path, None).ok().is_some_and(|path| {
+        crate::cache::image::cached_size(&path, CACHE_MAGIC, MAX_CACHED_DIMENSION).is_some()
+    })
+}
 
 pub(crate) fn load_cached_rgba(path: &Path) -> Result<Option<RgbaImage>> {
-    let cache_path = cache_path(path, None)?;
-    let Ok(mut file) = fs::File::open(&cache_path) else {
+    load_cached_rgba_at(path, None)
+}
+
+fn load_cached_rgba_at(path: &Path, cache_home: Option<&Path>) -> Result<Option<RgbaImage>> {
+    let Ok(cache_path) = cache_path(path, cache_home) else {
         return Ok(None);
     };
-
-    let mut header = [0u8; 16];
-    file.read_exact(&mut header)
-        .map_err(image::ImageError::from)?;
-    if &header[..8] != CACHE_MAGIC {
-        return Ok(None);
-    }
-
-    let size = FrameSize::new(
-        // Infallible: the header was read with read_exact into a fixed 16-byte array
-        u32::from_le_bytes(header[8..12].try_into().expect("width slice")),
-        u32::from_le_bytes(header[12..16].try_into().expect("height slice")),
-    );
-    let Some(byte_len) = size.byte_len() else {
-        return Err(RendererError::InvalidFrameSize(size));
-    };
-
-    let mut pixels = vec![0; byte_len];
-    file.read_exact(&mut pixels)
-        .map_err(image::ImageError::from)?;
-
-    RgbaImage::from_raw(size.width, size.height, pixels)
-        .ok_or(RendererError::InvalidFrameSize(size))
-        .map(Some)
+    Ok(
+        crate::cache::image::read_pixels(&cache_path, CACHE_MAGIC, MAX_CACHED_DIMENSION, None)
+            .and_then(|(size, pixels)| RgbaImage::from_raw(size.width, size.height, pixels)),
+    )
 }
 
 pub(crate) fn store_cached_rgba(path: &Path, image: &RgbaImage) -> Result<()> {
-    let cache_path = cache_path(path, None)?;
-    let Some(cache_dir) = cache_path.parent() else {
-        return Err(RendererError::Image(image::ImageError::IoError(
-            std::io::Error::other("cache path has no parent"),
-        )));
-    };
-    fs::create_dir_all(cache_dir)
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
+    store_cached_rgba_at(path, image, None)
+}
 
-    let temp_path = cache_dir.join(format!(
-        ".{}.tmp",
-        cache_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("source")
-    ));
-    let mut file = fs::File::create(&temp_path)
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-    file.write_all(CACHE_MAGIC)
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-    file.write_all(&image.width().to_le_bytes())
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-    file.write_all(&image.height().to_le_bytes())
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-    file.write_all(image.as_raw())
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-    file.flush()
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-    fs::rename(&temp_path, &cache_path)
-        .map_err(image::ImageError::from)
-        .map_err(RendererError::from)?;
-
+fn store_cached_rgba_at(path: &Path, image: &RgbaImage, cache_home: Option<&Path>) -> Result<()> {
+    let cache_path = cache_path(path, cache_home)?;
+    crate::cache::image::write_pixels(
+        &cache_path,
+        CACHE_MAGIC,
+        FrameSize::new(image.width(), image.height()),
+        image.as_raw(),
+    )
+    .map_err(image::ImageError::from)?;
     Ok(())
 }
 
@@ -93,7 +57,7 @@ fn cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
-    let key = stable_hash(format!(
+    let key = stable_hash(&format!(
         "{}:{}:{}",
         path.display(),
         metadata.len(),
@@ -104,43 +68,19 @@ fn cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
 }
 
 fn cache_root(cache_home: Option<&Path>) -> Result<PathBuf> {
-    let base = cache_home
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from))
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .ok_or_else(|| {
-            RendererError::Image(image::ImageError::IoError(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "failed to resolve XDG cache directory",
-            )))
-        })?;
-
-    Ok(base.join("veila").join("source-images"))
-}
-
-fn stable_hash(input: String) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-
-    for byte in input.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-
-    hash
+    Ok(crate::cache::root(cache_home, "source-images").map_err(image::ImageError::IoError)?)
 }
 
 #[cfg(test)]
 mod tests {
     use std::{
         fs,
-        io::{Read, Write},
-        path::Path,
         time::{SystemTime, UNIX_EPOCH},
     };
 
     use image::{Rgba, RgbaImage};
 
-    use super::cache_path;
+    use super::{CACHE_MAGIC, cache_path, load_cached_rgba_at, store_cached_rgba_at};
 
     #[test]
     fn round_trips_decoded_source_cache() {
@@ -166,39 +106,26 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
-    fn load_cached_rgba_at(
-        path: &Path,
-        cache_home: Option<&Path>,
-    ) -> super::Result<Option<RgbaImage>> {
-        let cache_path = cache_path(path, cache_home)?;
-        let Ok(mut file) = fs::File::open(&cache_path) else {
-            return Ok(None);
-        };
+    #[test]
+    fn rejects_truncated_source_cache_before_allocating_pixels() {
+        let root =
+            std::env::temp_dir().join(format!("veila-source-cache-invalid-{}", std::process::id()));
+        fs::create_dir_all(root.join("veila/source-images")).expect("cache dir");
+        let wallpaper = root.join("wallpaper.png");
+        fs::write(&wallpaper, b"stub").expect("wallpaper file");
+        let path = cache_path(&wallpaper, Some(&root)).expect("cache path");
+        let mut cache = Vec::from(CACHE_MAGIC.as_slice());
+        cache.extend_from_slice(&16_000u32.to_le_bytes());
+        cache.extend_from_slice(&16_000u32.to_le_bytes());
+        fs::write(&path, cache).expect("invalid cache");
 
-        let mut header = [0u8; 16];
-        file.read_exact(&mut header).expect("header");
-        let width = u32::from_le_bytes(header[8..12].try_into().expect("width"));
-        let height = u32::from_le_bytes(header[12..16].try_into().expect("height"));
-        let mut pixels = vec![0; (width as usize) * (height as usize) * 4];
-        file.read_exact(&mut pixels).expect("pixels");
+        assert!(
+            load_cached_rgba_at(&wallpaper, Some(&root))
+                .expect("cache miss")
+                .is_none()
+        );
+        assert!(path.exists());
 
-        Ok(RgbaImage::from_raw(width, height, pixels))
-    }
-
-    fn store_cached_rgba_at(
-        path: &Path,
-        image: &RgbaImage,
-        cache_home: Option<&Path>,
-    ) -> super::Result<()> {
-        let cache_path = cache_path(path, cache_home)?;
-        let cache_dir = cache_path.parent().expect("cache dir");
-        fs::create_dir_all(cache_dir).expect("cache dir");
-        let mut file = fs::File::create(cache_path).expect("cache file");
-        file.write_all(super::CACHE_MAGIC).expect("magic");
-        file.write_all(&image.width().to_le_bytes()).expect("width");
-        file.write_all(&image.height().to_le_bytes())
-            .expect("height");
-        file.write_all(image.as_raw()).expect("pixels");
-        Ok(())
+        let _ = fs::remove_dir_all(root);
     }
 }

@@ -34,6 +34,10 @@ pub fn load_cached_avatar(avatar_path: Option<PathBuf>) -> AvatarAsset {
     AvatarAsset::placeholder()
 }
 
+pub fn has_avatar_candidate(avatar_path: Option<&Path>) -> bool {
+    avatar_path.is_some() || default_face_path().is_some()
+}
+
 pub(super) fn current_retry_seconds(retry_until: Instant) -> Option<u64> {
     let seconds = retry_until
         .saturating_duration_since(Instant::now())
@@ -85,5 +89,6 @@ fn default_face_path() -> Option<PathBuf> {
 impl ShellState {
     pub(super) fn bump_static_scene_revision(&mut self) {
         self.static_scene_revision = self.static_scene_revision.saturating_add(1);
+        self.static_scene_variant_cache.get_mut().clear();
     }
 }

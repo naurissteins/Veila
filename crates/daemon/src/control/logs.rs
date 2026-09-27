@@ -2,14 +2,20 @@ use std::{
     collections::VecDeque,
     fs::File,
     io::{BufRead, BufReader},
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
 };
 
 use anyhow::{Context, Result, bail};
 use veila_common::AppConfig;
 
-use crate::{DaemonOptions, options::LogTarget};
+use super::DAEMON_SERVICE;
+use crate::{
+    DaemonOptions,
+    adapters::process::{CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME},
+    logging::normalize_log_file_path,
+    options::LogTarget,
+};
 
 pub fn print_logs(options: &DaemonOptions) -> Result<()> {
     if options.logs_file {
@@ -84,7 +90,7 @@ fn print_file_logs(options: &DaemonOptions) -> Result<()> {
             loaded.config.lock.log_file_path.display()
         );
         println!();
-        println!("Then restart veilad so it starts writing to the file.");
+        println!("Then restart the Veila daemon so it starts writing to the file.");
         return Ok(());
     }
 
@@ -92,7 +98,7 @@ fn print_file_logs(options: &DaemonOptions) -> Result<()> {
         println!("file logging is enabled, but the log file does not exist yet");
         println!("path={}", configured_path.display());
         println!();
-        println!("Restart veilad and try again after it has written its first log line.");
+        println!("Restart the Veila daemon and try again after it has written its first log line.");
         return Ok(());
     }
 
@@ -152,54 +158,24 @@ fn print_recent_file_lines(path: &Path, lines: u32) -> Result<()> {
 fn apply_target(command: &mut Command, target: LogTarget) {
     match target {
         LogTarget::LockService => {
-            command.arg("-u").arg("veilad.service");
-        }
-        LogTarget::All => {
-            command
-                .arg("-u")
-                .arg("veilad.service")
-                .arg("-u")
-                .arg("veila-idle.service");
+            command.arg("-u").arg(DAEMON_SERVICE);
         }
         LogTarget::Daemon => {
-            command.arg("-u").arg("veilad.service").arg("_COMM=veilad");
+            command
+                .arg("-u")
+                .arg(DAEMON_SERVICE)
+                .arg(format!("_COMM={DAEMON_PROCESS_NAME}"));
         }
         LogTarget::Curtain => {
             command
                 .arg("-u")
-                .arg("veilad.service")
-                .arg("_COMM=veila-curtain");
+                .arg(DAEMON_SERVICE)
+                .arg(format!("_COMM={CURTAIN_PROCESS_NAME}"));
         }
         LogTarget::Ui => {
-            command
-                .arg("-u")
-                .arg("veilad.service")
-                .arg("--grep=veila_ui");
-        }
-        LogTarget::Idle => {
-            command.arg("-u").arg("veila-idle.service");
+            command.arg("-u").arg(DAEMON_SERVICE).arg("--grep=veila_ui");
         }
     }
-}
-
-fn normalize_log_file_path(path: &Path) -> PathBuf {
-    let Some(raw) = path.to_str() else {
-        return path.to_path_buf();
-    };
-
-    if raw == "~" {
-        return std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| path.to_path_buf());
-    }
-
-    if let Some(rest) = raw.strip_prefix("~/")
-        && let Some(home) = std::env::var_os("HOME")
-    {
-        return PathBuf::from(home).join(rest);
-    }
-
-    path.to_path_buf()
 }
 
 fn normalize_since(value: &str) -> String {

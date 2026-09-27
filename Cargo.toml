@@ -1,3 +1,23 @@
+[package]
+name = "veila"
+description = "Secure, elegant, and fast Wayland screen locker"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+veila-curtain = { path = "crates/curtain" }
+veila-daemon = { path = "crates/daemon" }
+anyhow = { workspace = true }
+nix = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
+
 [workspace]
 resolver = "2"
 members = [
@@ -21,7 +41,8 @@ calloop = { version = "0.14", features = ["signals"] }
 cosmic-text = "0.19"
 futures-util = "0.3"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
-nix = { version = "0.31", features = ["process", "signal", "socket", "user"] }
+memmap2 = "0.9"
+nix = { version = "0.31", features = ["fs", "process", "signal", "socket", "user"] }
 nonstick = "0.1"
 resvg = { version = "0.47", default-features = false }
 serde = { version = "1", features = ["derive"] }
@@ -30,12 +51,18 @@ smithay-client-toolkit = { version = "0.20", default-features = false, features 
 thiserror = "2"
 time = { version = "0.3", features = ["local-offset"] }
 tiny-skia = "0.12"
-tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt", "signal", "sync", "time"] }
 toml = "1"
 tracing = "0.1"
+tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = { version = "3", default-features = true, features = ["json"] }
 wayland-protocols-wlr = "0.3"
 xkbcommon = "0.8"
 zeroize = "1"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"

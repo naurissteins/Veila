@@ -1,3 +1,5 @@
+use crate::blend_component;
+
 use super::BackgroundTreatment;
 use crate::SoftwareBuffer;
 
@@ -29,9 +31,4 @@ pub(super) fn apply_treatment(buffer: &mut SoftwareBuffer, treatment: Background
 fn alpha_from_percent(percent: u8) -> u16 {
     let clamped = percent.min(100);
     (u16::from(clamped) * 255 + 50) / 100
-}
-
-fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
-    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
-    blended.min(u16::from(u8::MAX)) as u8
 }

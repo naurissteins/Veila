@@ -4,6 +4,7 @@
 
 mod app;
 mod background;
+mod help;
 mod ipc;
 mod keyboard_cache;
 mod preview;
@@ -18,11 +19,6 @@ use veila_common::{
     BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot,
     ipc::{LatencyReportMode, decode_message},
 };
-
-/// Returns the component identifier used by logs and process supervision.
-pub const fn component_name() -> &'static str {
-    "veila-curtain"
-}
 
 /// Command-line options for the curtain process.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -293,11 +289,23 @@ fn parse_latency_report_arg(arg: &str) -> Result<Option<LatencyReportMode>> {
 /// Starts the secure curtain process.
 pub fn run(options: CurtainOptions) -> Result<()> {
     if options.help {
-        print_help();
+        help::print_curtain_help();
         return Ok(());
     }
 
     validate_invocation_mode(&options)?;
+
+    app::run(options)
+}
+
+/// Renders the lock scene to a PNG without taking a session lock.
+pub fn run_preview(options: CurtainOptions) -> Result<()> {
+    if options.help {
+        help::print_preview_help();
+        return Ok(());
+    }
+
+    validate_preview_mode(&options)?;
 
     app::run(options)
 }
@@ -307,63 +315,25 @@ fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
         return Ok(());
     }
 
-    print_help();
+    help::print_curtain_help();
     bail!(
-        "refusing to start a real lock session from a plain `veila-curtain` launch; use `veila --lock`, or pass `--lock` if you really want a direct curtain test"
+        "refusing to start a real lock session from a plain `veila __curtain` launch; use `veila lock`, or pass `--lock` if you really want a direct curtain test"
     );
 }
 
-fn print_help() {
-    println!(
-        "\
-Veila secure curtain and preview CLI
+fn validate_preview_mode(options: &CurtainOptions) -> Result<()> {
+    if options.lock || options.uses_daemon_lock_flow() {
+        bail!(
+            "`veila preview` never locks the session; remove --lock and the daemon socket options"
+        );
+    }
 
-Usage:
-  {name} [options]
+    if options.preview_png.is_none() {
+        help::print_preview_help();
+        bail!("`veila preview` requires --preview-png=<path>");
+    }
 
-General:
-  -h, --help                         Show this help text
-      --lock                         Start a real lock session when running directly
-      --force-emergency-ui           Use the built-in emergency unlock prompt
-      --latency-report[=verbose]     Send startup timing details to the daemon
-      --config=<path>                Use a specific config file
-      --notify-socket=<path>         Notify socket for curtain readiness
-      --daemon-socket=<path>         Daemon auth IPC socket
-      --control-socket=<path>        Curtain live-control IPC socket
-
-Preview mode:
-      --preview-png=<path>                     Render the scene to a PNG instead of locking
-      --preview-size=<width>x<height>          Output size for preview rendering
-      --preview-artwork=<path>                 Override now playing artwork for preview
-      --preview-title=<text>                   Override now playing title for preview
-      --preview-artist=<text>                  Override now playing artist for preview
-      --preview-username=<text>                Override preview username label
-      --preview-hide-widgets                   Hide preview widgets and keyboard label
-      --preview-hide-weather                   Hide the preview weather widget
-      --preview-hide-battery                   Hide the preview battery widget
-      --preview-hide-now-playing               Hide the preview now playing widget
-      --preview-hide-keyboard-label            Hide the sample preview keyboard label
-      --preview-weather-location=<text>        Override preview weather location label
-      --preview-weather-condition=<name>       Override preview weather icon/condition
-      --preview-weather-temperature=<celsius>  Override preview weather temperature
-      --preview-battery-percent=<0-100>        Override preview battery percentage
-      --preview-battery-charging=<bool>        Override preview battery charging state
-      --preview-time=<HH:MM>                   Override preview clock time using the local date
-
-Daemon snapshot overrides:
-      --weather-snapshot=<payload>      Inject a weather snapshot
-      --battery-snapshot=<payload>      Inject a battery snapshot
-      --now-playing-snapshot=<payload>  Inject a now playing snapshot
-
-Notes:
-  Running `{name}` with no arguments exits intentionally to avoid accidental locks.
-  Use `veila --lock` for normal locking, or `veila-curtain --lock` for direct curtain testing.
-  If no preview option is given and daemon sockets are provided, {name} starts the secure session-lock curtain.
-  --preview-png renders directly to a PNG without taking a real lock.
-  Options accept both --flag=value and --flag value forms.
-",
-        name = component_name()
-    );
+    Ok(())
 }
 
 fn parse_preview_size(input: &str) -> Result<veila_renderer::FrameSize> {
@@ -449,7 +419,7 @@ mod tests {
         ipc::{LatencyReportMode, encode_message},
     };
 
-    use super::{CurtainOptions, PreviewClockTime};
+    use super::{CurtainOptions, PreviewClockTime, validate_preview_mode};
 
     #[test]
     fn parses_notify_socket_argument() {
@@ -694,6 +664,29 @@ mod tests {
                 percent: 84,
                 charging: true,
             })
+        );
+    }
+
+    #[test]
+    fn preview_mode_requires_png_and_rejects_lock_flags() {
+        let parse = |args: &[&str]| {
+            CurtainOptions::parse_args(
+                std::iter::once("veila")
+                    .chain(args.iter().copied())
+                    .map(String::from),
+            )
+            .expect("arguments should parse")
+        };
+
+        assert!(validate_preview_mode(&parse(&["--preview-png=/tmp/p.png"])).is_ok());
+        assert!(validate_preview_mode(&parse(&[])).is_err());
+        assert!(validate_preview_mode(&parse(&["--preview-png=/tmp/p.png", "--lock"])).is_err());
+        assert!(
+            validate_preview_mode(&parse(&[
+                "--preview-png=/tmp/p.png",
+                "--daemon-socket=/tmp/auth.sock",
+            ]))
+            .is_err()
         );
     }
 }

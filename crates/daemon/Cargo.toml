@@ -1,19 +1,11 @@
 [package]
 name = "veila-daemon"
-description = "Lock orchestration daemon for Veila"
+description = "Lock orchestration daemon and control library for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-
-[[bin]]
-name = "veilad"
-path = "src/main.rs"
-
-[[bin]]
-name = "veila"
-path = "src/bin/veila.rs"
 
 [dependencies]
 veila-common = { path = "../common" }
@@ -30,7 +22,5 @@ smithay-client-toolkit = { workspace = true }
 tokio = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
-tracing-appender = "0.2"
-tracing-subscriber = { workspace = true }
 ureq = { workspace = true }
 zbus = { workspace = true }

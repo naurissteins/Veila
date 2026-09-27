@@ -7,22 +7,18 @@ use veila_renderer::{
 };
 
 use super::{
-    super::ShellState,
+    super::RenderContext,
     color::{avatar_ring_color, eye_icon_alpha, percent_to_alpha, styled_alpha},
 };
 
-impl ShellState {
-    fn render_scale_i32(&self) -> i32 {
-        self.render_scale.max(1) as i32
-    }
-
+impl RenderContext<'_> {
     fn scaled_px(&self, value: i32) -> i32 {
-        value.saturating_mul(self.render_scale_i32())
+        self.render_scale.apply_i32(value)
     }
 
     pub(crate) fn input_style(&self) -> PillStyle {
-        let selection_active = self.secret_selected;
-        let base_border = if matches!(self.status, ShellStatus::Rejected { .. }) {
+        let selection_active = self.shell.secret_selected;
+        let base_border = if matches!(self.shell.status, ShellStatus::Rejected { .. }) {
             self.theme
                 .status_rejected_color
                 .or(self.theme.status_color)
@@ -36,7 +32,7 @@ impl ShellState {
             } else {
                 base_border.alpha.max(148)
             })
-        } else if self.focused {
+        } else if self.shell.focused {
             base_border.with_alpha(styled_alpha(base_border.alpha, 240))
         } else {
             base_border.with_alpha(styled_alpha(base_border.alpha, 210))
@@ -64,10 +60,10 @@ impl ShellState {
     pub(crate) fn mask_style(&self) -> MaskedInputStyle {
         let mut style =
             MaskedInputStyle::new(self.theme.input_mask_color.unwrap_or(self.theme.foreground));
-        let scale = self.render_scale_i32();
-        style.bullet_size = style.bullet_size.saturating_mul(scale);
-        style.spacing = style.spacing.saturating_mul(scale);
-        style.horizontal_padding = style.horizontal_padding.saturating_mul(scale);
+        let scale = self.render_scale;
+        style.bullet_size = scale.apply_i32(style.bullet_size);
+        style.spacing = scale.apply_i32(style.spacing);
+        style.horizontal_padding = scale.apply_i32(style.horizontal_padding);
         style
     }
 
@@ -75,7 +71,7 @@ impl ShellState {
         let ring_width = self.theme.avatar_ring_width.unwrap_or(2).clamp(0, 12);
         let ring = if let Some(ring_color) = self.theme.avatar_ring_color {
             ring_color
-        } else if self.focused {
+        } else if self.shell.focused {
             avatar_ring_color(self.theme.input_border, 108)
         } else {
             avatar_ring_color(self.theme.foreground, 54)
@@ -101,9 +97,9 @@ impl ShellState {
     }
 
     pub(crate) fn toggle_style(&self) -> IconStyle {
-        let interaction_alpha = if self.reveal_toggle_pressed {
+        let interaction_alpha = if self.shell.reveal_toggle_pressed {
             255
-        } else if self.reveal_toggle_hovered || self.reveal_secret {
+        } else if self.shell.reveal_toggle_hovered || self.shell.reveal_secret {
             236
         } else {
             184

@@ -1,6 +1,8 @@
+mod idle;
 mod renderer;
 mod runtime;
 mod services;
+mod systemd;
 mod wayland;
 
 use std::path::Path;
@@ -22,9 +24,10 @@ pub(super) async fn print_doctor_report(config_path: Option<&Path>, session_id: 
     check_themes(&mut summary);
     check_pam(&mut summary);
     runtime::check_daemon(&mut summary).await;
-    services::check_idle_service(&mut summary);
+    services::check_daemon_service(&mut summary);
     runtime::check_logind(&mut summary, session_id).await;
-    wayland::check_wayland(&mut summary);
+    let idle_protocol = wayland::check_wayland(&mut summary);
+    idle::check_idle(&mut summary, config_path, idle_protocol);
     renderer::check_renderer(&mut summary, config_path);
 
     println!("doctor={}", summary.overall());

@@ -3,6 +3,7 @@ mod background;
 mod battery;
 mod color;
 mod fingerprint;
+mod idle;
 mod include;
 mod lock;
 mod now_playing;
@@ -36,6 +37,7 @@ pub use background::{
 pub use battery::BatteryConfig;
 pub use color::ConfigColor;
 pub use fingerprint::FingerprintConfig;
+pub use idle::{IdleConfig, MAX_IDLE_LOCK_AFTER_SECONDS, MIN_IDLE_LOCK_AFTER_SECONDS};
 pub use lock::LockConfig;
 pub use now_playing::NowPlayingConfig;
 pub use validation::{
@@ -73,6 +75,8 @@ pub struct AppConfig {
     pub lock: LockConfig,
     #[serde(default)]
     pub fingerprint: FingerprintConfig,
+    #[serde(default)]
+    pub idle: IdleConfig,
     #[serde(default)]
     pub battery: BatteryConfig,
     #[serde(default)]

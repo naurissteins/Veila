@@ -405,7 +405,7 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
 }
 
 #[test]
-fn pending_state_requests_active_animation_polling() {
+fn pending_state_waits_for_status_delay_before_animation() {
     let mut shell = ShellState::default();
 
     assert_eq!(
@@ -413,15 +413,60 @@ fn pending_state_requests_active_animation_polling() {
         ShellAction::Submit(Secret::new())
     );
 
-    assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
+    assert!(matches!(
+        shell.next_animation_in(Instant::now()),
+        Some(timeout) if timeout <= Duration::from_secs(1)
+    ));
+    assert_ne!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::AuthDirty
+    );
     assert!(shell.pending_spinner_phase().is_some());
+}
+
+#[test]
+fn visible_pending_state_redraws_only_for_a_new_spinner_phase() {
+    let theme = ShellTheme {
+        clock_enabled: false,
+        date_enabled: false,
+        ..ShellTheme::default()
+    };
+    let mut shell = ShellState::new(theme, None, None, true);
+    let now = Instant::now();
+    shell.status = ShellStatus::Pending {
+        started_at: now - Duration::from_millis(2_020),
+        visible_after: now - Duration::from_secs(1),
+        shown: true,
+        displayed_phase: 1,
+    };
+
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+    assert!(matches!(
+        shell.next_animation_in(Instant::now()),
+        Some(timeout) if timeout <= Duration::from_millis(80)
+    ));
+    if let ShellStatus::Pending {
+        displayed_phase, ..
+    } = &mut shell.status
+    {
+        *displayed_phase = 0;
+    }
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::AuthDirty
+    );
 }
 
 #[test]
 fn pending_state_disables_reveal_toggle_interaction() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('s'));
-    let toggle = shell.reveal_toggle_rect_for_frame(1280, 720);
+    let toggle = shell
+        .render_context()
+        .reveal_toggle_rect_for_frame(1280, 720);
 
     assert!(shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64));
     assert!(shell.reveal_toggle_hovered);
@@ -452,7 +497,7 @@ fn pending_inline_status_text_uses_short_copy_after_delay() {
         "{update:?}"
     );
     assert_eq!(
-        shell.inline_input_status_text().as_deref(),
+        shell.render_context().inline_input_status_text().as_deref(),
         Some("Checking...")
     );
 }
@@ -481,7 +526,7 @@ fn explicit_input_position_keeps_inline_status_when_mode_is_inline() {
 
     assert!(shell.advance_animated_state());
     assert_eq!(
-        shell.inline_input_status_text().as_deref(),
+        shell.render_context().inline_input_status_text().as_deref(),
         Some("Checking...")
     );
 }
@@ -503,9 +548,9 @@ fn external_status_mode_disables_inline_status_text() {
     thread::sleep(Duration::from_millis(1_050));
 
     assert!(shell.advance_animated_state());
-    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
     assert_eq!(
-        shell.status_text().as_deref(),
+        shell.render_context().status_text().as_deref(),
         Some("Checking authentication")
     );
 }
@@ -527,9 +572,9 @@ fn hidden_status_mode_suppresses_auth_feedback() {
     thread::sleep(Duration::from_millis(1_050));
 
     assert!(shell.advance_animated_state());
-    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
     assert_eq!(
-        shell.status_text().as_deref(),
+        shell.render_context().status_text().as_deref(),
         Some("Checking authentication")
     );
 }
@@ -587,7 +632,7 @@ fn rejected_inline_status_text_uses_retry_copy() {
     shell.authentication_rejected(Some(3_000), Some(1));
 
     assert_eq!(
-        shell.inline_input_status_text().as_deref(),
+        shell.render_context().inline_input_status_text().as_deref(),
         Some("Try again in 3s")
     );
 }
@@ -600,7 +645,7 @@ fn typing_during_retry_cooldown_preserves_retry_status() {
     let _ = shell.handle_key(ShellKey::Character('a'));
 
     assert_eq!(
-        shell.inline_input_status_text().as_deref(),
+        shell.render_context().inline_input_status_text().as_deref(),
         Some("Try again in 3s")
     );
     assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
@@ -615,7 +660,7 @@ fn retry_cooldown_clears_rejected_state_after_timeout() {
     thread::sleep(Duration::from_millis(1_100));
 
     assert!(shell.advance_animated_state());
-    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
     assert_eq!(
         shell.handle_key(ShellKey::Enter),
         ShellAction::Submit(Secret::from(String::from("a")))
@@ -629,7 +674,7 @@ fn rejected_status_text_includes_failed_attempt_count() {
     shell.authentication_rejected(None, Some(2));
 
     assert_eq!(
-        shell.status_text().as_deref(),
+        shell.render_context().status_text().as_deref(),
         Some("Authentication failed (2 failed attempts)")
     );
 }
@@ -641,7 +686,7 @@ fn rejected_status_text_includes_retry_and_failed_attempt_count() {
     shell.authentication_rejected(Some(1_000), Some(1));
 
     assert_eq!(
-        shell.status_text().as_deref(),
+        shell.render_context().status_text().as_deref(),
         Some("Authentication failed (1 failed attempt), retry in 1s")
     );
 }
@@ -667,7 +712,9 @@ fn starts_visually_focused() {
 fn toggles_password_reveal_when_eye_is_pressed() {
     let mut shell = ShellState::default();
     shell.handle_key(ShellKey::Character('s'));
-    let toggle = shell.reveal_toggle_rect_for_frame(1280, 720);
+    let toggle = shell
+        .render_context()
+        .reveal_toggle_rect_for_frame(1280, 720);
 
     assert!(shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64,));
     assert!(shell.reveal_toggle_hovered);
@@ -680,7 +727,9 @@ fn toggles_password_reveal_when_eye_is_pressed() {
 #[test]
 fn clears_hover_state_when_pointer_leaves_toggle() {
     let mut shell = ShellState::default();
-    let toggle = shell.reveal_toggle_rect_for_frame(1280, 720);
+    let toggle = shell
+        .render_context()
+        .reveal_toggle_rect_for_frame(1280, 720);
     shell.handle_pointer_motion(1280, 720, (toggle.x + 2) as f64, (toggle.y + 2) as f64);
 
     assert!(shell.handle_pointer_leave());
@@ -697,6 +746,7 @@ fn power_button_release_requests_unconfirmed_action() {
         true,
     );
     let rect = shell
+        .render_context()
         .power_button_rect(FrameSize::new(1280, 720), PowerAction::Suspend)
         .expect("power button rect");
 
@@ -717,6 +767,7 @@ fn power_button_confirmation_requires_second_click() {
         true,
     );
     let rect = shell
+        .render_context()
         .power_button_rect(FrameSize::new(1280, 720), PowerAction::Poweroff)
         .expect("power button rect");
 
@@ -787,13 +838,13 @@ fn fingerprint_status_uses_auth_status_text() {
 
     assert!(shell.set_fingerprint_status(Some(FingerprintStatus::Ready)));
     assert_eq!(
-        shell.status_text().as_deref(),
+        shell.render_context().status_text().as_deref(),
         Some("Touch fingerprint reader")
     );
-    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
     assert!(!shell.set_fingerprint_status(Some(FingerprintStatus::Ready)));
     assert!(shell.set_fingerprint_status(None));
-    assert_eq!(shell.status_text(), None);
+    assert_eq!(shell.render_context().status_text(), None);
 }
 
 #[test]
@@ -801,10 +852,10 @@ fn fingerprint_status_does_not_replace_password_placeholder() {
     let mut shell = ShellState::default();
 
     assert!(shell.set_fingerprint_status(Some(FingerprintStatus::Unavailable)));
-    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
     shell.handle_key(ShellKey::Character('a'));
 
-    assert_eq!(shell.inline_input_status_text(), None);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
 }
 
 #[test]
@@ -903,6 +954,15 @@ fn caps_lock_toggle_does_not_change_static_scene_revision() {
 }
 
 #[test]
+fn setting_same_avatar_does_not_invalidate_static_scene() {
+    let mut shell = ShellState::default();
+    let revision = shell.static_scene_revision();
+
+    assert!(!shell.set_avatar(veila_renderer::avatar::AvatarAsset::placeholder()));
+    assert_eq!(shell.static_scene_revision(), revision);
+}
+
+#[test]
 fn keyboard_layout_toggle_does_not_change_static_scene_revision() {
     let mut shell = ShellState::default();
     let original = shell.static_scene_revision();
@@ -998,6 +1058,74 @@ fn now_playing_widget_uses_snapshot_data() {
     let now_playing = shell.now_playing.as_ref().expect("now playing widget");
     assert_eq!(now_playing.title, "Northern Attitude");
     assert_eq!(now_playing.artist.as_deref(), Some("Noah Kahan"));
+}
+
+#[test]
+fn deferred_artwork_applies_only_to_current_path_and_survives_metadata_refresh() {
+    use veila_renderer::cover::CoverArtAsset;
+
+    let mut shell = ShellState::new(
+        ShellTheme {
+            now_playing_enabled: true,
+            now_playing_artwork_enabled: true,
+            now_playing_artwork_position: Some(WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Center,
+                x: 0,
+                y: 0,
+                target: WidgetPositionTarget::Screen,
+            }),
+            ..ShellTheme::default()
+        },
+        None,
+        None,
+        true,
+    );
+    let first_path = std::path::PathBuf::from("/tmp/veila-first-cover.png");
+    let second_path = std::path::PathBuf::from("/tmp/veila-second-cover.png");
+    let snapshot = |path: &std::path::Path, title: &str| NowPlayingSnapshot {
+        title: title.to_owned(),
+        artist: None,
+        artwork_path: Some(path.to_path_buf()),
+        fetched_at_unix: 0,
+    };
+
+    shell.set_now_playing_snapshot(Some(snapshot(&first_path, "Track")));
+    assert_eq!(
+        shell.pending_now_playing_artwork_path(),
+        Some(first_path.as_path())
+    );
+    shell.set_now_playing_snapshot(Some(snapshot(&second_path, "Track")));
+    let artwork_path = std::env::temp_dir().join(format!(
+        "veila-deferred-cover-test-{}.png",
+        std::process::id()
+    ));
+    let png = [
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1,
+        13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
+    std::fs::write(&artwork_path, png).expect("write cover");
+    let artwork = CoverArtAsset::load(&artwork_path, 32).expect("load cover");
+    let _ = std::fs::remove_file(&artwork_path);
+    assert!(!shell.set_now_playing_artwork(&first_path, artwork.clone()));
+    assert!(shell.set_now_playing_artwork(&second_path, artwork));
+    assert!(shell.pending_now_playing_artwork_path().is_none());
+
+    shell.set_now_playing_snapshot(Some(snapshot(&second_path, "Track")));
+    assert!(
+        shell
+            .now_playing
+            .as_ref()
+            .is_some_and(|data| data.artwork.is_some())
+    );
+    assert!(shell.pending_now_playing_artwork_path().is_none());
+
+    shell.set_now_playing_snapshot(Some(snapshot(&second_path, "Another track")));
+    assert_eq!(
+        shell.pending_now_playing_artwork_path(),
+        Some(second_path.as_path())
+    );
 }
 
 #[test]
@@ -1196,6 +1324,13 @@ fn static_scene_cache_variant_ignores_conditional_backdrop_visibility() {
         .static_scene_cache_variant(1)
         .expect("static scene variant");
     assert_eq!(visible_variant, hidden_variant);
+
+    shell.focused = false;
+    shell.bump_static_scene_revision();
+    let unfocused_variant = shell
+        .static_scene_cache_variant(1)
+        .expect("static scene variant");
+    assert_ne!(unfocused_variant, visible_variant);
 }
 
 #[test]
@@ -1334,7 +1469,7 @@ fn now_playing_transition_uses_configured_fade_duration() {
 }
 
 #[test]
-fn now_playing_transition_requests_active_animation_polling() {
+fn now_playing_transition_requests_active_animation_timer() {
     let mut shell = ShellState::default();
     shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
         title: String::from("Track"),
@@ -1343,5 +1478,49 @@ fn now_playing_transition_requests_active_animation_polling() {
         fetched_at_unix: 1,
     }));
 
-    assert_eq!(shell.animation_poll_interval(), Duration::from_millis(80));
+    assert!(matches!(
+        shell.next_animation_in(Instant::now()),
+        Some(timeout) if timeout <= Duration::from_millis(80)
+    ));
+}
+
+#[test]
+fn media_fade_ignores_unrelated_event_wakes_between_animation_phases() {
+    let mut shell = ShellState::default();
+    shell.theme.clock_enabled = false;
+    shell.theme.date_enabled = false;
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: None,
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+
+    let transition = shell.now_playing_transition.as_mut().unwrap();
+    transition.started_at -= Duration::from_millis(90);
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::Widget(super::WidgetKind::Media)
+    );
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+}
+
+#[test]
+fn disabled_clock_and_date_leave_idle_shell_without_deadline() {
+    let mut shell = ShellState::default();
+    shell.theme.clock_enabled = false;
+    shell.theme.date_enabled = false;
+
+    assert_eq!(shell.next_animation_in(Instant::now()), None);
 }

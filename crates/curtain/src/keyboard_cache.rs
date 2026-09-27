@@ -1,4 +1,9 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::mpsc::{Sender, channel},
+    thread,
+};
 
 use anyhow::{Context, Result};
 
@@ -15,6 +20,26 @@ pub(crate) fn store_keyboard_layout_label(label: &str) {
 
     if let Err(error) = store_keyboard_layout_label_inner(&label) {
         tracing::debug!("failed to store keyboard layout label cache: {error:#}");
+    }
+}
+
+pub(crate) fn start_keyboard_layout_writer() -> Option<Sender<String>> {
+    let (sender, receiver) = channel::<String>();
+    match thread::Builder::new()
+        .name(String::from("veila-keyboard-cache"))
+        .spawn(move || {
+            while let Ok(mut label) = receiver.recv() {
+                while let Ok(latest) = receiver.try_recv() {
+                    label = latest;
+                }
+                store_keyboard_layout_label(&label);
+            }
+        }) {
+        Ok(_) => Some(sender),
+        Err(error) => {
+            tracing::warn!(%error, "failed to start keyboard layout cache writer");
+            None
+        }
     }
 }
 

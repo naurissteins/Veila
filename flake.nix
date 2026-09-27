@@ -50,18 +50,14 @@
               runHook preInstall
 
               veila_bin="$(find target -type f -path '*/release/veila' -print -quit)"
-              veilad_bin="$(find target -type f -path '*/release/veilad' -print -quit)"
-              curtain_bin="$(find target -type f -path '*/release/veila-curtain' -print -quit)"
 
-              if [ -z "$veila_bin" ] || [ -z "$veilad_bin" ] || [ -z "$curtain_bin" ]; then
-                echo "failed to find release binaries under target/"
+              if [ -z "$veila_bin" ]; then
+                echo "failed to find the veila release binary under target/"
                 find target -maxdepth 4 -type f -perm -0100 -print
                 exit 1
               fi
 
               install -Dm755 "$veila_bin" "$out/bin/veila"
-              install -Dm755 "$veilad_bin" "$out/bin/veilad"
-              install -Dm755 "$curtain_bin" "$out/bin/veila-curtain"
               install -Dm644 docs/man/veila.1 "$out/share/man/man1/veila.1"
 
               mkdir -p "$out/share/veila"
@@ -70,15 +66,10 @@
               cp -R assets/systemd "$out/share/veila/"
               cp -R assets/themes "$out/share/veila/"
 
-              wrapProgram "$out/bin/veila-curtain" \
-                --set VEILA_ASSET_DIR "$out/share/veila"
-
               wrapProgram "$out/bin/veila" \
                 --set VEILA_ASSET_DIR "$out/share/veila"
 
-              wrapProgram "$out/bin/veilad" \
-                --set VEILA_ASSET_DIR "$out/share/veila" \
-                --set VEILA_CURTAIN_BIN "$out/bin/veila-curtain"
+              ln -s veila "$out/bin/veilad"
 
               runHook postInstall
             '';
@@ -130,10 +121,10 @@
               '';
             };
 
-            service.enable = lib.mkEnableOption "the veilad daemon as a systemd user service";
+            service.enable = lib.mkEnableOption "the Veila daemon (`veila daemon`) as a systemd user service";
 
             idle = {
-              enable = lib.mkEnableOption "the veila idle/sleep auto-lock helper";
+              enable = lib.mkEnableOption "idle auto-lock inside the Veila daemon (writes `[idle]` to config.toml and enables the daemon service)";
 
               lockAfter = lib.mkOption {
                 type = lib.types.ints.positive;
@@ -144,7 +135,7 @@
               lockBeforeSleep = lib.mkOption {
                 type = lib.types.bool;
                 default = true;
-                description = "Also lock before the system goes to sleep.";
+                description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the daemon runs.";
               };
             };
           };
@@ -157,38 +148,27 @@
               source = tomlFormat.generate "veila-config.toml" cfg.settings;
             };
 
-            systemd.user.services.veilad = lib.mkIf (cfg.service.enable || cfg.idle.enable) {
+            systemd.user.services.veila = lib.mkIf (cfg.service.enable || cfg.idle.enable) {
               description = "Veila screen locker daemon";
               after = [ "graphical-session.target" ];
               partOf = [ "graphical-session.target" ];
               wantedBy = [ "graphical-session.target" ];
               serviceConfig = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/veilad";
+                ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
+                LimitCORE = 0;
                 PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
               };
             };
 
-            systemd.user.services.veila-idle = lib.mkIf cfg.idle.enable {
-              description = "Veila idle and sleep lock monitor";
-              after = [
-                "graphical-session.target"
-                "veilad.service"
-              ];
-              partOf = [ "graphical-session.target" ];
-              wantedBy = [ "graphical-session.target" ];
-              serviceConfig = {
-                Type = "simple";
-                ExecStart =
-                  "${cfg.package}/bin/veila idle --lock-after=${toString cfg.idle.lockAfter}"
-                  + lib.optionalString cfg.idle.lockBeforeSleep " --lock-before-sleep";
-                Restart = "on-failure";
-                RestartSec = 2;
-                PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
+            programs.veila.settings.idle =
+              lib.mkIf (cfg.idle.enable || !cfg.idle.lockBeforeSleep) {
+                enabled = lib.mkDefault cfg.idle.enable;
+                lock_after_seconds = lib.mkDefault cfg.idle.lockAfter;
+                lock_before_sleep = lib.mkDefault cfg.idle.lockBeforeSleep;
               };
-            };
           };
         };
 
@@ -221,10 +201,10 @@
               description = "Written verbatim as TOML to ~/.config/veila/config.toml.";
             };
 
-            service.enable = lib.mkEnableOption "the veilad daemon as a systemd user service";
+            service.enable = lib.mkEnableOption "the Veila daemon (`veila daemon`) as a systemd user service";
 
             idle = {
-              enable = lib.mkEnableOption "the veila idle/sleep auto-lock helper";
+              enable = lib.mkEnableOption "idle auto-lock inside the Veila daemon (writes `[idle]` to config.toml and enables the daemon service)";
 
               lockAfter = lib.mkOption {
                 type = lib.types.ints.positive;
@@ -235,7 +215,7 @@
               lockBeforeSleep = lib.mkOption {
                 type = lib.types.bool;
                 default = true;
-                description = "Also lock before the system goes to sleep.";
+                description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the daemon runs.";
               };
             };
           };
@@ -247,7 +227,7 @@
               source = tomlFormat.generate "veila-config.toml" cfg.settings;
             };
 
-            systemd.user.services.veilad = lib.mkIf (cfg.service.enable || cfg.idle.enable) {
+            systemd.user.services.veila = lib.mkIf (cfg.service.enable || cfg.idle.enable) {
               Unit = {
                 Description = "Veila screen locker daemon";
                 After = [ "graphical-session.target" ];
@@ -255,34 +235,21 @@
               };
               Service = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/veilad";
+                ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
+                LimitCORE = 0;
                 PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
               };
               Install.WantedBy = [ "graphical-session.target" ];
             };
 
-            systemd.user.services.veila-idle = lib.mkIf cfg.idle.enable {
-              Unit = {
-                Description = "Veila idle and sleep lock monitor";
-                After = [
-                  "graphical-session.target"
-                  "veilad.service"
-                ];
-                PartOf = [ "graphical-session.target" ];
+            programs.veila.settings.idle =
+              lib.mkIf (cfg.idle.enable || !cfg.idle.lockBeforeSleep) {
+                enabled = lib.mkDefault cfg.idle.enable;
+                lock_after_seconds = lib.mkDefault cfg.idle.lockAfter;
+                lock_before_sleep = lib.mkDefault cfg.idle.lockBeforeSleep;
               };
-              Service = {
-                Type = "simple";
-                ExecStart =
-                  "${cfg.package}/bin/veila idle --lock-after=${toString cfg.idle.lockAfter}"
-                  + lib.optionalString cfg.idle.lockBeforeSleep " --lock-before-sleep";
-                Restart = "on-failure";
-                RestartSec = 2;
-                PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
-              };
-              Install.WantedBy = [ "graphical-session.target" ];
-            };
           };
         };
 
@@ -300,11 +267,6 @@
           veilad = {
             type = "app";
             program = "${package}/bin/veilad";
-          };
-
-          veila-curtain = {
-            type = "app";
-            program = "${package}/bin/veila-curtain";
           };
 
           default = self.apps.${system}.veila;

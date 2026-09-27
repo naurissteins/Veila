@@ -7,7 +7,10 @@ use std::{
 
 use crate::error::Result;
 
-use super::{AppConfig, active_include_source_paths, active_theme_source_path, default_path};
+use super::{
+    AppConfig, MAX_IDLE_LOCK_AFTER_SECONDS, MIN_IDLE_LOCK_AFTER_SECONDS,
+    active_include_source_paths, active_theme_source_path, default_path,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigValidationReport {
@@ -73,8 +76,25 @@ pub(super) fn validate_config(explicit_path: Option<&Path>) -> Result<ConfigVali
     )?;
     validate_active_theme(&mut report, &config_path)?;
     validate_includes(&mut report, &config_path)?;
+    validate_idle_range(&mut report, &loaded.config, &config_path);
 
     Ok(report)
+}
+
+fn validate_idle_range(report: &mut ConfigValidationReport, config: &AppConfig, path: &Path) {
+    if config.idle.lock_after_in_range() {
+        return;
+    }
+
+    report.issues.push(ConfigValidationIssue {
+        source: ConfigValidationSourceKind::Config,
+        path: path.to_path_buf(),
+        key_path: "idle.lock_after_seconds".to_string(),
+        message: format!(
+            "`lock_after_seconds = {}` is outside {MIN_IDLE_LOCK_AFTER_SECONDS}..={MAX_IDLE_LOCK_AFTER_SECONDS}; the daemon clamps it to the nearest limit",
+            config.idle.lock_after_seconds
+        ),
+    });
 }
 
 fn resolved_existing_config_path(

@@ -5,7 +5,8 @@ use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::Sessi
 use veila_renderer::{PixelBuffer, copy_rect_from, shm};
 
 use crate::state::{
-    CurtainApp, DirtyRenderTimingSample, RedrawKind, RenderTimingSample, SurfaceSize,
+    CommittedWidgetFrame, CurtainApp, DirtyRenderTimingSample, RedrawKind, RenderTimingSample,
+    SurfaceSize,
 };
 
 impl CurtainApp {
@@ -42,15 +43,23 @@ impl CurtainApp {
 
         let timing_enabled = tracing::enabled!(tracing::Level::DEBUG);
         let total_started_at = timing_enabled.then(Instant::now);
-        let first_frame = self.lock_surfaces[index].shm_pool.is_none();
+        let first_frame = self.lock_surfaces[index]
+            .shm_pool
+            .as_ref()
+            .is_none_or(|pool| !pool.has_committed_frame());
         let frame_size = size.buffer;
-        let render_scale = size.scale.max(1) as u32;
+        let render_scale = size.render_scale;
         let revision = self.ui_shell.static_scene_revision();
         let output_role = self.output_role_for_surface(index);
         let ui_visible = output_role.renders_shell();
         let background_started_at = timing_enabled.then(Instant::now);
         let scene_base_cache_ready = if ui_visible {
-            self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
+            self.try_prepare_scene_base_without_background(
+                index,
+                frame_size,
+                revision,
+                size.render_scale,
+            )?
         } else {
             None
         };
@@ -136,7 +145,7 @@ impl CurtainApp {
                     size.buffer_scale_for_commit(),
                     |buffer| {
                         buffer.pixels_mut().copy_from_slice(scene_base.pixels());
-                        ui_shell.render_dynamic_overlay_scaled(buffer, render_scale);
+                        ui_shell.render_dynamic_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
                             dynamic_overlay_ms =
                                 started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
@@ -152,7 +161,18 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        self.lock_surfaces[index].widget_frame = (!first_frame).then(|| CommittedWidgetFrame {
+            size: frame_size,
+            scale: render_scale,
+            revision,
+            regions: self
+                .ui_shell
+                .widget_regions_at_scale(frame_size, render_scale),
+        });
         self.note_first_frame_committed(first_frame);
+        if first_frame {
+            self.connection.flush()?;
+        }
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -220,20 +240,21 @@ impl CurtainApp {
         };
 
         let frame_size = size.buffer;
-        let render_scale = size.scale.max(1) as u32;
+        let render_scale = size.render_scale;
         let revision = self.ui_shell.static_scene_revision();
         let Some(scene_base) = self.lock_surfaces[index].scene_base.as_ref().cloned() else {
             return self.render_surface(surface, size, queue_handle);
         };
         if scene_base.size() != frame_size
             || self.lock_surfaces[index].scene_base_revision != revision
+            || self.lock_surfaces[index].scene_base_scale != render_scale
             || self.lock_surfaces[index].shm_pool.is_none()
         {
             return self.render_surface(surface, size, queue_handle);
         }
         let Some(dirty_rect) = self
             .ui_shell
-            .auth_dirty_rect_scaled(frame_size, render_scale)
+            .auth_dirty_rect_at_scale(frame_size, render_scale)
         else {
             return self.render_surface(surface, size, queue_handle);
         };
@@ -265,7 +286,7 @@ impl CurtainApp {
                         {
                             damaged = copied;
                         }
-                        ui_shell.render_auth_dirty_overlay_scaled(buffer, render_scale);
+                        ui_shell.render_auth_dirty_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
                             dynamic_overlay_ms =
                                 started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
@@ -384,7 +405,11 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        self.lock_surfaces[index].widget_frame = None;
         self.note_first_frame_committed(first_frame);
+        if first_frame {
+            self.connection.flush()?;
+        }
 
         if let Some(started_at) = total_started_at {
             let sample = RenderTimingSample {
@@ -437,17 +462,15 @@ impl CurtainApp {
         Ok(())
     }
 
-    fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
+    pub(super) fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
         let Some(viewport) = self.lock_surfaces[index].viewport.as_ref() else {
             return;
         };
 
-        if size.fractional_scale.is_some() {
-            viewport.set_destination(size.logical_width as i32, size.logical_height as i32);
-        }
+        viewport.set_destination(size.logical_width as i32, size.logical_height as i32);
     }
 
-    fn note_first_frame_committed(&mut self, first_frame: bool) {
+    pub(super) fn note_first_frame_committed(&mut self, first_frame: bool) {
         if !first_frame || self.first_frame_committed_at.is_some() {
             return;
         }

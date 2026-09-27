@@ -1,15 +1,11 @@
 [package]
 name = "veila-curtain"
-description = "Secure curtain bootstrap binary for Veila"
+description = "Secure session-lock curtain and preview renderer for Veila"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-
-[[bin]]
-name = "veila-curtain"
-path = "src/main.rs"
 
 [dependencies]
 veila-common = { path = "../common" }
@@ -23,6 +19,5 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 wayland-protocols-wlr = { workspace = true }
 xkbcommon = { workspace = true }

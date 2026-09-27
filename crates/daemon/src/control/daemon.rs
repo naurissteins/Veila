@@ -27,7 +27,6 @@ pub(super) async fn lock_running_daemon(
     wait_ready: bool,
     force_emergency_ui: bool,
     latency_report: LatencyReportMode,
-    sleep_transition: bool,
 ) -> Result<Option<(bool, Option<veila_common::ipc::LockLatencyReport>)>> {
     ensure_running_daemon(daemon_socket_path)?;
 
@@ -37,7 +36,7 @@ pub(super) async fn lock_running_daemon(
             wait_ready,
             force_emergency_ui,
             latency_report,
-            sleep_transition,
+            sleep_transition: false,
         },
     )
     .await?;
@@ -172,7 +171,7 @@ fn reload_effect_message(status: &veila_common::ipc::DaemonReloadStatus) -> &'st
 fn ensure_running_daemon(daemon_socket_path: &std::path::Path) -> Result<()> {
     if !daemon_socket_path.exists() {
         bail!(
-            "veilad is not running; daemon socket does not exist at {}",
+            "veila daemon is not running; daemon socket does not exist at {}",
             daemon_socket_path.display()
         );
     }

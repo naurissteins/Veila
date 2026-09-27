@@ -1,9 +1,12 @@
-use std::{cell::RefCell, path::PathBuf};
+use std::{
+    cell::RefCell,
+    path::{Path, PathBuf},
+};
 
 use veila_common::{
     BatterySnapshot, InputRevealMode, NowPlayingSnapshot, Secret, WeatherSnapshot, WeatherUnit,
 };
-use veila_renderer::{ClearColor, avatar::AvatarAsset};
+use veila_renderer::{ClearColor, RenderScale, avatar::AvatarAsset, cover::CoverArtAsset};
 
 use super::{
     ClockState, NowPlayingTransition, ShellMode, ShellState, ShellStatus, ShellTheme,
@@ -65,6 +68,19 @@ impl ShellState {
         Some(variant)
     }
 
+    pub fn backdrop_cache_variant_scaled(&self, scale: u32) -> Option<String> {
+        self.backdrop_cache_variant_at_scale(RenderScale::from_integer(scale))
+    }
+
+    pub fn backdrop_cache_variant_at_scale(&self, scale: RenderScale) -> Option<String> {
+        let variant = self.backdrop_cache_variant()?;
+        match scale.units() {
+            120 => Some(variant),
+            units if scale.is_integer() => Some(format!("{variant}:render-scale:{}", units / 120)),
+            units => Some(format!("{variant}:render-scale-120:{units}")),
+        }
+    }
+
     pub fn has_visual_layers(&self) -> bool {
         if self.emergency_active() {
             return false;
@@ -82,23 +98,39 @@ impl ShellState {
     }
 
     pub fn static_scene_cache_variant(&self, scale: u32) -> Option<String> {
+        self.static_scene_cache_variant_at_scale(RenderScale::from_integer(scale))
+    }
+
+    pub fn static_scene_cache_variant_at_scale(&self, scale: RenderScale) -> Option<String> {
         if self.emergency_active() {
             return None;
         }
 
-        self.has_visual_layers().then(|| {
-            format!(
-                "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
-                scale.max(1),
-                self.theme,
-                self.hint_text,
-                self.reveal_hint_text,
-                self.username_text,
-                self.auth_revealed,
-                self.focused,
-                self.avatar.cache_key(),
-            )
-        })
+        if !self.has_visual_layers() {
+            return None;
+        }
+        if let Some(variant) = self.static_scene_variant_cache.borrow().get(&scale.units()) {
+            return Some(variant.clone());
+        }
+        let variant = format!(
+            "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+            if scale.is_integer() {
+                format!("{}", scale.units() / 120)
+            } else {
+                format!("{}/120", scale.units())
+            },
+            self.theme,
+            self.hint_text,
+            self.reveal_hint_text,
+            self.username_text,
+            self.auth_revealed,
+            self.focused,
+            self.avatar.cache_key(),
+        );
+        self.static_scene_variant_cache
+            .borrow_mut()
+            .insert(scale.units(), variant.clone());
+        Some(variant)
     }
 
     pub(super) fn backdrop_visible(&self, backdrop: &crate::shell::theme::Backdrop) -> bool {
@@ -335,6 +367,7 @@ impl ShellState {
             power_confirmation: None,
             requested_power_action: None,
             static_scene_revision: 1,
+            static_scene_variant_cache: RefCell::new(std::collections::HashMap::new()),
             focused: true,
             status: ShellStatus::Idle,
             clock: ClockState::current(theme.clock_format, theme.date_format),
@@ -350,13 +383,17 @@ impl ShellState {
             avatar,
             preview_grid_enabled: false,
             text_layout_cache: RefCell::new(TextLayoutCache::default()),
-            render_scale: 1,
+            scaled_render_cache: RefCell::default(),
         }
     }
 
-    pub fn set_avatar(&mut self, avatar: AvatarAsset) {
+    pub fn set_avatar(&mut self, avatar: AvatarAsset) -> bool {
+        if self.avatar.cache_key() == avatar.cache_key() {
+            return false;
+        }
         self.avatar = avatar;
         self.bump_static_scene_revision();
+        true
     }
 
     pub fn set_focus(&mut self, focused: bool) {
@@ -410,7 +447,14 @@ impl ShellState {
     }
 
     pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {
-        let next = now_playing_widget_data(snapshot);
+        let mut next = now_playing_widget_data(snapshot);
+        if let (Some(current), Some(next)) = (self.now_playing.as_ref(), next.as_mut())
+            && current.artwork_path == next.artwork_path
+            && current.title == next.title
+            && current.artist == next.artist
+        {
+            next.artwork = current.artwork.clone();
+        }
         if same_widget_data(self.now_playing.as_ref(), next.as_ref()) {
             return;
         }
@@ -418,8 +462,34 @@ impl ShellState {
         self.now_playing_transition = Some(NowPlayingTransition {
             previous: self.now_playing.clone(),
             started_at: std::time::Instant::now(),
+            displayed_phase: 0,
         });
         self.now_playing = next;
+    }
+
+    pub fn pending_now_playing_artwork_path(&self) -> Option<&Path> {
+        if !self.theme.now_playing_enabled
+            || !self.theme.now_playing_artwork_enabled
+            || self.theme.now_playing_artwork_position.is_none()
+        {
+            return None;
+        }
+        let now_playing = self.now_playing.as_ref()?;
+        if now_playing.artwork.is_some() {
+            return None;
+        }
+        now_playing.artwork_path.as_deref()
+    }
+
+    pub fn set_now_playing_artwork(&mut self, path: &Path, artwork: CoverArtAsset) -> bool {
+        let Some(now_playing) = self.now_playing.as_mut() else {
+            return false;
+        };
+        if now_playing.artwork_path.as_deref() != Some(path) || now_playing.artwork.is_some() {
+            return false;
+        }
+        now_playing.artwork = Some(artwork);
+        true
     }
 
     pub fn apply_theme(
@@ -476,6 +546,8 @@ impl ShellState {
     ) {
         let reveal_on_interaction = theme.input_reveal_on_interaction;
         self.theme = theme;
+        self.scaled_render_cache.get_mut().clear();
+        *self.text_layout_cache.get_mut() = TextLayoutCache::default();
         self.clock = ClockState::current(self.theme.clock_format, self.theme.date_format);
         self.hint_text = input_placeholder
             .filter(|hint| !hint.trim().is_empty())

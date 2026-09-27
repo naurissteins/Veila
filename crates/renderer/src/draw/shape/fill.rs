@@ -1,3 +1,5 @@
+use crate::blend_component;
+
 use crate::{ClearColor, PixelBuffer};
 
 use super::{BorderStyle, BoxStyle, Rect};
@@ -99,9 +101,4 @@ fn blend_argb8888_pixel(dst: &mut [u8], src: &[u8; 4]) {
     dst[1] = blend_component(dst[1], src[1], inverse_alpha);
     dst[2] = blend_component(dst[2], src[2], inverse_alpha);
     dst[3] = blend_component(dst[3], src[3], inverse_alpha);
-}
-
-fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
-    let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
-    blended.min(u16::from(u8::MAX)) as u8
 }

@@ -1,19 +1,25 @@
 mod interaction;
 mod memory;
+mod poll;
 mod power;
 mod profiler;
 mod redraw;
 mod repeat;
 mod resume;
+mod shm_trim;
 
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
-    sync::mpsc::{Receiver, Sender, channel},
+    sync::mpsc::{Receiver as ControlReceiver, Sender as KeyboardSender},
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, anyhow, bail};
+use calloop::{
+    channel::{Channel, Sender, channel},
+    ping::{PingSource, make_ping},
+};
 use smithay_client_toolkit::{
     compositor::CompositorState,
     output::OutputState,
@@ -37,22 +43,18 @@ use smithay_client_toolkit::{
 };
 use veila_common::{
     AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot, OutputUiMode, WeatherSnapshot,
-    config::{
-        BackgroundConfig, BackgroundLayeredBaseMode, BackgroundLayeredConfig,
-        BackgroundOutputConfig, BackgroundScaling as ConfigBackgroundScaling,
-    },
+    config::BackgroundOutputConfig,
     ipc::{CurtainLatencyReport, LatencyReportMode, LockPowerStatusSnapshot},
 };
 use veila_renderer::{
     ClearColor,
-    background::{
-        BackgroundAsset, BackgroundGradient, BackgroundLayered, BackgroundLayeredBase,
-        BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
-        GeneratedBackground,
-    },
+    background::{BackgroundAsset, BackgroundTreatment, GeneratedBackground},
     shm::SurfaceBufferPool,
 };
-use veila_ui::{ShellState, ShellTheme};
+use veila_ui::{
+    ShellState, ShellTheme, WidgetRegions,
+    background::{background_generated, background_treatment},
+};
 use wayland_protocols_wlr::output_power_management::v1::client::{
     zwlr_output_power_manager_v1, zwlr_output_power_v1,
 };
@@ -61,7 +63,7 @@ use crate::{
     CurtainOptions,
     background::{BackgroundEvent, BackgroundSlideshow},
     ipc::auth::AuthEvent,
-    ipc::control::{ControlEvent, spawn_listener},
+    ipc::control::{ControlEvent, ControlSender, spawn_listener},
     keyboard_cache::load_keyboard_layout_label,
 };
 
@@ -83,14 +85,25 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) scene_base: Option<Arc<veila_renderer::SoftwareBuffer>>,
     pub(crate) scene_base_revision: u64,
+    pub(crate) scene_base_scale: veila_renderer::RenderScale,
     pub(crate) scene_base_has_layers: bool,
+    pub(crate) widget_frame: Option<CommittedWidgetFrame>,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
+    pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
     pub(crate) pending_redraw: PendingRedraw,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
     pub(crate) preferred_scale: i32,
     pub(crate) preferred_fractional_scale: Option<u32>,
     pub(crate) fractional_scale: Option<wp_fractional_scale_v1::WpFractionalScaleV1>,
     pub(crate) viewport: Option<wp_viewport::WpViewport>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CommittedWidgetFrame {
+    pub(crate) size: veila_renderer::FrameSize,
+    pub(crate) scale: veila_renderer::RenderScale,
+    pub(crate) revision: u64,
+    pub(crate) regions: WidgetRegions,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,6 +131,7 @@ pub(crate) struct SurfaceSize {
     pub(crate) logical_height: u32,
     pub(crate) buffer: veila_renderer::FrameSize,
     pub(crate) scale: i32,
+    pub(crate) render_scale: veila_renderer::RenderScale,
     pub(crate) fractional_scale: Option<u32>,
 }
 
@@ -129,14 +143,19 @@ impl SurfaceSize {
         fractional_scale: Option<u32>,
     ) -> Self {
         let scale = scale.max(1) as u32;
+        let render_scale = fractional_scale
+            .filter(|units| *units > 0)
+            .map(veila_renderer::RenderScale::from_units)
+            .unwrap_or_else(|| veila_renderer::RenderScale::from_integer(scale));
         Self {
             logical_width,
             logical_height,
-            buffer: veila_renderer::FrameSize::new(
-                logical_width.saturating_mul(scale),
-                logical_height.saturating_mul(scale),
-            ),
+            buffer: render_scale.frame_size(veila_renderer::FrameSize::new(
+                logical_width,
+                logical_height,
+            )),
             scale: scale as i32,
+            render_scale,
             fractional_scale,
         }
     }
@@ -147,6 +166,33 @@ impl SurfaceSize {
         } else {
             self.scale.max(1)
         }
+    }
+
+    pub(crate) fn same_rendering_as(self, other: Self) -> bool {
+        self.logical_width == other.logical_width
+            && self.logical_height == other.logical_height
+            && self.buffer == other.buffer
+            && self.render_scale == other.render_scale
+            && self.buffer_scale_for_commit() == other.buffer_scale_for_commit()
+    }
+
+    pub(crate) fn placeholder_buffer(self, has_viewport: bool) -> (veila_renderer::FrameSize, i32) {
+        if has_viewport {
+            (veila_renderer::FrameSize::new(1, 1), 1)
+        } else {
+            (self.buffer, self.buffer_scale_for_commit())
+        }
+    }
+
+    pub(crate) fn generated_placeholder_size(self) -> veila_renderer::FrameSize {
+        let width = self.logical_width.max(1);
+        let height = self.logical_height.max(1);
+        let longest = width.max(height);
+        let preview_longest = longest.min(160);
+        veila_renderer::FrameSize::new(
+            (u64::from(width) * u64::from(preview_longest) / u64::from(longest)).max(1) as u32,
+            (u64::from(height) * u64::from(preview_longest) / u64::from(longest)).max(1) as u32,
+        )
     }
 }
 
@@ -174,13 +220,13 @@ pub(crate) struct CurtainApp {
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
-    auth_events: Receiver<AuthEvent>,
     auth_sender: Sender<AuthEvent>,
     pub(crate) background_sender: Sender<BackgroundEvent>,
-    pub(crate) background_events: Receiver<BackgroundEvent>,
-    control_events: Receiver<ControlEvent>,
+    keyboard_label_sender: Option<KeyboardSender<String>>,
+    control_events: ControlReceiver<ControlEvent>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_generated: Option<GeneratedBackground>,
+    pub(crate) generated_pending_sizes: Vec<veila_renderer::FrameSize>,
     pub(crate) background_treatment: BackgroundTreatment,
     pub(crate) background_color: ClearColor,
     pub(crate) ui_output_mode: OutputUiMode,
@@ -196,11 +242,15 @@ pub(crate) struct CurtainApp {
     pub(crate) ui_shell: ShellState,
     pub(crate) avatar_path: Option<PathBuf>,
     pub(crate) avatar_load_started: bool,
+    pub(crate) avatar_load_needed: bool,
+    pub(crate) artwork_in_flight: Option<(PathBuf, Option<NowPlayingSnapshot>)>,
+    pub(crate) artwork_last_attempt: Option<(PathBuf, Instant)>,
     pub(crate) lock_wait_timeout: Duration,
     pub(crate) startup_started_at: Instant,
     lock_started_at: Instant,
     lock_acquisition_started: bool,
     pub(crate) session_locked: bool,
+    pub(crate) rich_scene_ready: bool,
     pub(crate) session_locked_at: Option<Instant>,
     pub(crate) session_finished: bool,
     pub(crate) exit_requested: bool,
@@ -233,8 +283,15 @@ pub(crate) struct CurtainApp {
     pub(crate) wake_pointer_release_pending: bool,
     pub(crate) post_ready_nonfirst_renders: u32,
     pub(crate) post_ready_memory_logged: bool,
+    pub(crate) post_ready_trim_logged: bool,
     pub(crate) pending_pre_ready_redraw: bool,
     pub(crate) first_frame_committed_at: Option<Instant>,
+}
+
+pub(crate) struct CurtainEventSources {
+    pub(crate) auth: Channel<AuthEvent>,
+    pub(crate) background: Channel<BackgroundEvent>,
+    pub(crate) control: PingSource,
 }
 
 impl CurtainApp {
@@ -248,10 +305,13 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
         options: CurtainOptions,
         startup_started_at: Instant,
-    ) -> Result<Self> {
+    ) -> Result<(Self, CurtainEventSources)> {
         let (auth_sender, auth_events) = channel();
         let (background_sender, background_events) = channel();
-        let (control_sender, control_events) = channel();
+        let (control_sender, control_events) = std::sync::mpsc::channel();
+        let (control_ping, control_source) =
+            make_ping().context("failed to create control wake source")?;
+        let control_sender = ControlSender::new(control_sender, control_ping);
         let force_emergency_ui = options.force_emergency_ui;
         let mut emergency_reason = None;
         let loaded_config = match AppConfig::load(options.config_path.as_deref()) {
@@ -269,6 +329,7 @@ impl CurtainApp {
         let config = loaded_config.config;
         let emergency_active = force_emergency_ui || emergency_reason.is_some();
         let theme = ShellTheme::from_config(&config);
+        veila_renderer::text::configure_font_warmup(theme.font_warmup_families());
         let background_color = if emergency_active {
             EMERGENCY_BACKGROUND
         } else {
@@ -313,6 +374,10 @@ impl CurtainApp {
         };
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         let cached_avatar = veila_ui::load_cached_avatar(avatar_path.clone());
+        let avatar_load_needed = matches!(
+            &cached_avatar,
+            veila_renderer::avatar::AvatarAsset::Placeholder
+        ) && veila_ui::has_avatar_candidate(avatar_path.as_deref());
         let weather_location = effective_weather_location(&config);
         let weather_snapshot =
             effective_weather_snapshot(&config, options.weather_snapshot.clone());
@@ -384,7 +449,7 @@ impl CurtainApp {
                 .context("failed to start curtain control listener")?;
         }
 
-        Ok(Self {
+        let app = Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
                 .context("compositor does not advertise wl_compositor")?,
@@ -412,13 +477,13 @@ impl CurtainApp {
                 config.background.outputs.clone()
             },
             slideshow,
-            auth_events,
             auth_sender,
             background_sender,
-            background_events,
+            keyboard_label_sender: None,
             control_events,
             background_asset,
             background_generated,
+            generated_pending_sizes: Vec::new(),
             background_treatment,
             background_color,
             ui_output_mode: if emergency_active {
@@ -442,10 +507,14 @@ impl CurtainApp {
             ui_shell,
             avatar_path,
             avatar_load_started: false,
+            avatar_load_needed,
+            artwork_in_flight: None,
+            artwork_last_attempt: None,
             lock_wait_timeout,
             startup_started_at,
             lock_started_at: Instant::now(),
             session_locked: false,
+            rich_scene_ready: false,
             session_locked_at: None,
             session_finished: false,
             exit_requested: false,
@@ -478,10 +547,19 @@ impl CurtainApp {
             wake_pointer_release_pending: false,
             post_ready_nonfirst_renders: 0,
             post_ready_memory_logged: false,
+            post_ready_trim_logged: false,
             pending_pre_ready_redraw: false,
             first_frame_committed_at: None,
             lock_acquisition_started: false,
-        })
+        };
+        Ok((
+            app,
+            CurtainEventSources {
+                auth: auth_events,
+                background: background_events,
+                control: control_source,
+            },
+        ))
     }
 
     pub(crate) fn acquire_lock(&mut self, queue_handle: &QueueHandle<Self>) -> Result<()> {
@@ -545,8 +623,11 @@ impl CurtainApp {
             background: None,
             scene_base: None,
             scene_base_revision: 0,
+            scene_base_scale: veila_renderer::RenderScale::ONE,
             scene_base_has_layers: false,
+            widget_frame: None,
             shm_pool: None,
+            placeholder_pool: None,
             pending_redraw: PendingRedraw::default(),
             output_power,
             preferred_scale: 1,
@@ -598,34 +679,6 @@ impl CurtainApp {
             || (self.exit_requested && (self.session_locked || self.session_finished))
     }
 
-    pub(crate) fn animation_poll_interval(&self) -> Duration {
-        let shell_interval = self.ui_shell.animation_poll_interval();
-        let now = Instant::now();
-        let repeat_interval = self
-            .backspace_repeat
-            .as_ref()
-            .map(|backspace_repeat| backspace_repeat.due_in(now))
-            .unwrap_or(shell_interval);
-        let slideshow_interval = self
-            .slideshow
-            .as_ref()
-            .and_then(|slideshow| slideshow.next_due_in(now))
-            .unwrap_or(shell_interval);
-        let screen_off_interval = self
-            .screen_off
-            .due_in(now, self.session_locked)
-            .unwrap_or(shell_interval);
-        let power_status_interval = self
-            .power_status_poll_interval(now)
-            .unwrap_or(shell_interval);
-
-        shell_interval
-            .min(repeat_interval)
-            .min(slideshow_interval)
-            .min(screen_off_interval)
-            .min(power_status_interval)
-    }
-
     pub(crate) fn failure_reason(&self) -> Option<&str> {
         self.failure_reason.as_deref()
     }
@@ -641,6 +694,7 @@ impl CurtainApp {
         self.background_outputs.clear();
         self.slideshow = None;
         self.background_generated = None;
+        self.generated_pending_sizes.clear();
         self.background_treatment = BackgroundTreatment::default();
         self.background_color = EMERGENCY_BACKGROUND;
         self.background_asset = BackgroundAsset::load(
@@ -833,102 +887,6 @@ impl CurtainApp {
     }
 }
 
-pub(crate) fn background_treatment(
-    config: &veila_common::config::BackgroundConfig,
-) -> BackgroundTreatment {
-    BackgroundTreatment {
-        blur_radius: config.blur_strength,
-        dim_strength: config.dim_strength,
-        tint: config
-            .tint
-            .map(|color| ClearColor::rgba(color.0, color.1, color.2, color.3)),
-        scaling: to_background_scaling(config.scaling),
-    }
-}
-
-fn to_background_scaling(scaling: ConfigBackgroundScaling) -> BackgroundScaling {
-    match scaling {
-        ConfigBackgroundScaling::Fill => BackgroundScaling::Fill,
-        ConfigBackgroundScaling::Fit => BackgroundScaling::Fit,
-        ConfigBackgroundScaling::Center => BackgroundScaling::Center,
-        ConfigBackgroundScaling::Tile => BackgroundScaling::Tile,
-        ConfigBackgroundScaling::Stretch => BackgroundScaling::Stretch,
-    }
-}
-
-pub(crate) fn background_generated(config: &BackgroundConfig) -> Option<GeneratedBackground> {
-    if let Some(gradient) = config.resolved_gradient() {
-        return Some(GeneratedBackground::Gradient(BackgroundGradient {
-            top_left: to_background_color(gradient.top_left),
-            top_right: to_background_color(gradient.top_right),
-            bottom_left: to_background_color(gradient.bottom_left),
-            bottom_right: to_background_color(gradient.bottom_right),
-        }));
-    }
-
-    if let Some(radial) = config.resolved_radial() {
-        return Some(GeneratedBackground::Radial(BackgroundRadial {
-            center: to_background_color(radial.center),
-            edge: to_background_color(radial.edge),
-            center_x: radial.center_x,
-            center_y: radial.center_y,
-            radius: radial.radius,
-        }));
-    }
-
-    config
-        .resolved_layered()
-        .map(|layered| GeneratedBackground::Layered(to_layered_background(&layered)))
-}
-
-fn to_background_color(color: veila_common::RgbColor) -> ClearColor {
-    ClearColor::rgba(color.0, color.1, color.2, color.3)
-}
-
-fn to_layered_background(config: &BackgroundLayeredConfig) -> BackgroundLayered {
-    let base = match config.base.effective_mode() {
-        BackgroundLayeredBaseMode::Gradient => {
-            let gradient = config.base.gradient.clone().unwrap_or_default();
-            BackgroundLayeredBase::Gradient(BackgroundGradient {
-                top_left: to_background_color(gradient.top_left),
-                top_right: to_background_color(gradient.top_right),
-                bottom_left: to_background_color(gradient.bottom_left),
-                bottom_right: to_background_color(gradient.bottom_right),
-            })
-        }
-        BackgroundLayeredBaseMode::Radial => {
-            let radial = config.base.radial.clone().unwrap_or_default();
-            BackgroundLayeredBase::Radial(BackgroundRadial {
-                center: to_background_color(radial.center),
-                edge: to_background_color(radial.edge),
-                center_x: radial.center_x,
-                center_y: radial.center_y,
-                radius: radial.radius,
-            })
-        }
-        BackgroundLayeredBaseMode::Solid => {
-            BackgroundLayeredBase::Solid(to_background_color(config.base.color))
-        }
-    };
-
-    let mut blobs = [None; 3];
-    for (slot, blob) in blobs.iter_mut().zip(config.blobs.iter().take(3)) {
-        *slot = Some(BackgroundLayeredBlob {
-            color: blob_color(blob.color, blob.opacity),
-            x: blob.x,
-            y: blob.y,
-            size: blob.size,
-        });
-    }
-
-    BackgroundLayered { base, blobs }
-}
-
-fn blob_color(color: veila_common::RgbColor, opacity: u8) -> ClearColor {
-    let alpha = ((u16::from(color.3) * u16::from(opacity.min(100)) + 50) / 100) as u8;
-    ClearColor::rgba(color.0, color.1, color.2, alpha)
-}
-
 pub(crate) fn effective_battery_snapshot(
     config: &AppConfig,
     runtime_snapshot: Option<BatterySnapshot>,
@@ -984,10 +942,59 @@ mod tests {
     fn fractional_surface_size_commits_with_unit_buffer_scale() {
         let size = SurfaceSize::new_with_fractional_scale(1920, 1080, 2, Some(150));
 
-        assert_eq!(size.buffer.width, 3840);
-        assert_eq!(size.buffer.height, 2160);
+        assert_eq!(size.buffer.width, 2400);
+        assert_eq!(size.buffer.height, 1350);
         assert_eq!(size.buffer_scale_for_commit(), 1);
+        assert_eq!(size.render_scale.units(), 150);
         assert_eq!(size.fractional_scale, Some(150));
+    }
+
+    #[test]
+    fn fractional_surface_size_uses_native_pixels_and_stable_commit_state() {
+        let none = SurfaceSize::new_with_fractional_scale(2560, 1440, 1, None);
+        let one = SurfaceSize::new_with_fractional_scale(2560, 1440, 1, Some(120));
+        assert!(none.same_rendering_as(one));
+        let one_and_half = SurfaceSize::new_with_fractional_scale(2560, 1440, 2, Some(180));
+        assert_eq!(
+            one_and_half.buffer,
+            veila_renderer::FrameSize::new(3840, 2160)
+        );
+        assert!(!one.same_rendering_as(one_and_half));
+        let two = SurfaceSize::new_with_fractional_scale(2560, 1440, 2, Some(240));
+        let integer_two = SurfaceSize::new_with_fractional_scale(2560, 1440, 2, None);
+        assert_eq!(two.buffer, integer_two.buffer);
+        assert!(!two.same_rendering_as(integer_two));
+    }
+
+    #[test]
+    fn placeholder_covers_scaled_output_with_and_without_viewporter() {
+        let size = SurfaceSize::new_with_fractional_scale(1920, 1080, 2, None);
+
+        assert_eq!(
+            size.placeholder_buffer(true),
+            (veila_renderer::FrameSize::new(1, 1), 1)
+        );
+        assert_eq!(size.placeholder_buffer(false), (size.buffer, 2));
+    }
+
+    #[test]
+    fn generated_placeholder_preserves_aspect_ratio_with_bounded_area() {
+        let landscape = SurfaceSize::new_with_fractional_scale(3840, 2160, 2, None);
+        let portrait = SurfaceSize::new_with_fractional_scale(1080, 1920, 1, None);
+        let tiny = SurfaceSize::new_with_fractional_scale(80, 40, 1, None);
+
+        assert_eq!(
+            landscape.generated_placeholder_size(),
+            veila_renderer::FrameSize::new(160, 90)
+        );
+        assert_eq!(
+            portrait.generated_placeholder_size(),
+            veila_renderer::FrameSize::new(90, 160)
+        );
+        assert_eq!(
+            tiny.generated_placeholder_size(),
+            veila_renderer::FrameSize::new(80, 40)
+        );
     }
 
     #[test]

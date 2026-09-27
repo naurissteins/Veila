@@ -59,13 +59,13 @@ yay -S veila-git
 Start the daemon:
 
 ```bash
-veilad
+veila daemon
 ```
 
 Or better run it as a user service with systemd:
 
 ```bash
-systemctl --user enable --now veilad.service
+systemctl --user enable --now veila.service
 ```
 
 Lock the screen:
@@ -115,7 +115,7 @@ Veila is available in the official [Nixpkgs unstable repository](https://search.
 }
 ```
 
-The module installs `veila`, `veilad` and `veila-curtain`, configures the required PAM service, and (when enabled) sets up the `veilad` and idle systemd user services.
+The module installs the `veila` binary, configures the required PAM service, and (when enabled) sets up the `veila.service` daemon with idle locking configured through `[idle]`.
 
 **Install directly:**
 

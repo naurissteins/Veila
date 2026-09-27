@@ -2,14 +2,17 @@ use anyhow::Context;
 use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_common::AppConfig;
 use veila_renderer::background::BackgroundAsset;
-use veila_ui::ShellTheme;
+use veila_ui::{
+    ShellTheme,
+    background::{background_generated, background_treatment},
+};
 use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 
 use crate::{
     background::BackgroundSlideshow,
     state::{
-        CurtainApp, background_generated, background_treatment, effective_battery_snapshot,
-        effective_weather_location, effective_weather_snapshot,
+        CurtainApp, effective_battery_snapshot, effective_weather_location,
+        effective_weather_snapshot,
     },
 };
 
@@ -104,6 +107,8 @@ impl CurtainApp {
         let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
         self.avatar_path = avatar_path.clone();
         self.avatar_load_started = false;
+        self.avatar_load_needed = false;
+        self.artwork_last_attempt = None;
         self.ui_shell.apply_theme_with_username_and_weather(
             theme,
             Some(config.visuals.input_placeholder()),
@@ -139,5 +144,6 @@ impl CurtainApp {
         self.render_all_surfaces(queue_handle);
         self.maybe_power_off_secondary_outputs();
         self.maybe_start_background_render();
+        self.maybe_start_artwork_load();
     }
 }

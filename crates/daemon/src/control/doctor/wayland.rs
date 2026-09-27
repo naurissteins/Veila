@@ -6,7 +6,8 @@ use smithay_client_toolkit::reexports::client::{
 
 use super::{CheckStatus, DoctorSummary};
 
-pub(super) fn check_wayland(summary: &mut DoctorSummary) {
+/// Returns whether the compositor advertises ext-idle-notify-v1, or `None` when it cannot be queried.
+pub(super) fn check_wayland(summary: &mut DoctorSummary) -> Option<bool> {
     let connection = match Connection::connect_to_env() {
         Ok(connection) => connection,
         Err(error) => {
@@ -15,7 +16,7 @@ pub(super) fn check_wayland(summary: &mut DoctorSummary) {
                 CheckStatus::Error,
                 format!("failed to connect to Wayland compositor: {error}"),
             );
-            return;
+            return None;
         }
     };
 
@@ -27,7 +28,7 @@ pub(super) fn check_wayland(summary: &mut DoctorSummary) {
                 CheckStatus::Error,
                 format!("failed to enumerate Wayland globals: {error}"),
             );
-            return;
+            return None;
         }
     };
 
@@ -41,6 +42,9 @@ pub(super) fn check_wayland(summary: &mut DoctorSummary) {
         .filter(|global| global.interface == "ext_session_lock_manager_v1")
         .map(|global| global.version)
         .max();
+    let idle_notifier = globals
+        .iter()
+        .any(|global| global.interface == "ext_idle_notifier_v1");
 
     println!("wayland.outputs={output_count}");
     println!(
@@ -49,6 +53,14 @@ pub(super) fn check_wayland(summary: &mut DoctorSummary) {
             .map(|version| version.to_string())
             .as_deref()
             .unwrap_or("missing")
+    );
+    println!(
+        "wayland.ext_idle_notifier_v1={}",
+        if idle_notifier {
+            "advertised"
+        } else {
+            "missing"
+        }
     );
 
     match (session_lock_version, output_count) {
@@ -68,6 +80,8 @@ pub(super) fn check_wayland(summary: &mut DoctorSummary) {
             "compositor advertised no outputs",
         ),
     }
+
+    Some(idle_notifier)
 }
 
 struct WaylandRegistryProbe;

@@ -20,7 +20,7 @@ pub(super) async fn check_daemon(summary: &mut DoctorSummary) {
         summary.record(
             "daemon",
             CheckStatus::Warning,
-            "veilad is not running at the expected socket",
+            "the Veila daemon is not running at the expected socket",
         );
         return;
     }

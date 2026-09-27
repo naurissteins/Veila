@@ -16,30 +16,11 @@ pub(super) fn widget_data(snapshot: Option<NowPlayingSnapshot>) -> Option<NowPla
     let title = normalize(snapshot.title)?;
     let artist = snapshot.artist.and_then(normalize);
     let artwork_path = snapshot.artwork_path;
-    if artwork_path.is_none() {
-        tracing::debug!("now playing snapshot has no artwork path");
-    }
-    let artwork = artwork_path
-        .as_deref()
-        .and_then(|path| match CoverArtAsset::load(path) {
-            Ok(artwork) => {
-                tracing::debug!(path = %path.display(), "loaded now playing artwork");
-                Some(artwork)
-            }
-            Err(error) => {
-                tracing::debug!(
-                    path = %path.display(),
-                    "failed to load now playing artwork: {error:#}"
-                );
-                None
-            }
-        });
-
     Some(NowPlayingWidgetData {
         title,
         artist,
         artwork_path,
-        artwork,
+        artwork: None,
     })
 }
 
@@ -139,13 +120,9 @@ mod tests {
         .expect("widget before artwork exists");
 
         fs::write(&path, ONE_PIXEL_PNG).expect("write artwork");
-        let after = widget_data(Some(NowPlayingSnapshot {
-            title: String::from("Track"),
-            artist: Some(String::from("Artist")),
-            artwork_path: Some(path.clone()),
-            fetched_at_unix: 10,
-        }))
-        .expect("widget after artwork exists");
+        let mut after = before.clone();
+        after.artwork =
+            Some(veila_renderer::cover::CoverArtAsset::load(&path, 64).expect("artwork"));
 
         let _ = fs::remove_file(path);
 

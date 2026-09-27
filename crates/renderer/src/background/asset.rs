@@ -12,7 +12,7 @@ use super::{
         store_cached_buffer, store_cached_buffer_for_generated,
         store_cached_buffer_for_generated_with_variant, store_cached_buffer_with_variant,
     },
-    source_cache::{load_cached_rgba, store_cached_rgba},
+    source_cache::{has_cached_rgba, load_cached_rgba, store_cached_rgba},
     treatment::apply_treatment,
 };
 use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
@@ -61,7 +61,7 @@ impl BackgroundAsset {
 }
 
 pub fn prewarm_source(path: &Path) -> Result<SourceCacheStatus> {
-    if load_cached_rgba(path)?.is_some() {
+    if has_cached_rgba(path) {
         return Ok(SourceCacheStatus::Hit);
     }
 

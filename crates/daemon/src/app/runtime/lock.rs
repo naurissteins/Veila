@@ -262,10 +262,7 @@ async fn activate_lock_attempt(
                 };
                 remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                 return Err(AttemptFailure::retryable(
-                    anyhow!(
-                        "curtain exited before readiness with status {status}. \
-        If you ran `cargo run -p veila-daemon` after changing curtain startup arguments or shared runtime wiring, rebuild the workspace with `cargo build --workspace` so `target/debug/veila-curtain` matches the daemon"
-                    ),
+                    anyhow!("curtain exited before readiness with status {status}"),
                     session_locked,
                 ));
             }
@@ -387,6 +384,7 @@ fn log_latency_report(report: &LockLatencyReport) {
         first_surface_configured_us = curtain.and_then(|report| report.first_surface_configured_us),
         all_surfaces_configured_ms = curtain.and_then(|report| report.all_surfaces_configured_ms),
         all_surfaces_configured_us = curtain.and_then(|report| report.all_surfaces_configured_us),
+        placeholder_committed_us = curtain.and_then(|report| report.placeholder_committed_us),
         session_locked_ms = curtain.and_then(|report| report.session_locked_ms),
         session_locked_us = curtain.and_then(|report| report.session_locked_us),
         first_frame_ms = curtain.and_then(|report| report.first_frame_ms),

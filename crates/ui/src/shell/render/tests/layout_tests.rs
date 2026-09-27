@@ -76,12 +76,13 @@ fn backdrop_rect_supports_center_and_right_alignment() {
         true,
     );
 
-    let centered_rect = centered.backdrop_rect(
+    let centered_rect = centered.render_context().backdrop_rect(
         FrameSize::new(1280, 720),
         centered.theme.backdrops[0].clone(),
     );
-    let right_rect =
-        right.backdrop_rect(FrameSize::new(1280, 720), right.theme.backdrops[0].clone());
+    let right_rect = right
+        .render_context()
+        .backdrop_rect(FrameSize::new(1280, 720), right.theme.backdrops[0].clone());
 
     assert_eq!(centered_rect.x, 380);
     assert_eq!(centered_rect.y, 254);
@@ -151,7 +152,9 @@ fn backdrop_rect_supports_full_width_and_height() {
         true,
     );
 
-    let rect = shell.backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0].clone());
+    let rect = shell
+        .render_context()
+        .backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0].clone());
 
     assert_eq!(rect.x, 0);
     assert_eq!(rect.y, 0);
@@ -196,7 +199,9 @@ fn backdrop_rect_applies_full_height_insets() {
         true,
     );
 
-    let rect = shell.backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0].clone());
+    let rect = shell
+        .render_context()
+        .backdrop_rect(FrameSize::new(1280, 720), shell.theme.backdrops[0].clone());
 
     assert_eq!(rect.x, 110);
     assert_eq!(rect.y, 110);
@@ -241,7 +246,7 @@ fn widget_position_can_center_inside_backdrop_rect() {
         true,
     );
 
-    let rect = shell.positioned_rect(
+    let rect = shell.render_context().positioned_rect(
         FrameSize::new(1280, 720),
         WidgetPosition {
             halign: HorizontalAlign::Center,
@@ -937,8 +942,12 @@ fn floating_weather_does_not_shift_auth_or_use_footer_role() {
         None,
     );
 
-    let without_layout = without_weather.scene_layout(FrameSize::new(1280, 720));
-    let with_layout = with_weather.scene_layout(FrameSize::new(1280, 720));
+    let without_layout = without_weather
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
+    let with_layout = with_weather
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert_eq!(with_layout.anchors.auth_y, without_layout.anchors.auth_y);
     assert!(with_layout.floating_weather.is_some());
@@ -977,7 +986,9 @@ fn explicit_avatar_and_username_positions_are_removed_from_auth_flow() {
         true,
     );
 
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let layout = shell
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert!(layout.floating_avatar);
     assert!(layout.floating_username.is_some());
@@ -1012,7 +1023,9 @@ fn username_stays_in_auth_flow_when_only_avatar_is_explicit() {
         true,
     );
 
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let layout = shell
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert!(layout.floating_avatar);
     assert!(layout.floating_username.is_none());
@@ -1056,7 +1069,9 @@ fn explicit_input_and_status_positions_are_removed_from_auth_flow() {
         failed_attempts: Some(1),
     };
 
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let layout = shell
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert!(layout.floating_input);
     assert!(layout.floating_status.is_some());
@@ -1096,7 +1111,9 @@ fn inline_status_stays_inside_explicit_input_by_default() {
         failed_attempts: Some(1),
     };
 
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let layout = shell
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert!(layout.floating_input);
     assert!(layout.floating_status.is_none());
@@ -1129,7 +1146,9 @@ fn external_status_follows_explicit_input_when_status_position_is_unset() {
         failed_attempts: Some(1),
     };
 
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let layout = shell
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert!(layout.floating_input);
     assert!(layout.floating_status.is_some());
@@ -1160,7 +1179,9 @@ fn hidden_status_mode_removes_auth_feedback_from_layout() {
         failed_attempts: Some(1),
     };
 
-    let layout = shell.scene_layout(FrameSize::new(1280, 720));
+    let layout = shell
+        .render_context()
+        .scene_layout(FrameSize::new(1280, 720));
 
     assert!(layout.floating_status.is_none());
     assert!(

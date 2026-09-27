@@ -3,6 +3,10 @@
 //! Shared rendering primitives used by Veila components.
 
 mod blur;
+pub mod scale;
+pub use scale::RenderScale;
+
+pub mod cache;
 
 pub mod background;
 pub mod draw;
@@ -127,6 +131,8 @@ pub enum RendererError {
     ShmPool(#[from] smithay_client_toolkit::shm::CreatePoolError),
     #[error(transparent)]
     Image(#[from] image::ImageError),
+    #[error("failed to return released buffer slot memory: {0}")]
+    SlotTrim(nix::errno::Errno),
 }
 
 /// Shared result type for rendering operations.
@@ -361,7 +367,7 @@ fn blend_pixel(dst: &mut [u8], src: &[u8]) {
     }
 }
 
-fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
+pub(crate) fn blend_component(dst: u8, src: u8, inverse_alpha: u16) -> u8 {
     let blended = u16::from(src) + ((u16::from(dst) * inverse_alpha + 127) / 255);
     blended.min(u16::from(u8::MAX)) as u8
 }

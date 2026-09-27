@@ -100,6 +100,7 @@ const TOP_LEVEL: &[KeyRule] = &[
     key("background", Schema::Table(BACKGROUND)),
     key("lock", Schema::Table(LOCK)),
     key("fingerprint", Schema::Table(FINGERPRINT)),
+    key("idle", Schema::Table(IDLE)),
     key("battery", Schema::Table(BATTERY)),
     key("now_playing", Schema::Table(NOW_PLAYING)),
     key("weather", Schema::Table(WEATHER)),
@@ -193,6 +194,12 @@ const BATTERY: &[KeyRule] = &[
 ];
 
 const FINGERPRINT: &[KeyRule] = &[key("enabled", Schema::Any)];
+
+const IDLE: &[KeyRule] = &[
+    key("enabled", Schema::Any),
+    key("lock_after_seconds", Schema::Any),
+    key("lock_before_sleep", Schema::Any),
+];
 
 const NOW_PLAYING: &[KeyRule] = &[
     key("include_players", Schema::Any),
