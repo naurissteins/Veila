@@ -95,6 +95,7 @@ fn prewarm_jobs_use_scaled_output_buffer_sizes() {
         name: Some(String::from("DP-1")),
         size: FrameSize::new(3840, 2160),
         scale: 2,
+        render_scale: veila_renderer::RenderScale::from_integer(2),
     }];
 
     let jobs = prewarm_jobs(&config.background, &outputs);
@@ -104,7 +105,7 @@ fn prewarm_jobs_use_scaled_output_buffer_sizes() {
         jobs[0].sizes,
         vec![PrewarmSize {
             buffer: FrameSize::new(3840, 2160),
-            scale: 2
+            scale: veila_renderer::RenderScale::from_integer(2)
         }]
     );
 }
@@ -122,13 +123,14 @@ fn generated_prewarm_sizes_keep_scale_with_buffer_size() {
         name: Some(String::from("DP-1")),
         size: FrameSize::new(3840, 2160),
         scale: 2,
+        render_scale: veila_renderer::RenderScale::from_integer(2),
     }];
 
     assert_eq!(
         generated_sizes(&config.background, &outputs),
         vec![PrewarmSize {
             buffer: FrameSize::new(3840, 2160),
-            scale: 2
+            scale: veila_renderer::RenderScale::from_integer(2)
         }]
     );
 }

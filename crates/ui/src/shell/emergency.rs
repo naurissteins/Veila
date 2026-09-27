@@ -1,5 +1,5 @@
 use veila_renderer::{
-    ClearColor, FrameSize, PixelBuffer,
+    ClearColor, FrameSize, PixelBuffer, RenderScale,
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
     text::{TextStyle, fit_single_line_text},
@@ -27,15 +27,15 @@ impl RenderContext<'_> {
     }
 
     pub fn render_emergency_static_overlay(&self, buffer: &mut impl PixelBuffer) {
-        let layout = EmergencyLayout::new(buffer.size(), self.render_scale.max(1));
+        let layout = EmergencyLayout::new(buffer.size(), self.render_scale);
         let title = fit_single_line_text(
             "Unlock",
-            TextStyle::new_px(FOREGROUND, 28 * self.render_scale.max(1)).with_line_spacing(0),
+            TextStyle::new_px(FOREGROUND, self.render_scale.apply_u32(28)).with_line_spacing(0),
             layout.input.width as u32,
         );
         let hint = fit_single_line_text(
             "Emergency unlock mode",
-            TextStyle::new_px(MUTED, 15 * self.render_scale.max(1)).with_line_spacing(0),
+            TextStyle::new_px(MUTED, self.render_scale.apply_u32(15)).with_line_spacing(0),
             layout.input.width as u32,
         );
 
@@ -53,14 +53,17 @@ impl RenderContext<'_> {
     }
 
     pub fn render_emergency_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
-        let layout = EmergencyLayout::new(buffer.size(), self.render_scale.max(1));
+        let layout = EmergencyLayout::new(buffer.size(), self.render_scale);
         self.render_emergency_input_content(buffer, layout.input);
 
         if let Some(text) = self.emergency_status_text() {
             let block = fit_single_line_text(
                 &text,
-                TextStyle::new_px(self.emergency_status_color(), 15 * self.render_scale.max(1))
-                    .with_line_spacing(0),
+                TextStyle::new_px(
+                    self.emergency_status_color(),
+                    self.render_scale.apply_u32(15),
+                )
+                .with_line_spacing(0),
                 layout.input.width as u32,
             );
             block.draw(
@@ -75,7 +78,7 @@ impl RenderContext<'_> {
         if self.shell.displayed_secret_len() == 0 {
             let placeholder = fit_single_line_text(
                 "Password",
-                TextStyle::new_px(MUTED, 16 * self.render_scale.max(1)).with_line_spacing(0),
+                TextStyle::new_px(MUTED, self.render_scale.apply_u32(16)).with_line_spacing(0),
                 rect.width.saturating_sub(48) as u32,
             );
             placeholder.draw(
@@ -111,9 +114,9 @@ impl RenderContext<'_> {
 
     fn emergency_mask_style(&self) -> MaskedInputStyle {
         let mut style = MaskedInputStyle::new(FOREGROUND);
-        let scale = self.render_scale.max(1) as i32;
-        style.bullet_size = style.bullet_size.saturating_mul(scale);
-        style.spacing = style.spacing.saturating_mul(scale);
+        let scale = self.render_scale;
+        style.bullet_size = scale.apply_i32(style.bullet_size);
+        style.spacing = scale.apply_i32(style.spacing);
         style.horizontal_padding = scaled(22, self.render_scale);
         style
     }
@@ -150,8 +153,7 @@ struct EmergencyLayout {
 }
 
 impl EmergencyLayout {
-    fn new(size: FrameSize, scale: u32) -> Self {
-        let scale = scale.max(1);
+    fn new(size: FrameSize, scale: RenderScale) -> Self {
         let width =
             (size.width as i32 - scaled(64, scale)).clamp(scaled(260, scale), scaled(440, scale));
         let height = scaled(56, scale);
@@ -169,6 +171,6 @@ impl EmergencyLayout {
     }
 }
 
-fn scaled(value: i32, scale: u32) -> i32 {
-    value.saturating_mul(scale.max(1) as i32)
+fn scaled(value: i32, scale: RenderScale) -> i32 {
+    scale.apply_i32(value)
 }

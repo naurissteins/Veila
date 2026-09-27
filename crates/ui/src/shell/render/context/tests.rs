@@ -109,7 +109,7 @@ fn scale_cache_is_bounded_and_eviction_preserves_pixels() {
             .borrow()
             .entries
             .iter()
-            .all(|entry| entry.scale != 2)
+            .all(|entry| entry.scale != RenderScale::from_integer(2))
     );
     let mut after = buffer(2);
     shell.render_scaled(&mut after, 2);
@@ -200,4 +200,56 @@ fn cached_scale_draws_updated_media_metadata() {
         assert_ne!(current.pixels(), previous.pixels());
         previous = current;
     }
+}
+
+#[test]
+fn fractional_context_scales_configured_geometry_without_changing_integer_pixels() {
+    let theme = ShellTheme {
+        input_width: Some(300),
+        input_height: Some(52),
+        input_font_size: Some(18),
+        ..ShellTheme::default()
+    };
+    let shell = ShellState::new(theme, None, None, true);
+    let one = shell.with_pixel_scale(RenderScale::ONE, |context| {
+        (
+            context.theme.input_width,
+            context.theme.input_height,
+            context.theme.input_font_size,
+        )
+    });
+    let fractional = shell.with_pixel_scale(RenderScale::from_units(180), |context| {
+        (
+            context.theme.input_width,
+            context.theme.input_height,
+            context.theme.input_font_size,
+        )
+    });
+    let integer = shell.with_pixel_scale(RenderScale::from_integer(2), |context| {
+        (
+            context.theme.input_width,
+            context.theme.input_height,
+            context.theme.input_font_size,
+        )
+    });
+    assert_eq!(one, (Some(300), Some(52), Some(18)));
+    assert_eq!(fractional, (Some(450), Some(78), Some(27)));
+    assert_eq!(integer, (Some(600), Some(104), Some(36)));
+    assert_eq!(shell.scaled_render_cache.borrow().entries.len(), 2);
+}
+
+#[test]
+fn fractional_auth_damage_matches_fractional_frame() {
+    let shell = shell();
+    let one = shell
+        .auth_dirty_rect_at_scale(FrameSize::new(640, 360), RenderScale::ONE)
+        .unwrap();
+    let fractional = shell
+        .auth_dirty_rect_at_scale(FrameSize::new(960, 540), RenderScale::from_units(180))
+        .unwrap();
+    let two = shell
+        .auth_dirty_rect_at_scale(FrameSize::new(1280, 720), RenderScale::from_integer(2))
+        .unwrap();
+    assert!(fractional.width >= one.width && fractional.width <= two.width);
+    assert!(fractional.height >= one.height && fractional.height <= two.height);
 }

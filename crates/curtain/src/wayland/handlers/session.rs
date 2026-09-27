@@ -111,8 +111,12 @@ impl Dispatch<wp_fractional_scale_v1::WpFractionalScaleV1, wl_surface::WlSurface
 
         let size =
             state.resolve_surface_size(index, (previous.logical_width, previous.logical_height));
-        if size == previous {
+        state.lock_surfaces[index].size = Some(size);
+        if size.same_rendering_as(previous) {
             return;
+        }
+        if size.buffer != previous.buffer {
+            state.background_render_started = false;
         }
 
         tracing::debug!(
@@ -125,7 +129,6 @@ impl Dispatch<wp_fractional_scale_v1::WpFractionalScaleV1, wl_surface::WlSurface
             buffer_height = size.buffer.height,
             "rerendering lock surface after fractional scale change"
         );
-        state.lock_surfaces[index].size = Some(size);
         if let Err(error) = state.redraw_scaled_surface(index, size, qh) {
             state.failure_reason = Some(format!(
                 "failed to rerender fractionally scaled curtain surface: {error:#}"
@@ -242,8 +245,12 @@ impl CompositorHandler for CurtainApp {
 
         let size =
             self.resolve_surface_size(index, (previous.logical_width, previous.logical_height));
-        if size == previous {
+        self.lock_surfaces[index].size = Some(size);
+        if size.same_rendering_as(previous) {
             return;
+        }
+        if size.buffer != previous.buffer {
+            self.background_render_started = false;
         }
 
         tracing::debug!(
@@ -255,7 +262,6 @@ impl CompositorHandler for CurtainApp {
             buffer_height = size.buffer.height,
             "rerendering lock surface after scale change"
         );
-        self.lock_surfaces[index].size = Some(size);
         if let Err(error) = self.redraw_scaled_surface(index, size, qh) {
             self.failure_reason = Some(format!(
                 "failed to rerender scaled curtain surface: {error:#}"

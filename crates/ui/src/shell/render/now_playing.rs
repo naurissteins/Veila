@@ -1,4 +1,4 @@
-use veila_renderer::{FrameSize, PixelBuffer, shape::Rect, text::TextBlock};
+use veila_renderer::{FrameSize, PixelBuffer, RenderScale, shape::Rect, text::TextBlock};
 
 use super::super::NowPlayingWidgetData;
 use super::RenderContext;
@@ -9,16 +9,15 @@ const NOW_PLAYING_ARTWORK_DEFAULT_SIZE: i32 = 44;
 const NOW_PLAYING_ARTWORK_MIN_SIZE: i32 = 32;
 const NOW_PLAYING_ARTWORK_AUTO_MAX_SIZE: i32 = 160;
 
-fn artwork_size(size: FrameSize, render_scale: u32, configured_size: Option<i32>) -> i32 {
-    let scale = render_scale.max(1) as i32;
-    let min_size = NOW_PLAYING_ARTWORK_MIN_SIZE.saturating_mul(scale);
+fn artwork_size(size: FrameSize, render_scale: RenderScale, configured_size: Option<i32>) -> i32 {
+    let min_size = render_scale.apply_i32(NOW_PLAYING_ARTWORK_MIN_SIZE);
     configured_size.map_or_else(
         || {
-            NOW_PLAYING_ARTWORK_DEFAULT_SIZE
-                .saturating_mul(scale)
+            render_scale
+                .apply_i32(NOW_PLAYING_ARTWORK_DEFAULT_SIZE)
                 .clamp(
                     min_size,
-                    NOW_PLAYING_ARTWORK_AUTO_MAX_SIZE.saturating_mul(scale),
+                    render_scale.apply_i32(NOW_PLAYING_ARTWORK_AUTO_MAX_SIZE),
                 )
         },
         |configured_size| {
@@ -153,11 +152,7 @@ impl RenderContext<'_> {
     }
 
     fn now_playing_artwork_size(&self, size: FrameSize) -> i32 {
-        artwork_size(
-            size,
-            self.render_scale.max(1),
-            self.theme.now_playing_artwork_size,
-        )
+        artwork_size(size, self.render_scale, self.theme.now_playing_artwork_size)
     }
 
     fn now_playing_artwork_radius(&self, artwork_size: i32) -> i32 {
@@ -218,10 +213,10 @@ impl RenderContext<'_> {
     }
 
     fn now_playing_text_width(&self, configured_width: Option<i32>) -> i32 {
-        let scale = self.render_scale.max(1) as i32;
-        let default_width = (NOW_PLAYING_MAX_TEXT_WIDTH as i32).saturating_mul(scale);
-        let min_width = NOW_PLAYING_MIN_TEXT_WIDTH.saturating_mul(scale);
-        let max_width = NOW_PLAYING_TEXT_WIDTH_CAP.saturating_mul(scale);
+        let scale = self.render_scale;
+        let default_width = scale.apply_i32(NOW_PLAYING_MAX_TEXT_WIDTH as i32);
+        let min_width = scale.apply_i32(NOW_PLAYING_MIN_TEXT_WIDTH);
+        let max_width = scale.apply_i32(NOW_PLAYING_TEXT_WIDTH_CAP);
 
         configured_width
             .unwrap_or(default_width)
@@ -263,11 +258,18 @@ fn combine_optional_fade(base: Option<u8>, fade_percent: u8) -> Option<u8> {
 
 impl crate::shell::ShellState {
     pub fn now_playing_artwork_decode_size(&self, size: FrameSize, scale: u32) -> u32 {
-        let scale = scale.max(1);
+        self.now_playing_artwork_decode_size_at_scale(size, RenderScale::from_integer(scale))
+    }
+
+    pub fn now_playing_artwork_decode_size_at_scale(
+        &self,
+        size: FrameSize,
+        scale: RenderScale,
+    ) -> u32 {
         let configured = self
             .theme
             .now_playing_artwork_size
-            .map(|value| value.saturating_mul(scale as i32));
+            .map(|value| scale.apply_i32(value));
         artwork_size(size, scale, configured).max(1) as u32
     }
 }

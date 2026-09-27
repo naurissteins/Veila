@@ -12,12 +12,8 @@ use super::{
 };
 
 impl RenderContext<'_> {
-    fn render_scale_i32(&self) -> i32 {
-        self.render_scale.max(1) as i32
-    }
-
     fn scaled_px(&self, value: i32) -> i32 {
-        value.saturating_mul(self.render_scale_i32())
+        self.render_scale.apply_i32(value)
     }
 
     pub(crate) fn input_style(&self) -> PillStyle {
@@ -64,10 +60,10 @@ impl RenderContext<'_> {
     pub(crate) fn mask_style(&self) -> MaskedInputStyle {
         let mut style =
             MaskedInputStyle::new(self.theme.input_mask_color.unwrap_or(self.theme.foreground));
-        let scale = self.render_scale_i32();
-        style.bullet_size = style.bullet_size.saturating_mul(scale);
-        style.spacing = style.spacing.saturating_mul(scale);
-        style.horizontal_padding = style.horizontal_padding.saturating_mul(scale);
+        let scale = self.render_scale;
+        style.bullet_size = scale.apply_i32(style.bullet_size);
+        style.spacing = scale.apply_i32(style.spacing);
+        style.horizontal_padding = scale.apply_i32(style.horizontal_padding);
         style
     }
 

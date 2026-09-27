@@ -6,7 +6,7 @@ use std::{
 use veila_common::{
     BatterySnapshot, InputRevealMode, NowPlayingSnapshot, Secret, WeatherSnapshot, WeatherUnit,
 };
-use veila_renderer::{ClearColor, avatar::AvatarAsset, cover::CoverArtAsset};
+use veila_renderer::{ClearColor, RenderScale, avatar::AvatarAsset, cover::CoverArtAsset};
 
 use super::{
     ClockState, NowPlayingTransition, ShellMode, ShellState, ShellStatus, ShellTheme,
@@ -69,11 +69,16 @@ impl ShellState {
     }
 
     pub fn backdrop_cache_variant_scaled(&self, scale: u32) -> Option<String> {
+        self.backdrop_cache_variant_at_scale(RenderScale::from_integer(scale))
+    }
+
+    pub fn backdrop_cache_variant_at_scale(&self, scale: RenderScale) -> Option<String> {
         let variant = self.backdrop_cache_variant()?;
-        if scale <= 1 {
-            return Some(variant);
+        match scale.units() {
+            120 => Some(variant),
+            units if scale.is_integer() => Some(format!("{variant}:render-scale:{}", units / 120)),
+            units => Some(format!("{variant}:render-scale-120:{units}")),
         }
-        Some(format!("{variant}:render-scale:{scale}"))
     }
 
     pub fn has_visual_layers(&self) -> bool {
@@ -93,6 +98,10 @@ impl ShellState {
     }
 
     pub fn static_scene_cache_variant(&self, scale: u32) -> Option<String> {
+        self.static_scene_cache_variant_at_scale(RenderScale::from_integer(scale))
+    }
+
+    pub fn static_scene_cache_variant_at_scale(&self, scale: RenderScale) -> Option<String> {
         if self.emergency_active() {
             return None;
         }
@@ -100,13 +109,16 @@ impl ShellState {
         if !self.has_visual_layers() {
             return None;
         }
-        let scale = scale.max(1);
-        if let Some(variant) = self.static_scene_variant_cache.borrow().get(&scale) {
+        if let Some(variant) = self.static_scene_variant_cache.borrow().get(&scale.units()) {
             return Some(variant.clone());
         }
         let variant = format!(
             "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
-            scale,
+            if scale.is_integer() {
+                format!("{}", scale.units() / 120)
+            } else {
+                format!("{}/120", scale.units())
+            },
             self.theme,
             self.hint_text,
             self.reveal_hint_text,
@@ -117,7 +129,7 @@ impl ShellState {
         );
         self.static_scene_variant_cache
             .borrow_mut()
-            .insert(scale, variant.clone());
+            .insert(scale.units(), variant.clone());
         Some(variant)
     }
 

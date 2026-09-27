@@ -3,6 +3,9 @@
 //! Shared rendering primitives used by Veila components.
 
 mod blur;
+pub mod scale;
+pub use scale::RenderScale;
+
 pub mod cache;
 
 pub mod background;

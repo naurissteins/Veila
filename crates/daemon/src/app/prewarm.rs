@@ -202,7 +202,7 @@ fn prewarm_static_scene(
 
     for size in &sizes {
         let mut buffer = SoftwareBuffer::solid(size.buffer, ClearColor::opaque(0, 0, 0)).ok()?;
-        shell.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
+        shell.render_static_overlay_at_scale(&mut buffer, size.scale);
         warmed_sizes += 1;
     }
 
@@ -321,14 +321,14 @@ impl PrewarmJob {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct PrewarmSize {
     buffer: FrameSize,
-    scale: i32,
+    scale: veila_renderer::RenderScale,
 }
 
 impl From<&output_probe::ProbedOutput> for PrewarmSize {
     fn from(output: &output_probe::ProbedOutput) -> Self {
         Self {
             buffer: output.size,
-            scale: output.scale.max(1),
+            scale: output.render_scale,
         }
     }
 }

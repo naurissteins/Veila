@@ -35,7 +35,7 @@ pub(super) fn prewarm_layered_backgrounds(
     let mut warmed_sizes = 0usize;
 
     for size in sizes.iter().copied() {
-        let variant = shell.backdrop_cache_variant_scaled(size.scale.max(1) as u32);
+        let variant = shell.backdrop_cache_variant_at_scale(size.scale);
         let mut base_buffer = None;
 
         if let Some(variant) = &variant {
@@ -48,14 +48,14 @@ pub(super) fn prewarm_layered_backgrounds(
             } else {
                 let mut buffer =
                     render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?;
-                shell.render_static_backdrops_scaled(&mut buffer, size.scale.max(1) as u32);
+                shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
                 store_cached_render_variant(path, size.buffer, treatment, &buffer, variant).ok()?;
                 warmed_sizes += 1;
                 base_buffer = Some(buffer);
             }
         }
 
-        if let Some(scene_variant) = shell.static_scene_cache_variant(size.scale.max(1) as u32) {
+        if let Some(scene_variant) = shell.static_scene_cache_variant_at_scale(size.scale) {
             if load_cached_render_variant(path, size.buffer, treatment, &scene_variant)
                 .ok()
                 .flatten()
@@ -77,7 +77,7 @@ pub(super) fn prewarm_layered_backgrounds(
                     } else {
                         let mut buffer =
                             render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?;
-                        shell.render_static_backdrops_scaled(&mut buffer, size.scale.max(1) as u32);
+                        shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
                         buffer
                     }
                 }
@@ -85,7 +85,7 @@ pub(super) fn prewarm_layered_backgrounds(
                     render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?
                 }
             };
-            shell.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
+            shell.render_static_overlay_at_scale(&mut buffer, size.scale);
             store_cached_render_variant(path, size.buffer, treatment, &buffer, &scene_variant)
                 .ok()?;
             warmed_sizes += 1;
@@ -152,7 +152,7 @@ fn prewarm_generated_layered_backgrounds(
     let mut warmed_sizes = 0usize;
 
     for size in sizes.iter().copied() {
-        let variant = shell.backdrop_cache_variant_scaled(size.scale.max(1) as u32);
+        let variant = shell.backdrop_cache_variant_at_scale(size.scale);
         let mut base_buffer = None;
 
         if let Some(variant) = &variant {
@@ -164,7 +164,7 @@ fn prewarm_generated_layered_backgrounds(
                 cache_hits += 1;
             } else {
                 let mut buffer = asset.render(size.buffer).ok()?;
-                shell.render_static_backdrops_scaled(&mut buffer, size.scale.max(1) as u32);
+                shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
                 store_cached_generated_render_variant(
                     generated,
                     size.buffer,
@@ -178,7 +178,7 @@ fn prewarm_generated_layered_backgrounds(
             }
         }
 
-        if let Some(scene_variant) = shell.static_scene_cache_variant(size.scale.max(1) as u32) {
+        if let Some(scene_variant) = shell.static_scene_cache_variant_at_scale(size.scale) {
             if load_cached_generated_render_variant(
                 generated,
                 size.buffer,
@@ -208,13 +208,13 @@ fn prewarm_generated_layered_backgrounds(
                         buffer
                     } else {
                         let mut buffer = asset.render(size.buffer).ok()?;
-                        shell.render_static_backdrops_scaled(&mut buffer, size.scale.max(1) as u32);
+                        shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
                         buffer
                     }
                 }
                 (None, None) => asset.render(size.buffer).ok()?,
             };
-            shell.render_static_overlay_scaled(&mut buffer, size.scale.max(1) as u32);
+            shell.render_static_overlay_at_scale(&mut buffer, size.scale);
             store_cached_generated_render_variant(
                 generated,
                 size.buffer,

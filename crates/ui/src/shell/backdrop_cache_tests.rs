@@ -49,3 +49,22 @@ fn absent_backdrops_have_no_scaled_cache_variant() {
     let shell = ShellState::new(ShellTheme::from_config(&config), None, None, false);
     assert_eq!(shell.backdrop_cache_variant_scaled(2), None);
 }
+
+#[test]
+fn fractional_variants_are_distinct_from_integer_and_other_fractional_scales() {
+    use veila_renderer::RenderScale;
+    let shell = ShellState::default();
+    let one = shell.backdrop_cache_variant_scaled(1);
+    let one_and_quarter = shell.backdrop_cache_variant_at_scale(RenderScale::from_units(150));
+    let one_and_half = shell.backdrop_cache_variant_at_scale(RenderScale::from_units(180));
+    let two = shell.backdrop_cache_variant_scaled(2);
+    assert_ne!(one_and_quarter, one);
+    assert_ne!(one_and_quarter, one_and_half);
+    assert_ne!(one_and_half, two);
+    assert_eq!(
+        shell
+            .static_scene_cache_variant_at_scale(RenderScale::from_units(180))
+            .is_some(),
+        shell.static_scene_cache_variant(2).is_some()
+    );
+}

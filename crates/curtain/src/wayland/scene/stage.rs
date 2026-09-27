@@ -27,7 +27,7 @@ impl CurtainApp {
         let previous_size = self.lock_surfaces[index].size;
         let was_unconfigured = previous_size.is_none();
         self.lock_surfaces[index].size = Some(size);
-        if previous_size != Some(size) {
+        if previous_size.is_some_and(|previous| previous.buffer != size.buffer) {
             self.background_render_started = false;
         }
         self.log_surface_size(index, configure.new_size, size);
@@ -114,7 +114,9 @@ impl CurtainApp {
         }
 
         let surface = self.lock_surfaces[index].surface.clone();
-        self.render_surface_with_emergency_fallback(&surface, size, queue_handle)
+        self.render_surface_with_emergency_fallback(&surface, size, queue_handle)?;
+        self.maybe_start_background_render();
+        Ok(())
     }
 
     pub(crate) fn render_initial_scene(&mut self, queue_handle: &QueueHandle<Self>) {

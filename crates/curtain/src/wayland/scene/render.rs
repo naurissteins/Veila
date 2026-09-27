@@ -47,13 +47,18 @@ impl CurtainApp {
             .as_ref()
             .is_none_or(|pool| !pool.has_committed_frame());
         let frame_size = size.buffer;
-        let render_scale = size.scale.max(1) as u32;
+        let render_scale = size.render_scale;
         let revision = self.ui_shell.static_scene_revision();
         let output_role = self.output_role_for_surface(index);
         let ui_visible = output_role.renders_shell();
         let background_started_at = timing_enabled.then(Instant::now);
         let scene_base_cache_ready = if ui_visible {
-            self.try_prepare_scene_base_without_background(index, frame_size, revision, size.scale)?
+            self.try_prepare_scene_base_without_background(
+                index,
+                frame_size,
+                revision,
+                size.render_scale,
+            )?
         } else {
             None
         };
@@ -139,7 +144,7 @@ impl CurtainApp {
                     size.buffer_scale_for_commit(),
                     |buffer| {
                         buffer.pixels_mut().copy_from_slice(scene_base.pixels());
-                        ui_shell.render_dynamic_overlay_scaled(buffer, render_scale);
+                        ui_shell.render_dynamic_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
                             dynamic_overlay_ms =
                                 started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
@@ -226,20 +231,21 @@ impl CurtainApp {
         };
 
         let frame_size = size.buffer;
-        let render_scale = size.scale.max(1) as u32;
+        let render_scale = size.render_scale;
         let revision = self.ui_shell.static_scene_revision();
         let Some(scene_base) = self.lock_surfaces[index].scene_base.as_ref().cloned() else {
             return self.render_surface(surface, size, queue_handle);
         };
         if scene_base.size() != frame_size
             || self.lock_surfaces[index].scene_base_revision != revision
+            || self.lock_surfaces[index].scene_base_scale != render_scale
             || self.lock_surfaces[index].shm_pool.is_none()
         {
             return self.render_surface(surface, size, queue_handle);
         }
         let Some(dirty_rect) = self
             .ui_shell
-            .auth_dirty_rect_scaled(frame_size, render_scale)
+            .auth_dirty_rect_at_scale(frame_size, render_scale)
         else {
             return self.render_surface(surface, size, queue_handle);
         };
@@ -271,7 +277,7 @@ impl CurtainApp {
                         {
                             damaged = copied;
                         }
-                        ui_shell.render_auth_dirty_overlay_scaled(buffer, render_scale);
+                        ui_shell.render_auth_dirty_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
                             dynamic_overlay_ms =
                                 started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;

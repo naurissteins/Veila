@@ -1,6 +1,7 @@
 use std::{cell::RefCell, collections::VecDeque};
 
 use crate::shell::{ShellState, ShellTheme};
+use veila_renderer::RenderScale;
 
 use super::TextLayoutCache;
 
@@ -10,7 +11,7 @@ pub(in crate::shell) struct RenderContext<'a> {
     pub(in crate::shell) shell: &'a ShellState,
     pub(in crate::shell) theme: &'a ShellTheme,
     pub(in crate::shell) text_layout_cache: &'a RefCell<TextLayoutCache>,
-    pub(in crate::shell) render_scale: u32,
+    pub(in crate::shell) render_scale: RenderScale,
 }
 
 #[derive(Debug, Default)]
@@ -20,7 +21,7 @@ pub(in crate::shell) struct ScaledRenderCache {
 
 #[derive(Debug)]
 struct ScaledRenderEntry {
-    scale: u32,
+    scale: RenderScale,
     theme: ShellTheme,
     text_layout_cache: RefCell<TextLayoutCache>,
 }
@@ -30,7 +31,7 @@ impl ScaledRenderCache {
         self.entries.clear();
     }
 
-    fn get(&mut self, theme: &ShellTheme, scale: u32) -> &ScaledRenderEntry {
+    fn get(&mut self, theme: &ShellTheme, scale: RenderScale) -> &ScaledRenderEntry {
         let index = match self.entries.iter().position(|entry| entry.scale == scale) {
             Some(index) => index,
             None => {
@@ -39,7 +40,7 @@ impl ScaledRenderCache {
                 }
                 self.entries.push_back(ScaledRenderEntry {
                     scale,
-                    theme: theme.scaled_for_render(scale),
+                    theme: theme.scaled_for_render_at(scale),
                     text_layout_cache: RefCell::default(),
                 });
                 self.entries.len() - 1
@@ -55,13 +56,20 @@ impl ShellState {
             shell: self,
             theme: &self.theme,
             text_layout_cache: &self.text_layout_cache,
-            render_scale: 1,
+            render_scale: RenderScale::ONE,
         }
     }
 
     pub(in crate::shell) fn emergency_render_context(&self, scale: u32) -> RenderContext<'_> {
+        self.emergency_render_context_at(RenderScale::from_integer(scale))
+    }
+
+    pub(in crate::shell) fn emergency_render_context_at(
+        &self,
+        scale: RenderScale,
+    ) -> RenderContext<'_> {
         RenderContext {
-            render_scale: scale.max(1),
+            render_scale: scale,
             ..self.render_context()
         }
     }
@@ -71,9 +79,16 @@ impl ShellState {
         scale: u32,
         render: impl FnOnce(&RenderContext<'_>) -> T,
     ) -> T {
-        let scale = scale.max(1);
-        if scale == 1 || self.emergency_active() {
-            return render(&self.emergency_render_context(scale));
+        self.with_pixel_scale(RenderScale::from_integer(scale), render)
+    }
+
+    pub(in crate::shell) fn with_pixel_scale<T>(
+        &self,
+        scale: RenderScale,
+        render: impl FnOnce(&RenderContext<'_>) -> T,
+    ) -> T {
+        if scale == RenderScale::ONE || self.emergency_active() {
+            return render(&self.emergency_render_context_at(scale));
         }
         let mut cache = self.scaled_render_cache.borrow_mut();
         let entry = cache.get(&self.theme, scale);

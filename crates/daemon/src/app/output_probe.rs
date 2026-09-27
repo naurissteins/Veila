@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
-use veila_renderer::FrameSize;
+use veila_renderer::{FrameSize, RenderScale};
 
 pub(crate) fn current_outputs() -> Result<Vec<ProbedOutput>> {
     let connection =
@@ -33,10 +33,17 @@ pub(crate) fn current_outputs() -> Result<Vec<ProbedOutput>> {
             && let Some(size) = logical_size(&info)
         {
             let scale = info.scale_factor.max(1);
+            let render_scale = info
+                .modes
+                .iter()
+                .find(|mode| mode.current)
+                .and_then(|mode| RenderScale::infer_from_mode(size, mode.dimensions, scale))
+                .unwrap_or_else(|| RenderScale::from_integer(scale as u32));
             outputs.push(ProbedOutput {
                 name: info.name.clone(),
-                size: scaled_size(size, scale),
+                size: render_scale.frame_size(size),
                 scale,
+                render_scale,
             });
         }
     }
@@ -49,6 +56,7 @@ pub(crate) struct ProbedOutput {
     pub(crate) name: Option<String>,
     pub(crate) size: FrameSize,
     pub(crate) scale: i32,
+    pub(crate) render_scale: RenderScale,
 }
 
 struct OutputProbe {
@@ -103,35 +111,41 @@ fn logical_size(info: &OutputInfo) -> Option<FrameSize> {
     }
 }
 
-fn scaled_size(size: FrameSize, scale: i32) -> FrameSize {
-    let scale = scale.max(1) as u32;
-    FrameSize::new(
-        size.width.saturating_mul(scale),
-        size.height.saturating_mul(scale),
-    )
-}
-
 smithay_client_toolkit::delegate_output!(OutputProbe);
 smithay_client_toolkit::delegate_registry!(OutputProbe);
 
 #[cfg(test)]
 mod tests {
-    use super::scaled_size;
-    use veila_renderer::FrameSize;
+    use super::*;
 
     #[test]
-    fn output_probe_uses_physical_buffer_size_for_scaled_outputs() {
+    fn probes_fractional_pixel_ratio_from_mode_and_logical_size() {
+        let logical = FrameSize::new(1280, 720);
         assert_eq!(
-            scaled_size(FrameSize::new(1920, 1080), 2),
-            FrameSize::new(3840, 2160)
+            RenderScale::infer_from_mode(logical, (1920, 1080), 2)
+                .unwrap()
+                .units(),
+            180
+        );
+        assert_eq!(
+            RenderScale::infer_from_mode(logical, (1080, 1920), 2)
+                .unwrap()
+                .units(),
+            180
+        );
+        assert_eq!(
+            RenderScale::infer_from_mode(logical, (1600, 900), 2)
+                .unwrap()
+                .units(),
+            150
         );
     }
 
     #[test]
-    fn output_probe_clamps_invalid_scale_to_one() {
-        assert_eq!(
-            scaled_size(FrameSize::new(1920, 1080), 0),
-            FrameSize::new(1920, 1080)
-        );
+    fn inconsistent_or_missing_mode_uses_integer_fallback() {
+        let logical = FrameSize::new(1280, 720);
+        assert!(RenderScale::infer_from_mode(logical, (1920, 900), 2).is_none());
+        assert!(RenderScale::infer_from_mode(logical, (0, 1080), 2).is_none());
+        assert!(RenderScale::infer_from_mode(logical, (1920, 1080), 1).is_none());
     }
 }

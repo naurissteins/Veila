@@ -82,6 +82,10 @@ pub(super) fn check_renderer(summary: &mut DoctorSummary, config_path: Option<&P
             output.name.as_deref().unwrap_or("unknown")
         );
         println!("renderer.output.{index}.scale={}", output.scale);
+        println!(
+            "renderer.output.{index}.render_scale_120={}",
+            output.render_scale.units()
+        );
         println!("renderer.output.{index}.buffer_width={}", output.size.width);
         println!(
             "renderer.output.{index}.buffer_height={}",
@@ -244,6 +248,7 @@ mod tests {
             name: Some(name.to_string()),
             size,
             scale: 1,
+            render_scale: veila_renderer::RenderScale::ONE,
         }
     }
 

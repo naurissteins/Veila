@@ -215,7 +215,7 @@ impl CurtainApp {
             .filter_map(|surface| surface.size)
             .map(|size| {
                 self.ui_shell
-                    .now_playing_artwork_decode_size(size.buffer, size.scale.max(1) as u32)
+                    .now_playing_artwork_decode_size_at_scale(size.buffer, size.render_scale)
             })
             .max()
             .unwrap_or(160);

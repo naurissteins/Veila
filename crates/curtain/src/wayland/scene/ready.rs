@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use smithay_client_toolkit::{output::OutputInfo, reexports::client::QueueHandle};
+use veila_renderer::{FrameSize, RenderScale};
 
 use crate::state::{CurtainApp, SurfaceSize, duration_ms_between, elapsed_ms, elapsed_us};
 
@@ -215,11 +216,26 @@ impl CurtainApp {
             (1920, 1080)
         };
 
+        let fractional_scale = self.surface_fractional_scale(index).or_else(|| {
+            let surface = &self.lock_surfaces[index];
+            if surface.viewport.is_none() || surface.fractional_scale.is_none() {
+                return None;
+            }
+            let info = self.output_state.info(&surface.output)?;
+            let mode = info.modes.iter().find(|mode| mode.current)?;
+            RenderScale::infer_from_mode(
+                FrameSize::new(logical_size.0, logical_size.1),
+                mode.dimensions,
+                info.scale_factor,
+            )
+            .map(RenderScale::units)
+        });
+
         SurfaceSize::new_with_fractional_scale(
             logical_size.0,
             logical_size.1,
             self.surface_scale(index),
-            self.surface_fractional_scale(index),
+            fractional_scale,
         )
     }
 

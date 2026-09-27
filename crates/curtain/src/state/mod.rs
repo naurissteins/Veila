@@ -85,6 +85,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
     pub(crate) scene_base: Option<Arc<veila_renderer::SoftwareBuffer>>,
     pub(crate) scene_base_revision: u64,
+    pub(crate) scene_base_scale: veila_renderer::RenderScale,
     pub(crate) scene_base_has_layers: bool,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
@@ -121,6 +122,7 @@ pub(crate) struct SurfaceSize {
     pub(crate) logical_height: u32,
     pub(crate) buffer: veila_renderer::FrameSize,
     pub(crate) scale: i32,
+    pub(crate) render_scale: veila_renderer::RenderScale,
     pub(crate) fractional_scale: Option<u32>,
 }
 
@@ -132,14 +134,19 @@ impl SurfaceSize {
         fractional_scale: Option<u32>,
     ) -> Self {
         let scale = scale.max(1) as u32;
+        let render_scale = fractional_scale
+            .filter(|units| *units > 0)
+            .map(veila_renderer::RenderScale::from_units)
+            .unwrap_or_else(|| veila_renderer::RenderScale::from_integer(scale));
         Self {
             logical_width,
             logical_height,
-            buffer: veila_renderer::FrameSize::new(
-                logical_width.saturating_mul(scale),
-                logical_height.saturating_mul(scale),
-            ),
+            buffer: render_scale.frame_size(veila_renderer::FrameSize::new(
+                logical_width,
+                logical_height,
+            )),
             scale: scale as i32,
+            render_scale,
             fractional_scale,
         }
     }
@@ -150,6 +157,14 @@ impl SurfaceSize {
         } else {
             self.scale.max(1)
         }
+    }
+
+    pub(crate) fn same_rendering_as(self, other: Self) -> bool {
+        self.logical_width == other.logical_width
+            && self.logical_height == other.logical_height
+            && self.buffer == other.buffer
+            && self.render_scale == other.render_scale
+            && self.buffer_scale_for_commit() == other.buffer_scale_for_commit()
     }
 
     pub(crate) fn placeholder_buffer(self, has_viewport: bool) -> (veila_renderer::FrameSize, i32) {
@@ -599,6 +614,7 @@ impl CurtainApp {
             background: None,
             scene_base: None,
             scene_base_revision: 0,
+            scene_base_scale: veila_renderer::RenderScale::ONE,
             scene_base_has_layers: false,
             shm_pool: None,
             placeholder_pool: None,
@@ -916,10 +932,28 @@ mod tests {
     fn fractional_surface_size_commits_with_unit_buffer_scale() {
         let size = SurfaceSize::new_with_fractional_scale(1920, 1080, 2, Some(150));
 
-        assert_eq!(size.buffer.width, 3840);
-        assert_eq!(size.buffer.height, 2160);
+        assert_eq!(size.buffer.width, 2400);
+        assert_eq!(size.buffer.height, 1350);
         assert_eq!(size.buffer_scale_for_commit(), 1);
+        assert_eq!(size.render_scale.units(), 150);
         assert_eq!(size.fractional_scale, Some(150));
+    }
+
+    #[test]
+    fn fractional_surface_size_uses_native_pixels_and_stable_commit_state() {
+        let none = SurfaceSize::new_with_fractional_scale(2560, 1440, 1, None);
+        let one = SurfaceSize::new_with_fractional_scale(2560, 1440, 1, Some(120));
+        assert!(none.same_rendering_as(one));
+        let one_and_half = SurfaceSize::new_with_fractional_scale(2560, 1440, 2, Some(180));
+        assert_eq!(
+            one_and_half.buffer,
+            veila_renderer::FrameSize::new(3840, 2160)
+        );
+        assert!(!one.same_rendering_as(one_and_half));
+        let two = SurfaceSize::new_with_fractional_scale(2560, 1440, 2, Some(240));
+        let integer_two = SurfaceSize::new_with_fractional_scale(2560, 1440, 2, None);
+        assert_eq!(two.buffer, integer_two.buffer);
+        assert!(!two.same_rendering_as(integer_two));
     }
 
     #[test]

@@ -92,9 +92,12 @@ fn check_config_caches(config: &AppConfig, wallpaper: &Path) {
             .background,
     )
     .expect("generated background");
-    let sizes = [1, 2].map(|scale| PrewarmSize {
-        buffer: FrameSize::new(320 * scale as u32, 180 * scale as u32),
-        scale,
+    let sizes = [120, 180, 240].map(|units| {
+        let scale = veila_renderer::RenderScale::from_units(units);
+        PrewarmSize {
+            buffer: scale.frame_size(FrameSize::new(320, 180)),
+            scale,
+        }
     });
     let treatment = background_treatment(&config.background);
     let fallback = ClearColor::opaque(0, 0, 0);
@@ -103,8 +106,8 @@ fn check_config_caches(config: &AppConfig, wallpaper: &Path) {
         .expect("generated prewarm");
     for size in sizes {
         assert_eq!(
-            prewarm.backdrop_cache_variant_scaled(size.scale as u32),
-            curtain.backdrop_cache_variant_scaled(size.scale as u32)
+            prewarm.backdrop_cache_variant_at_scale(size.scale),
+            curtain.backdrop_cache_variant_at_scale(size.scale)
         );
         check_cached_pixels(&curtain, config, wallpaper, generated, size);
     }
@@ -130,11 +133,11 @@ fn check_cached_pixels(
     generated: GeneratedBackground,
     size: PrewarmSize,
 ) {
-    let scale = size.scale as u32;
+    let scale = size.scale;
     let treatment = background_treatment(&config.background);
     let variants = [
-        (curtain.backdrop_cache_variant_scaled(scale), false),
-        (curtain.static_scene_cache_variant(scale), true),
+        (curtain.backdrop_cache_variant_at_scale(scale), false),
+        (curtain.static_scene_cache_variant_at_scale(scale), true),
     ];
     for (variant, static_scene) in variants {
         let Some(variant) = variant else { continue };
@@ -154,13 +157,14 @@ fn check_cached_pixels(
             )
             .expect("background");
             let mut expected = asset.render(size.buffer).expect("render background");
-            curtain.render_static_backdrops_scaled(&mut expected, scale);
+            curtain.render_static_backdrops_at_scale(&mut expected, scale);
             if static_scene {
-                curtain.render_static_overlay_scaled(&mut expected, scale);
+                curtain.render_static_overlay_at_scale(&mut expected, scale);
             }
             assert!(
                 cached.pixels() == expected.pixels(),
-                "cache pixels differ: file={file_mode}, scale={scale}, variant={variant}"
+                "cache pixels differ: file={file_mode}, scale={}, variant={variant}",
+                scale.units()
             );
         }
     }
