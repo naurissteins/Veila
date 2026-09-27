@@ -1485,6 +1485,38 @@ fn now_playing_transition_requests_active_animation_timer() {
 }
 
 #[test]
+fn media_fade_ignores_unrelated_event_wakes_between_animation_phases() {
+    let mut shell = ShellState::default();
+    shell.theme.clock_enabled = false;
+    shell.theme.date_enabled = false;
+    shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: None,
+        artwork_path: None,
+        fetched_at_unix: 1,
+    }));
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+
+    let transition = shell.now_playing_transition.as_mut().unwrap();
+    transition.started_at -= Duration::from_millis(90);
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::Widget(super::WidgetKind::Media)
+    );
+    assert_eq!(
+        shell.advance_animated_state_update(),
+        ShellAnimationUpdate::None
+    );
+}
+
+#[test]
 fn disabled_clock_and_date_leave_idle_shell_without_deadline() {
     let mut shell = ShellState::default();
     shell.theme.clock_enabled = false;

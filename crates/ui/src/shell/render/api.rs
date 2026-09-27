@@ -1,3 +1,4 @@
+use super::{WidgetKind, WidgetRegions};
 use crate::shell::ShellState;
 use veila_renderer::{FrameSize, PixelBuffer, RenderScale, shape::Rect};
 
@@ -208,6 +209,19 @@ impl ShellState {
             return None;
         }
         self.with_pixel_scale(scale, |context| context.auth_dirty_rect(size))
+    }
+
+    pub fn widget_regions_at_scale(&self, size: FrameSize, scale: RenderScale) -> WidgetRegions {
+        self.with_pixel_scale(scale, |context| context.widget_regions(size))
+    }
+
+    pub fn render_widget_at_scale(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        scale: RenderScale,
+        widget: WidgetKind,
+    ) {
+        self.with_pixel_scale(scale, |context| context.render_widget(buffer, widget));
     }
 
     pub fn render_emergency_at_scale(&self, buffer: &mut impl PixelBuffer, scale: RenderScale) {

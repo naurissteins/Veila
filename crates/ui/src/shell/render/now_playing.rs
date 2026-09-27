@@ -2,6 +2,7 @@ use veila_renderer::{FrameSize, PixelBuffer, RenderScale, shape::Rect, text::Tex
 
 use super::super::NowPlayingWidgetData;
 use super::RenderContext;
+use super::widget_damage::merge;
 use super::{NOW_PLAYING_MAX_TEXT_WIDTH, NOW_PLAYING_MIN_TEXT_WIDTH, SceneLayout, TextLayoutCache};
 
 const NOW_PLAYING_TEXT_WIDTH_CAP: i32 = 640;
@@ -29,6 +30,48 @@ fn artwork_size(size: FrameSize, render_scale: RenderScale, configured_size: Opt
 }
 
 impl RenderContext<'_> {
+    pub(super) fn now_playing_region(&self, size: FrameSize) -> Option<Rect> {
+        if !self.theme.now_playing_enabled {
+            return None;
+        }
+        let mut region = None;
+        let fade = self.shell.now_playing_fade_progress();
+        if let Some(previous) = self
+            .shell
+            .now_playing_transition
+            .as_ref()
+            .and_then(|transition| transition.previous.as_ref())
+        {
+            region = merge(
+                region,
+                self.snapshot_region(size, previous, 100u8.saturating_sub(fade.unwrap_or(100))),
+            );
+        }
+        if let Some(current) = self.shell.now_playing.as_ref() {
+            region = merge(
+                region,
+                self.snapshot_region(size, current, fade.unwrap_or(100)),
+            );
+        }
+        region
+    }
+
+    fn snapshot_region(
+        &self,
+        size: FrameSize,
+        snapshot: &NowPlayingWidgetData,
+        fade: u8,
+    ) -> Option<Rect> {
+        let layout = self.now_playing_snapshot_layout(size, snapshot, fade)?;
+        merge(
+            merge(
+                layout.artwork.as_ref().map(|part| part.rect),
+                layout.artist.as_ref().map(|part| part.rect),
+            ),
+            layout.title.as_ref().map(|part| part.rect),
+        )
+    }
+
     pub(super) fn render_now_playing_widget(
         &self,
         buffer: &mut impl PixelBuffer,

@@ -462,6 +462,7 @@ impl ShellState {
         self.now_playing_transition = Some(NowPlayingTransition {
             previous: self.now_playing.clone(),
             started_at: std::time::Instant::now(),
+            displayed_phase: 0,
         });
         self.now_playing = next;
     }

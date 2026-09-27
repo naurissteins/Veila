@@ -6,6 +6,6 @@ pub mod background;
 mod shell;
 
 pub use shell::{
-    ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellTheme, has_avatar_candidate,
-    load_avatar, load_cached_avatar,
+    ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellTheme, WidgetDamage, WidgetKind,
+    WidgetRegions, has_avatar_candidate, load_avatar, load_cached_avatar,
 };

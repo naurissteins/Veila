@@ -5,7 +5,8 @@ use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::Sessi
 use veila_renderer::{PixelBuffer, copy_rect_from, shm};
 
 use crate::state::{
-    CurtainApp, DirtyRenderTimingSample, RedrawKind, RenderTimingSample, SurfaceSize,
+    CommittedWidgetFrame, CurtainApp, DirtyRenderTimingSample, RedrawKind, RenderTimingSample,
+    SurfaceSize,
 };
 
 impl CurtainApp {
@@ -160,6 +161,14 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        self.lock_surfaces[index].widget_frame = (!first_frame).then(|| CommittedWidgetFrame {
+            size: frame_size,
+            scale: render_scale,
+            revision,
+            regions: self
+                .ui_shell
+                .widget_regions_at_scale(frame_size, render_scale),
+        });
         self.note_first_frame_committed(first_frame);
         if first_frame {
             self.connection.flush()?;
@@ -396,6 +405,7 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        self.lock_surfaces[index].widget_frame = None;
         self.note_first_frame_committed(first_frame);
         if first_frame {
             self.connection.flush()?;
@@ -452,7 +462,7 @@ impl CurtainApp {
         Ok(())
     }
 
-    fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
+    pub(super) fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
         let Some(viewport) = self.lock_surfaces[index].viewport.as_ref() else {
             return;
         };

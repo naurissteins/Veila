@@ -39,6 +39,9 @@ impl CurtainApp {
         let surface = self.lock_surfaces[index].surface.clone();
         let result = match redraw {
             RedrawKind::AuthDirty => self.render_auth_dirty_surface(&surface, size, queue_handle),
+            RedrawKind::Widget(widget) => {
+                self.render_widget_dirty_surface(&surface, size, widget, queue_handle)
+            }
             RedrawKind::Full => {
                 self.render_surface_with_emergency_fallback(&surface, size, queue_handle)
             }

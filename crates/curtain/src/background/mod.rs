@@ -11,6 +11,7 @@ use loader::{
 use smithay_client_toolkit::reexports::client::QueueHandle;
 use std::time::{Duration, Instant};
 use veila_renderer::FrameSize;
+use veila_ui::WidgetKind;
 
 use crate::state::CurtainApp;
 
@@ -167,7 +168,7 @@ impl CurtainApp {
                     && self.ui_shell.set_now_playing_artwork(&path, asset)
                 {
                     tracing::debug!(elapsed_ms, "loaded deferred now playing artwork");
-                    self.render_all_surfaces(queue_handle);
+                    self.render_widget_surfaces(WidgetKind::Media, queue_handle);
                 }
                 self.maybe_start_artwork_load();
             }

@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use smithay_client_toolkit::{output::OutputInfo, reexports::client::QueueHandle};
 use veila_renderer::{FrameSize, RenderScale};
+use veila_ui::WidgetKind;
 
 use crate::state::{CurtainApp, SurfaceSize, duration_ms_between, elapsed_ms, elapsed_us};
 
@@ -60,6 +61,35 @@ impl CurtainApp {
             if let Err(error) = self.render_auth_dirty_surface(&surface, size, queue_handle) {
                 self.failure_reason =
                     Some(format!("failed to rerender auth dirty region: {error:#}"));
+                self.exit_requested = true;
+                return;
+            }
+        }
+    }
+
+    pub(crate) fn render_widget_surfaces(
+        &mut self,
+        widget: WidgetKind,
+        queue_handle: &QueueHandle<Self>,
+    ) {
+        if !self.ready_notified {
+            self.pending_pre_ready_redraw = true;
+            return;
+        }
+        let surfaces: Vec<_> = self
+            .lock_surfaces
+            .iter()
+            .enumerate()
+            .filter(|(index, entry)| {
+                self.output_role_for_surface(*index).renders_shell() && entry.size.is_some()
+            })
+            .filter_map(|(_, entry)| entry.size.map(|size| (entry.surface.clone(), size)))
+            .collect();
+        for (surface, size) in surfaces {
+            if let Err(error) =
+                self.render_widget_dirty_surface(&surface, size, widget, queue_handle)
+            {
+                self.failure_reason = Some(format!("failed to rerender widget region: {error:#}"));
                 self.exit_requested = true;
                 return;
             }

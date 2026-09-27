@@ -7,12 +7,69 @@ use veila_renderer::{
 
 use super::super::ShellStatus;
 use super::RenderContext;
+use super::widget_damage::merge;
 use super::{
     styles,
     widgets::{draw_chip_block, draw_icon_chip, top_right_chip_diameter},
 };
 
 impl RenderContext<'_> {
+    pub(super) fn indicator_region(&self, size: FrameSize) -> Option<Rect> {
+        let mut region = None;
+        for button in self.theme.power_buttons {
+            region = merge(region, self.power_button_rect(size, button.action));
+        }
+        let mut cache = self.text_layout_cache.borrow_mut();
+        if self.theme.power_status_enabled
+            && matches!(self.shell.status, ShellStatus::Idle)
+            && let (Some(text), Some(position)) = (
+                self.shell.power_status_text.as_deref(),
+                self.theme.power_status_position,
+            )
+        {
+            let block = cache.power_status_block(text, self.keyboard_layout_text_style(), 280);
+            let diameter = top_right_chip_diameter(
+                self.theme.keyboard_background_size,
+                block.width as i32,
+                block.height as i32,
+            );
+            region = merge(
+                region,
+                Some(self.positioned_rect(size, position, diameter, diameter)),
+            );
+        }
+        if self.theme.keyboard_enabled
+            && let (Some(label), Some(position)) = (
+                self.shell.keyboard_layout_label.as_deref(),
+                self.theme.keyboard_position,
+            )
+        {
+            let block = cache.keyboard_layout_block(label, self.keyboard_layout_text_style(), 120);
+            let diameter = top_right_chip_diameter(
+                self.theme.keyboard_background_size,
+                block.width as i32,
+                block.height as i32,
+            );
+            region = merge(
+                region,
+                Some(self.positioned_rect(size, position, diameter, diameter)),
+            );
+        }
+        if self.theme.battery_enabled
+            && self.shell.battery.is_some()
+            && let Some(position) = self.theme.battery_position
+        {
+            let icon_size = self.theme.battery_size.unwrap_or(18).clamp(12, 96);
+            let diameter =
+                top_right_chip_diameter(self.theme.battery_background_size, icon_size, icon_size);
+            region = merge(
+                region,
+                Some(self.positioned_rect(size, position, diameter, diameter)),
+            );
+        }
+        region
+    }
+
     pub(super) fn render_top_right_indicators(&self, buffer: &mut impl PixelBuffer) {
         self.render_power_buttons(buffer);
 

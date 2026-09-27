@@ -1,8 +1,10 @@
 use veila_renderer::shm::FrameResult;
+use veila_ui::WidgetKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RedrawKind {
     AuthDirty,
+    Widget(WidgetKind),
     Full,
 }
 
@@ -11,9 +13,15 @@ pub(crate) struct PendingRedraw(Option<RedrawKind>);
 
 impl PendingRedraw {
     pub(crate) fn request(&mut self, requested: RedrawKind) {
-        if matches!(requested, RedrawKind::Full) || self.0.is_none() {
-            self.0 = Some(requested);
-        }
+        self.0 = Some(match (self.0, requested) {
+            (None, requested) => requested,
+            (Some(RedrawKind::Full), _) | (_, RedrawKind::Full) => RedrawKind::Full,
+            (Some(RedrawKind::Widget(old)), RedrawKind::Widget(new)) if old == new => {
+                RedrawKind::Widget(old)
+            }
+            (Some(RedrawKind::AuthDirty), RedrawKind::AuthDirty) => RedrawKind::AuthDirty,
+            _ => RedrawKind::Full,
+        });
     }
 
     pub(crate) fn satisfy(&mut self, rendered: RedrawKind) {
@@ -84,5 +92,23 @@ mod tests {
         assert!(!pending.record_result(RedrawKind::AuthDirty, FrameResult::Skipped));
         assert!(pending.record_result(RedrawKind::AuthDirty, FrameResult::Committed));
         assert_eq!(pending.take(), None);
+    }
+
+    #[test]
+    fn different_widget_redraws_promote_to_full_frame() {
+        let mut pending = PendingRedraw::default();
+        pending.request(RedrawKind::Widget(veila_ui::WidgetKind::Header));
+        pending.request(RedrawKind::Widget(veila_ui::WidgetKind::Media));
+
+        assert_eq!(pending.take(), Some(RedrawKind::Full));
+    }
+
+    #[test]
+    fn auth_and_widget_redraws_promote_to_full_frame() {
+        let mut pending = PendingRedraw::default();
+        pending.request(RedrawKind::AuthDirty);
+        pending.request(RedrawKind::Widget(veila_ui::WidgetKind::Indicators));
+
+        assert_eq!(pending.take(), Some(RedrawKind::Full));
     }
 }

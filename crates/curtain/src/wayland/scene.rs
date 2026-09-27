@@ -8,3 +8,5 @@ mod ready;
 mod render;
 #[path = "scene/stage.rs"]
 mod stage;
+#[path = "scene/widget.rs"]
+mod widget;

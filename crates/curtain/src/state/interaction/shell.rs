@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surface};
-use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey};
+use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey, WidgetKind};
 
 use crate::{
     ipc::auth::{request_power_action, submit_password},
@@ -84,7 +84,7 @@ impl CurtainApp {
                     let _ = sender.send(label);
                 }
             }
-            self.render_all_surfaces(queue_handle);
+            self.render_widget_surfaces(WidgetKind::Indicators, queue_handle);
         }
     }
 
@@ -182,8 +182,15 @@ impl CurtainApp {
             self.ui_shell.advance_animated_state_update(),
             power_status_changed,
         ) {
-            (_, true) | (ShellAnimationUpdate::Full, false) => {
+            (ShellAnimationUpdate::Full, _) | (ShellAnimationUpdate::AuthDirty, true) => {
                 self.render_all_surfaces(queue_handle);
+            }
+            (ShellAnimationUpdate::Widget(_), true) => self.render_all_surfaces(queue_handle),
+            (ShellAnimationUpdate::Widget(widget), false) => {
+                self.render_widget_surfaces(widget, queue_handle);
+            }
+            (ShellAnimationUpdate::None, true) => {
+                self.render_widget_surfaces(WidgetKind::Indicators, queue_handle);
             }
             (ShellAnimationUpdate::AuthDirty, false) => {
                 self.render_auth_dirty_surfaces(queue_handle);
@@ -235,7 +242,11 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
     ) {
         if self.ui_shell.power_button_interaction_state() != power_before {
-            self.render_all_surfaces(queue_handle);
+            if self.ui_shell.static_scene_revision() == revision_before {
+                self.render_widget_surfaces(WidgetKind::Indicators, queue_handle);
+            } else {
+                self.render_all_surfaces(queue_handle);
+            }
         } else {
             self.render_auth_change(revision_before, queue_handle);
         }

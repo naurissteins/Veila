@@ -52,7 +52,7 @@ use veila_renderer::{
     shm::SurfaceBufferPool,
 };
 use veila_ui::{
-    ShellState, ShellTheme,
+    ShellState, ShellTheme, WidgetRegions,
     background::{background_generated, background_treatment},
 };
 use wayland_protocols_wlr::output_power_management::v1::client::{
@@ -87,6 +87,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_scale: veila_renderer::RenderScale,
     pub(crate) scene_base_has_layers: bool,
+    pub(crate) widget_frame: Option<CommittedWidgetFrame>,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
     pub(crate) pending_redraw: PendingRedraw,
@@ -95,6 +96,14 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) preferred_fractional_scale: Option<u32>,
     pub(crate) fractional_scale: Option<wp_fractional_scale_v1::WpFractionalScaleV1>,
     pub(crate) viewport: Option<wp_viewport::WpViewport>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CommittedWidgetFrame {
+    pub(crate) size: veila_renderer::FrameSize,
+    pub(crate) scale: veila_renderer::RenderScale,
+    pub(crate) revision: u64,
+    pub(crate) regions: WidgetRegions,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -616,6 +625,7 @@ impl CurtainApp {
             scene_base_revision: 0,
             scene_base_scale: veila_renderer::RenderScale::ONE,
             scene_base_has_layers: false,
+            widget_frame: None,
             shm_pool: None,
             placeholder_pool: None,
             pending_redraw: PendingRedraw::default(),

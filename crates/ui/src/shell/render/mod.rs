@@ -9,9 +9,11 @@ mod overlay;
 mod styles;
 #[cfg(test)]
 mod tests;
+mod widget_damage;
 mod widgets;
 
 pub(super) use cache::TextLayoutCache;
+pub use widget_damage::{WidgetDamage, WidgetKind, WidgetRegions};
 
 use veila_common::{BackdropMode, LayerKind};
 use veila_common::{BackdropShowWhen, StatusDisplayMode};
@@ -211,6 +213,10 @@ impl RenderContext<'_> {
         }
 
         self.render_backdrops_matching(buffer, |show_when| show_when != BackdropShowWhen::Always);
+    }
+
+    fn render_widget_backdrops(&self, buffer: &mut impl PixelBuffer, when: BackdropShowWhen) {
+        self.render_backdrops_matching(buffer, |show_when| show_when == when);
     }
 
     fn render_backdrops_matching(

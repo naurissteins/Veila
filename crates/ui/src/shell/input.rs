@@ -137,16 +137,26 @@ impl ShellState {
     }
 
     pub fn advance_animated_state_update(&mut self) -> ShellAnimationUpdate {
-        let mut changed =
+        let header_changed =
             (self.theme.clock_enabled || self.theme.date_enabled) && self.clock.refresh();
-        changed |= self.clear_expired_power_confirmation(Instant::now());
+        let indicators_changed = self.clear_expired_power_confirmation(Instant::now());
         let fade_duration = self.now_playing_fade_duration();
-        if let Some(transition) = self.now_playing_transition.as_ref() {
-            changed = true;
-            if transition.started_at.elapsed() >= fade_duration {
+        let mut media_changed = false;
+        if let Some(transition) = self.now_playing_transition.as_mut() {
+            let elapsed = transition.started_at.elapsed();
+            if elapsed >= fade_duration {
                 self.now_playing_transition = None;
+                media_changed = true;
+            } else {
+                let phase = elapsed.as_millis() / u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS);
+                if phase != transition.displayed_phase {
+                    transition.displayed_phase = phase;
+                    media_changed = true;
+                }
             }
         }
+        let widget_update =
+            widget_animation_update(header_changed, media_changed, indicators_changed);
         if let ShellStatus::Pending {
             started_at,
             visible_after,
@@ -158,15 +168,11 @@ impl ShellState {
             let now = Instant::now();
             if !*shown {
                 if now < *visible_after {
-                    return if changed {
-                        ShellAnimationUpdate::Full
-                    } else {
-                        ShellAnimationUpdate::None
-                    };
+                    return widget_update;
                 }
                 *shown = true;
                 *displayed_phase = spinner_phase(*started_at, now);
-                return if changed {
+                return if widget_update != ShellAnimationUpdate::None {
                     ShellAnimationUpdate::Full
                 } else {
                     ShellAnimationUpdate::AuthDirty
@@ -175,7 +181,7 @@ impl ShellState {
             let phase = spinner_phase(*started_at, now);
             let phase_changed = phase != *displayed_phase;
             *displayed_phase = phase;
-            return if changed {
+            return if widget_update != ShellAnimationUpdate::None {
                 ShellAnimationUpdate::Full
             } else if phase_changed {
                 ShellAnimationUpdate::AuthDirty
@@ -189,20 +195,12 @@ impl ShellState {
             ..
         } = &mut self.status
         else {
-            return if changed {
-                ShellAnimationUpdate::Full
-            } else {
-                ShellAnimationUpdate::None
-            };
+            return widget_update;
         };
 
         let next_display = retry_until.and_then(current_retry_seconds);
         if *displayed_retry_seconds == next_display {
-            return if changed {
-                ShellAnimationUpdate::Full
-            } else {
-                ShellAnimationUpdate::None
-            };
+            return widget_update;
         }
 
         *displayed_retry_seconds = next_display;
@@ -267,9 +265,13 @@ impl ShellState {
             _ => None,
         };
         let fade = self.now_playing_transition.as_ref().map(|transition| {
-            (transition.started_at + self.now_playing_fade_duration())
-                .saturating_duration_since(now)
-                .min(Duration::from_millis(ACTIVE_ANIMATION_POLL_INTERVAL_MS))
+            let elapsed = now.saturating_duration_since(transition.started_at);
+            let phase_nanos = u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS) * 1_000_000;
+            let phase_remaining =
+                Duration::from_nanos((phase_nanos - elapsed.as_nanos() % phase_nanos) as u64);
+            self.now_playing_fade_duration()
+                .saturating_sub(elapsed)
+                .min(phase_remaining)
         });
         let confirmation = self
             .power_confirmation
@@ -334,6 +336,16 @@ impl ShellState {
         if was_empty != self.secret.is_empty() {
             self.bump_static_scene_revision();
         }
+    }
+}
+
+fn widget_animation_update(header: bool, media: bool, indicators: bool) -> ShellAnimationUpdate {
+    match (header, media, indicators) {
+        (false, false, false) => ShellAnimationUpdate::None,
+        (true, false, false) => ShellAnimationUpdate::Widget(super::WidgetKind::Header),
+        (false, true, false) => ShellAnimationUpdate::Widget(super::WidgetKind::Media),
+        (false, false, true) => ShellAnimationUpdate::Widget(super::WidgetKind::Indicators),
+        _ => ShellAnimationUpdate::Full,
     }
 }
 

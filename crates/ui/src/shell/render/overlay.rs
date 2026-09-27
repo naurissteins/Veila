@@ -26,6 +26,18 @@ impl RenderContext<'_> {
         self.render_floating_input_widgets(buffer, &layout, true);
     }
 
+    pub(super) fn render_header_widget_group(&self, buffer: &mut impl PixelBuffer) {
+        let layout = self.scene_layout(buffer.size());
+        self.render_role(
+            buffer,
+            &layout,
+            LayoutRole::Hero,
+            layout.anchors.hero_y,
+            true,
+        );
+        self.render_floating_header_widgets(buffer, &layout);
+    }
+
     pub fn render(&self, buffer: &mut impl PixelBuffer) {
         if self.shell.emergency_active() {
             self.render_emergency(buffer);

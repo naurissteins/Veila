@@ -1,4 +1,5 @@
 use smithay_client_toolkit::reexports::client::QueueHandle;
+use veila_ui::WidgetKind;
 
 use super::super::{ControlEvent, CurtainApp};
 
@@ -39,12 +40,12 @@ impl CurtainApp {
                 self.ui_shell.set_now_playing_snapshot(snapshot);
                 self.artwork_last_attempt = None;
                 self.maybe_start_artwork_load();
-                self.render_all_surfaces(queue_handle);
+                self.render_widget_surfaces(WidgetKind::Media, queue_handle);
             }
             ControlEvent::UpdatePowerStatus { snapshot } => {
                 self.remote_power_status = snapshot;
                 if self.refresh_power_status_text() {
-                    self.render_all_surfaces(queue_handle);
+                    self.render_widget_surfaces(WidgetKind::Indicators, queue_handle);
                 }
             }
             ControlEvent::UpdateFingerprintStatus { status } => {

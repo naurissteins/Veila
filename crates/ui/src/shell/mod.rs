@@ -23,6 +23,7 @@ use battery::BatteryWidgetData;
 use clock::ClockState;
 use now_playing::NowPlayingWidgetData;
 use render::{ScaledRenderCache, TextLayoutCache};
+pub use render::{WidgetDamage, WidgetKind, WidgetRegions};
 use veila_common::{FingerprintStatus, PowerAction, Secret};
 use veila_renderer::avatar::AvatarAsset;
 use weather::WeatherWidgetData;
@@ -39,6 +40,7 @@ pub enum ShellAnimationUpdate {
     None,
     AuthDirty,
     Full,
+    Widget(WidgetKind),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +79,7 @@ enum ShellMode {
 struct NowPlayingTransition {
     previous: Option<NowPlayingWidgetData>,
     started_at: Instant,
+    displayed_phase: u128,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
