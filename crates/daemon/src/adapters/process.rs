@@ -26,9 +26,11 @@ const SELF_EXE: &str = "/proc/self/exe";
 
 pub const CURTAIN_SUBCOMMAND: &str = "__curtain";
 pub const PREWARM_SUBCOMMAND: &str = "__prewarm";
+pub const PAM_HELPER_SUBCOMMAND: &str = "__pam-helper";
 pub const DAEMON_PROCESS_NAME: &str = "veila-daemon";
 pub const CURTAIN_PROCESS_NAME: &str = "veila-curtain";
 pub const PREWARM_PROCESS_NAME: &str = "veila-prewarm";
+pub const PAM_HELPER_PROCESS_NAME: &str = "veila-pam-helper";
 
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_curtain(

@@ -10,9 +10,10 @@ mod entry;
 mod logging;
 mod options;
 
+pub use adapters::pam::run_helper as run_pam_helper;
 pub use adapters::process::{
-    CURTAIN_PROCESS_NAME, CURTAIN_SUBCOMMAND, DAEMON_PROCESS_NAME, PREWARM_PROCESS_NAME,
-    PREWARM_SUBCOMMAND,
+    CURTAIN_PROCESS_NAME, CURTAIN_SUBCOMMAND, DAEMON_PROCESS_NAME, PAM_HELPER_PROCESS_NAME,
+    PAM_HELPER_SUBCOMMAND, PREWARM_PROCESS_NAME, PREWARM_SUBCOMMAND,
 };
 pub use control::run_control;
 pub use entry::{run_daemon, run_prewarm};

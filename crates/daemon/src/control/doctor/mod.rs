@@ -142,12 +142,13 @@ fn check_themes(summary: &mut DoctorSummary) {
 }
 
 fn check_pam(summary: &mut DoctorSummary) {
+    #[cfg(debug_assertions)]
     if let Some(service) = env_value("VEILA_PAM_SERVICE") {
         println!("pam.service={service}");
         summary.record(
             "pam",
             CheckStatus::Ok,
-            "VEILA_PAM_SERVICE is set; external PAM service selection is active",
+            "debug PAM service override is active",
         );
         return;
     }

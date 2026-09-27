@@ -26,6 +26,7 @@ pub(crate) enum AuthEvent {
         attempt_id: u64,
         retry_after_ms: Option<u64>,
         failed_attempts: Option<u8>,
+        message: Option<String>,
     },
     Busy {
         attempt_id: u64,
@@ -113,6 +114,7 @@ fn run_attempt(
             attempt_id,
             retry_after_ms,
             failed_attempts,
+            message,
         } => {
             tracing::info!(
                 elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
@@ -123,6 +125,7 @@ fn run_attempt(
                 attempt_id,
                 retry_after_ms,
                 failed_attempts,
+                message,
             });
         }
         DaemonMessage::AuthenticationBusy { attempt_id } => {
@@ -278,6 +281,7 @@ mod tests {
                 attempt_id: 9,
                 retry_after_ms: Some(250),
                 failed_attempts: Some(2),
+                message: None,
             })
             .expect("encode response");
             stream
@@ -300,6 +304,7 @@ mod tests {
                 attempt_id: 9,
                 retry_after_ms: Some(250),
                 failed_attempts: Some(2),
+                message: None,
             }
         );
 

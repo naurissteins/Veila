@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
 use veila_common::{
     PowerAction, Secret,
@@ -13,6 +13,8 @@ use crate::{
     app::suspend::LockedSuspendState,
     domain::auth::{AuthAdmission, AuthState},
 };
+
+const AUTH_RESPONSE_WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AuthResult {
@@ -100,6 +102,7 @@ pub(crate) async fn handle_client_message(
                             attempt_id,
                             retry_after_ms: Some(retry_after_ms),
                             failed_attempts: Some(auth_state.failed_attempts()),
+                            message: None,
                         },
                     )
                     .await?;
@@ -163,7 +166,7 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
         .saturating_duration_since(started_at)
         .as_micros()
         .min(u128::from(u64::MAX)) as u64;
-    let result = tokio::task::spawn_blocking(move || pam::authenticate(&username, secret)).await;
+    let result = pam::authenticate(&username, secret).await;
     let elapsed_ms = auth_started_at
         .elapsed()
         .as_millis()
@@ -174,7 +177,7 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
         .min(u128::from(u64::MAX)) as u64;
 
     match result {
-        Ok(Ok(())) => {
+        Ok(pam::PamReply { accepted: true, .. }) => {
             log_auth_latency_report(
                 latency_report,
                 attempt_id,
@@ -184,7 +187,7 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
                 elapsed_us,
             );
             tracing::info!(attempt_id, elapsed_ms, "authentication accepted");
-            if let Err(write_error) = ipc::write_daemon_message(
+            if let Err(write_error) = report_auth_result(
                 &mut stream,
                 &DaemonMessage::AuthenticationAccepted { attempt_id },
             )
@@ -198,7 +201,10 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
                 elapsed_ms,
             });
         }
-        Ok(Err(error)) => {
+        Ok(pam::PamReply {
+            accepted: false,
+            message,
+        }) => {
             log_auth_latency_report(
                 latency_report,
                 attempt_id,
@@ -207,13 +213,14 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
                 elapsed_ms,
                 elapsed_us,
             );
-            tracing::info!(attempt_id, elapsed_ms, "authentication rejected: {error}");
-            if let Err(write_error) = ipc::write_daemon_message(
+            tracing::info!(attempt_id, elapsed_ms, "authentication rejected");
+            if let Err(write_error) = report_auth_result(
                 &mut stream,
                 &DaemonMessage::AuthenticationRejected {
                     attempt_id,
                     retry_after_ms: None,
                     failed_attempts: Some(failed_attempts),
+                    message,
                 },
             )
             .await
@@ -240,12 +247,13 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
                 elapsed_ms,
                 "authentication worker failed: {error}"
             );
-            if let Err(write_error) = ipc::write_daemon_message(
+            if let Err(write_error) = report_auth_result(
                 &mut stream,
                 &DaemonMessage::AuthenticationRejected {
                     attempt_id,
                     retry_after_ms: None,
                     failed_attempts: Some(failed_attempts),
+                    message: None,
                 },
             )
             .await
@@ -259,6 +267,15 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
             });
         }
     }
+}
+
+async fn report_auth_result(stream: &mut UnixStream, message: &DaemonMessage) -> Result<()> {
+    tokio::time::timeout(
+        AUTH_RESPONSE_WRITE_TIMEOUT,
+        ipc::write_daemon_message(stream, message),
+    )
+    .await
+    .context("timed out reporting authentication result")?
 }
 
 fn log_auth_latency_report(

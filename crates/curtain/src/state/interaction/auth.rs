@@ -27,11 +27,15 @@ impl CurtainApp {
                 attempt_id,
                 retry_after_ms,
                 failed_attempts,
+                message,
             } => {
                 self.auth_in_flight = false;
                 tracing::info!(attempt_id, "updating UI after authentication rejection");
-                self.ui_shell
-                    .authentication_rejected(retry_after_ms, failed_attempts);
+                self.ui_shell.authentication_rejected_with_message(
+                    retry_after_ms,
+                    failed_attempts,
+                    message,
+                );
                 self.render_all_surfaces(queue_handle);
             }
             AuthEvent::Busy { attempt_id } => {

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use veila_daemon::{CURTAIN_SUBCOMMAND, PREWARM_SUBCOMMAND};
+use veila_daemon::{CURTAIN_SUBCOMMAND, PAM_HELPER_SUBCOMMAND, PREWARM_SUBCOMMAND};
 
 const LEGACY_DAEMON_NAME: &str = "veilad";
 
@@ -12,6 +12,7 @@ pub(crate) enum Mode {
     Curtain,
     Preview,
     Prewarm,
+    PamHelper,
 }
 
 // `args` keeps `argv[0]` and drops the subcommand so the mode parsers can skip one argument as before.
@@ -35,6 +36,7 @@ impl Invocation {
             Some("preview") => Mode::Preview,
             Some(CURTAIN_SUBCOMMAND) => Mode::Curtain,
             Some(PREWARM_SUBCOMMAND) => Mode::Prewarm,
+            Some(PAM_HELPER_SUBCOMMAND) => Mode::PamHelper,
             _ => {
                 return Self {
                     mode: Mode::Control,
@@ -73,6 +75,7 @@ mod tests {
             ("preview", Mode::Preview),
             ("__curtain", Mode::Curtain),
             ("__prewarm", Mode::Prewarm),
+            ("__pam-helper", Mode::PamHelper),
         ];
 
         for (subcommand, mode) in cases {

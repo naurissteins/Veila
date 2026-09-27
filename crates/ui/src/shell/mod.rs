@@ -66,6 +66,7 @@ enum ShellStatus {
         retry_until: Option<Instant>,
         displayed_retry_seconds: Option<u64>,
         failed_attempts: Option<u8>,
+        message: Option<String>,
     },
 }
 

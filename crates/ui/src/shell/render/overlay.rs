@@ -698,11 +698,14 @@ impl RenderContext<'_> {
             ShellStatus::Rejected {
                 displayed_retry_seconds,
                 failed_attempts,
+                message,
                 ..
-            } => Some(rejected_status_text(
-                *failed_attempts,
-                *displayed_retry_seconds,
-            )),
+            } => message.clone().or_else(|| {
+                Some(rejected_status_text(
+                    *failed_attempts,
+                    *displayed_retry_seconds,
+                ))
+            }),
         }
     }
 
@@ -719,12 +722,15 @@ impl RenderContext<'_> {
             ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
             ShellStatus::Rejected {
                 displayed_retry_seconds,
+                message,
                 ..
             } => match displayed_retry_seconds {
                 Some(retry_seconds) if *retry_seconds > 0 => {
                     Some(format!("Try again in {retry_seconds}s"))
                 }
-                _ => Some(String::from("Authentication failed")),
+                _ => message
+                    .clone()
+                    .or_else(|| Some(String::from("Authentication failed"))),
             },
         }
     }
