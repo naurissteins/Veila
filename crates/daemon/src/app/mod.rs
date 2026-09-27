@@ -34,7 +34,8 @@ use self::events::{
 };
 use self::helpers::current_username;
 use self::runtime::{
-    accept_auth_connection, accept_control_connection, receive_auth_result, wait_for_curtain_exit,
+    ClientMessageContext, accept_auth_connection, accept_control_connection, receive_auth_result,
+    wait_for_curtain_exit,
 };
 use self::state::{AppRuntime, ControlInputs};
 use self::watch::{AutoReloadTrigger, AutoReloadWatcher, effective_auto_reload_debounce_ms};
@@ -224,12 +225,15 @@ pub async fn run(
                     continue;
                 }
                 handle_auth_message(
-                    &username,
-                    &runtime.auth_sender,
-                    &mut runtime.auth_state,
-                    &mut runtime.suspend_state,
-                    &manager_proxy,
-                    runtime.active_latency_report,
+                    ClientMessageContext {
+                        username: &username,
+                        visuals: &runtime.loaded_config.config.visuals,
+                        auth_sender: &runtime.auth_sender,
+                        auth_state: &mut runtime.auth_state,
+                        suspend_state: &mut runtime.suspend_state,
+                        manager_proxy: &manager_proxy,
+                        latency_report: runtime.active_latency_report,
+                    },
                     connection,
                 ).await;
             }
@@ -396,6 +400,7 @@ pub async fn run(
                     runtime.fingerprint.update(
                         true,
                         runtime.loaded_config.config.fingerprint.enabled,
+                        runtime.loaded_config.config.fingerprint.max_failed_attempts,
                         &username,
                         runtime.auth_sender.clone(),
                     ).await;
@@ -432,7 +437,13 @@ pub async fn run(
                 } else {
                     runtime
                         .fingerprint
-                        .update(false, false, &username, None)
+                        .update(
+                            false,
+                            false,
+                            runtime.loaded_config.config.fingerprint.max_failed_attempts,
+                            &username,
+                            None,
+                        )
                         .await;
                     runtime.last_power_status_snapshot = None;
                     runtime.power_status_sent = false;

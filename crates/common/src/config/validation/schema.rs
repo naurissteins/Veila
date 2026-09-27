@@ -193,7 +193,10 @@ const BATTERY: &[KeyRule] = &[
     key("mock_charging", Schema::Any),
 ];
 
-const FINGERPRINT: &[KeyRule] = &[key("enabled", Schema::Any)];
+const FINGERPRINT: &[KeyRule] = &[
+    key("enabled", Schema::Any),
+    key("max_failed_attempts", Schema::Any),
+];
 
 const IDLE: &[KeyRule] = &[
     key("enabled", Schema::Any),

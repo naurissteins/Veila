@@ -4,6 +4,7 @@ use anyhow::{Result, anyhow};
 use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
 use veila_common::{
     PowerAction, Secret,
+    config::VisualConfig,
     ipc::{ClientMessage, DaemonMessage, LatencyReportMode},
 };
 
@@ -29,6 +30,7 @@ pub(crate) enum AuthResult {
 
 pub(crate) struct ClientMessageContext<'a, 'p> {
     pub(crate) username: &'a str,
+    pub(crate) visuals: &'a VisualConfig,
     pub(crate) auth_state: &'a mut AuthState,
     pub(crate) auth_sender: &'a Option<UnboundedSender<AuthResult>>,
     pub(crate) suspend_state: &'a mut LockedSuspendState,
@@ -43,6 +45,7 @@ pub(crate) async fn handle_client_message(
 ) -> Result<()> {
     let ClientMessageContext {
         username,
+        visuals,
         auth_state,
         auth_sender,
         suspend_state,
@@ -55,6 +58,7 @@ pub(crate) async fn handle_client_message(
             suspend_state.note_activity(Instant::now());
         }
         ClientMessage::RequestPowerAction { action } => {
+            validate_power_action(visuals, action)?;
             suspend_state.note_activity(Instant::now());
             request_power_action(manager_proxy, action).await?;
         }
@@ -104,6 +108,14 @@ pub(crate) async fn handle_client_message(
         }
     }
 
+    Ok(())
+}
+
+fn validate_power_action(visuals: &VisualConfig, action: PowerAction) -> Result<()> {
+    // daemon applies the current config independently of curtain UI visibility
+    if !visuals.power_button_enabled(action) {
+        return Err(anyhow!("power action {action:?} is disabled"));
+    }
     Ok(())
 }
 
@@ -269,4 +281,35 @@ fn log_auth_latency_report(
         pam_elapsed_us = enabled.is_verbose().then_some(pam_elapsed_us),
         "auth latency report"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use veila_common::{AppConfig, PowerAction};
+
+    use super::validate_power_action;
+
+    #[test]
+    fn rejects_disabled_power_actions() {
+        let config = AppConfig::default();
+        for action in [
+            PowerAction::Suspend,
+            PowerAction::Reboot,
+            PowerAction::Poweroff,
+        ] {
+            assert!(validate_power_action(&config.visuals, action).is_err());
+        }
+    }
+
+    #[test]
+    fn accepts_only_enabled_power_action() {
+        let config = AppConfig::from_toml_str(
+            "[visuals.power.suspend]\nenabled = true\n[visuals.power.reboot]\nenabled = false\n",
+        )
+        .expect("power config should parse");
+
+        assert!(validate_power_action(&config.visuals, PowerAction::Suspend).is_ok());
+        assert!(validate_power_action(&config.visuals, PowerAction::Reboot).is_err());
+        assert!(validate_power_action(&config.visuals, PowerAction::Poweroff).is_err());
+    }
 }

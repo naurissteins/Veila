@@ -743,6 +743,9 @@ impl RenderContext<'_> {
             veila_common::FingerprintStatus::NotRecognized => {
                 Some(String::from("Fingerprint not recognized"))
             }
+            veila_common::FingerprintStatus::AttemptLimitReached => {
+                Some(String::from("Use your password to unlock"))
+            }
             veila_common::FingerprintStatus::NoEnrolledFingers => {
                 Some(String::from("No enrolled fingerprints"))
             }

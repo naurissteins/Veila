@@ -1,4 +1,11 @@
-use std::{path::PathBuf, time::Instant};
+use std::{
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicU8, Ordering},
+    },
+    time::Instant,
+};
 
 use tokio::{
     sync::{
@@ -23,6 +30,7 @@ const STOP_TIMEOUT: Duration = Duration::from_secs(1);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FingerprintTaskExit {
     Authenticated,
+    AttemptLimitReached,
     NoEnrolledFingers,
     TransientFailure,
     Cancelled,
@@ -37,6 +45,7 @@ pub(super) struct FingerprintHandle {
     next_attempt_id: u64,
     next_retry_at: Option<Instant>,
     retry_delay: Duration,
+    failed_attempts: Arc<AtomicU8>,
     status_rx: UnboundedReceiver<Option<FingerprintStatus>>,
     status_tx: UnboundedSender<Option<FingerprintStatus>>,
 }
@@ -53,6 +62,7 @@ impl FingerprintHandle {
             next_attempt_id: FINGERPRINT_ATTEMPT_ID_START,
             next_retry_at: None,
             retry_delay: RETRY_DELAY,
+            failed_attempts: Arc::new(AtomicU8::new(0)),
             status_rx,
             status_tx,
         }
@@ -112,17 +122,30 @@ impl FingerprintHandle {
         &mut self,
         active_lock: bool,
         enabled: bool,
+        max_failed_attempts: u8,
         username: &str,
         auth_sender: Option<UnboundedSender<AuthResult>>,
     ) {
-        if !active_lock || !enabled {
+        if !active_lock {
             let had_state =
                 self.task.is_some() || self.blocked_for_lock || self.next_retry_at.is_some();
             self.stop_task().await;
-            if active_lock && had_state {
+            if had_state {
                 let _ = self.status_tx.send(None);
             }
             self.reset_attempt_state();
+            return;
+        }
+
+        if !enabled {
+            let had_state =
+                self.task.is_some() || self.blocked_for_lock || self.next_retry_at.is_some();
+            self.stop_task().await;
+            self.blocked_for_lock = false;
+            self.next_retry_at = None;
+            if had_state {
+                let _ = self.status_tx.send(None);
+            }
             return;
         }
 
@@ -132,6 +155,15 @@ impl FingerprintHandle {
 
         self.reap_finished_task().await;
         if self.blocked_for_lock || self.task.is_some() {
+            return;
+        }
+        // failed scans remain counted across reader retries and suspend within one lock
+        if self.failed_attempts.load(Ordering::Relaxed) >= max_failed_attempts {
+            self.blocked_for_lock = true;
+            self.next_retry_at = None;
+            let _ = self
+                .status_tx
+                .send(Some(FingerprintStatus::AttemptLimitReached));
             return;
         }
         if self
@@ -148,13 +180,23 @@ impl FingerprintHandle {
         self.next_retry_at = None;
         let username = username.to_owned();
         let status_tx = self.status_tx.clone();
+        let failed_attempts = Arc::clone(&self.failed_attempts);
         let attempt_id = self.next_attempt_id;
         self.next_attempt_id = next_fingerprint_attempt_id(attempt_id);
         self.active_attempt_id = Some(attempt_id);
         let (cancel, cancel_rx) = watch::channel(false);
         self.cancel = Some(cancel);
         self.task = Some(tokio::spawn(async move {
-            run_fingerprint_loop(username, status_tx, auth_sender, cancel_rx, attempt_id).await
+            run_fingerprint_loop(
+                username,
+                status_tx,
+                auth_sender,
+                cancel_rx,
+                attempt_id,
+                failed_attempts,
+                max_failed_attempts,
+            )
+            .await
         }));
     }
 
@@ -169,6 +211,11 @@ impl FingerprintHandle {
         };
         match task.await {
             Ok(FingerprintTaskExit::Authenticated) => {
+                self.blocked_for_lock = true;
+                self.next_retry_at = None;
+            }
+            Ok(FingerprintTaskExit::AttemptLimitReached) => {
+                self.active_attempt_id = None;
                 self.blocked_for_lock = true;
                 self.next_retry_at = None;
             }
@@ -199,6 +246,7 @@ impl FingerprintHandle {
         self.blocked_for_lock = false;
         self.next_retry_at = None;
         self.retry_delay = RETRY_DELAY;
+        self.failed_attempts.store(0, Ordering::Relaxed);
     }
 
     pub(super) async fn forward_status_updates(&mut self, control_socket_path: Option<&PathBuf>) {
@@ -226,6 +274,8 @@ async fn run_fingerprint_loop(
     auth_sender: UnboundedSender<AuthResult>,
     mut cancel: watch::Receiver<bool>,
     attempt_id: u64,
+    failed_attempts: Arc<AtomicU8>,
+    max_failed_attempts: u8,
 ) -> FingerprintTaskExit {
     let started_at = Instant::now();
     loop {
@@ -243,6 +293,11 @@ async fn run_fingerprint_loop(
                 return FingerprintTaskExit::Authenticated;
             }
             Ok(fprint::VerifyOutcome::NotMatched) => {
+                let failures = record_failed_scan(&failed_attempts);
+                if failures >= max_failed_attempts {
+                    let _ = status_tx.send(Some(FingerprintStatus::AttemptLimitReached));
+                    return FingerprintTaskExit::AttemptLimitReached;
+                }
                 tokio::select! {
                     biased;
                     _ = cancel.changed() => return FingerprintTaskExit::Cancelled,
@@ -265,6 +320,13 @@ async fn run_fingerprint_loop(
     }
 }
 
+fn record_failed_scan(failed_attempts: &AtomicU8) -> u8 {
+    // only the current verification task increments this per-lock counter
+    let failures = failed_attempts.load(Ordering::Relaxed).saturating_add(1);
+    failed_attempts.store(failures, Ordering::Relaxed);
+    failures
+}
+
 fn is_fingerprint_attempt(attempt_id: u64) -> bool {
     attempt_id >= FINGERPRINT_ATTEMPT_ID_START
 }
@@ -278,98 +340,5 @@ fn next_fingerprint_attempt_id(attempt_id: u64) -> u64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::time::Instant;
-
-    use tokio::sync::mpsc::unbounded_channel;
-
-    use super::{FingerprintHandle, FingerprintTaskExit, RETRY_DELAY};
-    use crate::app::runtime::AuthResult;
-
-    #[tokio::test]
-    async fn inactive_lock_resets_fingerprint_attempt_state() {
-        let mut handle = FingerprintHandle::new();
-        handle.blocked_for_lock = true;
-        handle.schedule_retry();
-
-        handle.update(false, true, "alice", None).await;
-
-        assert!(!handle.blocked_for_lock);
-        assert!(handle.next_retry_at.is_none());
-        assert_eq!(handle.retry_delay, RETRY_DELAY);
-    }
-
-    #[tokio::test]
-    async fn sleep_pause_survives_new_lock_and_resume_reenables_attempts() {
-        let mut handle = FingerprintHandle::new();
-        handle.blocked_for_lock = true;
-
-        handle.pause_for_sleep().await;
-        handle.reset_for_new_lock().await;
-
-        assert!(handle.paused_for_sleep);
-        assert!(!handle.blocked_for_lock);
-        let (auth_sender, _auth_results) = unbounded_channel();
-        handle.update(true, true, "alice", Some(auth_sender)).await;
-        assert!(handle.task.is_none());
-
-        handle.resume_after_sleep();
-        assert!(!handle.paused_for_sleep);
-        assert!(handle.next_retry_at.is_none());
-    }
-
-    #[test]
-    fn sleep_pause_discards_fingerprint_success_only() {
-        let mut handle = FingerprintHandle::new();
-        handle.paused_for_sleep = true;
-        handle.active_attempt_id = Some(super::FINGERPRINT_ATTEMPT_ID_START + 1);
-        let stale_fingerprint = AuthResult::Succeeded {
-            attempt_id: super::FINGERPRINT_ATTEMPT_ID_START,
-            started_at: Instant::now(),
-            elapsed_ms: 1,
-        };
-        let current_fingerprint = AuthResult::Succeeded {
-            attempt_id: super::FINGERPRINT_ATTEMPT_ID_START + 1,
-            started_at: Instant::now(),
-            elapsed_ms: 1,
-        };
-        let password = AuthResult::Succeeded {
-            attempt_id: 7,
-            started_at: Instant::now(),
-            elapsed_ms: 1,
-        };
-
-        assert!(handle.should_discard_auth_result(&stale_fingerprint));
-        assert!(handle.should_discard_auth_result(&current_fingerprint));
-        assert!(!handle.should_discard_auth_result(&password));
-
-        handle.paused_for_sleep = false;
-        assert!(!handle.should_discard_auth_result(&current_fingerprint));
-    }
-
-    #[tokio::test]
-    async fn completed_transient_failure_schedules_retry() {
-        let mut handle = FingerprintHandle::new();
-        handle.task = Some(tokio::spawn(async {
-            FingerprintTaskExit::TransientFailure
-        }));
-        tokio::task::yield_now().await;
-
-        handle.reap_finished_task().await;
-
-        assert!(handle.task.is_none());
-        assert!(handle.next_retry_at.is_some());
-        assert_eq!(handle.retry_delay, RETRY_DELAY.saturating_mul(2));
-    }
-
-    #[test]
-    fn transient_retry_delay_is_capped() {
-        let mut handle = FingerprintHandle::new();
-
-        for _ in 0..8 {
-            handle.schedule_retry();
-        }
-
-        assert_eq!(handle.retry_delay, super::MAX_RETRY_DELAY);
-    }
-}
+#[path = "fingerprint/tests.rs"]
+mod tests;

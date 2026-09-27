@@ -138,13 +138,18 @@ async fn verify_claimed_device(
             continue;
         }
 
-        let outcome = if matches!(status, FingerprintStatus::Accepted) {
-            VerifyOutcome::Matched
-        } else {
-            VerifyOutcome::NotMatched
-        };
+        let outcome = completed_verify_outcome(status);
         stop_verification(device, "completed").await;
         return Ok(outcome);
+    }
+}
+
+fn completed_verify_outcome(status: FingerprintStatus) -> VerifyOutcome {
+    // device failures must not consume a biometric attempt.
+    match status {
+        FingerprintStatus::Accepted => VerifyOutcome::Matched,
+        FingerprintStatus::NotRecognized => VerifyOutcome::NotMatched,
+        _ => VerifyOutcome::Unavailable,
     }
 }
 
@@ -186,7 +191,7 @@ pub(crate) fn verify_status(result: &str, done: bool) -> FingerprintStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::verify_status;
+    use super::{VerifyOutcome, completed_verify_outcome, verify_status};
     use veila_common::FingerprintStatus;
 
     #[test]
@@ -204,5 +209,21 @@ mod tests {
             FingerprintStatus::Unavailable
         );
         assert_eq!(verify_status("unknown", true), FingerprintStatus::Error);
+    }
+
+    #[test]
+    fn device_failures_do_not_count_as_non_matches() {
+        assert_eq!(
+            completed_verify_outcome(verify_status("verify-no-match", true)),
+            VerifyOutcome::NotMatched
+        );
+        assert_eq!(
+            completed_verify_outcome(verify_status("verify-disconnected", true)),
+            VerifyOutcome::Unavailable
+        );
+        assert_eq!(
+            completed_verify_outcome(verify_status("unknown", true)),
+            VerifyOutcome::Unavailable
+        );
     }
 }

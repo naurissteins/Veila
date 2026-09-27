@@ -334,6 +334,7 @@ async fn activate_lock_attempt(
 async fn read_startup_message(
     mut stream: tokio::net::UnixStream,
 ) -> Result<Option<CurtainStartupMessage>> {
+    ipc::verify_peer_uid(&stream).context("curtain startup socket peer rejected")?;
     let line = timeout(
         STARTUP_MESSAGE_TIMEOUT,
         ipc::read_ipc_line(&mut stream, "curtain startup message"),

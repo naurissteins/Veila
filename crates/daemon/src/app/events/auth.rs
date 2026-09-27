@@ -1,11 +1,6 @@
 use std::time::Instant;
 
-use veila_common::ipc::LatencyReportMode;
-
-use crate::{
-    adapters::logind,
-    domain::auth::{AuthPolicy, AuthState},
-};
+use crate::{adapters::logind, domain::auth::AuthPolicy};
 
 use super::super::{
     connections::AuthConnection,
@@ -17,12 +12,7 @@ use super::super::{
 };
 
 pub(crate) async fn handle_auth_message(
-    username: &str,
-    auth_sender: &Option<tokio::sync::mpsc::UnboundedSender<AuthResult>>,
-    auth_state: &mut AuthState,
-    suspend_state: &mut LockedSuspendState,
-    manager_proxy: &logind::ManagerProxy<'_>,
-    latency_report: LatencyReportMode,
+    context: ClientMessageContext<'_, '_>,
     connection: AuthConnection,
 ) {
     let AuthConnection {
@@ -30,20 +20,7 @@ pub(crate) async fn handle_auth_message(
         stream,
         message,
     } = connection;
-    if let Err(error) = handle_client_message(
-        ClientMessageContext {
-            username,
-            auth_state,
-            auth_sender,
-            suspend_state,
-            manager_proxy,
-            latency_report,
-        },
-        stream,
-        message,
-    )
-    .await
-    {
+    if let Err(error) = handle_client_message(context, stream, message).await {
         tracing::warn!("failed to handle auth request: {error:#}");
     }
 }

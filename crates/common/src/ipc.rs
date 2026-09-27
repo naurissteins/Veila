@@ -23,6 +23,7 @@ pub enum FingerprintStatus {
     Scanning,
     Accepted,
     NotRecognized,
+    AttemptLimitReached,
     NoEnrolledFingers,
     Unavailable,
     Error,
@@ -378,7 +379,7 @@ mod tests {
     #[test]
     fn round_trips_fingerprint_status_update_control_messages() {
         let message = CurtainControlMessage::UpdateFingerprintStatus {
-            status: Some(FingerprintStatus::Ready),
+            status: Some(FingerprintStatus::AttemptLimitReached),
         };
         let encoded = encode_message(&message).expect("control message should encode");
         let decoded = decode_message::<CurtainControlMessage>(&encoded)
