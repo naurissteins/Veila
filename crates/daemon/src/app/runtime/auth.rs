@@ -102,7 +102,6 @@ pub(crate) async fn handle_client_message(
                 }
             }
         }
-        ClientMessage::CancelAuthentication => {}
     }
 
     Ok(())
