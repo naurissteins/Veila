@@ -617,6 +617,7 @@ fn countdown_state_advances_after_timeout() {
             retry_until: Some(Instant::now() + Duration::from_millis(1_100)),
             displayed_retry_seconds: Some(2),
             failed_attempts: Some(2),
+            message: None,
         },
         ..ShellState::default()
     };
@@ -676,6 +677,21 @@ fn rejected_status_text_includes_failed_attempt_count() {
     assert_eq!(
         shell.render_context().status_text().as_deref(),
         Some("Authentication failed (2 failed attempts)")
+    );
+}
+
+#[test]
+fn rejected_status_text_shows_pam_message() {
+    let mut shell = ShellState::default();
+    shell.authentication_rejected_with_message(
+        None,
+        Some(3),
+        Some(String::from("Account temporarily locked")),
+    );
+
+    assert_eq!(
+        shell.render_context().status_text().as_deref(),
+        Some("Account temporarily locked")
     );
 }
 

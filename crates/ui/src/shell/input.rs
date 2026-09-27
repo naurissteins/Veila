@@ -114,6 +114,15 @@ impl ShellState {
         retry_after_ms: Option<u64>,
         failed_attempts: Option<u8>,
     ) {
+        self.authentication_rejected_with_message(retry_after_ms, failed_attempts, None);
+    }
+
+    pub fn authentication_rejected_with_message(
+        &mut self,
+        retry_after_ms: Option<u64>,
+        failed_attempts: Option<u8>,
+        message: Option<String>,
+    ) {
         if !matches!(self.status, ShellStatus::Rejected { .. }) {
             self.bump_static_scene_revision();
         }
@@ -129,6 +138,7 @@ impl ShellState {
             retry_until,
             displayed_retry_seconds,
             failed_attempts,
+            message,
         };
     }
 

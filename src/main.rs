@@ -9,7 +9,8 @@ use anyhow::{Context, Result};
 use nix::sys::prctl;
 use veila_curtain::CurtainOptions;
 use veila_daemon::{
-    CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME, DaemonOptions, PREWARM_PROCESS_NAME,
+    CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME, DaemonOptions, PAM_HELPER_PROCESS_NAME,
+    PREWARM_PROCESS_NAME,
 };
 
 use cli::{Invocation, Mode};
@@ -27,6 +28,10 @@ fn main() -> Result<()> {
             let options = DaemonOptions::parse_daemon_args(args)?;
             logging::init_stderr();
             block_on(veila_daemon::run_prewarm(options))
+        }
+        Mode::PamHelper => {
+            harden_process(PAM_HELPER_PROCESS_NAME)?;
+            veila_daemon::run_pam_helper()
         }
         Mode::Curtain => {
             harden_process(CURTAIN_PROCESS_NAME)?;

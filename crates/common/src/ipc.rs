@@ -116,6 +116,7 @@ pub enum DaemonMessage {
         attempt_id: u64,
         retry_after_ms: Option<u64>,
         failed_attempts: Option<u8>,
+        message: Option<String>,
     },
     AuthenticationBusy {
         attempt_id: u64,
@@ -310,6 +311,7 @@ mod tests {
             attempt_id: 7,
             retry_after_ms: Some(1_500),
             failed_attempts: Some(2),
+            message: Some(String::from("Account temporarily locked")),
         };
         let encoded = encode_message(&message).expect("daemon message should encode");
         let decoded =

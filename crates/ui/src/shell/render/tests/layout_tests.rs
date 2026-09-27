@@ -1067,6 +1067,7 @@ fn explicit_input_and_status_positions_are_removed_from_auth_flow() {
         retry_until: None,
         displayed_retry_seconds: None,
         failed_attempts: Some(1),
+        message: None,
     };
 
     let layout = shell
@@ -1109,6 +1110,7 @@ fn inline_status_stays_inside_explicit_input_by_default() {
         retry_until: None,
         displayed_retry_seconds: None,
         failed_attempts: Some(1),
+        message: None,
     };
 
     let layout = shell
@@ -1144,6 +1146,7 @@ fn external_status_follows_explicit_input_when_status_position_is_unset() {
         retry_until: None,
         displayed_retry_seconds: None,
         failed_attempts: Some(1),
+        message: None,
     };
 
     let layout = shell
@@ -1177,6 +1180,7 @@ fn hidden_status_mode_removes_auth_feedback_from_layout() {
         retry_until: None,
         displayed_retry_seconds: None,
         failed_attempts: Some(1),
+        message: None,
     };
 
     let layout = shell

@@ -92,6 +92,7 @@ fn rejected_input_style_uses_rejected_status_color_for_border() {
         retry_until: None,
         displayed_retry_seconds: None,
         failed_attempts: Some(1),
+        message: None,
     };
 
     let style = shell.render_context().input_style();
@@ -615,6 +616,7 @@ fn rejected_status_style_prefers_state_specific_status_override() {
         retry_until: None,
         displayed_retry_seconds: None,
         failed_attempts: None,
+        message: None,
     };
 
     let style = shell.render_context().status_text_style();
