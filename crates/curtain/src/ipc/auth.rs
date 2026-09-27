@@ -1,8 +1,7 @@
 use std::{
     io::{BufReader, Write},
-    os::unix::fs::MetadataExt,
     os::unix::net::UnixStream,
-    path::{Path, PathBuf},
+    path::PathBuf,
     thread,
     time::{Duration, Instant},
 };
@@ -12,6 +11,7 @@ use calloop::channel::Sender;
 
 use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
+use nix::unistd::Uid;
 use veila_common::{
     PowerAction, Secret,
     ipc::{ClientMessage, DaemonMessage, decode_message, encode_message, encode_secret_message},
@@ -77,7 +77,7 @@ fn run_attempt(
 ) -> anyhow::Result<()> {
     let started_at = Instant::now();
     let mut stream = UnixStream::connect(&socket_path)?;
-    verify_socket_peer(&stream, &socket_path).context("auth socket peer rejected")?;
+    verify_socket_peer(&stream).context("auth socket peer rejected")?;
     stream
         .set_write_timeout(Some(AUTH_WRITE_TIMEOUT))
         .context("failed to set auth write timeout")?;
@@ -147,7 +147,7 @@ fn run_attempt(
 
 fn run_activity_notification(socket_path: PathBuf) -> anyhow::Result<()> {
     let mut stream = UnixStream::connect(&socket_path)?;
-    verify_socket_peer(&stream, &socket_path).context("auth socket peer rejected")?;
+    verify_socket_peer(&stream).context("auth socket peer rejected")?;
     let mut payload = encode_message(&ClientMessage::Activity)?;
     payload.push('\n');
     stream.write_all(payload.as_bytes())?;
@@ -157,7 +157,7 @@ fn run_activity_notification(socket_path: PathBuf) -> anyhow::Result<()> {
 
 fn run_power_action_request(socket_path: PathBuf, action: PowerAction) -> anyhow::Result<()> {
     let mut stream = UnixStream::connect(&socket_path)?;
-    verify_socket_peer(&stream, &socket_path).context("auth socket peer rejected")?;
+    verify_socket_peer(&stream).context("auth socket peer rejected")?;
     let mut payload = encode_message(&ClientMessage::RequestPowerAction { action })?;
     payload.push('\n');
     stream.write_all(payload.as_bytes())?;
@@ -165,14 +165,12 @@ fn run_power_action_request(socket_path: PathBuf, action: PowerAction) -> anyhow
     Ok(())
 }
 
-fn verify_socket_peer(stream: &UnixStream, socket_path: &Path) -> Result<()> {
-    let expected_uid = std::fs::metadata(socket_path)
-        .with_context(|| format!("failed to inspect socket {}", socket_path.display()))?
-        .uid();
+fn verify_socket_peer(stream: &UnixStream) -> Result<()> {
+    let expected_uid = Uid::effective().as_raw();
     let peer = getsockopt(stream, PeerCredentials).context("failed to read peer credentials")?;
     if peer.uid() != expected_uid {
         bail!(
-            "peer uid {} does not match socket owner uid {}",
+            "peer uid {} does not match curtain uid {}",
             peer.uid(),
             expected_uid
         );

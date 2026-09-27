@@ -859,6 +859,17 @@ fn fingerprint_status_does_not_replace_password_placeholder() {
 }
 
 #[test]
+fn fingerprint_limit_prompts_for_password() {
+    let mut shell = ShellState::default();
+
+    assert!(shell.set_fingerprint_status(Some(FingerprintStatus::AttemptLimitReached)));
+    assert_eq!(
+        shell.render_context().status_text().as_deref(),
+        Some("Use your password to unlock")
+    );
+}
+
+#[test]
 fn uses_configured_username_override() {
     let shell = ShellState::new_with_username(
         Default::default(),

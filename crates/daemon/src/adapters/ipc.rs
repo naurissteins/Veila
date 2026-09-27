@@ -262,7 +262,7 @@ fn secure_socket_file(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn verify_peer_uid(stream: &UnixStream) -> Result<()> {
+pub(crate) fn verify_peer_uid(stream: &UnixStream) -> Result<()> {
     let peer = stream
         .peer_cred()
         .context("failed to read peer credentials")?;

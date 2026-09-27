@@ -1,6 +1,6 @@
 use std::{
     io::BufReader,
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    os::unix::fs::PermissionsExt,
     os::unix::net::{UnixListener, UnixStream},
     path::PathBuf,
     sync::mpsc::Sender,
@@ -13,6 +13,7 @@ use calloop::ping::Ping;
 
 use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
+use nix::unistd::Uid;
 use veila_common::ipc::{CurtainControlMessage, decode_message};
 use veila_common::{FingerprintStatus, NowPlayingSnapshot, ipc::LockPowerStatusSnapshot};
 
@@ -71,9 +72,7 @@ pub(crate) fn spawn_listener(socket_path: PathBuf, sender: ControlSender) -> Res
     }
 
     let listener = bind_secured(&socket_path)?;
-    let owner_uid = std::fs::metadata(&socket_path)
-        .with_context(|| format!("failed to inspect control socket {}", socket_path.display()))?
-        .uid();
+    let owner_uid = Uid::effective().as_raw();
 
     thread::spawn(move || run_listener(listener, owner_uid, sender));
 
@@ -164,7 +163,7 @@ fn read_control_message(
         getsockopt(&stream, PeerCredentials).context("failed to read control peer credentials")?;
     if peer.uid() != owner_uid {
         bail!(
-            "rejected curtain control connection from uid {}, expected socket owner uid {owner_uid}",
+            "rejected curtain control connection from uid {}, expected curtain uid {owner_uid}",
             peer.uid()
         );
     }

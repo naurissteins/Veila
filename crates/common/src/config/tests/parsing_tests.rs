@@ -587,11 +587,19 @@ fn parses_fingerprint_config() {
         r#"
             [fingerprint]
             enabled = true
+            max_failed_attempts = 3
         "#,
     )
     .expect("config should parse");
 
     assert!(config.fingerprint.enabled);
+    assert_eq!(config.fingerprint.max_failed_attempts, 3);
+}
+
+#[test]
+fn fingerprint_attempt_limit_defaults_to_five_and_rejects_zero() {
+    assert_eq!(AppConfig::default().fingerprint.max_failed_attempts, 5);
+    assert!(AppConfig::from_toml_str("[fingerprint]\nmax_failed_attempts = 0\n").is_err());
 }
 
 #[test]
