@@ -40,6 +40,33 @@ fn loads_bundled_default_theme_as_default_layer() {
 }
 
 #[test]
+fn user_wallpaper_path_overrides_generated_theme_background() {
+    let config = AppConfig::from_toml_str_with_theme_support(
+        "[background]\npath = '/tmp/user-wallpaper.png'\n",
+        None,
+    )
+    .expect("config should load");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::File);
+    assert_eq!(
+        config.background.resolved_path().as_deref(),
+        Some(std::path::Path::new("/tmp/user-wallpaper.png"))
+    );
+}
+
+#[test]
+fn explicit_user_background_mode_overrides_wallpaper_path() {
+    let config = AppConfig::from_toml_str_with_theme_support(
+        "[background]\nmode = 'radial'\npath = '/tmp/user-wallpaper.png'\n",
+        None,
+    )
+    .expect("config should load");
+
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Radial);
+    assert!(config.background.resolved_path().is_none());
+}
+
+#[test]
 fn flat_visual_overrides_win_over_bundled_default_theme_layer() {
     let dir = std::env::temp_dir().join(format!("veila-flat-default-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");

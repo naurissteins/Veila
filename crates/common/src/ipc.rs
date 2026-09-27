@@ -101,7 +101,6 @@ pub enum CurtainStartupMessage {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
     SubmitPassword { attempt_id: u64, secret: Secret },
-    CancelAuthentication,
     Activity,
     RequestPowerAction { action: PowerAction },
 }

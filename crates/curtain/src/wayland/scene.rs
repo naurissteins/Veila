@@ -6,6 +6,8 @@ mod prepare;
 mod ready;
 #[path = "scene/render.rs"]
 mod render;
+#[path = "scene/render_dirty.rs"]
+mod render_dirty;
 #[path = "scene/stage.rs"]
 mod stage;
 #[path = "scene/widget.rs"]

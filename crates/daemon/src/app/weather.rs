@@ -12,6 +12,16 @@ use time::OffsetDateTime;
 use tokio::sync::watch;
 use veila_common::{WeatherCondition, WeatherConfig, WeatherSnapshot};
 
+const WEATHER_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+fn weather_agent() -> ureq::Agent {
+    // bound the entire request, including DNS and response body reads
+    let config = ureq::Agent::config_builder()
+        .timeout_global(Some(WEATHER_REQUEST_TIMEOUT))
+        .build();
+    ureq::Agent::new_with_config(config)
+}
+
 #[derive(Clone)]
 pub(super) struct WeatherHandle {
     config_tx: watch::Sender<WeatherConfig>,
@@ -103,7 +113,8 @@ fn fetch_snapshot(config: &WeatherConfig) -> Result<WeatherSnapshot> {
     let url = format!(
         "https://api.open-meteo.com/v1/forecast?latitude={latitude:.6}&longitude={longitude:.6}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius"
     );
-    let mut response = ureq::get(&url)
+    let mut response = weather_agent()
+        .get(&url)
         .header("User-Agent", "Veila/0.1 weather widget")
         .call()
         .context("failed to fetch weather from Open-Meteo")?;
@@ -216,7 +227,8 @@ fn cached_coordinates(config: &WeatherConfig) -> Result<Option<(f64, f64)>> {
 
 fn geocode_location(location: &str) -> Result<(f64, f64)> {
     tracing::debug!(%location, "geocoding weather location");
-    let mut response = ureq::get("https://geocoding-api.open-meteo.com/v1/search")
+    let mut response = weather_agent()
+        .get("https://geocoding-api.open-meteo.com/v1/search")
         .query("name", location)
         .query("count", "1")
         .query("language", "en")

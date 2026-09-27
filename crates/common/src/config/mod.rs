@@ -165,6 +165,16 @@ impl AppConfig {
             }
         }
 
+        // user wallpaper path should take precedence over a theme's generated background mode
+        if let Some(background) = user_value
+            .get_mut("background")
+            .and_then(Value::as_table_mut)
+            && background.contains_key("path")
+            && !background.contains_key("mode")
+        {
+            background.insert("mode".to_owned(), Value::String("file".to_owned()));
+        }
+
         remove_config_metadata(&mut user_value);
         merge_config_layer(&mut config_value, user_value);
 
