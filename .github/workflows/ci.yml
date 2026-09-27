@@ -67,6 +67,7 @@ jobs:
 
   dependencies:
     name: Dependencies
+    if: vars.RUN_EXPENSIVE_CI != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
