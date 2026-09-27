@@ -15,11 +15,11 @@ pub(super) async fn stop_running_daemon(daemon_socket_path: &std::path::Path) ->
     )
     .await?;
 
-    if response != veila_common::ipc::DaemonControlResponse::Accepted {
-        bail!("daemon returned an unexpected response to --stop");
+    match response {
+        veila_common::ipc::DaemonControlResponse::Accepted => Ok(()),
+        veila_common::ipc::DaemonControlResponse::Error { reason } => bail!(reason),
+        _ => bail!("daemon returned an unexpected response to --stop"),
     }
-
-    Ok(())
 }
 
 pub(super) async fn lock_running_daemon(

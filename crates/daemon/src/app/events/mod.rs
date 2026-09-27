@@ -8,4 +8,4 @@ pub(super) use control::handle_control_message;
 pub(super) use lifecycle::{
     handle_curtain_exit, handle_lock_signal, handle_now_playing_update, handle_unlock_signal,
 };
-pub(super) use shutdown::shutdown_runtime;
+pub(super) use shutdown::{ShutdownGate, shutdown_runtime};
