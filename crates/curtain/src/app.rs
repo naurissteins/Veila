@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
@@ -6,23 +6,23 @@ use calloop::channel::Event as ChannelEvent;
 use calloop::signals::{Signal, Signals};
 use smithay_client_toolkit::reexports::client::{Connection, globals::registry_queue_init};
 
-use veila_common::{elapsed_ms, elapsed_us};
+use veila_common::{
+    elapsed_ms, elapsed_us,
+    ipc::{CurtainInitialSnapshots, IPC_MAX_LINE_BYTES, decode_message},
+};
 
 use crate::{CurtainOptions, preview, state::CurtainApp};
 
-pub fn run(options: CurtainOptions) -> Result<()> {
+pub fn run(mut options: CurtainOptions) -> Result<()> {
     if options.preview_png.is_some() {
         return preview::render_preview(options);
     }
 
     if options.owner_gate {
-        let mut gate = [0_u8; 1];
-        std::io::stdin()
-            .read_exact(&mut gate)
-            .context("daemon exited before publishing curtain ownership")?;
-        if gate != [1] {
-            bail!("invalid curtain ownership gate");
-        }
+        let snapshots = read_initial_snapshots(&mut BufReader::new(std::io::stdin()))?;
+        options.weather_snapshot = snapshots.weather;
+        options.battery_snapshot = snapshots.battery;
+        options.now_playing_snapshot = snapshots.now_playing;
     }
 
     let startup_started_at = Instant::now();
@@ -163,4 +163,77 @@ pub fn run(options: CurtainOptions) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn read_initial_snapshots(reader: &mut impl BufRead) -> Result<CurtainInitialSnapshots> {
+    let mut payload = Vec::new();
+    let bytes = reader
+        .take((IPC_MAX_LINE_BYTES + 1) as u64)
+        .read_until(b'\n', &mut payload)
+        .context("failed to read initial curtain snapshots")?;
+    if bytes == 0 || bytes > IPC_MAX_LINE_BYTES || payload.last() != Some(&b'\n') {
+        bail!("initial curtain snapshots exceed the IPC limit or are incomplete");
+    }
+    let snapshots = decode_message(std::str::from_utf8(&payload[..bytes - 1])?)
+        .context("failed to decode initial curtain snapshots")?;
+    let mut gate = [0_u8; 1];
+    reader
+        .read_exact(&mut gate)
+        .context("daemon exited before publishing curtain ownership")?;
+    if gate != [1] {
+        bail!("invalid curtain ownership gate");
+    }
+    Ok(snapshots)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{BufReader, Cursor};
+
+    use veila_common::{
+        BatterySnapshot, NowPlayingSnapshot,
+        ipc::{CurtainInitialSnapshots, IPC_MAX_LINE_BYTES, encode_message},
+    };
+
+    use super::read_initial_snapshots;
+
+    #[test]
+    fn reads_snapshots_only_after_valid_owner_gate() {
+        let expected = CurtainInitialSnapshots {
+            battery: Some(BatterySnapshot {
+                percent: 84,
+                charging: true,
+            }),
+            now_playing: Some(NowPlayingSnapshot {
+                title: String::from("Track"),
+                artist: Some(String::from("Artist")),
+                artwork_path: None,
+                fetched_at_unix: 7,
+            }),
+            ..Default::default()
+        };
+        let mut input = encode_message(&expected)
+            .expect("snapshot JSON")
+            .into_bytes();
+        input.extend_from_slice(b"\n\x01");
+        let actual = read_initial_snapshots(&mut BufReader::new(Cursor::new(input)))
+            .expect("valid startup payload");
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn rejects_payload_without_owner_gate() {
+        let mut input = encode_message(&CurtainInitialSnapshots::default())
+            .expect("snapshot JSON")
+            .into_bytes();
+        input.push(b'\n');
+        assert!(read_initial_snapshots(&mut BufReader::new(Cursor::new(input))).is_err());
+    }
+
+    #[test]
+    fn rejects_oversized_startup_payload() {
+        let mut input = vec![b'x'; IPC_MAX_LINE_BYTES + 1];
+        input.extend_from_slice(b"\n\x01");
+        assert!(read_initial_snapshots(&mut BufReader::new(Cursor::new(input))).is_err());
+    }
 }

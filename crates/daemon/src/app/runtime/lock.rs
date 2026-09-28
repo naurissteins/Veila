@@ -206,9 +206,6 @@ async fn activate_lock_attempt(
         &owner_path,
         config_path,
         initial_background_path,
-        weather_snapshot,
-        battery_snapshot,
-        now_playing_snapshot,
         force_emergency_ui,
         latency_report,
     )
@@ -244,7 +241,14 @@ async fn activate_lock_attempt(
         remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
         return Err(AttemptFailure::unsafe_to_retry(error, false));
     }
-    if let Err(error) = process::release_curtain_owner_gate(&mut child).await {
+    if let Err(error) = process::release_curtain_owner_gate(
+        &mut child,
+        weather_snapshot,
+        battery_snapshot,
+        now_playing_snapshot,
+    )
+    .await
+    {
         if let Err(stop_error) = process::force_stop_curtain(child).await {
             // partial gate write may have let the curtain acquire the lock
             return Err(AttemptFailure::unsafe_to_retry(

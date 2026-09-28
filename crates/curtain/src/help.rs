@@ -20,9 +20,6 @@ Options:
       --control-socket=<path>        Curtain live-control IPC socket
       --initial-background-path=<path>
                                      Background image to try first
-      --weather-snapshot=<payload>      Inject a weather snapshot
-      --battery-snapshot=<payload>      Inject a battery snapshot
-      --now-playing-snapshot=<payload>  Inject a now playing snapshot
 
 Notes:
   Without daemon sockets and without --lock it exits to avoid accidental locks.

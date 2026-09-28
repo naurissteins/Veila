@@ -3,14 +3,21 @@ pub mod line;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-use crate::NowPlayingSnapshot;
 use crate::error::Result;
 use crate::power::PowerAction;
 use crate::secret::Secret;
+use crate::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
 
 pub use line::{IPC_MAX_LINE_BYTES, LineAccumulator, LineProgress};
 
 pub const SECRET_MESSAGE_CAPACITY: usize = 2 * 1024;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CurtainInitialSnapshots {
+    pub weather: Option<WeatherSnapshot>,
+    pub battery: Option<BatterySnapshot>,
+    pub now_playing: Option<NowPlayingSnapshot>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockPowerStatusSnapshot {

@@ -16,8 +16,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
 use veila_common::{
-    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot,
-    ipc::{LatencyReportMode, decode_message},
+    BatterySnapshot, NowPlayingSnapshot, WeatherCondition, WeatherSnapshot, ipc::LatencyReportMode,
 };
 
 /// Command-line options for the curtain process.
@@ -233,25 +232,6 @@ impl CurtainOptions {
                 continue;
             }
 
-            if let Some(snapshot) = parse_option_value(&arg, "--weather-snapshot", &mut args)? {
-                options.weather_snapshot =
-                    Some(decode_message(&snapshot).context("failed to decode weather snapshot")?);
-                continue;
-            }
-
-            if let Some(snapshot) = parse_option_value(&arg, "--battery-snapshot", &mut args)? {
-                options.battery_snapshot =
-                    Some(decode_message(&snapshot).context("failed to decode battery snapshot")?);
-                continue;
-            }
-
-            if let Some(snapshot) = parse_option_value(&arg, "--now-playing-snapshot", &mut args)? {
-                options.now_playing_snapshot = Some(
-                    decode_message(&snapshot).context("failed to decode now playing snapshot")?,
-                );
-                continue;
-            }
-
             bail!("unknown curtain argument: {arg}");
         }
 
@@ -438,10 +418,7 @@ impl CurtainOptions {
 
 #[cfg(test)]
 mod tests {
-    use veila_common::{
-        BatterySnapshot, NowPlayingSnapshot, WeatherCondition,
-        ipc::{LatencyReportMode, encode_message},
-    };
+    use veila_common::{WeatherCondition, ipc::LatencyReportMode};
 
     use super::{CurtainOptions, PreviewClockTime, validate_preview_mode};
 
@@ -640,54 +617,6 @@ mod tests {
             error
                 .to_string()
                 .contains("refusing to start a real lock session")
-        );
-    }
-
-    #[test]
-    fn parses_now_playing_snapshot_argument() {
-        let encoded = encode_message(&NowPlayingSnapshot {
-            title: String::from("Track"),
-            artist: Some(String::from("Artist")),
-            artwork_path: None,
-            fetched_at_unix: 7,
-        })
-        .expect("snapshot");
-        let options = CurtainOptions::parse_args([
-            String::from("veila-curtain"),
-            format!("--now-playing-snapshot={encoded}"),
-        ])
-        .expect("arguments should parse");
-
-        assert_eq!(
-            options.now_playing_snapshot,
-            Some(NowPlayingSnapshot {
-                title: String::from("Track"),
-                artist: Some(String::from("Artist")),
-                artwork_path: None,
-                fetched_at_unix: 7,
-            })
-        );
-    }
-
-    #[test]
-    fn parses_battery_snapshot_argument() {
-        let encoded = encode_message(&BatterySnapshot {
-            percent: 84,
-            charging: true,
-        })
-        .expect("snapshot");
-        let options = CurtainOptions::parse_args([
-            String::from("veila-curtain"),
-            format!("--battery-snapshot={encoded}"),
-        ])
-        .expect("arguments should parse");
-
-        assert_eq!(
-            options.battery_snapshot,
-            Some(BatterySnapshot {
-                percent: 84,
-                charging: true,
-            })
         );
     }
 
