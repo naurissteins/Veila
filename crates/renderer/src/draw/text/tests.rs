@@ -73,6 +73,18 @@ fn renders_non_empty_text() {
 }
 
 #[test]
+fn cached_text_draw_matches_first_render() {
+    let style = TextStyle::new(ClearColor::opaque(255, 255, 255), 2);
+    let mut first = SoftwareBuffer::new(FrameSize::new(128, 48)).expect("buffer");
+    let mut cached = SoftwareBuffer::new(FrameSize::new(128, 48)).expect("buffer");
+
+    draw_text(&mut first, 4, 3, "Cache parity", style.clone());
+    draw_text(&mut cached, 4, 3, "Cache parity", style);
+
+    assert_eq!(first.pixels(), cached.pixels());
+}
+
+#[test]
 fn respects_text_alpha_when_rendering() {
     let mut faint =
         SoftwareBuffer::solid(FrameSize::new(64, 32), ClearColor::opaque(0, 0, 0)).expect("buffer");
