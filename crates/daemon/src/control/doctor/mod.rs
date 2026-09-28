@@ -8,6 +8,7 @@ mod wayland;
 use std::path::Path;
 
 use super::local_build_info;
+use crate::adapters::pam;
 
 pub(super) async fn print_doctor_report(config_path: Option<&Path>, session_id: Option<&str>) {
     let mut summary = DoctorSummary::default();
@@ -153,25 +154,32 @@ fn check_pam(summary: &mut DoctorSummary) {
         return;
     }
 
-    let veila = Path::new("/etc/pam.d/veila");
-    let system_auth = Path::new("/etc/pam.d/system-auth");
-    println!("pam.service=veila");
-    println!("pam.service_path={}", veila.display());
-
-    if veila.exists() {
-        summary.record("pam", CheckStatus::Ok, "Veila PAM service file exists");
-    } else if system_auth.exists() {
-        summary.record(
-            "pam",
-            CheckStatus::Warning,
-            "Veila PAM service is missing; daemon will fall back to system-auth",
-        );
-    } else {
-        summary.record(
-            "pam",
-            CheckStatus::Error,
-            "no /etc/pam.d/veila service and no system-auth fallback found",
-        );
+    match pam::service::selected_service() {
+        Some(service) => {
+            println!("pam.service={}", service.name);
+            println!("pam.service_path=/etc/pam.d/{}", service.name);
+            if service.fallback {
+                summary.record(
+                    "pam",
+                    CheckStatus::Warning,
+                    format!(
+                        "Veila PAM service is missing; using {} fallback",
+                        service.name
+                    ),
+                );
+            } else {
+                summary.record("pam", CheckStatus::Ok, "Veila PAM service file exists");
+            }
+        }
+        None => {
+            println!("pam.service=unavailable");
+            println!("pam.service_path=unavailable");
+            summary.record(
+                "pam",
+                CheckStatus::Error,
+                "no Veila PAM service or supported fallback exists in /etc/pam.d",
+            );
+        }
     }
 }
 
