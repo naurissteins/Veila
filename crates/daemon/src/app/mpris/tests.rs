@@ -1,9 +1,25 @@
 use anyhow::anyhow;
 
 use super::{
-    PlayerDescriptor, normalize_filter_value, optional_property_string, player_is_excluded,
+    MAX_ARTWORK_URL_BYTES, MAX_METADATA_CHARS, PlayerDescriptor, normalize_artwork_url,
+    normalize_filter_value, normalize_string, optional_property_string, player_is_excluded,
     player_is_included,
 };
+
+#[test]
+fn normalizes_and_caps_long_unicode_metadata() {
+    let value = format!("  {}  ", "🎵".repeat(MAX_METADATA_CHARS + 20));
+    let normalized = normalize_string(value).expect("nonempty metadata");
+    assert_eq!(normalized, "🎵".repeat(MAX_METADATA_CHARS));
+}
+
+#[test]
+fn rejects_oversized_artwork_url_without_truncating_path() {
+    assert_eq!(
+        normalize_artwork_url("/".repeat(MAX_ARTWORK_URL_BYTES + 1)),
+        None
+    );
+}
 
 #[test]
 fn excludes_players_by_identity_case_insensitively() {

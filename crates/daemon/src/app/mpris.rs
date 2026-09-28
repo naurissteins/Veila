@@ -19,6 +19,8 @@ const MPRIS_PATH: &str = "/org/mpris/MediaPlayer2";
 const MPRIS_INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
 const DBUS_INTERFACE: &str = "org.freedesktop.DBus";
 const DBUS_PROPERTIES_INTERFACE: &str = "org.freedesktop.DBus.Properties";
+const MAX_METADATA_CHARS: usize = 256;
+const MAX_ARTWORK_URL_BYTES: usize = 4096;
 
 #[derive(Clone)]
 pub(super) struct NowPlayingHandle {
@@ -250,7 +252,7 @@ async fn player_snapshot(
     let snapshot = NowPlayingSnapshot {
         title,
         artist: metadata_string_list_first(&metadata, "xesam:artist"),
-        artwork_path: metadata_string(&metadata, "mpris:artUrl").and_then(resolve_artwork_path),
+        artwork_path: metadata_artwork_url(&metadata).and_then(resolve_artwork_path),
         fetched_at_unix: OffsetDateTime::now_utc().unix_timestamp(),
     };
 
@@ -309,6 +311,16 @@ fn metadata_string(metadata: &HashMap<String, OwnedValue>, key: &str) -> Option<
     normalize_string(String::try_from(value).ok()?)
 }
 
+fn metadata_artwork_url(metadata: &HashMap<String, OwnedValue>) -> Option<String> {
+    let value = metadata.get("mpris:artUrl")?.clone();
+    normalize_artwork_url(String::try_from(value).ok()?)
+}
+
+fn normalize_artwork_url(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty() && trimmed.len() <= MAX_ARTWORK_URL_BYTES).then(|| trimmed.to_owned())
+}
+
 fn metadata_string_list_first(metadata: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
     let value = metadata.get(key)?.clone();
     let values = Vec::<String>::try_from(value).ok()?;
@@ -317,7 +329,7 @@ fn metadata_string_list_first(metadata: &HashMap<String, OwnedValue>, key: &str)
 
 fn normalize_string(value: String) -> Option<String> {
     let trimmed = value.trim();
-    (!trimmed.is_empty()).then(|| trimmed.to_owned())
+    (!trimmed.is_empty()).then(|| trimmed.chars().take(MAX_METADATA_CHARS).collect())
 }
 
 fn player_is_included(player: &PlayerDescriptor, include_players: &[String]) -> bool {

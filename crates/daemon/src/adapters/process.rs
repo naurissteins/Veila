@@ -17,7 +17,10 @@ use tokio::{
 };
 use veila_common::{
     BatterySnapshot, FingerprintStatus, NowPlayingSnapshot, WeatherSnapshot,
-    ipc::{CurtainControlMessage, LatencyReportMode, LockPowerStatusSnapshot, encode_message},
+    ipc::{
+        CurtainControlMessage, CurtainInitialSnapshots, IPC_MAX_LINE_BYTES, LatencyReportMode,
+        LockPowerStatusSnapshot, encode_message,
+    },
 };
 
 use super::ipc;
@@ -43,9 +46,6 @@ pub async fn spawn_curtain(
     owner_record: &Path,
     config_path: Option<&Path>,
     initial_background_path: Option<&Path>,
-    weather_snapshot: Option<&WeatherSnapshot>,
-    battery_snapshot: Option<&BatterySnapshot>,
-    now_playing_snapshot: Option<&NowPlayingSnapshot>,
     force_emergency_ui: bool,
     latency_report: LatencyReportMode,
 ) -> Result<Child> {
@@ -62,25 +62,6 @@ pub async fn spawn_curtain(
         command.arg(format!(
             "--initial-background-path={}",
             initial_background_path.display()
-        ));
-    }
-    if let Some(weather_snapshot) = weather_snapshot {
-        command.arg(format!(
-            "--weather-snapshot={}",
-            encode_message(weather_snapshot).context("failed to encode weather snapshot")?
-        ));
-    }
-    if let Some(battery_snapshot) = battery_snapshot {
-        command.arg(format!(
-            "--battery-snapshot={}",
-            encode_message(battery_snapshot).context("failed to encode battery snapshot")?
-        ));
-    }
-    if let Some(now_playing_snapshot) = now_playing_snapshot {
-        command.arg(format!(
-            "--now-playing-snapshot={}",
-            encode_message(now_playing_snapshot)
-                .context("failed to encode now playing snapshot")?
         ));
     }
     if force_emergency_ui {
@@ -103,15 +84,46 @@ pub async fn spawn_curtain(
         .context("failed to spawn the curtain process")
 }
 
-pub async fn release_curtain_owner_gate(child: &mut Child) -> Result<()> {
+pub async fn release_curtain_owner_gate(
+    child: &mut Child,
+    weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
+) -> Result<()> {
+    let payload =
+        initial_snapshot_payload(weather_snapshot, battery_snapshot, now_playing_snapshot)?;
     let mut stdin = child
         .stdin
         .take()
         .context("curtain ownership gate is missing")?;
+    // The gate byte comes last, so a partial write cannot start an unowned lock.
+    stdin
+        .write_all(payload.as_bytes())
+        .await
+        .context("failed to send initial curtain snapshots")?;
     stdin
         .write_all(&[1])
         .await
         .context("failed to release curtain ownership gate")
+}
+
+fn initial_snapshot_payload(
+    weather_snapshot: Option<&WeatherSnapshot>,
+    battery_snapshot: Option<&BatterySnapshot>,
+    now_playing_snapshot: Option<&NowPlayingSnapshot>,
+) -> Result<String> {
+    let snapshots = CurtainInitialSnapshots {
+        weather: weather_snapshot.cloned(),
+        battery: battery_snapshot.cloned(),
+        now_playing: now_playing_snapshot.cloned(),
+    };
+    let mut payload = encode_message(&snapshots).context("failed to encode initial snapshots")?;
+    if payload.len() >= IPC_MAX_LINE_BYTES {
+        tracing::warn!("initial widget snapshots exceed IPC limit; starting without them");
+        payload = encode_message(&CurtainInitialSnapshots::default())?;
+    }
+    payload.push('\n');
+    Ok(payload)
 }
 
 pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u64>) -> Result<()> {
@@ -275,4 +287,29 @@ fn self_exe_command(process_name: &str, subcommand: &str) -> Command {
     let mut command = Command::new(SELF_EXE);
     command.arg0(process_name).arg(subcommand);
     command
+}
+
+#[cfg(test)]
+mod tests {
+    use veila_common::{
+        NowPlayingSnapshot,
+        ipc::{CurtainInitialSnapshots, IPC_MAX_LINE_BYTES, decode_message},
+    };
+
+    use super::initial_snapshot_payload;
+
+    #[test]
+    fn oversized_snapshot_is_omitted_from_startup_payload() {
+        let snapshot = NowPlayingSnapshot {
+            title: "x".repeat(IPC_MAX_LINE_BYTES),
+            artist: None,
+            artwork_path: None,
+            fetched_at_unix: 0,
+        };
+        let payload =
+            initial_snapshot_payload(None, None, Some(&snapshot)).expect("bounded startup payload");
+        let decoded: CurtainInitialSnapshots =
+            decode_message(payload.trim_end()).expect("snapshot payload JSON");
+        assert_eq!(decoded, CurtainInitialSnapshots::default());
+    }
 }
