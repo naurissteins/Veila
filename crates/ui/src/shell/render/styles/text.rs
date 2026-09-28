@@ -211,7 +211,9 @@ impl RenderContext<'_> {
                 .status_rejected_color
                 .or(self.theme.status_color)
                 .unwrap_or(self.theme.rejected),
-            ShellStatus::Idle => self.theme.status_color.unwrap_or(self.theme.input_border),
+            ShellStatus::Challenge { .. } | ShellStatus::Notice { .. } | ShellStatus::Idle => {
+                self.theme.status_color.unwrap_or(self.theme.input_border)
+            }
         };
         TextStyle::new(secondary_text_color(color, None, 224), 2)
     }
@@ -228,7 +230,9 @@ impl RenderContext<'_> {
                 .status_rejected_color
                 .or(self.theme.status_color)
                 .unwrap_or(self.theme.rejected),
-            ShellStatus::Idle => self.theme.status_color.unwrap_or(self.theme.input_border),
+            ShellStatus::Challenge { .. } | ShellStatus::Notice { .. } | ShellStatus::Idle => {
+                self.theme.status_color.unwrap_or(self.theme.input_border)
+            }
         };
         self.apply_input_font(
             TextStyle::new_px(

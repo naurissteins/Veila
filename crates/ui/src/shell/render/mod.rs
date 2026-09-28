@@ -445,14 +445,25 @@ impl RenderContext<'_> {
                     .and(self.theme.username_enabled.then_some(()))
                     .and(username_text),
                 username_style,
-                placeholder_text: input_visible.then_some(()).and(
-                    self.theme
-                        .placeholder_enabled
-                        .then_some(self.shell.hint_text.as_str()),
-                ),
+                placeholder_text: input_visible
+                    .then_some(())
+                    .and(self.theme.placeholder_enabled.then_some(()))
+                    .map(|_| {
+                        if matches!(self.shell.status, super::ShellStatus::Challenge { .. }) {
+                            "Response"
+                        } else {
+                            self.shell.hint_text.as_str()
+                        }
+                    }),
                 placeholder_style,
                 status_text: if input_visible {
-                    if status_mode_external {
+                    if status_mode_external
+                        && !matches!(
+                            self.shell.status,
+                            super::ShellStatus::Challenge { .. }
+                                | super::ShellStatus::Notice { .. }
+                        )
+                    {
                         self.theme
                             .status_enabled
                             .then_some(())

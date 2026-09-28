@@ -15,6 +15,48 @@ use veila_renderer::icon::BatteryIcon;
 use veila_renderer::{FrameSize, SoftwareBuffer};
 
 use super::{ShellAction, ShellAnimationUpdate, ShellKey, ShellState, ShellStatus, ShellTheme};
+
+#[test]
+fn pam_challenge_requires_fresh_input_and_can_be_cancelled() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('p'));
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(Secret::from(String::from("p")))
+    );
+    shell.authentication_challenge(String::from("One-time code:"), false);
+    assert!(shell.secret.is_empty());
+    assert!(!shell.challenge_echo_on());
+    assert_eq!(
+        shell.render_context().inline_input_status_text().as_deref(),
+        Some("One-time code:")
+    );
+    shell.handle_key(ShellKey::Character('7'));
+    assert!(matches!(shell.status, ShellStatus::Challenge { .. }));
+    assert_eq!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(Secret::from(String::from("7")))
+    );
+    shell.authentication_challenge(String::from("Recovery phrase:"), true);
+    assert!(shell.challenge_echo_on());
+    assert_eq!(
+        shell.handle_key(ShellKey::Escape),
+        ShellAction::CancelAuthentication
+    );
+    assert!(shell.secret.is_empty());
+}
+
+#[test]
+fn pam_challenge_remains_visible_when_status_widget_is_disabled() {
+    let mut shell = ShellState::default();
+    shell.theme.status_enabled = false;
+    shell.theme.status_mode = StatusDisplayMode::Hidden;
+    shell.authentication_challenge(String::from("Security code:"), false);
+    assert_eq!(
+        shell.render_context().inline_input_status_text().as_deref(),
+        Some("Security code:")
+    );
+}
 use crate::shell::theme::{
     Backdrop, PowerButton, VisualLayer, WidgetPosition, WidgetPositionTarget,
 };

@@ -2,7 +2,7 @@ use veila_renderer::{
     ClearColor, FrameSize, PixelBuffer, RenderScale,
     masked::{MaskedInputStyle, draw_masked_input},
     shape::{BorderStyle, PillStyle, Rect, draw_pill},
-    text::{TextStyle, fit_single_line_text},
+    text::{TextStyle, fit_sensitive_single_line_text, fit_single_line_text},
 };
 
 use super::{ShellStatus, render::RenderContext};
@@ -75,9 +75,26 @@ impl RenderContext<'_> {
     }
 
     fn render_emergency_input_content(&self, buffer: &mut impl PixelBuffer, rect: Rect) {
+        if self.shell.challenge_echo_on() && !self.shell.secret.is_empty() {
+            let block = fit_sensitive_single_line_text(
+                self.shell.secret.expose(),
+                TextStyle::new_px(FOREGROUND, self.render_scale.apply_u32(16)).with_line_spacing(0),
+                rect.width.saturating_sub(48) as u32,
+            );
+            block.draw(
+                buffer,
+                rect.x + scaled(22, self.render_scale),
+                rect.y + (rect.height - block.height() as i32) / 2 - 1,
+            );
+            return;
+        }
         if self.shell.displayed_secret_len() == 0 {
             let placeholder = fit_single_line_text(
-                "Password",
+                if matches!(self.shell.status, ShellStatus::Challenge { .. }) {
+                    "Response"
+                } else {
+                    "Password"
+                },
                 TextStyle::new_px(MUTED, self.render_scale.apply_u32(16)).with_line_spacing(0),
                 rect.width.saturating_sub(48) as u32,
             );
@@ -124,6 +141,9 @@ impl RenderContext<'_> {
     fn emergency_status_text(&self) -> Option<String> {
         match &self.shell.status {
             ShellStatus::Idle => None,
+            ShellStatus::Challenge { text, .. } | ShellStatus::Notice { text } => {
+                Some(text.clone())
+            }
             ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
             ShellStatus::Rejected {
                 displayed_retry_seconds,
@@ -141,6 +161,7 @@ impl RenderContext<'_> {
     fn emergency_status_color(&self) -> ClearColor {
         match self.shell.status {
             ShellStatus::Pending { .. } => PENDING,
+            ShellStatus::Challenge { .. } | ShellStatus::Notice { .. } => PENDING,
             ShellStatus::Rejected { .. } => REJECTED,
             ShellStatus::Idle => MUTED,
         }
