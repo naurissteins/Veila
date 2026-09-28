@@ -2,13 +2,16 @@ use std::{path::Path, time::Instant};
 
 use anyhow::{Context, Result, anyhow};
 use tokio::{
-    process::Child,
     sync::mpsc::unbounded_channel,
     time::{Duration, Instant as TokioInstant, sleep_until, timeout},
 };
 
 use crate::{
-    adapters::{ipc, logind, process},
+    adapters::{
+        ipc, logind,
+        ownership::{self, OwnerRecord},
+        process::{self, CurtainHandle},
+    },
     domain::{
         auth::{AuthPolicy, AuthState},
         lock_state::LockState,
@@ -160,6 +163,18 @@ async fn activate_lock_attempt(
         ipc::auth_socket_path().map_err(|error| AttemptFailure::retryable(error, false))?;
     let control_socket_path =
         process::control_socket_path().map_err(|error| AttemptFailure::retryable(error, false))?;
+    let session = session_proxy.inner().path().as_str();
+    let owner_path = ownership::record_path(session)
+        .map_err(|error| AttemptFailure::unsafe_to_retry(error, false))?;
+    if owner_path.exists() {
+        return Err(AttemptFailure::unsafe_to_retry(
+            anyhow!(
+                "curtain ownership is unresolved at {}",
+                owner_path.display()
+            ),
+            false,
+        ));
+    }
     let notify_listener = ipc::bind_listener(&notify_path)
         .await
         .map_err(|error| AttemptFailure::retryable(error, false))?;
@@ -173,11 +188,22 @@ async fn activate_lock_attempt(
     let socket_setup_elapsed_ms = elapsed_ms(socket_setup_started_at);
     let socket_setup_elapsed_us = elapsed_us(socket_setup_started_at);
 
+    let mut owner = OwnerRecord::pending(
+        session,
+        auth_socket_path.clone(),
+        control_socket_path.clone(),
+    );
+    if let Err(error) = ownership::publish(&owner_path, &owner) {
+        remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
+        return Err(AttemptFailure::unsafe_to_retry(error, false));
+    }
+
     let spawn_started_at = Instant::now();
     let mut child = match process::spawn_curtain(
         &notify_path,
         &auth_socket_path,
         &control_socket_path,
+        &owner_path,
         config_path,
         initial_background_path,
         weather_snapshot,
@@ -190,10 +216,47 @@ async fn activate_lock_attempt(
     {
         Ok(child) => child,
         Err(error) => {
+            let _ = ownership::remove(&owner_path);
             remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
             return Err(AttemptFailure::retryable(error, false));
         }
     };
+    let identity = child
+        .id()
+        .ok_or_else(|| anyhow!("spawned curtain has no PID"))
+        .and_then(|pid| owner.set_process(pid))
+        .and_then(|()| ownership::publish(&owner_path, &owner));
+    if let Err(error) = identity {
+        let _ = process::force_stop_curtain(child).await;
+        let _ = ownership::remove(&owner_path);
+        remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
+        return Err(AttemptFailure::unsafe_to_retry(error, false));
+    }
+    owner.mark_gate_opening();
+    if let Err(error) = ownership::publish(&owner_path, &owner) {
+        if let Err(stop_error) = process::force_stop_curtain(child).await {
+            return Err(AttemptFailure::unsafe_to_retry(
+                stop_error.context(error),
+                false,
+            ));
+        }
+        let _ = ownership::remove(&owner_path);
+        remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
+        return Err(AttemptFailure::unsafe_to_retry(error, false));
+    }
+    if let Err(error) = process::release_curtain_owner_gate(&mut child).await {
+        if let Err(stop_error) = process::force_stop_curtain(child).await {
+            // partial gate write may have let the curtain acquire the lock
+            return Err(AttemptFailure::unsafe_to_retry(
+                stop_error.context(error),
+                false,
+            ));
+        }
+        ownership::remove(&owner_path)
+            .map_err(|remove_error| AttemptFailure::unsafe_to_retry(remove_error, false))?;
+        remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
+        return Err(AttemptFailure::unsafe_to_retry(error, false));
+    }
     if !matches!(state, LockState::Locked) {
         *state = LockState::Locking;
     }
@@ -244,6 +307,7 @@ async fn activate_lock_attempt(
                                 false,
                             ));
                         }
+                        let _ = ownership::remove(&owner_path);
                         remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                         return Err(AttemptFailure::retryable(error, false));
                     }
@@ -260,8 +324,11 @@ async fn activate_lock_attempt(
                         continue;
                     }
                 };
-                remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
-                return Err(AttemptFailure::retryable(
+                if !session_locked {
+                    let _ = ownership::remove(&owner_path);
+                    remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
+                }
+                return Err(AttemptFailure::unsafe_to_retry(
                     anyhow!("curtain exited before readiness with status {status}"),
                     session_locked,
                 ));
@@ -283,6 +350,7 @@ async fn activate_lock_attempt(
                         false,
                     ));
                 }
+                let _ = ownership::remove(&owner_path);
                 remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                 return Err(AttemptFailure::retryable(timeout_error, false));
             }
@@ -321,7 +389,7 @@ async fn activate_lock_attempt(
         "curtain startup completed; session considered locked"
     );
     Ok(LockActivation {
-        curtain: child,
+        curtain: CurtainHandle::Spawned { child, owner_path },
         auth_listener,
         auth_socket_path,
         control_socket_path,
@@ -407,6 +475,11 @@ pub(crate) async fn deactivate_lock(
 ) -> Result<()> {
     let started_at = Instant::now();
     if runtime.curtain.is_none() {
+        if state.is_active() {
+            return Err(anyhow!(
+                "curtain ownership is unresolved; refusing to clear the lock state"
+            ));
+        }
         *state = LockState::Unlocked;
         reset_runtime(
             runtime.auth_listener,
@@ -428,8 +501,13 @@ pub(crate) async fn deactivate_lock(
     *state = LockState::Unlocking;
 
     if let Some(child) = runtime.curtain.take() {
+        let owner_path = child.owner_path().to_path_buf();
         match stop_active_curtain(child, runtime.control_socket_path.as_deref(), attempt_id).await {
-            CurtainStop::Released => {}
+            CurtainStop::Released => {
+                if let Err(error) = ownership::remove(&owner_path) {
+                    tracing::warn!("failed to clear released curtain ownership: {error:#}");
+                }
+            }
             CurtainStop::UnlockUndeliverable(child) => {
                 *runtime.curtain = Some(child);
                 *state = LockState::Locked;
@@ -469,7 +547,7 @@ pub(crate) enum CurtainStop {
     /// The curtain was told to unlock and is no longer holding the session lock.
     Released,
     /// The unlock never reached the curtain, which therefore still holds the lock.
-    UnlockUndeliverable(Child),
+    UnlockUndeliverable(CurtainHandle),
 }
 
 const GRACEFUL_EXIT_WINDOW: Duration = Duration::from_secs(5);
@@ -477,15 +555,13 @@ const UNLOCK_DELIVERY_ATTEMPTS: u32 = 3;
 const UNLOCK_RETRY_DELAY: Duration = Duration::from_millis(100);
 
 async fn stop_active_curtain(
-    child: Child,
+    mut child: CurtainHandle,
     control_socket_path: Option<&Path>,
     attempt_id: Option<u64>,
 ) -> CurtainStop {
     let Some(control_socket_path) = control_socket_path else {
-        // No control socket means this curtain is not daemon-managed, so it self-authorizes on
-        // a termination signal and stopping it is enough.
-        force_stop(child).await;
-        return CurtainStop::Released;
+        tracing::error!("active curtain has no control socket; refusing to signal it");
+        return CurtainStop::UnlockUndeliverable(child);
     };
 
     if let Err(error) = deliver_unlock(control_socket_path, attempt_id).await {
@@ -493,19 +569,33 @@ async fn stop_active_curtain(
         return CurtainStop::UnlockUndeliverable(child);
     }
 
-    match process::wait_for_graceful_curtain_exit(child, GRACEFUL_EXIT_WINDOW).await {
-        Ok(None) => CurtainStop::Released,
-        Ok(Some(child)) => {
-            // The unlock was delivered, so the curtain has already recorded it as authorized and
-            // will release the lock when the signal makes it exit.
-            tracing::warn!("curtain did not exit after an authorized unlock; forcing stop");
-            force_stop(child).await;
-            CurtainStop::Released
-        }
-        Err(error) => {
+    match timeout(GRACEFUL_EXIT_WINDOW, child.wait()).await {
+        Ok(Ok(_)) => return CurtainStop::Released,
+        Ok(Err(error)) => {
             tracing::error!("failed while waiting for curtain to exit: {error:#}");
-            CurtainStop::Released
+            return CurtainStop::UnlockUndeliverable(child);
         }
+        Err(_) => {}
+    }
+    if matches!(child, CurtainHandle::Adopted { .. }) {
+        tracing::error!("adopted curtain did not exit after unlock delivery; preserving ownership");
+        return CurtainStop::UnlockUndeliverable(child);
+    }
+    tracing::warn!("curtain did not exit after unlock delivery; requesting termination");
+    if let Err(error) = child
+        .signal_if_running(nix::sys::signal::Signal::SIGTERM)
+        .await
+    {
+        tracing::error!("failed to signal curtain after unlock delivery: {error:#}");
+        return CurtainStop::UnlockUndeliverable(child);
+    }
+    match timeout(Duration::from_secs(2), child.wait()).await {
+        Ok(Ok(_)) => CurtainStop::Released,
+        Ok(Err(error)) => {
+            tracing::error!("failed while waiting for curtain to exit: {error:#}");
+            CurtainStop::UnlockUndeliverable(child)
+        }
+        Err(_) => CurtainStop::UnlockUndeliverable(child),
     }
 }
 
@@ -526,12 +616,6 @@ async fn deliver_unlock(control_socket_path: &Path, attempt_id: Option<u64>) -> 
     }
 
     Err(last_error.unwrap_or_else(|| anyhow!("unlock delivery failed")))
-}
-
-async fn force_stop(child: Child) {
-    if let Err(error) = process::force_stop_curtain(child).await {
-        tracing::error!("failed to force stop the curtain: {error:#}");
-    }
 }
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
@@ -12,6 +13,16 @@ use crate::{CurtainOptions, preview, state::CurtainApp};
 pub fn run(options: CurtainOptions) -> Result<()> {
     if options.preview_png.is_some() {
         return preview::render_preview(options);
+    }
+
+    if options.owner_gate {
+        let mut gate = [0_u8; 1];
+        std::io::stdin()
+            .read_exact(&mut gate)
+            .context("daemon exited before publishing curtain ownership")?;
+        if gate != [1] {
+            bail!("invalid curtain ownership gate");
+        }
     }
 
     let startup_started_at = Instant::now();

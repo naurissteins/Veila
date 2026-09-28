@@ -12,6 +12,7 @@ impl CurtainApp {
 
     fn handle_control_event(&mut self, event: ControlEvent, queue_handle: &QueueHandle<Self>) {
         match event {
+            ControlEvent::Probe => {}
             ControlEvent::Unlock { attempt_id } => {
                 if let Some(attempt_id) = attempt_id {
                     tracing::info!(attempt_id, "received curtain unlock request from daemon");

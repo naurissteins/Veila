@@ -202,7 +202,7 @@ pub(crate) async fn read_ipc_line(stream: &mut UnixStream, label: &str) -> Resul
     read_bounded_line(stream, label).await
 }
 
-fn runtime_dir() -> Result<PathBuf> {
+pub(crate) fn runtime_dir() -> Result<PathBuf> {
     let runtime_root = runtime_root_from_env(std::env::var_os("XDG_RUNTIME_DIR"))?;
     let veila_dir = runtime_root.join("veila");
     std::fs::create_dir_all(&veila_dir)

@@ -5,13 +5,13 @@ use std::{
 
 use tokio::{
     net::UnixListener,
-    process::Child,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
 };
 use veila_common::LoadedConfig;
 use veila_common::config::BackgroundSlideshowOrder;
 use veila_common::ipc::{LatencyReportMode, LockPowerStatusSnapshot};
 
+use crate::adapters::process::CurtainHandle;
 use crate::domain::{
     auth::{AuthPolicy, AuthState},
     lock_state::LockState,
@@ -39,7 +39,7 @@ pub(super) struct AppRuntime {
     pub(super) battery: BatteryHandle,
     pub(super) now_playing: NowPlayingHandle,
     pub(super) state: LockState,
-    pub(super) curtain: Option<Child>,
+    pub(super) curtain: Option<CurtainHandle>,
     pub(super) auth_listener: Option<UnixListener>,
     pub(super) auth_socket_path: Option<PathBuf>,
     pub(super) control_socket_path: Option<PathBuf>,
@@ -308,7 +308,7 @@ fn next_u64(state: &mut u64) -> u64 {
 
 pub(super) struct RuntimeSlots<'a> {
     pub(super) state: &'a mut LockState,
-    pub(super) curtain: &'a mut Option<Child>,
+    pub(super) curtain: &'a mut Option<CurtainHandle>,
     pub(super) auth_listener: &'a mut Option<UnixListener>,
     pub(super) auth_socket_path: &'a mut Option<PathBuf>,
     pub(super) control_socket_path: &'a mut Option<PathBuf>,
@@ -321,7 +321,7 @@ pub(super) struct RuntimeSlots<'a> {
 impl<'a>
     From<(
         &'a mut LockState,
-        &'a mut Option<Child>,
+        &'a mut Option<CurtainHandle>,
         &'a mut Option<UnixListener>,
         &'a mut Option<PathBuf>,
         &'a mut Option<PathBuf>,
@@ -344,7 +344,7 @@ impl<'a>
             active_latency_report,
         ): (
             &'a mut LockState,
-            &'a mut Option<Child>,
+            &'a mut Option<CurtainHandle>,
             &'a mut Option<UnixListener>,
             &'a mut Option<PathBuf>,
             &'a mut Option<PathBuf>,

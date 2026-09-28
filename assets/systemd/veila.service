@@ -8,7 +8,7 @@ Type=simple
 ExecStart=/usr/bin/veila daemon
 Restart=on-failure
 RestartSec=2
-KillMode=mixed
+KillMode=process
 SendSIGKILL=no
 # A queued restart waits for the active lock to unlock.
 TimeoutStopSec=infinity

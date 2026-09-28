@@ -4,6 +4,10 @@ mod protocol;
 use std::{process::Stdio, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
+use nix::{
+    sys::{prctl, signal::Signal},
+    unistd::getppid,
+};
 use tokio::{io::BufReader, net::UnixStream, process::Command, time::timeout};
 use veila_common::{
     Secret,
@@ -27,6 +31,15 @@ pub struct PamReply {
 }
 
 pub fn run_helper() -> Result<()> {
+    let expected_parent = std::env::var("VEILA_PAM_PARENT_PID")
+        .context("PAM helper parent identity is missing")?
+        .parse::<i32>()
+        .context("invalid PAM helper parent identity")?;
+    prctl::set_pdeathsig(Signal::SIGKILL)
+        .context("failed to arm PAM helper parent-death signal")?;
+    if getppid().as_raw() != expected_parent {
+        bail!("PAM helper daemon exited before startup");
+    }
     conversation::run_helper()
 }
 
@@ -39,6 +52,7 @@ pub async fn authenticate(
     let mut child = Command::new("/proc/self/exe")
         .arg0(PAM_HELPER_PROCESS_NAME)
         .arg(PAM_HELPER_SUBCOMMAND)
+        .env("VEILA_PAM_PARENT_PID", std::process::id().to_string())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

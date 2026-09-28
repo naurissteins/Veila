@@ -9,6 +9,7 @@ mod memory;
 mod mpris;
 pub(crate) mod output_probe;
 mod prewarm;
+mod recovery;
 mod runtime;
 mod sleep;
 mod state;
@@ -73,15 +74,19 @@ pub async fn run(
         .elapsed()
         .as_micros()
         .min(u128::from(u64::MAX)) as u64;
-    let mut runtime = AppRuntime::new(loaded_config, daemon_config_load_ms, daemon_config_load_us);
-    prewarm::spawn_background_prewarm(runtime.loaded_config.path.as_deref());
-    cache::spawn_background_cache_pruner();
     let connection = logind::connect_system().await?;
     let manager_proxy = logind::ManagerProxy::new(&connection)
         .await
         .context("failed to create logind manager proxy")?;
     let session_path = logind::get_session_path(&connection, options.session_id.as_deref()).await?;
     let session_proxy = logind::session_proxy(&connection, &session_path).await?;
+    let mut runtime = AppRuntime::new(loaded_config, daemon_config_load_ms, daemon_config_load_us);
+    recovery::adopt_surviving_curtain(session_path.as_str(), &mut runtime).await?;
+    if runtime.state.is_active() {
+        runtime::update_locked_hint(&session_proxy, true).await;
+    }
+    prewarm::spawn_background_prewarm(runtime.loaded_config.path.as_deref());
+    cache::spawn_background_cache_pruner();
     let username = current_username()?;
     let mut lock_stream = session_proxy
         .receive_lock()
@@ -170,29 +175,8 @@ pub async fn run(
                 match result {
                     Ok(status) => {
                         curtain_wait_retry_at = None;
-                        let weather_snapshot = runtime.weather.current_snapshot();
-                        let battery_snapshot = runtime.battery.current_snapshot();
-                        let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                        let initial_background_path = runtime.select_initial_background_path();
-                        let daemon_config_load_ms = runtime.daemon_config_load_ms;
-                        let daemon_config_load_us = runtime.daemon_config_load_us;
-                        let acquire_timeout_seconds = runtime.loaded_config.config.lock.acquire_timeout_seconds;
-                        let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-                        handle_curtain_exit(
-                            status,
-                            &session_proxy,
-                            options.config_path.as_deref(),
-                            initial_background_path.as_deref(),
-                            weather_snapshot.as_ref(),
-                            battery_snapshot.as_ref(),
-                            now_playing_snapshot.as_ref(),
-                            acquire_timeout_seconds,
-                            daemon_config_load_ms,
-                            daemon_config_load_us,
-                            slots,
-                            auth_policy,
-                            suspend_state,
-                        ).await;
+                        let (auth_policy, slots) = runtime.slots_with_policy();
+                        handle_curtain_exit(status, slots, auth_policy).await;
                         if !runtime.state.is_active() {
                             runtime.last_power_status_snapshot = None;
                             runtime.power_status_sent = false;

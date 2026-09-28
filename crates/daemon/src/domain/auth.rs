@@ -41,6 +41,7 @@ impl AuthPolicy {
 #[derive(Debug, Default)]
 pub struct AuthState {
     failed_attempts: u8,
+    backoff_level: u8,
     retry_after: Option<Instant>,
     in_flight: bool,
     policy: AuthPolicy,
@@ -50,7 +51,22 @@ impl AuthState {
     pub fn new(policy: AuthPolicy) -> Self {
         Self {
             failed_attempts: 0,
+            backoff_level: 0,
             retry_after: None,
+            in_flight: false,
+            policy,
+        }
+    }
+
+    pub fn after_daemon_recovery(policy: AuthPolicy, now: Instant) -> Self {
+        // the old daemon's attempt count is unavailable, so resume at the policy ceiling
+        Self {
+            failed_attempts: 0,
+            backoff_level: u8::MAX,
+            retry_after: Some(
+                now.checked_add(policy.max_delay)
+                    .unwrap_or(now + Duration::from_secs(30)),
+            ),
             in_flight: false,
             policy,
         }
@@ -91,13 +107,15 @@ impl AuthState {
     pub fn finish_success(&mut self) {
         self.in_flight = false;
         self.failed_attempts = 0;
+        self.backoff_level = 0;
         self.retry_after = None;
     }
 
     pub fn finish_failure(&mut self, now: Instant) {
         self.in_flight = false;
         self.failed_attempts = self.failed_attempts.saturating_add(1);
-        self.retry_after = Some(now + self.policy.failure_delay(self.failed_attempts));
+        self.backoff_level = self.backoff_level.saturating_add(1);
+        self.retry_after = Some(now + self.policy.failure_delay(self.backoff_level));
     }
 }
 
@@ -159,5 +177,30 @@ mod tests {
             AuthAdmission::RateLimited(delay) => assert!(delay <= Duration::from_secs(2)),
             AuthAdmission::Allowed | AuthAdmission::Busy => panic!("attempt should be throttled"),
         }
+    }
+
+    #[test]
+    fn recovering_daemon_does_not_reset_password_backoff() {
+        let policy = AuthPolicy::new(Duration::from_secs(1), Duration::from_secs(12));
+        let now = Instant::now();
+        let mut state = AuthState::after_daemon_recovery(policy, now);
+
+        assert_eq!(state.failed_attempts(), 0);
+        assert_eq!(state.next_failed_attempts(), 1);
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(11)),
+            AuthAdmission::RateLimited(_)
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(12)),
+            AuthAdmission::Allowed
+        ));
+        state.start_attempt();
+        state.finish_failure(now + Duration::from_secs(12));
+        assert_eq!(state.failed_attempts(), 1);
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(13)),
+            AuthAdmission::RateLimited(_)
+        ));
     }
 }

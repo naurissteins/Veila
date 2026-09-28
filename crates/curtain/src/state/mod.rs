@@ -10,8 +10,11 @@ mod shm_trim;
 
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
     sync::mpsc::{Receiver as ControlReceiver, Sender as KeyboardSender},
+    sync::{
+        Arc,
+        atomic::{AtomicU8, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -216,6 +219,7 @@ pub(crate) struct CurtainApp {
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     control_socket: Option<PathBuf>,
+    owner_record: Option<PathBuf>,
     pub(crate) config_path: Option<PathBuf>,
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
@@ -224,6 +228,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_sender: Sender<BackgroundEvent>,
     keyboard_label_sender: Option<KeyboardSender<String>>,
     control_events: ControlReceiver<ControlEvent>,
+    pub(crate) lock_probe_state: Arc<AtomicU8>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_generated: Option<GeneratedBackground>,
     pub(crate) generated_pending_sizes: Vec<veila_renderer::FrameSize>,
@@ -315,6 +320,7 @@ impl CurtainApp {
         let (control_ping, control_source) =
             make_ping().context("failed to create control wake source")?;
         let control_sender = ControlSender::new(control_sender, control_ping);
+        let lock_probe_state = Arc::new(AtomicU8::new(0));
         let force_emergency_ui = options.force_emergency_ui;
         let mut emergency_reason = None;
         let loaded_config = match AppConfig::load(options.config_path.as_deref()) {
@@ -448,7 +454,7 @@ impl CurtainApp {
         );
 
         if let Some(control_socket) = options.control_socket.clone() {
-            spawn_listener(control_socket, control_sender)
+            spawn_listener(control_socket, control_sender, lock_probe_state.clone())
                 .context("failed to start curtain control listener")?;
         }
 
@@ -472,6 +478,7 @@ impl CurtainApp {
             notify_socket: options.notify_socket,
             daemon_socket: options.daemon_socket,
             control_socket: options.control_socket,
+            owner_record: options.owner_record,
             config_path: options.config_path,
             background_path,
             background_outputs: if emergency_active {
@@ -484,6 +491,7 @@ impl CurtainApp {
             background_sender,
             keyboard_label_sender: None,
             control_events,
+            lock_probe_state,
             background_asset,
             background_generated,
             generated_pending_sizes: Vec::new(),
@@ -747,6 +755,7 @@ impl CurtainApp {
     }
 
     pub(crate) fn shutdown(&mut self) -> Result<()> {
+        self.lock_probe_state.store(2, Ordering::Release);
         self.render_profiler.log_summary();
 
         if let Some(path) = self.control_socket.take() {
@@ -783,6 +792,13 @@ impl CurtainApp {
             self.connection
                 .roundtrip()
                 .context("failed to roundtrip after unlocking session")?;
+        }
+
+        if let Some(path) = self.owner_record.take()
+            && let Err(error) = std::fs::remove_file(&path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            tracing::warn!("failed to clear curtain ownership after unlock: {error}");
         }
 
         Ok(())
