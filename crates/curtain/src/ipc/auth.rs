@@ -2,6 +2,7 @@ use std::{
     io::{BufReader, Write},
     os::unix::net::UnixStream,
     path::PathBuf,
+    sync::mpsc,
     thread,
     time::{Duration, Instant},
 };
@@ -19,6 +20,16 @@ use veila_common::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum AuthEvent {
+    Challenge {
+        attempt_id: u64,
+        sequence: u32,
+        echo: bool,
+        text: String,
+    },
+    Notice {
+        attempt_id: u64,
+        text: String,
+    },
     Accepted {
         attempt_id: u64,
     },
@@ -37,21 +48,28 @@ pub(crate) enum AuthEvent {
     },
 }
 
+pub(crate) enum ChallengeReply {
+    Response { sequence: u32, secret: Secret },
+    Cancel { sequence: u32 },
+}
+
 const AUTH_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
-const AUTH_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60);
+const AUTH_RESPONSE_TIMEOUT: Duration = Duration::from_secs(125);
 
 pub(crate) fn submit_password(
     socket_path: PathBuf,
     attempt_id: u64,
     secret: Secret,
     sender: Sender<AuthEvent>,
-) {
+) -> mpsc::Sender<ChallengeReply> {
+    let (reply_sender, reply_receiver) = mpsc::channel();
     thread::spawn(move || {
-        if let Err(error) = run_attempt(socket_path, attempt_id, secret, &sender) {
+        if let Err(error) = run_attempt(socket_path, attempt_id, secret, &sender, &reply_receiver) {
             tracing::warn!(attempt_id, "failed to submit password attempt: {error:#}");
             let _ = sender.send(AuthEvent::Failed { attempt_id });
         }
     });
+    reply_sender
 }
 
 pub(crate) fn notify_activity(socket_path: PathBuf) {
@@ -75,6 +93,7 @@ fn run_attempt(
     attempt_id: u64,
     secret: Secret,
     sender: &Sender<AuthEvent>,
+    reply_receiver: &mpsc::Receiver<ChallengeReply>,
 ) -> anyhow::Result<()> {
     let started_at = Instant::now();
     let mut stream = UnixStream::connect(&socket_path)?;
@@ -97,55 +116,118 @@ fn run_attempt(
     );
 
     let mut reader = BufReader::new(stream);
-    let Some(line) = read_bounded_line(&mut reader, "auth response")? else {
-        bail!("daemon closed the auth socket without sending a verdict");
-    };
-
-    match decode_message::<DaemonMessage>(&line)? {
-        DaemonMessage::AuthenticationAccepted { attempt_id } => {
-            tracing::info!(
-                elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-                attempt_id,
-                "daemon accepted authentication request"
-            );
-            let _ = sender.send(AuthEvent::Accepted { attempt_id });
-        }
-        DaemonMessage::AuthenticationRejected {
-            attempt_id,
-            retry_after_ms,
-            failed_attempts,
-            message,
-        } => {
-            tracing::info!(
-                elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-                attempt_id,
-                "daemon rejected authentication request"
-            );
-            let _ = sender.send(AuthEvent::Rejected {
-                attempt_id,
+    let mut last_sequence = 0_u32;
+    let mut notices = 0_u32;
+    loop {
+        let Some(line) = read_bounded_line(&mut reader, "auth response")? else {
+            bail!("daemon closed the auth socket without sending a verdict");
+        };
+        match decode_message::<DaemonMessage>(&line)? {
+            DaemonMessage::AuthenticationChallenge {
+                attempt_id: id,
+                sequence,
+                echo,
+                text,
+            } if id == attempt_id => {
+                if sequence != last_sequence + 1 || sequence > 16 || !valid_pam_text(&text) {
+                    bail!("daemon sent invalid PAM challenge");
+                }
+                last_sequence = sequence;
+                let _ = sender.send(AuthEvent::Challenge {
+                    attempt_id,
+                    sequence,
+                    echo,
+                    text,
+                });
+                let reply = reply_receiver
+                    .recv_timeout(Duration::from_secs(60))
+                    .context("curtain did not answer PAM challenge")?;
+                let message = match reply {
+                    ChallengeReply::Response {
+                        sequence: answer,
+                        secret,
+                    } if answer == sequence => ClientMessage::AuthenticationResponse {
+                        attempt_id,
+                        sequence,
+                        secret,
+                    },
+                    ChallengeReply::Cancel { sequence: answer } if answer == sequence => {
+                        ClientMessage::CancelAuthentication {
+                            attempt_id,
+                            sequence,
+                        }
+                    }
+                    _ => bail!("curtain sent an out-of-order PAM response"),
+                };
+                let mut payload = encode_secret_message(&message)?;
+                payload.push(b'\n');
+                reader.get_mut().write_all(&payload)?;
+                reader.get_mut().flush()?;
+            }
+            DaemonMessage::AuthenticationNotice {
+                attempt_id: id,
+                text,
+            } if id == attempt_id => {
+                notices += 1;
+                if notices > 32 || !valid_pam_text(&text) {
+                    bail!("daemon sent invalid PAM notice");
+                }
+                let _ = sender.send(AuthEvent::Notice { attempt_id, text });
+            }
+            DaemonMessage::AuthenticationAccepted { attempt_id: id } if id == attempt_id => {
+                tracing::info!(
+                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                    attempt_id,
+                    "daemon accepted authentication request"
+                );
+                let _ = sender.send(AuthEvent::Accepted { attempt_id });
+                break;
+            }
+            DaemonMessage::AuthenticationRejected {
+                attempt_id: id,
                 retry_after_ms,
                 failed_attempts,
                 message,
-            });
-        }
-        DaemonMessage::AuthenticationBusy { attempt_id } => {
-            tracing::debug!(
-                elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-                attempt_id,
-                "daemon reported authentication request is busy"
-            );
-            let _ = sender.send(AuthEvent::Busy { attempt_id });
-        }
-        DaemonMessage::Error { reason } => {
-            tracing::warn!(
-                attempt_id,
-                "daemon rejected authentication request: {reason}"
-            );
-            let _ = sender.send(AuthEvent::Failed { attempt_id });
+            } if id == attempt_id && message.as_deref().is_none_or(valid_pam_text) => {
+                tracing::info!(
+                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                    attempt_id,
+                    "daemon rejected authentication request"
+                );
+                let _ = sender.send(AuthEvent::Rejected {
+                    attempt_id,
+                    retry_after_ms,
+                    failed_attempts,
+                    message,
+                });
+                break;
+            }
+            DaemonMessage::AuthenticationBusy { attempt_id: id } if id == attempt_id => {
+                tracing::debug!(
+                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                    attempt_id,
+                    "daemon reported authentication request is busy"
+                );
+                let _ = sender.send(AuthEvent::Busy { attempt_id });
+                break;
+            }
+            DaemonMessage::Error { reason } => {
+                tracing::warn!(
+                    attempt_id,
+                    "daemon rejected authentication request: {reason}"
+                );
+                let _ = sender.send(AuthEvent::Failed { attempt_id });
+                break;
+            }
+            _ => bail!("unexpected authentication response"),
         }
     }
 
     Ok(())
+}
+
+fn valid_pam_text(text: &str) -> bool {
+    text.chars().count() <= 160 && !text.chars().any(char::is_control)
 }
 
 fn run_activity_notification(socket_path: PathBuf) -> anyhow::Result<()> {
@@ -182,170 +264,4 @@ fn verify_socket_peer(stream: &UnixStream) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::{
-        io::{BufRead, BufReader, Write},
-        os::unix::net::UnixListener,
-        path::PathBuf,
-        thread,
-        time::{Duration, SystemTime, UNIX_EPOCH},
-    };
-
-    use veila_common::Secret;
-    use veila_common::ipc::{DaemonMessage, encode_message};
-
-    use super::{AuthEvent, submit_password};
-    use calloop::channel::{Channel, Event, channel};
-
-    const RECV_TIMEOUT: Duration = Duration::from_secs(5);
-
-    fn receive_event(receiver: Channel<AuthEvent>) -> AuthEvent {
-        let mut event_loop =
-            calloop::EventLoop::<Option<AuthEvent>>::try_new().expect("event loop");
-        event_loop
-            .handle()
-            .insert_source(receiver, |event, _, received| {
-                if let Event::Msg(event) = event {
-                    *received = Some(event);
-                }
-            })
-            .expect("auth event source");
-        let mut received = None;
-        event_loop
-            .dispatch(Some(RECV_TIMEOUT), &mut received)
-            .expect("auth event dispatch");
-        received.expect("auth event before timeout")
-    }
-
-    fn unique_socket_path(label: &str) -> PathBuf {
-        let stamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("time")
-            .as_nanos();
-        std::env::temp_dir().join(format!(
-            "veila-test-{label}-{}-{stamp}.sock",
-            std::process::id()
-        ))
-    }
-
-    #[test]
-    fn reports_failure_when_daemon_socket_is_missing() {
-        let (sender, receiver) = channel();
-
-        submit_password(
-            unique_socket_path("auth-missing"),
-            3,
-            Secret::from(String::from("secret")),
-            sender,
-        );
-
-        assert_eq!(receive_event(receiver), AuthEvent::Failed { attempt_id: 3 });
-    }
-
-    #[test]
-    fn reports_failure_when_daemon_closes_without_verdict() {
-        let path = unique_socket_path("auth-silent");
-        let listener = UnixListener::bind(&path).expect("bind auth socket");
-        let daemon = thread::spawn(move || {
-            let (stream, _) = listener.accept().expect("accept");
-            let mut reader = BufReader::new(stream);
-            let mut request = String::new();
-            let _ = reader.read_line(&mut request);
-        });
-
-        let (sender, receiver) = channel();
-        submit_password(
-            path.clone(),
-            5,
-            Secret::from(String::from("secret")),
-            sender,
-        );
-
-        assert_eq!(receive_event(receiver), AuthEvent::Failed { attempt_id: 5 });
-
-        daemon.join().expect("daemon stub");
-        std::fs::remove_file(&path).ok();
-    }
-
-    #[test]
-    fn forwards_daemon_rejection() {
-        let path = unique_socket_path("auth-rejected");
-        let listener = UnixListener::bind(&path).expect("bind auth socket");
-        let daemon = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
-            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
-            let mut request = String::new();
-            reader.read_line(&mut request).expect("read request");
-
-            let response = encode_message(&DaemonMessage::AuthenticationRejected {
-                attempt_id: 9,
-                retry_after_ms: Some(250),
-                failed_attempts: Some(2),
-                message: None,
-            })
-            .expect("encode response");
-            stream
-                .write_all(format!("{response}\n").as_bytes())
-                .expect("write response");
-            stream.flush().expect("flush response");
-        });
-
-        let (sender, receiver) = channel();
-        submit_password(
-            path.clone(),
-            9,
-            Secret::from(String::from("secret")),
-            sender,
-        );
-
-        assert_eq!(
-            receive_event(receiver),
-            AuthEvent::Rejected {
-                attempt_id: 9,
-                retry_after_ms: Some(250),
-                failed_attempts: Some(2),
-                message: None,
-            }
-        );
-
-        daemon.join().expect("daemon stub");
-        std::fs::remove_file(&path).ok();
-    }
-
-    #[test]
-    fn reports_failure_when_daemon_rejects_the_request_format() {
-        let path = unique_socket_path("auth-error-response");
-        let listener = UnixListener::bind(&path).expect("bind auth socket");
-        let daemon = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
-            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
-            let mut request = String::new();
-            reader.read_line(&mut request).expect("read request");
-
-            let response = encode_message(&DaemonMessage::Error {
-                reason: "unsupported request".to_string(),
-            })
-            .expect("encode response");
-            stream
-                .write_all(format!("{response}\n").as_bytes())
-                .expect("write response");
-            stream.flush().expect("flush response");
-        });
-
-        let (sender, receiver) = channel();
-        submit_password(
-            path.clone(),
-            11,
-            Secret::from(String::from("secret")),
-            sender,
-        );
-
-        assert_eq!(
-            receive_event(receiver),
-            AuthEvent::Failed { attempt_id: 11 }
-        );
-
-        daemon.join().expect("daemon stub");
-        std::fs::remove_file(&path).ok();
-    }
-}
+mod tests;

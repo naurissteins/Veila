@@ -579,7 +579,9 @@ impl RenderContext<'_> {
         placeholder: Option<veila_renderer::text::TextBlock>,
         dynamic: bool,
     ) {
-        let revealed_secret = if self.shell.reveal_secret && !self.shell.secret.is_empty() {
+        let revealed_secret = if (self.shell.reveal_secret || self.shell.challenge_echo_on())
+            && !self.shell.secret.is_empty()
+        {
             Some(self.text_layout_cache.borrow().revealed_secret_block(
                 self.shell.secret.expose(),
                 self.revealed_secret_text_style(),
@@ -599,7 +601,9 @@ impl RenderContext<'_> {
         } else {
             None
         };
-        let right_adornment = if let Some(phase) = self.shell.pending_spinner_phase() {
+        let right_adornment = if matches!(self.shell.status, ShellStatus::Challenge { .. }) {
+            InputRightAdornment::None
+        } else if let Some(phase) = self.shell.pending_spinner_phase() {
             InputRightAdornment::Spinner {
                 phase,
                 style: self.toggle_style(),
@@ -692,6 +696,9 @@ impl RenderContext<'_> {
     pub(crate) fn status_text(&self) -> Option<String> {
         match &self.shell.status {
             ShellStatus::Idle => self.fingerprint_status_text(),
+            ShellStatus::Challenge { text, .. } | ShellStatus::Notice { text } => {
+                Some(text.clone())
+            }
             ShellStatus::Pending { shown, .. } => {
                 shown.then(|| String::from("Checking authentication"))
             }
@@ -710,6 +717,11 @@ impl RenderContext<'_> {
     }
 
     pub(crate) fn inline_input_status_text(&self) -> Option<String> {
+        if let ShellStatus::Challenge { text, .. } | ShellStatus::Notice { text } =
+            &self.shell.status
+        {
+            return self.shell.input_visible().then(|| text.clone());
+        }
         if !self.shell.input_visible()
             || !self.theme.status_enabled
             || self.theme.status_mode != veila_common::StatusDisplayMode::Inline
@@ -719,6 +731,7 @@ impl RenderContext<'_> {
 
         match &self.shell.status {
             ShellStatus::Idle => None,
+            ShellStatus::Challenge { .. } | ShellStatus::Notice { .. } => None,
             ShellStatus::Pending { shown, .. } => shown.then(|| String::from("Checking...")),
             ShellStatus::Rejected {
                 displayed_retry_seconds,
@@ -736,7 +749,13 @@ impl RenderContext<'_> {
     }
 
     fn input_shell_is_dynamic(&self) -> bool {
-        self.shell.secret_selected || matches!(self.shell.status, ShellStatus::Rejected { .. })
+        self.shell.secret_selected
+            || matches!(
+                self.shell.status,
+                ShellStatus::Rejected { .. }
+                    | ShellStatus::Challenge { .. }
+                    | ShellStatus::Notice { .. }
+            )
     }
 
     fn fingerprint_status_text(&self) -> Option<String> {

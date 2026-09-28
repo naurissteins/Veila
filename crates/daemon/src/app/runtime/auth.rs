@@ -109,6 +109,10 @@ pub(crate) async fn handle_client_message(
                 }
             }
         }
+        ClientMessage::AuthenticationResponse { .. }
+        | ClientMessage::CancelAuthentication { .. } => {
+            return Err(anyhow!("unexpected authentication follow-up"));
+        }
     }
 
     Ok(())
@@ -166,7 +170,7 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
         .saturating_duration_since(started_at)
         .as_micros()
         .min(u128::from(u64::MAX)) as u64;
-    let result = pam::authenticate(&username, secret).await;
+    let result = pam::authenticate(&username, secret, attempt_id, &mut stream).await;
     let elapsed_ms = auth_started_at
         .elapsed()
         .as_millis()

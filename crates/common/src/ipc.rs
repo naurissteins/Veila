@@ -101,14 +101,38 @@ pub enum CurtainStartupMessage {
 /// Messages sent from UI-facing clients to the daemon.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ClientMessage {
-    SubmitPassword { attempt_id: u64, secret: Secret },
+    SubmitPassword {
+        attempt_id: u64,
+        secret: Secret,
+    },
+    AuthenticationResponse {
+        attempt_id: u64,
+        sequence: u32,
+        secret: Secret,
+    },
+    CancelAuthentication {
+        attempt_id: u64,
+        sequence: u32,
+    },
     Activity,
-    RequestPowerAction { action: PowerAction },
+    RequestPowerAction {
+        action: PowerAction,
+    },
 }
 
 /// Messages sent from the daemon to UI-facing clients.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DaemonMessage {
+    AuthenticationChallenge {
+        attempt_id: u64,
+        sequence: u32,
+        echo: bool,
+        text: String,
+    },
+    AuthenticationNotice {
+        attempt_id: u64,
+        text: String,
+    },
     AuthenticationAccepted {
         attempt_id: u64,
     },

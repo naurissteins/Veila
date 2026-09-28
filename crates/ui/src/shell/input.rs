@@ -26,7 +26,9 @@ impl ShellState {
                     self.secret.push(character);
                     if !self.retry_cooldown_active() {
                         self.clear_rejected_state();
-                        self.status = ShellStatus::Idle;
+                        if !matches!(self.status, ShellStatus::Challenge { .. }) {
+                            self.status = ShellStatus::Idle;
+                        }
                     }
                 }
                 self.refresh_on_secret_empty_transition(was_empty);
@@ -43,12 +45,24 @@ impl ShellState {
                 }
                 if !self.retry_cooldown_active() {
                     self.clear_rejected_state();
-                    self.status = ShellStatus::Idle;
+                    if !matches!(self.status, ShellStatus::Challenge { .. }) {
+                        self.status = ShellStatus::Idle;
+                    }
                 }
                 self.refresh_on_secret_empty_transition(was_empty);
                 ShellAction::None
             }
             ShellKey::Escape => {
+                if matches!(self.status, ShellStatus::Challenge { .. }) {
+                    self.clear_secret();
+                    self.status = ShellStatus::Pending {
+                        started_at: Instant::now(),
+                        visible_after: Instant::now(),
+                        shown: true,
+                        displayed_phase: 0,
+                    };
+                    return ShellAction::CancelAuthentication;
+                }
                 let was_empty = self.secret.is_empty();
                 self.clear_secret();
                 self.set_secret_selected(false);
@@ -68,7 +82,9 @@ impl ShellState {
                 self.reveal_toggle_pressed = false;
                 if !self.retry_cooldown_active() {
                     self.clear_rejected_state();
-                    self.status = ShellStatus::Idle;
+                    if !matches!(self.status, ShellStatus::Challenge { .. }) {
+                        self.status = ShellStatus::Idle;
+                    }
                 }
                 self.refresh_on_secret_empty_transition(was_empty);
                 ShellAction::None
@@ -107,6 +123,26 @@ impl ShellState {
         self.submitted_secret_len = 0;
         self.reveal_secret = false;
         self.status = ShellStatus::Idle;
+    }
+
+    pub fn authentication_challenge(&mut self, text: String, echo: bool) {
+        self.clear_secret();
+        self.set_secret_selected(false);
+        self.reveal_secret = false;
+        self.reveal_auth();
+        self.status = ShellStatus::Challenge { text, echo };
+        self.bump_static_scene_revision();
+    }
+
+    pub fn authentication_notice(&mut self, text: String) {
+        if !matches!(self.status, ShellStatus::Challenge { .. }) {
+            self.status = ShellStatus::Notice { text };
+            self.bump_static_scene_revision();
+        }
+    }
+
+    pub fn challenge_echo_on(&self) -> bool {
+        matches!(self.status, ShellStatus::Challenge { echo: true, .. })
     }
 
     pub fn authentication_rejected(

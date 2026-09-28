@@ -4,7 +4,7 @@ use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surfac
 use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey, WidgetKind};
 
 use crate::{
-    ipc::auth::{request_power_action, submit_password},
+    ipc::auth::{ChallengeReply, request_power_action, submit_password},
     keyboard_cache::start_keyboard_layout_writer,
 };
 
@@ -29,13 +29,29 @@ impl CurtainApp {
     }
 
     pub(crate) fn handle_shell_key(&mut self, key: ShellKey, queue_handle: &QueueHandle<Self>) {
-        if self.auth_in_flight {
+        if self.auth_in_flight && self.auth_challenge_sequence.is_none() {
             return;
         }
 
         let revision_before = self.ui_shell.static_scene_revision();
         let action = self.ui_shell.handle_key(key);
-        if let ShellAction::Submit(secret) = action {
+        if let Some(sequence) = self.auth_challenge_sequence.take() {
+            match action {
+                ShellAction::Submit(secret) => {
+                    if let Some(sender) = &self.auth_reply_sender {
+                        let _ = sender.send(ChallengeReply::Response { sequence, secret });
+                    }
+                }
+                ShellAction::CancelAuthentication => {
+                    if let Some(sender) = &self.auth_reply_sender {
+                        let _ = sender.send(ChallengeReply::Cancel { sequence });
+                    }
+                }
+                _ => {
+                    self.auth_challenge_sequence = Some(sequence);
+                }
+            }
+        } else if let ShellAction::Submit(secret) = action {
             if !self.allow_empty_password && secret.is_empty() {
                 tracing::debug!("ignored empty password submit");
                 self.ui_shell.authentication_busy();
@@ -54,7 +70,13 @@ impl CurtainApp {
             self.next_auth_attempt_id = self.next_auth_attempt_id.saturating_add(1);
             tracing::info!(attempt_id, "submitting password attempt");
             self.auth_in_flight = true;
-            submit_password(socket_path, attempt_id, secret, self.auth_sender.clone());
+            self.auth_attempt_id = Some(attempt_id);
+            self.auth_reply_sender = Some(submit_password(
+                socket_path,
+                attempt_id,
+                secret,
+                self.auth_sender.clone(),
+            ));
         }
         self.render_auth_change(revision_before, queue_handle);
     }

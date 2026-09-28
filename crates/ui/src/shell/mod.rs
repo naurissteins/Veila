@@ -32,6 +32,7 @@ use weather::WeatherWidgetData;
 pub enum ShellAction {
     None,
     Submit(Secret),
+    CancelAuthentication,
     Power(PowerAction),
 }
 
@@ -56,6 +57,13 @@ pub enum ShellKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ShellStatus {
     Idle,
+    Challenge {
+        text: String,
+        echo: bool,
+    },
+    Notice {
+        text: String,
+    },
     Pending {
         started_at: Instant,
         visible_after: Instant,
