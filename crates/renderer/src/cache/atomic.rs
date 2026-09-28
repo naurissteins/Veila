@@ -1,7 +1,7 @@
 use std::{
     fs::{self, File, OpenOptions},
     io,
-    os::unix::fs::OpenOptionsExt,
+    os::unix::fs::{OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -16,6 +16,7 @@ pub(super) fn write_atomic(
         .parent()
         .ok_or_else(|| io::Error::other("cache path has no parent"))?;
     fs::create_dir_all(parent)?;
+    fs::set_permissions(parent, fs::Permissions::from_mode(0o700))?;
     let (temp, mut file) = create_temp(path, parent)?;
     write(&mut file)?;
     file.sync_data()?;

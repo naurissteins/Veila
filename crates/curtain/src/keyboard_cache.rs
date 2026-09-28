@@ -1,6 +1,8 @@
 use std::{
-    fs,
-    path::PathBuf,
+    fs::{self, OpenOptions},
+    io::Write,
+    os::unix::fs::{OpenOptionsExt, PermissionsExt},
+    path::{Path, PathBuf},
     sync::mpsc::{Sender, channel},
     thread,
 };
@@ -45,11 +47,29 @@ pub(crate) fn start_keyboard_layout_writer() -> Option<Sender<String>> {
 
 fn store_keyboard_layout_label_inner(label: &str) -> Result<()> {
     let path = cache_path()?;
+    write_private_label(&path, label)
+}
+
+fn write_private_label(path: &Path, label: &str) -> Result<()> {
     let parent = path
         .parent()
         .context("keyboard layout cache path has no parent")?;
     fs::create_dir_all(parent).context("failed to create keyboard layout cache directory")?;
-    fs::write(path, label).context("failed to write keyboard layout cache")?;
+    fs::set_permissions(parent, fs::Permissions::from_mode(0o700))
+        .context("failed to secure keyboard layout cache directory")?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(false)
+        .mode(0o600)
+        .open(path)
+        .context("failed to open keyboard layout cache")?;
+    file.set_permissions(fs::Permissions::from_mode(0o600))
+        .context("failed to secure keyboard layout cache")?;
+    file.set_len(0)
+        .context("failed to truncate keyboard layout cache")?;
+    file.write_all(label.as_bytes())
+        .context("failed to write keyboard layout cache")?;
     Ok(())
 }
 
@@ -80,7 +100,12 @@ fn cache_root() -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_label;
+    use std::{
+        fs,
+        os::unix::fs::{MetadataExt, PermissionsExt},
+    };
+
+    use super::{normalize_label, write_private_label};
 
     #[test]
     fn normalizes_cached_keyboard_labels() {
@@ -88,5 +113,28 @@ mod tests {
         assert_eq!(normalize_label(" EN "), Some(String::from("EN")));
         assert_eq!(normalize_label(""), None);
         assert_eq!(normalize_label("too-long-label"), None);
+    }
+
+    #[test]
+    fn cached_label_uses_private_permissions() {
+        let root = std::env::temp_dir().join(format!("veila-keyboard-mode-{}", std::process::id()));
+        fs::create_dir_all(&root).expect("cache root");
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o755)).expect("old directory mode");
+        let path = root.join("keyboard-layout.txt");
+        fs::write(&path, "OLD").expect("old label");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).expect("old file mode");
+
+        write_private_label(&path, "EN").expect("write label");
+
+        assert_eq!(
+            fs::metadata(&root).expect("directory metadata").mode() & 0o777,
+            0o700
+        );
+        assert_eq!(
+            fs::metadata(&path).expect("file metadata").mode() & 0o777,
+            0o600
+        );
+        assert_eq!(fs::read_to_string(&path).expect("label"), "EN");
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }
