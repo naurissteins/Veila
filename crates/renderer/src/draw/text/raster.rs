@@ -1,6 +1,6 @@
 use crate::blend_component;
 
-use std::{cell::RefCell, thread_local};
+use std::{cell::RefCell, rc::Rc, thread_local};
 
 use cosmic_text::{Buffer, Wrap};
 use zeroize::{Zeroize, Zeroizing};
@@ -15,17 +15,56 @@ use super::{
 const TEXT_RASTER_CACHE_LIMIT: usize = 128;
 
 thread_local! {
-    static TEXT_RASTER_CACHE: RefCell<Vec<(TextRasterKey, Option<TextRaster>)>> = const { RefCell::new(Vec::new()) };
+    static TEXT_RASTER_CACHE: RefCell<TextRasterCache> = const { RefCell::new(TextRasterCache { entries: Vec::new() }) };
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+struct TextRasterCache {
+    entries: Vec<(TextRasterKey, Option<Rc<TextRaster>>)>,
+}
+
+impl TextRasterCache {
+    fn get(
+        &mut self,
+        text: &str,
+        style: &TextStyle,
+        color: ClearColor,
+    ) -> Option<Option<Rc<TextRaster>>> {
+        let index = self
+            .entries
+            .iter()
+            .position(|(key, _)| key.text == text && key.style == *style && key.color == color)?;
+        let entry = self.entries.remove(index);
+        let raster = entry.1.clone();
+        self.entries.push(entry);
+        Some(raster)
+    }
+
+    fn bounds(&mut self, text: &str, style: &TextStyle) -> Option<TextBounds> {
+        let index = self.entries.iter().position(|(key, raster)| {
+            key.text == text && key.style == *style && raster.is_some()
+        })?;
+        let entry = self.entries.remove(index);
+        let bounds = entry.1.as_ref().map(|raster| raster.bounds);
+        self.entries.push(entry);
+        bounds
+    }
+
+    fn insert(&mut self, key: TextRasterKey, raster: Option<Rc<TextRaster>>) {
+        if self.entries.len() >= TEXT_RASTER_CACHE_LIMIT {
+            self.entries.remove(0);
+        }
+        self.entries.push((key, raster));
+    }
+}
+
+#[derive(Debug)]
 struct TextRasterKey {
     text: String,
     style: TextStyle,
     color: ClearColor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct TextRaster {
     bounds: TextBounds,
     width: u32,
@@ -78,13 +117,7 @@ pub(super) fn visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBo
         return None;
     }
 
-    if let Some(cached) = TEXT_RASTER_CACHE.with(|cache| {
-        let cache = cache.borrow();
-        cache
-            .iter()
-            .find(|(key, _)| key.text == text && key.style == style)
-            .and_then(|(_, raster)| raster.as_ref().map(|raster| raster.bounds))
-    }) {
+    if let Some(cached) = TEXT_RASTER_CACHE.with(|cache| cache.borrow_mut().bounds(text, &style)) {
         return Some(cached);
     }
 
@@ -134,26 +167,21 @@ pub(super) fn visible_text_bounds(text: &str, style: TextStyle) -> Option<TextBo
     })
 }
 
-fn cached_text_raster(text: &str, style: TextStyle, color: ClearColor) -> Option<TextRaster> {
+fn cached_text_raster(text: &str, style: TextStyle, color: ClearColor) -> Option<Rc<TextRaster>> {
+    if let Some(raster) =
+        TEXT_RASTER_CACHE.with(|cache| cache.borrow_mut().get(text, &style, color))
+    {
+        return raster;
+    }
+
+    let raster = rasterize_text(text, style.clone(), color).map(Rc::new);
     let key = TextRasterKey {
         text: text.to_owned(),
         style,
         color,
     };
-
-    TEXT_RASTER_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        if let Some((_, raster)) = cache.iter().find(|(candidate, _)| candidate == &key) {
-            return raster.clone();
-        }
-
-        let raster = rasterize_text(&key.text, key.style.clone(), key.color);
-        if cache.len() >= TEXT_RASTER_CACHE_LIMIT {
-            cache.remove(0);
-        }
-        cache.push((key, raster.clone()));
-        raster
-    })
+    TEXT_RASTER_CACHE.with(|cache| cache.borrow_mut().insert(key, raster.clone()));
+    raster
 }
 
 fn rasterize_text(text: &str, style: TextStyle, color: ClearColor) -> Option<TextRaster> {
@@ -313,26 +341,4 @@ fn premultiply(channel: u8, alpha: u8) -> u8 {
 }
 
 #[cfg(test)]
-mod sensitive_tests {
-    use crate::{ClearColor, FrameSize, SoftwareBuffer};
-
-    use super::{TEXT_RASTER_CACHE, TextStyle};
-    use crate::draw::text::fit_sensitive_single_line_text;
-
-    #[test]
-    fn sensitive_text_bypasses_the_shared_raster_cache() {
-        TEXT_RASTER_CACHE.with(|cache| cache.borrow_mut().clear());
-        let block = fit_sensitive_single_line_text(
-            "hunter2",
-            TextStyle::new(ClearColor::opaque(255, 255, 255), 2),
-            128,
-        );
-        let mut buffer = SoftwareBuffer::new(FrameSize::new(128, 48)).expect("buffer");
-
-        block.draw(&mut buffer, 0, 0);
-
-        let contains_secret = TEXT_RASTER_CACHE
-            .with(|cache| cache.borrow().iter().any(|(key, _)| key.text == "hunter2"));
-        assert!(!contains_secret);
-    }
-}
+mod tests;
