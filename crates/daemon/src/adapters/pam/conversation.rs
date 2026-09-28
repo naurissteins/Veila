@@ -11,7 +11,10 @@ use nonstick::{
 };
 use veila_common::Secret;
 
-use super::protocol::{self, HelperMessage, HelperRequest};
+use super::{
+    protocol::{self, HelperMessage, HelperRequest},
+    service,
+};
 
 struct ConversationState {
     input: Box<dyn BufRead + Send>,
@@ -103,16 +106,22 @@ impl ConversationAdapter for InteractiveConversation {
     }
 }
 
-fn pam_service() -> String {
+fn pam_service() -> Result<String> {
     #[cfg(debug_assertions)]
     if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
         tracing::warn!(service, "using debug PAM service override");
-        return service;
+        return Ok(service);
     }
-    if std::path::Path::new("/etc/pam.d/veila").exists() {
-        return String::from("veila");
+    let Some(selected) = service::selected_service() else {
+        bail!("no Veila PAM service or supported fallback exists in /etc/pam.d");
+    };
+    if selected.fallback {
+        tracing::warn!(
+            service = selected.name,
+            "Veila PAM service missing; using fallback"
+        );
     }
-    String::from("system-auth")
+    Ok(selected.name.to_owned())
 }
 
 pub(super) fn run_helper() -> Result<()> {
@@ -135,7 +144,19 @@ pub(super) fn run_helper() -> Result<()> {
         state: Arc::clone(&state),
         last_message: Arc::clone(&last_message),
     };
-    let service = pam_service();
+    let service = match pam_service() {
+        Ok(service) => service,
+        Err(error) => {
+            tracing::error!("PAM service selection failed: {error:#}");
+            return protocol::write_sync(
+                &mut std::io::stdout(),
+                &HelperMessage::Verdict {
+                    accepted: false,
+                    message: Some(String::from("PAM service unavailable; run veila doctor")),
+                },
+            );
+        }
+    };
     let result = TransactionBuilder::new_with_service(&service)
         .username(&username)
         .build(conversation.into_conversation())

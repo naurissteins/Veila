@@ -1,5 +1,6 @@
 mod conversation;
 mod protocol;
+pub(crate) mod service;
 
 use std::{process::Stdio, time::Duration};
 
@@ -28,6 +29,25 @@ const WRITE_DEADLINE: Duration = Duration::from_secs(2);
 pub struct PamReply {
     pub accepted: bool,
     pub message: Option<String>,
+}
+
+pub(crate) fn report_service_selection() {
+    #[cfg(debug_assertions)]
+    if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
+        tracing::warn!(service, "debug PAM service override is active");
+        return;
+    }
+
+    match service::selected_service() {
+        Some(selected) if selected.fallback => tracing::warn!(
+            service = selected.name,
+            "Veila PAM service is missing; using fallback"
+        ),
+        Some(_) => {}
+        None => tracing::error!(
+            "no Veila PAM service or supported fallback exists in /etc/pam.d; password authentication is unavailable"
+        ),
+    }
 }
 
 pub fn run_helper() -> Result<()> {
