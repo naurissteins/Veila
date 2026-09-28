@@ -74,6 +74,9 @@ pub async fn run(
         .elapsed()
         .as_micros()
         .min(u128::from(u64::MAX)) as u64;
+    if let Err(error) = cache::harden_existing_cache_root() {
+        tracing::warn!("failed to secure existing cache directory: {error}");
+    }
     let connection = logind::connect_system().await?;
     let manager_proxy = logind::ManagerProxy::new(&connection)
         .await

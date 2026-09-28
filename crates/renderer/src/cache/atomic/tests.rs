@@ -2,9 +2,33 @@ use super::write_atomic;
 use std::{
     fs,
     io::{self, Write},
+    os::unix::fs::{MetadataExt, PermissionsExt},
     sync::{Arc, Barrier},
     thread,
 };
+
+#[test]
+fn atomic_write_secures_existing_cache_directory_and_replacement() {
+    let root = std::env::temp_dir().join(format!("veila-atomic-mode-{}", std::process::id()));
+    fs::create_dir_all(&root).expect("cache directory");
+    fs::set_permissions(&root, fs::Permissions::from_mode(0o755)).expect("old directory mode");
+    let path = root.join("entry.argb");
+    fs::write(&path, b"old").expect("old cache");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).expect("old file mode");
+
+    write_atomic(&path, |file| file.write_all(b"new")).expect("new cache");
+
+    assert_eq!(
+        fs::metadata(&root).expect("directory metadata").mode() & 0o777,
+        0o700
+    );
+    assert_eq!(
+        fs::metadata(&path).expect("file metadata").mode() & 0o777,
+        0o600
+    );
+    assert_eq!(fs::read(&path).expect("cache contents"), b"new");
+    fs::remove_dir_all(root).expect("cleanup");
+}
 
 #[test]
 fn concurrent_writes_publish_only_complete_files() {

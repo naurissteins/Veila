@@ -165,12 +165,9 @@ fn load_cached_snapshot(config: &WeatherConfig) -> Result<Option<WeatherSnapshot
 fn store_cached_snapshot(config: &WeatherConfig, snapshot: &WeatherSnapshot) -> Result<()> {
     let (latitude, longitude) = resolve_coordinates(config)?;
     let cache_path = cache_path_for_coordinates(latitude, longitude)?;
-    let Some(cache_dir) = cache_path.parent() else {
-        anyhow::bail!("weather cache path has no parent");
-    };
-    fs::create_dir_all(cache_dir).context("failed to create weather cache directory")?;
     let raw = serde_json::to_vec(snapshot).context("failed to encode cached weather snapshot")?;
-    fs::write(&cache_path, raw).context("failed to write weather cache file")
+    super::cache::write_private_file(&cache_path, &raw)
+        .context("failed to write weather cache file")
 }
 
 fn cache_path_for_coordinates(latitude: f64, longitude: f64) -> Result<PathBuf> {
@@ -270,16 +267,13 @@ fn load_cached_coordinates(location: &str) -> Result<Option<(f64, f64)>> {
 
 fn store_cached_coordinates(location: &str, latitude: f64, longitude: f64) -> Result<()> {
     let cache_path = location_cache_path(location)?;
-    let Some(cache_dir) = cache_path.parent() else {
-        anyhow::bail!("weather geocoding cache path has no parent");
-    };
-    fs::create_dir_all(cache_dir).context("failed to create weather geocoding cache directory")?;
     let entry = GeocodedLocationCache {
         latitude,
         longitude,
     };
     let raw = serde_json::to_vec(&entry).context("failed to encode cached geocoded coordinates")?;
-    fs::write(&cache_path, raw).context("failed to write weather geocoding cache file")
+    super::cache::write_private_file(&cache_path, &raw)
+        .context("failed to write weather geocoding cache file")
 }
 
 fn location_cache_path(location: &str) -> Result<PathBuf> {
