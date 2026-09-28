@@ -1,15 +1,18 @@
-use std::{path::Path, process::ExitStatus};
+use std::path::Path;
 
 use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, ipc::LatencyReportMode};
 
 use crate::{
-    adapters::{logind, process},
+    adapters::{
+        logind, ownership,
+        process::{self, CurtainExit},
+    },
     domain::{auth::AuthPolicy, lock_state::LockState},
 };
 
 use super::super::{
     helpers::activate_and_log,
-    runtime::{ActiveRuntime, reset_runtime, update_locked_hint},
+    runtime::{ActiveRuntime, reset_runtime},
     state::RuntimeSlots,
     suspend::LockedSuspendState,
 };
@@ -126,21 +129,10 @@ pub(crate) async fn handle_unlock_signal(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_curtain_exit(
-    status: ExitStatus,
-    session_proxy: &logind::SessionProxy<'_>,
-    config_path: Option<&Path>,
-    initial_background_path: Option<&Path>,
-    weather_snapshot: Option<&WeatherSnapshot>,
-    battery_snapshot: Option<&BatterySnapshot>,
-    now_playing_snapshot: Option<&NowPlayingSnapshot>,
-    acquire_timeout_seconds: u64,
-    daemon_config_load_ms: u64,
-    daemon_config_load_us: u64,
+    status: CurtainExit,
     slots: RuntimeSlots<'_>,
     auth_policy: AuthPolicy,
-    suspend_state: &mut LockedSuspendState,
 ) {
     let RuntimeSlots {
         state,
@@ -151,10 +143,20 @@ pub(crate) async fn handle_curtain_exit(
         auth_results,
         auth_sender,
         auth_state,
-        active_latency_report,
+        active_latency_report: _,
     } = slots;
 
-    tracing::warn!(?status, state = %state, "curtain exited");
+    match status {
+        CurtainExit::Spawned(exit_status) => {
+            tracing::warn!(?exit_status, state = %state, "curtain exited");
+        }
+        CurtainExit::Adopted => {
+            tracing::warn!(state = %state, "adopted curtain exited");
+        }
+    }
+    let owner_path = curtain
+        .as_ref()
+        .map(|curtain| curtain.owner_path().to_path_buf());
     curtain.take();
     reset_runtime(
         auth_listener,
@@ -167,41 +169,11 @@ pub(crate) async fn handle_curtain_exit(
     );
 
     if state.is_active() {
-        update_locked_hint(session_proxy, false).await;
-        *state = LockState::Unlocked;
-        tracing::error!("curtain exited while the session should be locked; attempting restart");
-
-        *active_latency_report = LatencyReportMode::Disabled;
-        if let Err(error) = activate_and_log(
-            "restart",
-            session_proxy,
-            state,
-            config_path,
-            initial_background_path,
-            weather_snapshot,
-            battery_snapshot,
-            now_playing_snapshot,
-            false,
-            LatencyReportMode::Disabled,
-            acquire_timeout_seconds,
-            daemon_config_load_ms,
-            daemon_config_load_us,
-            ActiveRuntime::new(
-                curtain,
-                auth_listener,
-                auth_socket_path,
-                control_socket_path,
-                auth_results,
-                auth_sender,
-            ),
-            auth_policy,
-            auth_state,
-            suspend_state,
-        )
-        .await
-        {
-            tracing::error!("failed to restart curtain after unexpected exit: {error:#}");
-        }
+        tracing::error!("curtain exited while locked; preserving unresolved lock ownership");
+    } else if let Some(path) = owner_path
+        && let Err(error) = ownership::remove(&path)
+    {
+        tracing::warn!("failed to clear released curtain ownership: {error:#}");
     }
 }
 

@@ -1,5 +1,6 @@
 use std::{
     path::{Path, PathBuf},
+    process::Stdio,
     time::Duration,
 };
 
@@ -20,6 +21,8 @@ use veila_common::{
 };
 
 use super::ipc;
+mod curtain_handle;
+pub(crate) use curtain_handle::{CurtainExit, CurtainHandle, probe_curtain};
 
 const CURTAIN_CONTROL_TIMEOUT: Duration = Duration::from_secs(2);
 const SELF_EXE: &str = "/proc/self/exe";
@@ -37,6 +40,7 @@ pub async fn spawn_curtain(
     notify_socket: &Path,
     daemon_socket: &Path,
     control_socket: &Path,
+    owner_record: &Path,
     config_path: Option<&Path>,
     initial_background_path: Option<&Path>,
     weather_snapshot: Option<&WeatherSnapshot>,
@@ -46,9 +50,11 @@ pub async fn spawn_curtain(
     latency_report: LatencyReportMode,
 ) -> Result<Child> {
     let mut command = self_exe_command(CURTAIN_PROCESS_NAME, CURTAIN_SUBCOMMAND);
+    command.arg("--owner-gate").stdin(Stdio::piped());
     command.arg(format!("--notify-socket={}", notify_socket.display()));
     command.arg(format!("--daemon-socket={}", daemon_socket.display()));
     command.arg(format!("--control-socket={}", control_socket.display()));
+    command.arg(format!("--owner-record={}", owner_record.display()));
     if let Some(config_path) = config_path {
         command.arg(format!("--config={}", config_path.display()));
     }
@@ -95,6 +101,17 @@ pub async fn spawn_curtain(
     command
         .spawn()
         .context("failed to spawn the curtain process")
+}
+
+pub async fn release_curtain_owner_gate(child: &mut Child) -> Result<()> {
+    let mut stdin = child
+        .stdin
+        .take()
+        .context("curtain ownership gate is missing")?;
+    stdin
+        .write_all(&[1])
+        .await
+        .context("failed to release curtain ownership gate")
 }
 
 pub async fn request_curtain_unlock(control_socket: &Path, attempt_id: Option<u64>) -> Result<()> {
@@ -229,20 +246,6 @@ pub async fn force_stop_curtain(mut child: Child) -> Result<()> {
             tracing::warn!("curtain did not exit after SIGTERM; sending SIGKILL");
             child.kill().await.context("failed to SIGKILL curtain")
         }
-    }
-}
-
-pub async fn wait_for_graceful_curtain_exit(
-    mut child: Child,
-    window: Duration,
-) -> Result<Option<Child>> {
-    match timeout(window, child.wait()).await {
-        Ok(Ok(status)) => {
-            tracing::info!(?status, "curtain exited");
-            Ok(None)
-        }
-        Ok(Err(error)) => Err(error).context("failed while waiting for curtain to exit"),
-        Err(_) => Ok(Some(child)),
     }
 }
 

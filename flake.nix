@@ -158,7 +158,7 @@
                 ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
-                KillMode = "mixed";
+                KillMode = "process";
                 SendSIGKILL = false;
                 TimeoutStopSec = "infinity";
                 LimitCORE = 0;
@@ -241,7 +241,7 @@
                 ExecStart = "${cfg.package}/bin/veila daemon";
                 Restart = "on-failure";
                 RestartSec = 2;
-                KillMode = "mixed";
+                KillMode = "process";
                 SendSIGKILL = false;
                 TimeoutStopSec = "infinity";
                 LimitCORE = 0;

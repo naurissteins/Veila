@@ -153,6 +153,7 @@ pub enum DaemonMessage {
 /// Messages sent from the daemon to the secure curtain process.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CurtainControlMessage {
+    Probe,
     Unlock {
         attempt_id: Option<u64>,
     },
@@ -168,6 +169,18 @@ pub enum CurtainControlMessage {
     UpdateFingerprintStatus {
         status: Option<FingerprintStatus>,
     },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CurtainLockState {
+    Starting,
+    Locked,
+    Finished,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CurtainControlResponse {
+    Status { state: CurtainLockState },
 }
 
 /// Messages sent to the long-running daemon control socket.

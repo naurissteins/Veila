@@ -30,6 +30,8 @@ pub struct CurtainOptions {
     pub notify_socket: Option<PathBuf>,
     pub daemon_socket: Option<PathBuf>,
     pub control_socket: Option<PathBuf>,
+    pub owner_gate: bool,
+    pub owner_record: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
     pub initial_background_path: Option<PathBuf>,
     pub preview_png: Option<PathBuf>,
@@ -79,6 +81,16 @@ impl CurtainOptions {
 
             if arg == "--force-emergency-ui" {
                 options.force_emergency_ui = true;
+                continue;
+            }
+
+            if arg == "--owner-gate" {
+                options.owner_gate = true;
+                continue;
+            }
+
+            if let Some(path) = parse_option_value(&arg, "--owner-record", &mut args)? {
+                options.owner_record = Some(PathBuf::from(path));
                 continue;
             }
 
@@ -311,6 +323,16 @@ pub fn run_preview(options: CurtainOptions) -> Result<()> {
 }
 
 fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
+    if options.owner_gate != options.owner_record.is_some() {
+        bail!("daemon-managed curtain ownership requires both the startup gate and record");
+    }
+    if options.owner_gate
+        && (options.notify_socket.is_none()
+            || options.daemon_socket.is_none()
+            || options.control_socket.is_none())
+    {
+        bail!("daemon-managed curtain ownership requires all daemon sockets");
+    }
     if options.preview_png.is_some() || options.lock || options.uses_daemon_lock_flow() {
         return Ok(());
     }
@@ -409,6 +431,8 @@ impl CurtainOptions {
         self.notify_socket.is_some()
             || self.daemon_socket.is_some()
             || self.control_socket.is_some()
+            || self.owner_record.is_some()
+            || self.owner_gate
     }
 }
 

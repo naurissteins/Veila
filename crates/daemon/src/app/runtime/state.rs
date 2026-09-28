@@ -1,14 +1,16 @@
-use std::{future::pending, path::PathBuf, process::ExitStatus};
+use std::{future::pending, path::PathBuf};
 
 use anyhow::{Context, Result};
 use tokio::{
     net::{UnixListener, UnixStream},
-    process::Child,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
 };
 
 use crate::{
-    adapters::{ipc, logind},
+    adapters::{
+        ipc, logind,
+        process::{CurtainExit, CurtainHandle},
+    },
     domain::auth::{AuthPolicy, AuthState},
 };
 use veila_common::ipc::LockLatencyReport;
@@ -16,7 +18,7 @@ use veila_common::ipc::LockLatencyReport;
 use super::auth::AuthResult;
 
 pub(crate) struct LockActivation {
-    pub(super) curtain: Child,
+    pub(super) curtain: CurtainHandle,
     pub(super) auth_listener: UnixListener,
     pub(super) auth_socket_path: PathBuf,
     pub(super) control_socket_path: PathBuf,
@@ -26,7 +28,7 @@ pub(crate) struct LockActivation {
 }
 
 pub(crate) struct ActiveRuntime<'a> {
-    pub(super) curtain: &'a mut Option<Child>,
+    pub(super) curtain: &'a mut Option<CurtainHandle>,
     pub(super) auth_listener: &'a mut Option<UnixListener>,
     pub(super) auth_socket_path: &'a mut Option<PathBuf>,
     pub(super) control_socket_path: &'a mut Option<PathBuf>,
@@ -36,7 +38,7 @@ pub(crate) struct ActiveRuntime<'a> {
 
 impl<'a> ActiveRuntime<'a> {
     pub(crate) fn new(
-        curtain: &'a mut Option<Child>,
+        curtain: &'a mut Option<CurtainHandle>,
         auth_listener: &'a mut Option<UnixListener>,
         auth_socket_path: &'a mut Option<PathBuf>,
         control_socket_path: &'a mut Option<PathBuf>,
@@ -84,7 +86,9 @@ pub(crate) fn reset_runtime(
     *auth_state = AuthState::new(auth_policy);
 }
 
-pub(crate) async fn wait_for_curtain_exit(curtain: &mut Option<Child>) -> Result<ExitStatus> {
+pub(crate) async fn wait_for_curtain_exit(
+    curtain: &mut Option<CurtainHandle>,
+) -> Result<CurtainExit> {
     match curtain.as_mut() {
         Some(child) => child
             .wait()
