@@ -3,6 +3,7 @@ name = "veila"
 description = "Secure, elegant, and fast Wayland screen locker"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -31,6 +32,7 @@ members = [
 [workspace.package]
 version = "0.4.4"
 edition = "2024"
+rust-version = "1.89"
 authors = ["Nauris Steins"]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/naurissteins/Veila"
