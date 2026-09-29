@@ -1,10 +1,6 @@
-use crate::cache::stable_hash;
+use crate::cache::{file_cache_key, stable_hash};
 
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    time::UNIX_EPOCH,
-};
+use std::path::{Path, PathBuf};
 
 use crate::{FrameSize, RendererError, Result, SoftwareBuffer};
 
@@ -146,7 +142,11 @@ fn cache_path(
     variant: Option<&str>,
     cache_home: Option<&Path>,
 ) -> Result<PathBuf> {
-    let key = stable_hash(&cache_source_key(source, size)?);
+    let key = stable_hash(&format!(
+        "renderer:{}:{}",
+        env!("CARGO_PKG_VERSION"),
+        cache_source_key(source, size)?
+    ));
     let key = stable_hash(&format!(
         "{key}:{:?}:{:?}:{:?}:{:?}",
         treatment.blur_radius, treatment.dim_strength, treatment.tint, treatment.scaling
@@ -159,22 +159,12 @@ fn cache_path(
 fn cache_source_key(source: CacheSource<'_>, size: FrameSize) -> Result<String> {
     match source {
         CacheSource::Path(path) => {
-            let metadata = fs::metadata(path)
+            let identity = file_cache_key(path)
                 .map_err(image::ImageError::from)
                 .map_err(RendererError::from)?;
-            let modified = metadata
-                .modified()
-                .ok()
-                .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-                .map(|duration| duration.as_secs())
-                .unwrap_or_default();
             Ok(format!(
-                "image:v1:{}:{}:{}:{}x{}",
-                path.display(),
-                metadata.len(),
-                modified,
-                size.width,
-                size.height
+                "image:v2:{identity}:{}x{}",
+                size.width, size.height
             ))
         }
         CacheSource::Generated(generated) => Ok(match generated {

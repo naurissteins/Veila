@@ -1,11 +1,9 @@
-use crate::cache::stable_hash;
+use crate::cache::{file_cache_key, stable_hash};
 
 use std::{
     collections::hash_map::DefaultHasher,
-    fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
-    time::UNIX_EPOCH,
 };
 
 use image::{ImageReader, RgbaImage, imageops::FilterType};
@@ -381,20 +379,8 @@ fn store_cached_avatar_at(path: &Path, pixmap: &Pixmap, cache_home: Option<&Path
 }
 
 fn avatar_cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
-    let metadata = fs::metadata(path)?;
-    let modified = metadata
-        .modified()
-        .ok()
-        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_secs())
-        .unwrap_or_default();
-    let key = stable_hash(&format!(
-        "{}:{}:{}:{}",
-        path.display(),
-        metadata.len(),
-        modified,
-        MAX_PREPARED_AVATAR_SIZE,
-    ));
+    let identity = file_cache_key(path)?;
+    let key = stable_hash(&format!("{identity}:{}", MAX_PREPARED_AVATAR_SIZE));
 
     Ok(avatar_cache_root(cache_home)?.join(format!("{key:016x}.rgba")))
 }

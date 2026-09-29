@@ -1,10 +1,6 @@
-use crate::cache::stable_hash;
+use crate::cache::{file_cache_key, stable_hash};
 
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    time::UNIX_EPOCH,
-};
+use std::path::{Path, PathBuf};
 
 use image::RgbaImage;
 
@@ -50,19 +46,7 @@ fn store_cached_rgba_at(path: &Path, image: &RgbaImage, cache_home: Option<&Path
 }
 
 fn cache_path(path: &Path, cache_home: Option<&Path>) -> Result<PathBuf> {
-    let metadata = fs::metadata(path).map_err(image::ImageError::from)?;
-    let modified = metadata
-        .modified()
-        .ok()
-        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_secs())
-        .unwrap_or_default();
-    let key = stable_hash(&format!(
-        "{}:{}:{}",
-        path.display(),
-        metadata.len(),
-        modified
-    ));
+    let key = stable_hash(&file_cache_key(path).map_err(image::ImageError::from)?);
 
     Ok(cache_root(cache_home)?.join(format!("{key:016x}.rgba")))
 }
@@ -127,5 +111,37 @@ mod tests {
         assert!(path.exists());
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn same_size_replacement_misses_cached_source() {
+        let root = std::env::temp_dir().join(format!(
+            "veila-source-cache-replacement-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).expect("cache root");
+        let wallpaper = root.join("wallpaper.png");
+        let replacement = root.join("replacement.png");
+        fs::write(&wallpaper, b"old!").expect("wallpaper file");
+        fs::write(&replacement, b"new!").expect("replacement file");
+        let modified = UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        for path in [&wallpaper, &replacement] {
+            fs::File::options()
+                .write(true)
+                .open(path)
+                .expect("image file")
+                .set_times(fs::FileTimes::new().set_modified(modified))
+                .expect("timestamp");
+        }
+        store_cached_rgba_at(&wallpaper, &RgbaImage::new(1, 1), Some(&root)).expect("store");
+
+        fs::rename(&replacement, &wallpaper).expect("replace wallpaper");
+
+        assert!(
+            load_cached_rgba_at(&wallpaper, Some(&root))
+                .expect("cache read")
+                .is_none()
+        );
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }
