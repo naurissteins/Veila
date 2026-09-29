@@ -9,8 +9,7 @@ version = 2
 db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
 ignore = [
-    "RUSTSEC-2026-0194",
-    "RUSTSEC-2026-0195",
+    # Unmaintained notice for runtime ttf-parser via fontdb/cosmic-text, recheck when that font stack can replace it
     "RUSTSEC-2026-0192",
 ]
 
