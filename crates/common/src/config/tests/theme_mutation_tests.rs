@@ -1,4 +1,5 @@
 use super::*;
+use std::os::unix::fs::PermissionsExt;
 
 #[test]
 fn set_theme_in_config_creates_missing_file() {
@@ -13,6 +14,14 @@ fn set_theme_in_config_creates_missing_file() {
     assert_eq!(written_path, path);
     let raw = fs::read_to_string(&written_path).expect("written config");
     assert!(raw.contains("theme = \"boracay\""));
+    assert_eq!(
+        fs::metadata(&written_path)
+            .expect("mode")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600
+    );
 
     let loaded = AppConfig::load(Some(&written_path)).expect("config should load");
     assert_eq!(
@@ -125,6 +134,14 @@ fn init_config_creates_theme_config() {
     assert_eq!(written_path, path);
     let raw = fs::read_to_string(&written_path).expect("written config");
     assert!(raw.contains("theme = \"samurai\""));
+    assert_eq!(
+        fs::metadata(&written_path)
+            .expect("mode")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600
+    );
 
     let loaded = AppConfig::load(Some(&written_path)).expect("config should load");
     assert_eq!(loaded.config.visuals.clock_font_family(), Some("Japanola"));
@@ -165,12 +182,17 @@ fn init_config_replaces_existing_config_with_force() {
         "#,
     )
     .expect("config file");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).expect("mode");
 
     init_config(Some(&path), "seceda", true).expect("config should init");
 
     let raw = fs::read_to_string(&path).expect("written config");
     assert!(raw.contains("theme = \"seceda\""));
     assert!(!raw.contains("width = 420"));
+    assert_eq!(
+        fs::metadata(&path).expect("mode").permissions().mode() & 0o777,
+        0o640
+    );
 
     fs::remove_file(path).ok();
     fs::remove_dir(dir).ok();

@@ -19,4 +19,5 @@ mod nested_visual_tests;
 mod parsing_tests;
 mod path_resolution_tests;
 mod theme_loading_tests;
+mod theme_mutation_safety_tests;
 mod theme_mutation_tests;

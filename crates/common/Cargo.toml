@@ -12,5 +12,5 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 toml = { workspace = true }
+toml_edit = { workspace = true }
 zeroize = { workspace = true }
-
