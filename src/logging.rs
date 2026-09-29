@@ -10,6 +10,8 @@ use time::{OffsetDateTime, UtcOffset};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, fmt::format::Writer, fmt::time::FormatTime};
 
+mod rotation;
+
 struct ShortLocalTime;
 
 impl FormatTime for ShortLocalTime {
@@ -46,7 +48,9 @@ pub(crate) fn init_daemon(log_file: Option<&Path>) -> Result<Option<WorkerGuard>
     }
 
     let file = open_private_log(path)?;
-    let (writer, guard) = tracing_appender::non_blocking(file);
+    let log = rotation::RotatingLog::new(file, path)
+        .with_context(|| format!("failed to prepare daemon log file {}", path.display()))?;
+    let (writer, guard) = tracing_appender::non_blocking(log);
 
     tracing_subscriber::fmt()
         .with_env_filter(env_filter())
