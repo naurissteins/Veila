@@ -28,8 +28,12 @@ fn asset_dir_candidates(
     if let Some(env_assets) = env_assets {
         candidates.push(env_assets);
     }
+    #[cfg(debug_assertions)]
     candidates.push(local_assets.to_path_buf());
     candidates.extend(system_assets.iter().cloned());
+    // packaged release binaries must not prefer an old build checkout.
+    #[cfg(not(debug_assertions))]
+    candidates.push(local_assets.to_path_buf());
     candidates
 }
 
@@ -59,7 +63,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn puts_env_asset_dir_before_source_and_system_paths() {
+    fn puts_env_asset_dir_first() {
         let env_assets = Some(PathBuf::from("/nix/store/example-veila/share/veila"));
         let local_assets = PathBuf::from("/build/source/assets");
         let system_assets = [PathBuf::from("/usr/share/veila")];
@@ -67,17 +71,14 @@ mod tests {
         let candidates = asset_dir_candidates(env_assets, &local_assets, &system_assets);
 
         assert_eq!(
-            candidates,
-            vec![
-                PathBuf::from("/nix/store/example-veila/share/veila"),
-                PathBuf::from("/build/source/assets"),
-                PathBuf::from("/usr/share/veila"),
-            ]
+            candidates.first(),
+            Some(&PathBuf::from("/nix/store/example-veila/share/veila"))
         );
     }
 
+    #[cfg(debug_assertions)]
     #[test]
-    fn omits_missing_env_asset_dir_candidate() {
+    fn debug_builds_prefer_source_assets() {
         let local_assets = PathBuf::from("/build/source/assets");
         let system_assets = [PathBuf::from("/usr/share/veila")];
 
@@ -88,6 +89,27 @@ mod tests {
             vec![
                 PathBuf::from("/build/source/assets"),
                 PathBuf::from("/usr/share/veila"),
+            ]
+        );
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn release_builds_prefer_installed_assets() {
+        let local_assets = PathBuf::from("/build/source/assets");
+        let system_assets = [
+            PathBuf::from("/usr/local/share/veila"),
+            PathBuf::from("/usr/share/veila"),
+        ];
+
+        let candidates = asset_dir_candidates(None, &local_assets, &system_assets);
+
+        assert_eq!(
+            candidates,
+            vec![
+                PathBuf::from("/usr/local/share/veila"),
+                PathBuf::from("/usr/share/veila"),
+                PathBuf::from("/build/source/assets"),
             ]
         );
     }
