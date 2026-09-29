@@ -3,6 +3,7 @@ name = "veila-curtain"
 description = "Secure session-lock curtain and preview renderer for Veila"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
