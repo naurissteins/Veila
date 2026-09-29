@@ -6,6 +6,7 @@ mod fingerprint;
 mod idle;
 mod include;
 mod lock;
+mod mutation;
 mod now_playing;
 #[cfg(test)]
 mod tests;
@@ -39,6 +40,7 @@ pub use color::ConfigColor;
 pub use fingerprint::FingerprintConfig;
 pub use idle::{IdleConfig, MAX_IDLE_LOCK_AFTER_SECONDS, MIN_IDLE_LOCK_AFTER_SECONDS};
 pub use lock::LockConfig;
+pub use mutation::{init_config, set_theme_in_config, unset_theme_in_config};
 pub use now_playing::NowPlayingConfig;
 pub use validation::{
     ConfigValidationIssue, ConfigValidationReport, ConfigValidationSource,
@@ -255,144 +257,6 @@ pub fn read_theme_source(
     let path = resolve_theme_path(theme, config_dir.as_deref())?;
     let raw = fs::read_to_string(&path)?;
     Ok((path, raw))
-}
-
-pub fn set_theme_in_config(explicit_path: Option<&Path>, theme: &str) -> Result<PathBuf> {
-    validate_theme_name(theme)?;
-
-    let path = match explicit_path {
-        Some(path) => path.to_path_buf(),
-        None => user_config_path().ok_or_else(|| {
-            VeilaError::ConfigIo(io::Error::new(
-                io::ErrorKind::NotFound,
-                "failed to resolve default config path",
-            ))
-        })?,
-    };
-
-    resolve_theme_path(theme, path.parent())?;
-
-    let mut config_value = if path.exists() {
-        let raw = fs::read_to_string(&path)?;
-        parse_toml_value(&raw)?
-    } else {
-        Value::Table(Default::default())
-    };
-
-    let Some(table) = config_value.as_table_mut() else {
-        return Err(VeilaError::ConfigIo(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "top-level config must be a TOML table",
-        )));
-    };
-
-    table.insert(String::from("theme"), Value::String(theme.to_owned()));
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    let encoded = toml::to_string_pretty(&config_value).map_err(|error| {
-        VeilaError::ConfigIo(io::Error::other(format!(
-            "failed to encode config after setting theme: {error}"
-        )))
-    })?;
-    write_config_file(&path, &encoded)?;
-    Ok(path)
-}
-
-pub fn init_config(explicit_path: Option<&Path>, theme: &str, force: bool) -> Result<PathBuf> {
-    validate_theme_name(theme)?;
-
-    let path = match explicit_path {
-        Some(path) => path.to_path_buf(),
-        None => user_config_path().ok_or_else(|| {
-            VeilaError::ConfigIo(io::Error::new(
-                io::ErrorKind::NotFound,
-                "failed to resolve default config path",
-            ))
-        })?,
-    };
-
-    resolve_theme_path(theme, path.parent())?;
-
-    if path.exists() && !force {
-        return Err(VeilaError::ConfigIo(io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "config already exists; pass --force to replace it",
-        )));
-    }
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    let mut table = toml::Table::new();
-    table.insert(String::from("theme"), Value::String(theme.to_owned()));
-    let encoded = toml::to_string_pretty(&Value::Table(table)).map_err(|error| {
-        VeilaError::ConfigIo(io::Error::other(format!(
-            "failed to encode initial config: {error}"
-        )))
-    })?;
-    write_config_file(&path, &encoded)?;
-    Ok(path)
-}
-
-pub fn unset_theme_in_config(explicit_path: Option<&Path>) -> Result<(PathBuf, bool)> {
-    let path = match explicit_path {
-        Some(path) => path.to_path_buf(),
-        None => user_config_path().ok_or_else(|| {
-            VeilaError::ConfigIo(io::Error::new(
-                io::ErrorKind::NotFound,
-                "failed to resolve default config path",
-            ))
-        })?,
-    };
-
-    if !path.exists() {
-        return Ok((path, false));
-    }
-
-    let raw = fs::read_to_string(&path)?;
-    let mut config_value = parse_toml_value(&raw)?;
-
-    let Some(table) = config_value.as_table_mut() else {
-        return Err(VeilaError::ConfigIo(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "top-level config must be a TOML table",
-        )));
-    };
-
-    if table.remove("theme").is_none() {
-        return Ok((path, false));
-    }
-
-    let encoded = if table.is_empty() {
-        String::new()
-    } else {
-        toml::to_string_pretty(&config_value).map_err(|error| {
-            VeilaError::ConfigIo(io::Error::other(format!(
-                "failed to encode config after unsetting theme: {error}"
-            )))
-        })?
-    };
-    write_config_file(&path, &encoded)?;
-    Ok((path, true))
-}
-
-fn write_config_file(path: &Path, contents: &str) -> Result<()> {
-    fs::write(path, contents).map_err(|error| match error.kind() {
-        io::ErrorKind::PermissionDenied | io::ErrorKind::ReadOnlyFilesystem => {
-            VeilaError::ConfigIo(io::Error::new(
-                error.kind(),
-                format!(
-                    "cannot write {}: the config file is read-only, so it is likely managed declaratively; change it at its source instead",
-                    path.display()
-                ),
-            ))
-        }
-        _ => VeilaError::ConfigIo(error),
-    })
 }
 
 fn user_config_path() -> Option<PathBuf> {
