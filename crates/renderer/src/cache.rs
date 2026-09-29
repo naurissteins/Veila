@@ -4,7 +4,8 @@ mod prune;
 pub use prune::{CacheKind, CachePrunePolicy, CachePruneReport, prune_cache};
 
 use std::{
-    io,
+    fs, io,
+    os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
 };
 
@@ -31,10 +32,28 @@ pub(crate) fn stable_hash(input: &str) -> u64 {
     hash
 }
 
+pub(crate) fn file_cache_key(path: &Path) -> io::Result<String> {
+    let metadata = fs::metadata(path)?;
+    Ok(format!(
+        "file:v2:{}:{}:{}:{}:{}:{}:{}",
+        env!("CARGO_PKG_VERSION"),
+        path.display(),
+        metadata.dev(),
+        metadata.ino(),
+        metadata.len(),
+        metadata.mtime(),
+        metadata.mtime_nsec(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{root, stable_hash};
-    use std::path::Path;
+    use super::{file_cache_key, root, stable_hash};
+    use std::{
+        fs::{self, File, FileTimes},
+        path::Path,
+        time::{Duration, UNIX_EPOCH},
+    };
 
     #[test]
     fn cache_hash_preserves_fnv1a_disk_keys() {
@@ -50,5 +69,52 @@ mod tests {
                 Path::new("/tmp/cache/veila").join(directory)
             );
         }
+    }
+
+    #[test]
+    fn file_key_changes_for_a_same_second_edit() {
+        let root = std::env::temp_dir().join(format!("veila-file-key-time-{}", std::process::id()));
+        fs::create_dir_all(&root).expect("directory");
+        let path = root.join("image.png");
+        fs::write(&path, b"one").expect("image");
+        let file = File::options().write(true).open(&path).expect("image file");
+        let second = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        file.set_times(FileTimes::new().set_modified(second + Duration::from_nanos(1)))
+            .expect("first timestamp");
+        let first = file_cache_key(&path).expect("first key");
+
+        fs::write(&path, b"two").expect("replacement content");
+        file.set_times(FileTimes::new().set_modified(second + Duration::from_nanos(2)))
+            .expect("second timestamp");
+
+        assert_ne!(file_cache_key(&path).expect("second key"), first);
+        drop(file);
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn file_key_changes_for_same_size_same_time_replacement() {
+        let root =
+            std::env::temp_dir().join(format!("veila-file-key-inode-{}", std::process::id()));
+        fs::create_dir_all(&root).expect("directory");
+        let path = root.join("image.png");
+        let replacement = root.join("replacement.png");
+        fs::write(&path, b"one").expect("image");
+        fs::write(&replacement, b"two").expect("replacement");
+        let modified = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        for file_path in [&path, &replacement] {
+            File::options()
+                .write(true)
+                .open(file_path)
+                .expect("image file")
+                .set_times(FileTimes::new().set_modified(modified))
+                .expect("timestamp");
+        }
+        let first = file_cache_key(&path).expect("first key");
+
+        fs::rename(&replacement, &path).expect("replace image");
+
+        assert_ne!(file_cache_key(&path).expect("second key"), first);
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }
