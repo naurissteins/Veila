@@ -57,6 +57,56 @@ fn pam_challenge_remains_visible_when_status_widget_is_disabled() {
         Some("Security code:")
     );
 }
+
+#[test]
+fn input_limit_reports_ignored_character_and_clears_after_backspace() {
+    let mut shell = ShellState::default();
+    for _ in 0..super::MAX_SECRET_CHARACTERS {
+        shell.handle_key(ShellKey::Character('a'));
+    }
+    assert_eq!(shell.secret.char_count(), super::MAX_SECRET_CHARACTERS);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
+
+    shell.handle_key(ShellKey::Character('b'));
+    assert_eq!(shell.secret.char_count(), super::MAX_SECRET_CHARACTERS);
+    assert_eq!(
+        shell.render_context().inline_input_status_text().as_deref(),
+        Some("Maximum 128 characters")
+    );
+
+    shell.handle_key(ShellKey::Backspace);
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
+    shell.handle_key(ShellKey::Character('b'));
+    assert_eq!(shell.secret.char_count(), super::MAX_SECRET_CHARACTERS);
+    assert!(shell.secret.expose().ends_with('b'));
+    assert!(matches!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(secret) if secret.char_count() == super::MAX_SECRET_CHARACTERS
+    ));
+    assert_eq!(shell.render_context().inline_input_status_text(), None);
+}
+
+#[test]
+fn input_limit_feedback_preserves_pam_challenge() {
+    let mut shell = ShellState::default();
+    shell.theme.status_enabled = false;
+    shell.theme.status_mode = StatusDisplayMode::Hidden;
+    shell.authentication_challenge(String::from("Security code:"), false);
+    for _ in 0..=super::MAX_SECRET_CHARACTERS {
+        shell.handle_key(ShellKey::Character('7'));
+    }
+
+    assert!(matches!(shell.status, ShellStatus::Challenge { .. }));
+    assert_eq!(
+        shell.render_context().inline_input_status_text().as_deref(),
+        Some("Maximum 128 characters")
+    );
+    shell.handle_key(ShellKey::Backspace);
+    assert_eq!(
+        shell.render_context().inline_input_status_text().as_deref(),
+        Some("Security code:")
+    );
+}
 use crate::shell::theme::{
     Backdrop, PowerButton, VisualLayer, WidgetPosition, WidgetPositionTarget,
 };

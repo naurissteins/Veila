@@ -1,3 +1,4 @@
+mod animation;
 mod avatar;
 #[cfg(test)]
 mod backdrop_cache_tests;
@@ -13,6 +14,9 @@ mod state;
 mod tests;
 mod theme;
 mod weather;
+
+// four bytes per character keeps typed secrets inside their reserved buffer
+const MAX_SECRET_CHARACTERS: usize = veila_common::SECRET_CAPACITY / 4;
 
 pub use avatar::{has_avatar_candidate, load_avatar, load_cached_avatar};
 pub use theme::ShellTheme;
@@ -110,6 +114,7 @@ pub struct ShellState {
     mode: ShellMode,
     secret: Secret,
     submitted_secret_len: usize,
+    input_limit_reached: bool,
     secret_selected: bool,
     caps_lock_active: bool,
     keyboard_layout_label: Option<String>,

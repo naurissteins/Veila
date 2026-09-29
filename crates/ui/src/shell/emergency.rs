@@ -139,6 +139,9 @@ impl RenderContext<'_> {
     }
 
     fn emergency_status_text(&self) -> Option<String> {
+        if let Some(message) = self.shell.input_limit_message() {
+            return Some(message);
+        }
         match &self.shell.status {
             ShellStatus::Idle => None,
             ShellStatus::Challenge { text, .. } | ShellStatus::Notice { text } => {
@@ -159,6 +162,9 @@ impl RenderContext<'_> {
     }
 
     fn emergency_status_color(&self) -> ClearColor {
+        if self.shell.input_limit_message().is_some() {
+            return REJECTED;
+        }
         match self.shell.status {
             ShellStatus::Pending { .. } => PENDING,
             ShellStatus::Challenge { .. } | ShellStatus::Notice { .. } => PENDING,
@@ -197,4 +203,23 @@ impl EmergencyLayout {
 
 fn scaled(value: i32, scale: RenderScale) -> i32 {
     scale.apply_i32(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::shell::{ShellKey, ShellState};
+
+    #[test]
+    fn emergency_mode_reports_input_limit() {
+        let mut shell = ShellState::default();
+        shell.activate_emergency();
+        for _ in 0..=super::super::MAX_SECRET_CHARACTERS {
+            shell.handle_key(ShellKey::Character('x'));
+        }
+
+        assert_eq!(
+            shell.render_context().emergency_status_text().as_deref(),
+            Some("Maximum 128 characters")
+        );
+    }
 }
