@@ -717,6 +717,11 @@ impl RenderContext<'_> {
     }
 
     pub(crate) fn inline_input_status_text(&self) -> Option<String> {
+        if self.shell.input_visible()
+            && let Some(message) = self.shell.input_limit_message()
+        {
+            return Some(message);
+        }
         if let ShellStatus::Challenge { text, .. } | ShellStatus::Notice { text } =
             &self.shell.status
         {
