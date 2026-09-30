@@ -19,12 +19,15 @@ impl ClockState {
     }
 
     pub(super) fn refresh(&mut self) -> bool {
-        let next = Self::current(self.format, self.date_format);
-        if *self == next {
+        self.refresh_at(local_now())
+    }
+
+    fn refresh_at(&mut self, datetime: OffsetDateTime) -> bool {
+        if self.minute_key == local_minute_key(datetime) {
             return false;
         }
 
-        *self = next;
+        *self = Self::from_datetime(datetime, self.format, self.date_format);
         true
     }
 
@@ -58,7 +61,7 @@ impl ClockState {
         let (time_text, hour_text, minute_text, meridiem_text) = format_time(datetime, format);
 
         Self {
-            minute_key: datetime.unix_timestamp().div_euclid(60),
+            minute_key: local_minute_key(datetime),
             format,
             date_format,
             time_text,
@@ -75,6 +78,11 @@ impl super::ShellState {
         self.clock =
             ClockState::from_datetime(datetime, self.theme.clock_format, self.theme.date_format);
     }
+}
+
+fn local_minute_key(datetime: OffsetDateTime) -> i64 {
+    // Include the offset so timezone changes cannot hide a changed clock or date.
+    (datetime.unix_timestamp() + i64::from(datetime.offset().whole_seconds())).div_euclid(60)
 }
 
 fn format_time(
@@ -202,82 +210,4 @@ fn month_name(month: Month) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
-    use time::{Date, Month, PrimitiveDateTime, Time, UtcOffset};
-    use veila_common::{ClockFormat, ClockStyle, DateFormat};
-
-    use super::ClockState;
-
-    #[test]
-    fn formats_clock_snapshot_in_24_hour_mode() {
-        let datetime = PrimitiveDateTime::new(
-            Date::from_calendar_date(2026, Month::March, 24).expect("date"),
-            Time::from_hms(9, 5, 0).expect("time"),
-        )
-        .assume_offset(UtcOffset::UTC);
-
-        let clock =
-            ClockState::from_datetime(datetime, ClockFormat::TwentyFourHour, DateFormat::Long);
-
-        assert_eq!(clock.primary_text(ClockStyle::Standard), "09:05");
-        assert_eq!(clock.primary_text(ClockStyle::Stacked), "09");
-        assert_eq!(clock.secondary_text(ClockStyle::Stacked), Some("05"));
-        assert_eq!(clock.meridiem_text(), None);
-        assert_eq!(clock.date_text(), "Tuesday, March 24");
-    }
-
-    #[test]
-    fn formats_clock_snapshot_in_12_hour_mode() {
-        let datetime = PrimitiveDateTime::new(
-            Date::from_calendar_date(2026, Month::March, 24).expect("date"),
-            Time::from_hms(15, 5, 0).expect("time"),
-        )
-        .assume_offset(UtcOffset::UTC);
-
-        let clock = ClockState::from_datetime(datetime, ClockFormat::TwelveHour, DateFormat::Long);
-
-        assert_eq!(clock.primary_text(ClockStyle::Standard), "03:05");
-        assert_eq!(clock.primary_text(ClockStyle::Stacked), "03");
-        assert_eq!(clock.secondary_text(ClockStyle::Stacked), Some("05"));
-        assert_eq!(clock.meridiem_text(), Some("PM"));
-        assert_eq!(clock.date_text(), "Tuesday, March 24");
-    }
-
-    #[test]
-    fn formats_normandy_as_12_am() {
-        let datetime = PrimitiveDateTime::new(
-            Date::from_calendar_date(2026, Month::March, 24).expect("date"),
-            Time::from_hms(0, 5, 0).expect("time"),
-        )
-        .assume_offset(UtcOffset::UTC);
-
-        let clock = ClockState::from_datetime(datetime, ClockFormat::TwelveHour, DateFormat::Long);
-
-        assert_eq!(clock.primary_text(ClockStyle::Standard), "12:05");
-        assert_eq!(clock.meridiem_text(), Some("AM"));
-    }
-
-    #[test]
-    fn formats_date_presets() {
-        let datetime = PrimitiveDateTime::new(
-            Date::from_calendar_date(2026, Month::May, 13).expect("date"),
-            Time::from_hms(9, 5, 0).expect("time"),
-        )
-        .assume_offset(UtcOffset::UTC);
-
-        let cases = [
-            (DateFormat::Long, "Wednesday, May 13"),
-            (DateFormat::Iso, "2026-05-13"),
-            (DateFormat::DayMonthYearDots, "13.05.2026"),
-            (DateFormat::YearMonthDayDots, "2026.05.13"),
-            (DateFormat::MonthDayYearSlash, "05/13/2026"),
-            (DateFormat::DayMonthYearSlash, "13/05/2026"),
-            (DateFormat::Short, "Wed, May 13"),
-        ];
-
-        for (format, expected) in cases {
-            let clock = ClockState::from_datetime(datetime, ClockFormat::TwentyFourHour, format);
-            assert_eq!(clock.date_text(), expected);
-        }
-    }
-}
+mod tests;
