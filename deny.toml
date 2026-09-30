@@ -26,6 +26,7 @@ allow = [
     "GPL-3.0-or-later",
     "ISC",
     "MIT",
+    "NCSA", # fuzz-only libfuzzer-sys
     "Unicode-3.0",
     "Unlicense",
     "Zlib",

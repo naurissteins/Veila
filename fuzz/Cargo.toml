@@ -1,0 +1,42 @@
+[package]
+name = "veila-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.89"
+license = "GPL-3.0-or-later"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.veila-common]
+path = "../crates/common"
+
+# Keep the fuzz-only binary and dependency out of the shipped workspace.
+[workspace]
+members = ["."]
+resolver = "3"
+
+[[bin]]
+name = "ipc_messages"
+path = "fuzz_targets/ipc_messages.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "line_framing"
+path = "fuzz_targets/line_framing.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "config_toml"
+path = "fuzz_targets/config_toml.rs"
+test = false
+doc = false
+bench = false
