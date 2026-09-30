@@ -5,6 +5,7 @@ mod events;
 mod fingerprint;
 mod helpers;
 mod idle;
+mod maintenance;
 mod memory;
 mod mpris;
 pub(crate) mod output_probe;
@@ -25,7 +26,7 @@ use futures_util::StreamExt;
 use tokio::{
     net::UnixListener,
     signal::unix::{SignalKind, signal},
-    time::{self, MissedTickBehavior},
+    time,
 };
 use veila_common::{AppConfig, LoadedConfig};
 
@@ -110,8 +111,7 @@ pub async fn run(
     let mut now_playing_updates = runtime.now_playing.subscribe();
     let mut auto_reload_watcher =
         AutoReloadWatcher::new(options.config_path.as_deref(), &runtime.loaded_config);
-    let mut auto_reload_tick = time::interval(std::time::Duration::from_millis(250));
-    auto_reload_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    let mut maintenance_tick = maintenance::MaintenanceClock::new();
     let (auth_connection_sender, mut auth_connections) = tokio::sync::mpsc::unbounded_channel();
     let (control_connection_sender, mut control_connections) =
         tokio::sync::mpsc::unbounded_channel();
@@ -134,6 +134,11 @@ pub async fn run(
             tracing::info!("pending daemon shutdown can finish after unlock");
             break;
         }
+        maintenance_tick.sync(
+            runtime.state.is_active()
+                || shutdown_gate.is_requested()
+                || auto_reload_watcher.is_pending(),
+        );
         runtime.idle.sync(&runtime.loaded_config.config.idle);
         runtime
             .sleep_lock
@@ -320,7 +325,7 @@ pub async fn run(
                     snapshot.as_ref(),
                 ).await;
             }
-            _ = auto_reload_tick.tick() => {
+            _ = maintenance_tick.tick() => {
                 let now = std::time::Instant::now();
                 if shutdown_gate.is_requested() && now >= next_session_close_check {
                     next_session_close_check = now + std::time::Duration::from_secs(5);
