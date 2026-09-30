@@ -13,7 +13,7 @@ use smithay_client_toolkit::{
 };
 use veila_ui::ShellKey;
 
-use crate::{ipc::auth::notify_activity, state::CurtainApp};
+use crate::state::CurtainApp;
 
 const RESUME_INPUT_GRACE_PERIOD: Duration = Duration::from_millis(1000);
 
@@ -135,10 +135,8 @@ impl KeyboardHandler for CurtainApp {
         if self.resume_input.grace_period_active() {
             return;
         }
-        if self.has_keyboard_focus
-            && let Some(socket_path) = self.daemon_socket_path()
-        {
-            notify_activity(socket_path);
+        if self.has_keyboard_focus {
+            self.activity_notifier.notify();
         }
         if self.handle_lock_activity(queue_handle) {
             self.wake_key_release_pending = true;
@@ -285,9 +283,7 @@ impl PointerHandler for CurtainApp {
                     if self.resume_input.grace_period_active() {
                         continue;
                     }
-                    if let Some(socket_path) = self.daemon_socket_path() {
-                        notify_activity(socket_path);
-                    }
+                    self.activity_notifier.notify();
                     if self.handle_lock_activity(queue_handle) {
                         self.wake_pointer_release_pending = true;
                         self.resume_input.clear_swallow_input();

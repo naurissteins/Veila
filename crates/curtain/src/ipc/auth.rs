@@ -72,14 +72,6 @@ pub(crate) fn submit_password(
     reply_sender
 }
 
-pub(crate) fn notify_activity(socket_path: PathBuf) {
-    thread::spawn(move || {
-        if let Err(error) = run_activity_notification(socket_path) {
-            tracing::debug!("failed to notify daemon about lock activity: {error:#}");
-        }
-    });
-}
-
 pub(crate) fn request_power_action(socket_path: PathBuf, action: PowerAction) {
     thread::spawn(move || {
         if let Err(error) = run_power_action_request(socket_path, action) {
@@ -230,16 +222,6 @@ fn valid_pam_text(text: &str) -> bool {
     text.chars().count() <= 160 && !text.chars().any(char::is_control)
 }
 
-fn run_activity_notification(socket_path: PathBuf) -> anyhow::Result<()> {
-    let mut stream = UnixStream::connect(&socket_path)?;
-    verify_socket_peer(&stream).context("auth socket peer rejected")?;
-    let mut payload = encode_message(&ClientMessage::Activity)?;
-    payload.push('\n');
-    stream.write_all(payload.as_bytes())?;
-    stream.flush()?;
-    Ok(())
-}
-
 fn run_power_action_request(socket_path: PathBuf, action: PowerAction) -> anyhow::Result<()> {
     let mut stream = UnixStream::connect(&socket_path)?;
     verify_socket_peer(&stream).context("auth socket peer rejected")?;
@@ -250,7 +232,7 @@ fn run_power_action_request(socket_path: PathBuf, action: PowerAction) -> anyhow
     Ok(())
 }
 
-fn verify_socket_peer(stream: &UnixStream) -> Result<()> {
+pub(super) fn verify_socket_peer(stream: &UnixStream) -> Result<()> {
     let expected_uid = Uid::effective().as_raw();
     let peer = getsockopt(stream, PeerCredentials).context("failed to read peer credentials")?;
     if peer.uid() != expected_uid {
