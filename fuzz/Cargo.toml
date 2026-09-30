@@ -11,6 +11,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+tempfile = "3"
 
 [dependencies.veila-common]
 path = "../crates/common"
@@ -37,6 +38,13 @@ bench = false
 [[bin]]
 name = "config_toml"
 path = "fuzz_targets/config_toml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "config_layers"
+path = "fuzz_targets/config_layers.rs"
 test = false
 doc = false
 bench = false
