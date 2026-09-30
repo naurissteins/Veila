@@ -1,5 +1,6 @@
 mod interaction;
 mod memory;
+mod output;
 mod poll;
 mod power;
 mod profiler;
@@ -847,20 +848,15 @@ impl CurtainApp {
             return self.background_path.as_deref();
         }
 
-        let output_name = self
-            .output_state
-            .info(&self.lock_surfaces[index].output)
-            .and_then(|info| info.name.clone());
-
-        output_name
-            .as_deref()
-            .and_then(|name| {
+        self.lock_surfaces[index].with_output_name(|name| {
+            name.and_then(|name| {
                 self.background_outputs
                     .iter()
                     .find(|output| output.name == name)
             })
             .map(|output| output.path.as_path())
             .or(self.background_path.as_deref())
+        })
     }
 
     pub(crate) fn ui_visible_on_surface(&self, index: usize) -> bool {
@@ -882,13 +878,10 @@ impl CurtainApp {
 
     fn selected_ui_surface_index(&self) -> Option<usize> {
         if let Some(selected_name) = self.ui_output_name.as_deref()
-            && let Some(index) = self.lock_surfaces.iter().position(|surface| {
-                self.output_state
-                    .info(&surface.output)
-                    .and_then(|info| info.name.clone())
-                    .as_deref()
-                    == Some(selected_name)
-            })
+            && let Some(index) = self
+                .lock_surfaces
+                .iter()
+                .position(|surface| surface.with_output_name(|name| name == Some(selected_name)))
         {
             return Some(index);
         }

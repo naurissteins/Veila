@@ -133,10 +133,8 @@ impl CurtainApp {
             shm_pool_trimmed_kib = shm_pool_trimmed_kib.saturating_add(trimmed_kib);
             shm_pool_retired_kib = shm_pool_retired_kib.saturating_add(retired_kib);
 
-            let output = self
-                .output_state
-                .info(&surface.output)
-                .and_then(|info| info.name.clone())
+            let output = surface
+                .with_output_name(|name| name.map(str::to_owned))
                 .unwrap_or_else(|| format!("surface-{index}"));
             let software_buffer_count =
                 u8::from(surface.background.is_some()) + u8::from(surface.scene_base.is_some());
