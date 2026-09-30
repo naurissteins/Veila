@@ -107,31 +107,36 @@ impl CurtainApp {
                 dirty_pixels,
                 dirty_bytes,
             });
-            let output = self
-                .output_state
-                .info(&self.lock_surfaces[index].output)
-                .and_then(|info| info.name.clone())
-                .unwrap_or_else(|| format!("surface-{index}"));
-            tracing::debug!(
-                output,
-                logical_width = size.logical_width,
-                logical_height = size.logical_height,
-                width = frame_size.width,
-                height = frame_size.height,
-                dirty_x = damaged.x,
-                dirty_y = damaged.y,
-                dirty_width = damaged.width,
-                dirty_height = damaged.height,
-                dirty_pixels,
-                dirty_bytes,
-                buffer_scale = size.scale,
-                commit_buffer_scale = size.buffer_scale_for_commit(),
-                fractional_scale = size.fractional_scale,
-                dynamic_overlay_ms,
-                commit_ms,
-                total_ms,
-                "rendered auth dirty region"
-            );
+            self.lock_surfaces[index].with_output_name(|name| {
+                let fallback;
+                let output = match name {
+                    Some(name) => name,
+                    None => {
+                        fallback = format!("surface-{index}");
+                        &fallback
+                    }
+                };
+                tracing::debug!(
+                    output,
+                    logical_width = size.logical_width,
+                    logical_height = size.logical_height,
+                    width = frame_size.width,
+                    height = frame_size.height,
+                    dirty_x = damaged.x,
+                    dirty_y = damaged.y,
+                    dirty_width = damaged.width,
+                    dirty_height = damaged.height,
+                    dirty_pixels,
+                    dirty_bytes,
+                    buffer_scale = size.scale,
+                    commit_buffer_scale = size.buffer_scale_for_commit(),
+                    fractional_scale = size.fractional_scale,
+                    dynamic_overlay_ms,
+                    commit_ms,
+                    total_ms,
+                    "rendered auth dirty region"
+                );
+            });
         }
 
         Ok(())

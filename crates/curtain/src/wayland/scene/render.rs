@@ -301,32 +301,37 @@ impl CurtainApp {
         sample: RenderTimingSample,
     ) {
         self.render_profiler.record(sample);
-        let output = self
-            .output_state
-            .info(&self.lock_surfaces[index].output)
-            .and_then(|info| info.name.clone())
-            .unwrap_or_else(|| format!("surface-{index}"));
-        tracing::debug!(
-            output,
-            logical_width = size.logical_width,
-            logical_height = size.logical_height,
-            width = size.buffer.width,
-            height = size.buffer.height,
-            buffer_scale = size.scale,
-            commit_buffer_scale = size.buffer_scale_for_commit(),
-            fractional_scale = size.fractional_scale,
-            output_role,
-            first_frame = sample.first_frame,
-            background_refreshed,
-            scene_base_refreshed,
-            background_prepare_ms = sample.background_prepare_ms,
-            background_restore_ms = sample.background_restore_ms,
-            dynamic_overlay_ms = sample.dynamic_overlay_ms,
-            shm_pool_prepare_ms = sample.shm_pool_prepare_ms,
-            commit_ms = sample.commit_ms,
-            total_ms = sample.total_ms,
-            "rendered curtain frame"
-        );
+        self.lock_surfaces[index].with_output_name(|name| {
+            let fallback;
+            let output = match name {
+                Some(name) => name,
+                None => {
+                    fallback = format!("surface-{index}");
+                    &fallback
+                }
+            };
+            tracing::debug!(
+                output,
+                logical_width = size.logical_width,
+                logical_height = size.logical_height,
+                width = size.buffer.width,
+                height = size.buffer.height,
+                buffer_scale = size.scale,
+                commit_buffer_scale = size.buffer_scale_for_commit(),
+                fractional_scale = size.fractional_scale,
+                output_role,
+                first_frame = sample.first_frame,
+                background_refreshed,
+                scene_base_refreshed,
+                background_prepare_ms = sample.background_prepare_ms,
+                background_restore_ms = sample.background_restore_ms,
+                dynamic_overlay_ms = sample.dynamic_overlay_ms,
+                shm_pool_prepare_ms = sample.shm_pool_prepare_ms,
+                commit_ms = sample.commit_ms,
+                total_ms = sample.total_ms,
+                "rendered curtain frame"
+            );
+        });
     }
 
     pub(super) fn configure_viewport_for_surface(&self, index: usize, size: SurfaceSize) {
