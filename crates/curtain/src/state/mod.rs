@@ -218,6 +218,7 @@ pub(crate) struct CurtainApp {
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
+    pub(crate) activity_notifier: crate::ipc::activity::ActivityNotifier,
     control_socket: Option<PathBuf>,
     owner_record: Option<PathBuf>,
     pub(crate) config_path: Option<PathBuf>,
@@ -303,10 +304,6 @@ pub(crate) struct CurtainEventSources {
 }
 
 impl CurtainApp {
-    pub(crate) fn daemon_socket_path(&self) -> Option<PathBuf> {
-        self.daemon_socket.clone()
-    }
-
     pub(crate) fn new(
         connection: Connection,
         globals: &GlobalList,
@@ -476,6 +473,9 @@ impl CurtainApp {
             pointer: None,
             lock_surfaces: Vec::new(),
             notify_socket: options.notify_socket,
+            activity_notifier: crate::ipc::activity::ActivityNotifier::new(
+                options.daemon_socket.clone(),
+            ),
             daemon_socket: options.daemon_socket,
             control_socket: options.control_socket,
             owner_record: options.owner_record,
