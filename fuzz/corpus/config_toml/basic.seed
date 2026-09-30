@@ -1,0 +1,8 @@
+[lock]
+acquire_timeout_seconds = 5
+auth_backoff_base_ms = 750
+
+[weather]
+enabled = true
+latitude = 56.9496
+longitude = 24.1052
