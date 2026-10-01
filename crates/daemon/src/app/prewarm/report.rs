@@ -13,7 +13,6 @@ pub(super) struct PrewarmReport {
 pub(super) struct PrewarmResult {
     pub(super) wallpapers: Vec<Result<PrewarmReport, (PathBuf, anyhow::Error)>>,
     pub(super) generated: Option<GeneratedPrewarmReport>,
-    pub(super) scene: Option<ScenePrewarmReport>,
 }
 
 pub(super) struct RenderedPrewarmReport {
@@ -32,12 +31,6 @@ pub(super) struct LayeredPrewarmReport {
     pub(super) elapsed_ms: u64,
     pub(super) probed_outputs: usize,
     pub(super) cache_hits: usize,
-    pub(super) warmed_sizes: usize,
-}
-
-pub(super) struct ScenePrewarmReport {
-    pub(super) elapsed_ms: u64,
-    pub(super) probed_outputs: usize,
     pub(super) warmed_sizes: usize,
 }
 
@@ -110,15 +103,5 @@ pub(super) fn log_generated_prewarm_report(
         total_elapsed_ms = elapsed_ms(started_at),
         generated_mode = report.mode,
         "generated background prewarm completed"
-    );
-}
-
-pub(super) fn log_scene_prewarm_report(report: ScenePrewarmReport, prewarm_helper: bool) {
-    tracing::info!(
-        prewarm_helper,
-        elapsed_ms = report.elapsed_ms,
-        probed_outputs = report.probed_outputs,
-        warmed_sizes = report.warmed_sizes,
-        "static scene prewarm finished"
     );
 }

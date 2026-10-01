@@ -3,8 +3,7 @@ mod report;
 use layers::{prewarm_generated_backgrounds, prewarm_layered_backgrounds};
 use report::{
     GeneratedPrewarmReport, LayeredPrewarmReport, PrewarmReport, PrewarmResult,
-    RenderedPrewarmReport, ScenePrewarmReport, log_generated_prewarm_report, log_prewarm_report,
-    log_scene_prewarm_report,
+    RenderedPrewarmReport, log_generated_prewarm_report, log_prewarm_report,
 };
 
 use std::{
@@ -14,7 +13,7 @@ use std::{
 
 use veila_common::{AppConfig, BackdropVisualConfig, LayerVisualConfig, RgbColor, elapsed_ms};
 use veila_renderer::{
-    ClearColor, FrameSize, SoftwareBuffer,
+    ClearColor, FrameSize,
     background::{BackgroundTreatment, GeneratedBackground, prewarm_rendered, prewarm_source},
 };
 use veila_ui::{
@@ -84,9 +83,6 @@ pub(super) async fn run_background_prewarm_once(config: AppConfig) {
             if let Some(report) = result.generated {
                 log_generated_prewarm_report(report, started_at, true);
             }
-            if let Some(report) = result.scene {
-                log_scene_prewarm_report(report, true);
-            }
             tracing::debug!(
                 prewarm_helper = true,
                 elapsed_ms = elapsed_ms(started_at),
@@ -134,12 +130,9 @@ fn prewarm_backgrounds(
         let sizes = generated_sizes(&background, &outputs);
         prewarm_generated_backgrounds(generated, treatment, &scene_shell, &sizes)
     });
-    let scene = prewarm_static_scene(&scene_shell, &outputs);
-
     PrewarmResult {
         wallpapers,
         generated,
-        scene,
     }
 }
 
@@ -188,31 +181,6 @@ fn prewarm_rendered_backgrounds(
     })
 }
 
-fn prewarm_static_scene(
-    shell: &ShellState,
-    outputs: &[output_probe::ProbedOutput],
-) -> Option<ScenePrewarmReport> {
-    if outputs.is_empty() {
-        return None;
-    }
-
-    let started_at = Instant::now();
-    let sizes = unique_prewarm_sizes(outputs);
-    let mut warmed_sizes = 0usize;
-
-    for size in &sizes {
-        let mut buffer = SoftwareBuffer::solid(size.buffer, ClearColor::opaque(0, 0, 0)).ok()?;
-        shell.render_static_overlay_at_scale(&mut buffer, size.scale);
-        warmed_sizes += 1;
-    }
-
-    Some(ScenePrewarmReport {
-        elapsed_ms: elapsed_ms(started_at),
-        probed_outputs: outputs.len(),
-        warmed_sizes,
-    })
-}
-
 fn unique_buffer_sizes(sizes: &[PrewarmSize]) -> Vec<FrameSize> {
     let mut unique = Vec::new();
     for size in sizes {
@@ -221,17 +189,6 @@ fn unique_buffer_sizes(sizes: &[PrewarmSize]) -> Vec<FrameSize> {
         }
     }
     unique
-}
-
-fn unique_prewarm_sizes(outputs: &[output_probe::ProbedOutput]) -> Vec<PrewarmSize> {
-    let mut sizes = Vec::new();
-    for output in outputs {
-        let size = PrewarmSize::from(output);
-        if !sizes.contains(&size) {
-            sizes.push(size);
-        }
-    }
-    sizes
 }
 
 fn prewarm_jobs(
