@@ -1,4 +1,5 @@
 mod asset;
+mod prewarm;
 mod render;
 mod render_cache;
 mod source_cache;
@@ -14,9 +15,12 @@ use crate::ClearColor;
 
 pub use asset::{
     load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
-    load_cached_render_variant, prewarm_rendered, prewarm_rendered_generated, prewarm_source,
-    store_cached_generated_render, store_cached_generated_render_variant, store_cached_render,
-    store_cached_render_variant,
+    load_cached_render_variant, store_cached_generated_render,
+    store_cached_generated_render_variant, store_cached_render, store_cached_render_variant,
+};
+
+pub use prewarm::{
+    FileBackgroundPrewarm, prewarm_rendered, prewarm_rendered_generated, prewarm_source,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -2,12 +2,12 @@ use super::{
     GeneratedPrewarmReport, LayeredPrewarmReport, PrewarmSize, RenderedPrewarmReport,
     unique_buffer_sizes,
 };
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 use veila_common::elapsed_ms;
 use veila_renderer::{
     ClearColor,
     background::{
-        BackgroundAsset, BackgroundTreatment, GeneratedBackground,
+        BackgroundAsset, BackgroundTreatment, FileBackgroundPrewarm, GeneratedBackground,
         load_cached_generated_render_variant, load_cached_render_variant,
         prewarm_rendered_generated, store_cached_generated_render_variant,
         store_cached_render_variant,
@@ -16,9 +16,7 @@ use veila_renderer::{
 use veila_ui::ShellState;
 
 pub(super) fn prewarm_layered_backgrounds(
-    path: &Path,
-    fallback: ClearColor,
-    treatment: BackgroundTreatment,
+    asset: &mut FileBackgroundPrewarm<'_>,
     shell: &ShellState,
     sizes: &[PrewarmSize],
 ) -> Option<LayeredPrewarmReport> {
@@ -30,7 +28,8 @@ pub(super) fn prewarm_layered_backgrounds(
     }
 
     let started_at = Instant::now();
-    let mut asset = None;
+    let path = asset.path();
+    let treatment = asset.treatment();
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
@@ -46,8 +45,7 @@ pub(super) fn prewarm_layered_backgrounds(
             {
                 cache_hits += 1;
             } else {
-                let mut buffer =
-                    render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?;
+                let mut buffer = asset.render(size.buffer).ok()?;
                 shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
                 store_cached_render_variant(path, size.buffer, treatment, &buffer, variant).ok()?;
                 warmed_sizes += 1;
@@ -75,15 +73,12 @@ pub(super) fn prewarm_layered_backgrounds(
                     {
                         buffer
                     } else {
-                        let mut buffer =
-                            render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?;
+                        let mut buffer = asset.render(size.buffer).ok()?;
                         shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
                         buffer
                     }
                 }
-                (None, None) => {
-                    render_wallpaper(&mut asset, path, fallback, treatment, size.buffer)?
-                }
+                (None, None) => asset.render(size.buffer).ok()?,
             };
             shell.render_static_overlay_at_scale(&mut buffer, size.scale);
             store_cached_render_variant(path, size.buffer, treatment, &buffer, &scene_variant)
@@ -233,17 +228,4 @@ fn prewarm_generated_layered_backgrounds(
         cache_hits,
         warmed_sizes,
     })
-}
-
-fn render_wallpaper(
-    asset: &mut Option<BackgroundAsset>,
-    path: &Path,
-    fallback: ClearColor,
-    treatment: BackgroundTreatment,
-    size: veila_renderer::FrameSize,
-) -> Option<veila_renderer::SoftwareBuffer> {
-    if asset.is_none() {
-        *asset = Some(BackgroundAsset::load(Some(path), fallback, None, treatment).ok()?);
-    }
-    asset.as_ref()?.render(size).ok()
 }

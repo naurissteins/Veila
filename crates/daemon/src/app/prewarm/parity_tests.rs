@@ -4,8 +4,8 @@ use veila_common::AppConfig;
 use veila_renderer::{
     ClearColor, FrameSize, SoftwareBuffer,
     background::{
-        BackgroundAsset, GeneratedBackground, load_cached_generated_render_variant,
-        load_cached_render_variant,
+        BackgroundAsset, FileBackgroundPrewarm, GeneratedBackground,
+        load_cached_generated_render_variant, load_cached_render_variant,
     },
 };
 use veila_ui::{ShellState, ShellTheme, background::background_treatment};
@@ -101,7 +101,12 @@ fn check_config_caches(config: &AppConfig, wallpaper: &Path) {
     });
     let treatment = background_treatment(&config.background);
     let fallback = ClearColor::opaque(0, 0, 0);
-    prewarm_layered_backgrounds(wallpaper, fallback, treatment, &prewarm, &sizes);
+    let mut asset = FileBackgroundPrewarm::new(wallpaper, fallback, treatment);
+    asset.prewarm_source().expect("source prewarm");
+    asset
+        .prewarm_rendered(&sizes.map(|size| size.buffer))
+        .expect("plain prewarm");
+    prewarm_layered_backgrounds(&mut asset, &prewarm, &sizes);
     prewarm_generated_backgrounds(generated, treatment, &prewarm, &sizes)
         .expect("generated prewarm");
     for size in sizes {
@@ -111,9 +116,7 @@ fn check_config_caches(config: &AppConfig, wallpaper: &Path) {
         );
         check_cached_pixels(&curtain, config, wallpaper, generated, size);
     }
-    if let Some(report) =
-        prewarm_layered_backgrounds(wallpaper, fallback, treatment, &prewarm, &sizes)
-    {
+    if let Some(report) = prewarm_layered_backgrounds(&mut asset, &prewarm, &sizes) {
         assert_eq!(report.warmed_sizes, 0, "reuse the existing file cache");
         assert!(report.cache_hits > 0);
     }

@@ -14,7 +14,7 @@ use std::{
 use veila_common::{AppConfig, BackdropVisualConfig, LayerVisualConfig, RgbColor, elapsed_ms};
 use veila_renderer::{
     ClearColor, FrameSize,
-    background::{BackgroundTreatment, GeneratedBackground, prewarm_rendered, prewarm_source},
+    background::{BackgroundTreatment, FileBackgroundPrewarm, GeneratedBackground},
 };
 use veila_ui::{
     ShellState, ShellTheme,
@@ -143,13 +143,12 @@ fn prewarm_wallpaper(
     shell: &ShellState,
 ) -> Result<PrewarmReport, (PathBuf, anyhow::Error)> {
     let source_started_at = Instant::now();
-    match prewarm_source(&job.path) {
+    let mut asset = FileBackgroundPrewarm::new(&job.path, fallback, treatment);
+    match asset.prewarm_source() {
         Ok(status) => {
             let source_elapsed_ms = elapsed_ms(source_started_at);
-            let rendered =
-                prewarm_rendered_backgrounds(&job.path, fallback, treatment, &job.buffer_sizes());
-            let layered =
-                prewarm_layered_backgrounds(&job.path, fallback, treatment, shell, &job.sizes);
+            let rendered = prewarm_rendered_backgrounds(&mut asset, &job.buffer_sizes());
+            let layered = prewarm_layered_backgrounds(&mut asset, shell, &job.sizes);
             Ok(PrewarmReport {
                 path: job.path,
                 source_status: status,
@@ -163,9 +162,7 @@ fn prewarm_wallpaper(
 }
 
 fn prewarm_rendered_backgrounds(
-    path: &Path,
-    fallback: ClearColor,
-    treatment: BackgroundTreatment,
+    asset: &mut FileBackgroundPrewarm<'_>,
     sizes: &[FrameSize],
 ) -> Option<RenderedPrewarmReport> {
     if sizes.is_empty() {
@@ -173,7 +170,7 @@ fn prewarm_rendered_backgrounds(
     }
 
     let started_at = Instant::now();
-    let summary = prewarm_rendered(path, fallback, treatment, sizes).ok()?;
+    let summary = asset.prewarm_rendered(sizes).ok()?;
     Some(RenderedPrewarmReport {
         elapsed_ms: elapsed_ms(started_at),
         probed_outputs: sizes.len(),
