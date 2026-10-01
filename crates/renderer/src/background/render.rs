@@ -208,6 +208,7 @@ fn apply_layered_blob(buffer: &mut SoftwareBuffer, blob: BackgroundLayeredBlob) 
     let center_x = blob.x.min(100) as f32 / 100.0;
     let center_y = blob.y.min(100) as f32 / 100.0;
     let radius = (blob.size.clamp(1, 100) as f32 / 100.0).max(f32::EPSILON);
+    let radius_squared = radius * radius;
 
     let row_len = size.width as usize * 4;
     for (y, row) in buffer.pixels_mut().chunks_exact_mut(row_len).enumerate() {
@@ -215,7 +216,12 @@ fn apply_layered_blob(buffer: &mut SoftwareBuffer, blob: BackgroundLayeredBlob) 
         let dy_squared = (py - center_y).powi(2);
         for (x, pixel) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let px = x as f32 / width_span;
-            let distance = ((px - center_x).powi(2) + dy_squared).sqrt();
+            let distance_squared = (px - center_x).powi(2) + dy_squared;
+            // Pixels outside the blob have zero opacity; keep the falloff math inside unchanged.
+            if distance_squared >= radius_squared {
+                continue;
+            }
+            let distance = distance_squared.sqrt();
             let t = (distance / radius).clamp(0.0, 1.0);
             let alpha = 1.0 - smoothstep(t);
             if alpha <= 0.0 {

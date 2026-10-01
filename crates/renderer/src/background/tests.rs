@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+mod layered;
+
 use image::{Rgba, RgbaImage};
 
 use super::{
