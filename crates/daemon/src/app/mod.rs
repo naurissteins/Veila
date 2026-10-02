@@ -1,5 +1,6 @@
 use self::runtime::control_socket_path;
 
+mod auto_reload;
 mod battery;
 mod cache;
 mod connections;
@@ -42,7 +43,7 @@ use self::runtime::{
     wait_for_curtain_exit,
 };
 use self::state::{AppRuntime, ControlInputs};
-use self::watch::{AutoReloadTrigger, AutoReloadWatcher, effective_auto_reload_debounce_ms};
+use self::watch::AutoReloadWatcher;
 
 pub async fn run_background_prewarm_once(config_path: Option<&Path>) -> Result<()> {
     let loaded_config =
@@ -470,194 +471,8 @@ pub async fn run(
                     runtime.power_status_sent = false;
                 }
 
-                match auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
-                    Some(AutoReloadTrigger::Config) => {
-                        let current_auto_reload = runtime.loaded_config.config.lock.auto_reload_config;
-                        match AppConfig::load(options.config_path.as_deref()) {
-                            Ok(new_loaded_config) => {
-                                let should_apply = current_auto_reload || new_loaded_config.config.lock.auto_reload_config;
-                                if should_apply {
-                                    let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
-                                    let weather = runtime.weather.clone();
-                                    let battery = runtime.battery.clone();
-                                    let now_playing = runtime.now_playing.clone();
-                                    let ControlInputs {
-                                        loaded_config,
-                                        last_reload_result,
-                                        last_reload_unix_ms,
-                                        auth_policy,
-                                        background_selection: _,
-                                        suspend_state,
-                                        fingerprint: _,
-                                        slots,
-                                    } = runtime.control_inputs();
-                                    match helpers::apply_loaded_config(
-                                        slots.state,
-                                        control_socket_path(slots.active),
-                                        loaded_config,
-                                        new_loaded_config,
-                                        last_reload_result,
-                                        last_reload_unix_ms,
-                                        "config-change",
-                                        Some(debounce_ms),
-                                        auth_policy,
-                                        slots.auth_state,
-                                        suspend_state,
-                                        &weather,
-                                        &battery,
-                                        &now_playing,
-                                    ).await {
-                                        Ok(_) => {}
-                                        Err(reason) => {
-                                            *last_reload_result =
-                                                Some(format!("error:config-change:{reason}"));
-                                            *last_reload_unix_ms = std::time::SystemTime::now()
-                                                .duration_since(std::time::UNIX_EPOCH)
-                                                .ok()
-                                                .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                            tracing::warn!("{reason}");
-                                        }
-                                    }
-                                } else {
-                                    tracing::debug!("ignoring config file change because auto_reload_config is disabled");
-                                }
-                            }
-                            Err(error) => {
-                                if current_auto_reload {
-                                    runtime.last_reload_result = Some(format!(
-                                        "error:config-change:failed to auto reload daemon config after config file change: {error:#}"
-                                    ));
-                                    runtime.last_reload_unix_ms = std::time::SystemTime::now()
-                                        .duration_since(std::time::UNIX_EPOCH)
-                                        .ok()
-                                        .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                    tracing::warn!("failed to auto reload daemon config after config file change: {error:#}");
-                                }
-                            }
-                        }
-                    }
-                    Some(trigger @ (AutoReloadTrigger::Theme | AutoReloadTrigger::Include)) => {
-                        let (source, file_kind) = match trigger {
-                            AutoReloadTrigger::Theme => ("theme-change", "theme"),
-                            AutoReloadTrigger::Include => ("include-change", "include"),
-                            _ => unreachable!(),
-                        };
-                        match AppConfig::load(options.config_path.as_deref()) {
-                            Ok(new_loaded_config) => {
-                                let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
-                                let weather = runtime.weather.clone();
-                                let battery = runtime.battery.clone();
-                                let now_playing = runtime.now_playing.clone();
-                                let ControlInputs {
-                                    loaded_config,
-                                    last_reload_result,
-                                    last_reload_unix_ms,
-                                    auth_policy,
-                                    background_selection: _,
-                                    suspend_state,
-                                    fingerprint: _,
-                                    slots,
-                                } = runtime.control_inputs();
-                                match helpers::apply_loaded_config(
-                                    slots.state,
-                                    control_socket_path(slots.active),
-                                    loaded_config,
-                                    new_loaded_config,
-                                    last_reload_result,
-                                    last_reload_unix_ms,
-                                    source,
-                                    Some(debounce_ms),
-                                    auth_policy,
-                                    slots.auth_state,
-                                    suspend_state,
-                                    &weather,
-                                    &battery,
-                                    &now_playing,
-                                ).await {
-                                    Ok(_) => {}
-                                    Err(reason) => {
-                                        *last_reload_result =
-                                            Some(format!("error:{source}:{reason}"));
-                                        *last_reload_unix_ms = std::time::SystemTime::now()
-                                            .duration_since(std::time::UNIX_EPOCH)
-                                            .ok()
-                                            .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                        tracing::warn!("{reason}");
-                                    }
-                                }
-                            }
-                            Err(error) => {
-                                runtime.last_reload_result = Some(format!(
-                                    "error:{source}:failed to auto reload daemon config after {file_kind} file change: {error:#}"
-                                ));
-                                runtime.last_reload_unix_ms = std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .ok()
-                                    .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                tracing::warn!(
-                                    "failed to auto reload daemon config after {file_kind} file change: {error:#}"
-                                );
-                            }
-                        }
-                    }
-                    Some(AutoReloadTrigger::Wallpaper) => {
-                        match AppConfig::load(options.config_path.as_deref()) {
-                            Ok(new_loaded_config) => {
-                                let debounce_ms = effective_auto_reload_debounce_ms(&new_loaded_config);
-                                let weather = runtime.weather.clone();
-                                let battery = runtime.battery.clone();
-                                let now_playing = runtime.now_playing.clone();
-                                let ControlInputs {
-                                    loaded_config,
-                                    last_reload_result,
-                                    last_reload_unix_ms,
-                                    auth_policy,
-                                    background_selection: _,
-                                    suspend_state,
-                                    fingerprint: _,
-                                    slots,
-                                } = runtime.control_inputs();
-                                match helpers::apply_loaded_config(
-                                    slots.state,
-                                    control_socket_path(slots.active),
-                                    loaded_config,
-                                    new_loaded_config,
-                                    last_reload_result,
-                                    last_reload_unix_ms,
-                                    "wallpaper-change",
-                                    Some(debounce_ms),
-                                    auth_policy,
-                                    slots.auth_state,
-                                    suspend_state,
-                                    &weather,
-                                    &battery,
-                                    &now_playing,
-                                    ).await {
-                                        Ok(_) => {}
-                                    Err(reason) => {
-                                        *last_reload_result =
-                                            Some(format!("error:wallpaper-change:{reason}"));
-                                        *last_reload_unix_ms = std::time::SystemTime::now()
-                                            .duration_since(std::time::UNIX_EPOCH)
-                                            .ok()
-                                            .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                        tracing::warn!("{reason}");
-                                    }
-                                }
-                            }
-                            Err(error) => {
-                                runtime.last_reload_result = Some(format!(
-                                    "error:wallpaper-change:failed to auto reload daemon config after wallpaper change: {error:#}"
-                                ));
-                                runtime.last_reload_unix_ms = std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .ok()
-                                    .and_then(|duration| u64::try_from(duration.as_millis()).ok());
-                                tracing::warn!("failed to auto reload daemon config after wallpaper change: {error:#}");
-                            }
-                        }
-                    }
-                    None => {}
+                if let Some(trigger) = auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
+                    auto_reload::handle(trigger, options.config_path.as_deref(), &mut runtime).await;
                 }
             }
             _ = sigint.recv() => {
