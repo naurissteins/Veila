@@ -149,7 +149,8 @@ Load a specific config file.
 Append daemon logs to a file for this launch.
 .TP
 .BI --session-id= ID
-Override the logind session id.
+Select a local interactive logind session belonging to the current user.
+An invalid or ineligible explicit id fails startup instead of falling back.
 .SH CONFIGURATION
 The default config file is
 .BR $XDG_CONFIG_HOME/veila/config.toml ,

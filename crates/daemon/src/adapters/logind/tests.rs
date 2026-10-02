@@ -1,7 +1,4 @@
-use super::session::{
-    SessionLookupCandidate, SessionSelectionSnapshot, normalized_session_id,
-    session_lookup_candidates, session_selection_score,
-};
+use super::session::{SessionLookupCandidate, normalized_session_id, session_lookup_candidates};
 
 #[test]
 fn normalizes_session_ids() {
@@ -10,44 +7,32 @@ fn normalizes_session_ids() {
 }
 
 #[test]
-fn prefers_cli_session_id_before_pid_lookup() {
-    let candidates = session_lookup_candidates(Some("c2"));
-
+fn explicit_session_id_has_no_fallback() {
     assert_eq!(
-        candidates.first(),
-        Some(&SessionLookupCandidate::SessionId {
-            source: "cli",
-            value: "c2".to_string(),
-        })
+        session_lookup_candidates(Some(" c2 "), Some("manager")),
+        vec![SessionLookupCandidate::Explicit("c2".into())]
     );
-    assert!(candidates.contains(&SessionLookupCandidate::Pid));
-    assert!(matches!(
-        candidates.last(),
-        Some(SessionLookupCandidate::ListByUid { .. })
-    ));
 }
 
 #[test]
-fn prefers_active_local_user_session_for_uid_fallback() {
-    let preferred = SessionSelectionSnapshot {
-        active: true,
-        class: "user".to_string(),
-        remote: false,
-        state: "active".to_string(),
-        session_type: "wayland".to_string(),
-        seat: "seat0".to_string(),
-    };
-    let weaker = SessionSelectionSnapshot {
-        active: false,
-        class: "manager".to_string(),
-        remote: false,
-        state: "online".to_string(),
-        session_type: "".to_string(),
-        seat: "".to_string(),
-    };
+fn implicit_lookup_keeps_environment_pid_and_uid_order() {
+    assert_eq!(
+        session_lookup_candidates(None, Some(" c2 ")),
+        vec![
+            SessionLookupCandidate::Environment("c2".into()),
+            SessionLookupCandidate::Pid,
+            SessionLookupCandidate::ListByUid
+        ]
+    );
+}
 
-    assert!(
-        session_selection_score(&preferred, Some("wayland"))
-            > session_selection_score(&weaker, Some("wayland"))
+#[test]
+fn blank_session_ids_do_not_disable_automatic_resolution() {
+    assert_eq!(
+        session_lookup_candidates(Some(" "), Some(" ")),
+        vec![
+            SessionLookupCandidate::Pid,
+            SessionLookupCandidate::ListByUid
+        ]
     );
 }

@@ -11,6 +11,7 @@ use zbus::{
 )]
 pub trait Manager {
     fn get_session(&self, session_id: &str) -> zbus::Result<OwnedObjectPath>;
+    #[zbus(name = "GetSessionByPID")]
     fn get_session_by_pid(&self, pid: u32) -> zbus::Result<OwnedObjectPath>;
     fn inhibit(&self, what: &str, who: &str, why: &str, mode: &str) -> zbus::Result<OwnedFd>;
     fn list_sessions(&self) -> zbus::Result<Vec<(String, u32, String, String, OwnedObjectPath)>>;
@@ -47,6 +48,12 @@ pub trait Session {
 
     #[zbus(property)]
     fn r#type(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn user(&self) -> zbus::Result<(u32, OwnedObjectPath)>;
+
+    #[zbus(property)]
+    fn seat(&self) -> zbus::Result<(String, OwnedObjectPath)>;
 
     fn set_locked_hint(&self, locked: bool) -> zbus::Result<()>;
 }
