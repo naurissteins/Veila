@@ -205,6 +205,15 @@ fn current_unix_ms() -> Option<u64> {
         .and_then(|duration| u64::try_from(duration.as_millis()).ok())
 }
 
+pub(super) fn record_reload_result(
+    last_reload_result: &mut Option<String>,
+    last_reload_unix_ms: &mut Option<u64>,
+    result: String,
+) {
+    *last_reload_result = Some(result);
+    *last_reload_unix_ms = current_unix_ms();
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn apply_loaded_config(
     state: &LockState,
@@ -303,8 +312,11 @@ pub(super) async fn apply_loaded_config(
         );
     }
 
-    *last_reload_result = Some(format!("ok:{reload_source}"));
-    *last_reload_unix_ms = current_unix_ms();
+    record_reload_result(
+        last_reload_result,
+        last_reload_unix_ms,
+        format!("ok:{reload_source}"),
+    );
 
     Ok(DaemonReloadStatus {
         config_path: loaded_config
@@ -353,16 +365,22 @@ pub(super) async fn reload_config_response(
         {
             Ok(status) => DaemonControlResponse::Reloaded(status),
             Err(reason) => {
-                *last_reload_result = Some(format!("error:manual:{reason}"));
-                *last_reload_unix_ms = current_unix_ms();
+                record_reload_result(
+                    last_reload_result,
+                    last_reload_unix_ms,
+                    format!("error:manual:{reason}"),
+                );
                 tracing::warn!("{reason}");
                 DaemonControlResponse::Error { reason }
             }
         },
         Err(error) => {
             let reason = format!("failed to reload daemon config: {error:#}");
-            *last_reload_result = Some(format!("error:manual:{reason}"));
-            *last_reload_unix_ms = current_unix_ms();
+            record_reload_result(
+                last_reload_result,
+                last_reload_unix_ms,
+                format!("error:manual:{reason}"),
+            );
             DaemonControlResponse::Error { reason }
         }
     }
