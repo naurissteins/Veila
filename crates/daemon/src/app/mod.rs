@@ -1,3 +1,5 @@
+use self::runtime::control_socket_path;
+
 mod battery;
 mod cache;
 mod connections;
@@ -130,7 +132,7 @@ pub async fn run(
     idle::warn_about_legacy_idle_service();
 
     loop {
-        if shutdown_gate.ready(runtime.state, runtime.curtain.is_some()) {
+        if shutdown_gate.ready(runtime.state, runtime.active.is_some()) {
             tracing::info!("pending daemon shutdown can finish after unlock");
             break;
         }
@@ -148,6 +150,16 @@ pub async fn run(
             )
             .await;
 
+        // These waits borrow separate fields until the selected branch starts.
+        let active_present = runtime.active.is_some();
+        let (curtain, auth_listener, auth_results) = match runtime.active.as_mut() {
+            Some(active) => (
+                Some(&mut active.curtain),
+                Some(&mut active.auth_listener),
+                Some(&mut active.auth_results),
+            ),
+            None => (None, None, None),
+        };
         tokio::select! {
             Some(_) = lock_stream.next() => {
                 idle::activate_triggered_lock("logind", &mut runtime, &session_proxy, options.config_path.as_deref()).await;
@@ -179,7 +191,7 @@ pub async fn run(
                     }
                 }
             }
-            result = wait_for_curtain_exit(&mut runtime.curtain), if runtime.curtain.is_some() && curtain_wait_retry_at.is_none_or(|retry_at| std::time::Instant::now() >= retry_at) => {
+            result = wait_for_curtain_exit(curtain), if active_present && curtain_wait_retry_at.is_none_or(|retry_at| std::time::Instant::now() >= retry_at) => {
                 match result {
                     Ok(status) => {
                         curtain_wait_retry_at = None;
@@ -199,10 +211,10 @@ pub async fn run(
                     }
                 }
             }
-            result = accept_auth_connection(&mut runtime.auth_listener), if runtime.state.is_active() && runtime.auth_listener.is_some() => {
+            result = accept_auth_connection(auth_listener), if runtime.state.is_active() && active_present => {
                 match result {
                     Ok(stream) => {
-                        if let Some(generation) = runtime.auth_socket_path.clone() {
+                        if let Some(generation) = runtime.active.as_ref().map(|active| active.auth_socket_path.clone()) {
                             connections::spawn_auth_reader(
                                 stream,
                                 generation,
@@ -218,7 +230,7 @@ pub async fn run(
                 }
             }
             Some(connection) = auth_connections.recv() => {
-                if runtime.auth_socket_path.as_ref() != Some(&connection.generation) {
+                if runtime.active.as_ref().map(|active| &active.auth_socket_path) != Some(&connection.generation) {
                     tracing::debug!("discarding auth request from an inactive lock generation");
                     continue;
                 }
@@ -226,7 +238,7 @@ pub async fn run(
                     ClientMessageContext {
                         username: &username,
                         visuals: &runtime.loaded_config.config.visuals,
-                        auth_sender: &runtime.auth_sender,
+                        auth_sender: runtime.active.as_ref().map(|active| &active.auth_sender),
                         auth_state: &mut runtime.auth_state,
                         suspend_state: &mut runtime.suspend_state,
                         manager_proxy: &manager_proxy,
@@ -235,7 +247,7 @@ pub async fn run(
                     connection,
                 ).await;
             }
-            result = receive_auth_result(&mut runtime.auth_results), if runtime.auth_results.is_some() => {
+            result = receive_auth_result(auth_results), if active_present => {
                 let Some(result) = result else {
                     continue;
                 };
@@ -321,7 +333,7 @@ pub async fn run(
                 let snapshot = now_playing_updates.borrow().clone();
                 handle_now_playing_update(
                     &runtime.state,
-                    runtime.control_socket_path.as_deref(),
+                    control_socket_path(&runtime.active),
                     snapshot.as_ref(),
                 ).await;
             }
@@ -348,7 +360,7 @@ pub async fn run(
                 match suspend_decision {
                     suspend::SuspendDecision::Ready => {
                         runtime.suspend_state.clear_reported_skip_reason();
-                        if let Some(control_socket_path) = runtime.control_socket_path.as_deref() {
+                        if let Some(control_socket_path) = control_socket_path(&runtime.active) {
                             match crate::adapters::process::request_curtain_arm_resume_input_guard(control_socket_path).await {
                                 Ok(()) => {}
                                 Err(error) => {
@@ -411,11 +423,11 @@ pub async fn run(
                         runtime.loaded_config.config.fingerprint.enabled,
                         runtime.loaded_config.config.fingerprint.max_failed_attempts,
                         &username,
-                        runtime.auth_sender.clone(),
+                        runtime.active.as_ref().map(|active| active.auth_sender.clone()),
                     ).await;
                     runtime
                         .fingerprint
-                        .forward_status_updates(runtime.control_socket_path.as_ref())
+                        .forward_status_updates(runtime.active.as_ref().map(|active| &active.control_socket_path))
                         .await;
 
                     let power_status_snapshot = runtime
@@ -424,7 +436,7 @@ pub async fn run(
                     let power_status_changed = !runtime.power_status_sent
                         || runtime.last_power_status_snapshot != power_status_snapshot;
                     if power_status_changed
-                        && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+                        && let Some(control_socket_path) = control_socket_path(&runtime.active)
                     {
                         match crate::adapters::process::request_curtain_power_status_update(
                             control_socket_path,
@@ -481,7 +493,7 @@ pub async fn run(
                                     } = runtime.control_inputs();
                                     match helpers::apply_loaded_config(
                                         slots.state,
-                                        slots.control_socket_path.as_deref(),
+                                        control_socket_path(slots.active),
                                         loaded_config,
                                         new_loaded_config,
                                         last_reload_result,
@@ -548,7 +560,7 @@ pub async fn run(
                                 } = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
-                                    slots.control_socket_path.as_deref(),
+                                    control_socket_path(slots.active),
                                     loaded_config,
                                     new_loaded_config,
                                     last_reload_result,
@@ -607,7 +619,7 @@ pub async fn run(
                                 } = runtime.control_inputs();
                                 match helpers::apply_loaded_config(
                                     slots.state,
-                                    slots.control_socket_path.as_deref(),
+                                    control_socket_path(slots.active),
                                     loaded_config,
                                     new_loaded_config,
                                     last_reload_result,
@@ -650,7 +662,7 @@ pub async fn run(
             }
             _ = sigint.recv() => {
                 tracing::info!("received SIGINT");
-                if shutdown_gate.request(runtime.state, runtime.curtain.is_some()) {
+                if shutdown_gate.request(runtime.state, runtime.active.is_some()) {
                     break;
                 }
                 next_session_close_check = std::time::Instant::now();
@@ -658,7 +670,7 @@ pub async fn run(
             }
             _ = sigterm.recv() => {
                 tracing::info!("received SIGTERM");
-                if shutdown_gate.request(runtime.state, runtime.curtain.is_some()) {
+                if shutdown_gate.request(runtime.state, runtime.active.is_some()) {
                     break;
                 }
                 next_session_close_check = std::time::Instant::now();

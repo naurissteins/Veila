@@ -14,7 +14,7 @@ use super::{
     memory,
     mpris::NowPlayingHandle,
     prewarm,
-    runtime::{ActiveRuntime, activate_lock},
+    runtime::{ActiveLock, activate_lock},
     state::BackgroundSelectionState,
     suspend::{LockedSuspendState, suspend_delay_seconds},
     watch::effective_auto_reload_debounce_ms,
@@ -44,7 +44,7 @@ pub(super) async fn activate_and_install(
     acquire_timeout_seconds: u64,
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
-    runtime: ActiveRuntime<'_>,
+    runtime: &mut Option<ActiveLock>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,
@@ -66,7 +66,7 @@ pub(super) async fn activate_and_install(
     )
     .await?;
     let latency_report = activation.latency_report.clone();
-    runtime.install_activation(activation);
+    *runtime = Some(activation.active);
     *auth_state = AuthState::new(auth_policy);
     suspend_state.arm(Instant::now());
     Ok(latency_report)
@@ -87,7 +87,7 @@ pub(super) async fn activate_and_log(
     acquire_timeout_seconds: u64,
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
-    runtime: ActiveRuntime<'_>,
+    runtime: &mut Option<ActiveLock>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
     suspend_state: &mut LockedSuspendState,

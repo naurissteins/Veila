@@ -3,10 +3,7 @@ use crate::{
     domain::{auth::AuthPolicy, lock_state::LockState},
 };
 
-use super::super::{
-    runtime::{ActiveRuntime, deactivate_lock},
-    state::RuntimeSlots,
-};
+use super::super::{runtime::deactivate_lock, state::RuntimeSlots};
 
 #[derive(Default)]
 pub(crate) struct ShutdownGate {
@@ -35,32 +32,13 @@ pub(crate) async fn shutdown_runtime(
 ) {
     let RuntimeSlots {
         state,
-        curtain,
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
+        active,
         auth_state,
         active_latency_report: _,
     } = slots;
 
-    if let Err(error) = deactivate_lock(
-        session_proxy,
-        state,
-        ActiveRuntime::new(
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
-        ),
-        auth_policy,
-        auth_state,
-        None,
-    )
-    .await
+    if let Err(error) =
+        deactivate_lock(session_proxy, state, active, auth_policy, auth_state, None).await
     {
         tracing::warn!("failed to stop curtain during shutdown: {error:#}");
     }
@@ -75,6 +53,7 @@ mod tests {
         let mut gate = ShutdownGate::default();
         assert!(!gate.request(LockState::Locking, true));
         assert!(!gate.ready(LockState::Locked, true));
+        assert!(!gate.ready(LockState::Locked, false));
         assert!(!gate.ready(LockState::Unlocking, true));
         assert!(!gate.ready(LockState::Unlocked, true));
         assert!(gate.ready(LockState::Unlocked, false));

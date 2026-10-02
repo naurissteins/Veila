@@ -34,7 +34,7 @@ pub(crate) struct ClientMessageContext<'a, 'p> {
     pub(crate) username: &'a str,
     pub(crate) visuals: &'a VisualConfig,
     pub(crate) auth_state: &'a mut AuthState,
-    pub(crate) auth_sender: &'a Option<UnboundedSender<AuthResult>>,
+    pub(crate) auth_sender: Option<&'a UnboundedSender<AuthResult>>,
     pub(crate) suspend_state: &'a mut LockedSuspendState,
     pub(crate) manager_proxy: &'a logind::ManagerProxy<'p>,
     pub(crate) latency_report: LatencyReportMode,
@@ -70,7 +70,7 @@ pub(crate) async fn handle_client_message(
             tracing::info!(attempt_id, "received password submission");
             match auth_state.admit(Instant::now()) {
                 AuthAdmission::Allowed => {
-                    let Some(sender) = auth_sender.clone() else {
+                    let Some(sender) = auth_sender.cloned() else {
                         return Err(anyhow!("authentication channel is unavailable"));
                     };
                     let failed_attempts = auth_state.next_failed_attempts();

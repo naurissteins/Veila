@@ -1,9 +1,9 @@
-use std::{future::pending, path::PathBuf};
+use std::future::pending;
 
 use anyhow::{Context, Result};
 use tokio::{
     net::{UnixListener, UnixStream},
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    sync::mpsc::UnboundedReceiver,
 };
 
 use crate::{
@@ -15,81 +15,28 @@ use crate::{
 };
 use veila_common::ipc::LockLatencyReport;
 
-use super::auth::AuthResult;
+use super::{active::ActiveLock, auth::AuthResult};
 
 pub(crate) struct LockActivation {
-    pub(super) curtain: CurtainHandle,
-    pub(super) auth_listener: UnixListener,
-    pub(super) auth_socket_path: PathBuf,
-    pub(super) control_socket_path: PathBuf,
-    pub(super) auth_results: UnboundedReceiver<AuthResult>,
-    pub(super) auth_sender: UnboundedSender<AuthResult>,
+    pub(crate) active: ActiveLock,
     pub(crate) latency_report: Option<LockLatencyReport>,
 }
 
-pub(crate) struct ActiveRuntime<'a> {
-    pub(super) curtain: &'a mut Option<CurtainHandle>,
-    pub(super) auth_listener: &'a mut Option<UnixListener>,
-    pub(super) auth_socket_path: &'a mut Option<PathBuf>,
-    pub(super) control_socket_path: &'a mut Option<PathBuf>,
-    pub(super) auth_results: &'a mut Option<UnboundedReceiver<AuthResult>>,
-    pub(super) auth_sender: &'a mut Option<UnboundedSender<AuthResult>>,
-}
-
-impl<'a> ActiveRuntime<'a> {
-    pub(crate) fn new(
-        curtain: &'a mut Option<CurtainHandle>,
-        auth_listener: &'a mut Option<UnixListener>,
-        auth_socket_path: &'a mut Option<PathBuf>,
-        control_socket_path: &'a mut Option<PathBuf>,
-        auth_results: &'a mut Option<UnboundedReceiver<AuthResult>>,
-        auth_sender: &'a mut Option<UnboundedSender<AuthResult>>,
-    ) -> Self {
-        Self {
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
-        }
-    }
-
-    pub(crate) fn install_activation(self, activation: LockActivation) {
-        *self.curtain = Some(activation.curtain);
-        *self.auth_listener = Some(activation.auth_listener);
-        *self.auth_socket_path = Some(activation.auth_socket_path);
-        *self.control_socket_path = Some(activation.control_socket_path);
-        *self.auth_results = Some(activation.auth_results);
-        *self.auth_sender = Some(activation.auth_sender);
-    }
-}
-
 pub(crate) fn reset_runtime(
-    auth_listener: &mut Option<UnixListener>,
-    auth_socket_path: &mut Option<PathBuf>,
-    control_socket_path: &mut Option<PathBuf>,
-    auth_results: &mut Option<UnboundedReceiver<AuthResult>>,
-    auth_sender: &mut Option<UnboundedSender<AuthResult>>,
+    active: &mut Option<ActiveLock>,
     auth_policy: AuthPolicy,
     auth_state: &mut AuthState,
 ) {
-    auth_listener.take();
-    auth_results.take();
-    auth_sender.take();
-    if let Some(path) = auth_socket_path.take() {
-        let _ = std::fs::remove_file(path);
-    }
-    if let Some(path) = control_socket_path.take() {
-        let _ = std::fs::remove_file(path);
+    if let Some(active) = active.take() {
+        active.clear_sockets();
     }
     *auth_state = AuthState::new(auth_policy);
 }
 
 pub(crate) async fn wait_for_curtain_exit(
-    curtain: &mut Option<CurtainHandle>,
+    curtain: Option<&mut CurtainHandle>,
 ) -> Result<CurtainExit> {
-    match curtain.as_mut() {
+    match curtain {
         Some(child) => child
             .wait()
             .await
@@ -117,9 +64,9 @@ fn is_locked_hint_not_supported(error: &zbus::Error) -> bool {
 }
 
 pub(crate) async fn accept_auth_connection(
-    auth_listener: &mut Option<UnixListener>,
+    auth_listener: Option<&mut UnixListener>,
 ) -> Result<UnixStream> {
-    match auth_listener.as_mut() {
+    match auth_listener {
         Some(listener) => ipc::accept_verified(listener, "auth").await,
         None => pending().await,
     }
@@ -132,9 +79,9 @@ pub(crate) async fn accept_control_connection(
 }
 
 pub(crate) async fn receive_auth_result(
-    auth_results: &mut Option<UnboundedReceiver<AuthResult>>,
+    auth_results: Option<&mut UnboundedReceiver<AuthResult>>,
 ) -> Option<AuthResult> {
-    match auth_results.as_mut() {
+    match auth_results {
         Some(receiver) => receiver.recv().await,
         None => pending().await,
     }
