@@ -4,9 +4,7 @@ use crate::{adapters::logind, domain::auth::AuthPolicy};
 
 use super::super::{
     connections::AuthConnection,
-    runtime::{
-        ActiveRuntime, AuthResult, ClientMessageContext, deactivate_lock, handle_client_message,
-    },
+    runtime::{AuthResult, ClientMessageContext, deactivate_lock, handle_client_message},
     state::RuntimeSlots,
     suspend::LockedSuspendState,
 };
@@ -34,12 +32,7 @@ pub(crate) async fn handle_auth_result(
 ) {
     let RuntimeSlots {
         state,
-        curtain,
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
+        active,
         auth_state,
         active_latency_report: _,
     } = slots;
@@ -61,14 +54,7 @@ pub(crate) async fn handle_auth_result(
             if let Err(error) = deactivate_lock(
                 session_proxy,
                 state,
-                ActiveRuntime::new(
-                    curtain,
-                    auth_listener,
-                    auth_socket_path,
-                    control_socket_path,
-                    auth_results,
-                    auth_sender,
-                ),
+                active,
                 auth_policy,
                 auth_state,
                 Some(attempt_id),

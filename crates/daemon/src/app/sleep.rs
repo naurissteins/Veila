@@ -1,3 +1,5 @@
+use super::runtime::control_socket_path;
+
 use std::path::Path;
 
 use zbus::zvariant::OwnedFd;
@@ -74,7 +76,7 @@ async fn prepare_for_sleep(
     }
 
     if runtime.state.is_active()
-        && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+        && let Some(control_socket_path) = control_socket_path(&runtime.active)
         && let Err(error) =
             process::request_curtain_arm_resume_input_guard(control_socket_path).await
     {
@@ -83,7 +85,12 @@ async fn prepare_for_sleep(
     runtime.fingerprint.pause_for_sleep().await;
     runtime
         .fingerprint
-        .forward_status_updates(runtime.control_socket_path.as_ref())
+        .forward_status_updates(
+            runtime
+                .active
+                .as_ref()
+                .map(|active| &active.control_socket_path),
+        )
         .await;
 
     // Releasing the delay inhibitor is what lets logind continue into suspend.
@@ -93,7 +100,7 @@ async fn prepare_for_sleep(
 async fn resume_after_sleep(runtime: &mut AppRuntime) {
     runtime.fingerprint.resume_after_sleep();
     if runtime.state.is_active()
-        && let Some(control_socket_path) = runtime.control_socket_path.as_deref()
+        && let Some(control_socket_path) = control_socket_path(&runtime.active)
         && let Err(error) = process::request_curtain_mark_resumed(control_socket_path).await
     {
         tracing::warn!("failed to mark curtain as resumed after sleep: {error:#}");

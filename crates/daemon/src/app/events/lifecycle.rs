@@ -11,9 +11,7 @@ use crate::{
 };
 
 use super::super::{
-    helpers::activate_and_log,
-    runtime::{ActiveRuntime, reset_runtime},
-    state::RuntimeSlots,
+    helpers::activate_and_log, runtime::reset_runtime, state::RuntimeSlots,
     suspend::LockedSuspendState,
 };
 
@@ -35,12 +33,7 @@ pub(crate) async fn handle_lock_signal(
 ) {
     let RuntimeSlots {
         state,
-        curtain,
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
+        active,
         auth_state,
         active_latency_report,
     } = slots;
@@ -65,14 +58,7 @@ pub(crate) async fn handle_lock_signal(
         acquire_timeout_seconds,
         daemon_config_load_ms,
         daemon_config_load_us,
-        ActiveRuntime::new(
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
-        ),
+        active,
         auth_policy,
         auth_state,
         suspend_state,
@@ -91,12 +77,7 @@ pub(crate) async fn handle_unlock_signal(
 ) {
     let RuntimeSlots {
         state,
-        curtain,
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
+        active,
         auth_state,
         active_latency_report: _,
     } = slots;
@@ -109,14 +90,7 @@ pub(crate) async fn handle_unlock_signal(
     if let Err(error) = super::super::runtime::deactivate_lock(
         session_proxy,
         state,
-        ActiveRuntime::new(
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
-        ),
+        active,
         auth_policy,
         auth_state,
         None,
@@ -136,12 +110,7 @@ pub(crate) async fn handle_curtain_exit(
 ) {
     let RuntimeSlots {
         state,
-        curtain,
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
+        active,
         auth_state,
         active_latency_report: _,
     } = slots;
@@ -154,19 +123,10 @@ pub(crate) async fn handle_curtain_exit(
             tracing::warn!(state = %state, "adopted curtain exited");
         }
     }
-    let owner_path = curtain
+    let owner_path = active
         .as_ref()
-        .map(|curtain| curtain.owner_path().to_path_buf());
-    curtain.take();
-    reset_runtime(
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
-        auth_policy,
-        auth_state,
-    );
+        .map(|active| active.curtain.owner_path().to_path_buf());
+    reset_runtime(active, auth_policy, auth_state);
 
     if state.is_active() {
         tracing::error!("curtain exited while locked; preserving unresolved lock ownership");
@@ -195,5 +155,61 @@ pub(crate) async fn handle_now_playing_update(
         process::request_curtain_now_playing_update(control_socket_path, now_playing_snapshot).await
     {
         tracing::warn!("failed to forward live now playing update to curtain: {error:#}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::runtime::Fixture;
+    use crate::domain::auth::AuthState;
+
+    #[tokio::test]
+    async fn active_curtain_exit_clears_resources_without_authorizing_unlock() {
+        for initial in [LockState::Locking, LockState::Locked, LockState::Unlocking] {
+            let mut fixture = Fixture::new();
+            let sender = fixture.active.as_ref().expect("active").auth_sender.clone();
+            let mut state = initial;
+            let mut auth_state = AuthState::default();
+            let mut latency = LatencyReportMode::Disabled;
+            handle_curtain_exit(
+                CurtainExit::Adopted,
+                RuntimeSlots {
+                    state: &mut state,
+                    active: &mut fixture.active,
+                    auth_state: &mut auth_state,
+                    active_latency_report: &mut latency,
+                },
+                AuthPolicy::default(),
+            )
+            .await;
+            assert_eq!(state, initial);
+            assert!(fixture.active.is_none());
+            assert!(sender.is_closed());
+            assert!(fixture.root.join("owner.json").exists());
+        }
+    }
+
+    #[tokio::test]
+    async fn released_curtain_exit_removes_ownership_and_resources() {
+        let mut fixture = Fixture::new();
+        let mut state = LockState::Unlocked;
+        let mut auth_state = AuthState::default();
+        let mut latency = LatencyReportMode::Disabled;
+        handle_curtain_exit(
+            CurtainExit::Adopted,
+            RuntimeSlots {
+                state: &mut state,
+                active: &mut fixture.active,
+                auth_state: &mut auth_state,
+                active_latency_report: &mut latency,
+            },
+            AuthPolicy::default(),
+        )
+        .await;
+        assert_eq!(state, LockState::Unlocked);
+        assert!(fixture.active.is_none());
+        assert!(!fixture.root.join("owner.json").exists());
+        assert!(!fixture.root.join("auth.sock").exists());
     }
 }

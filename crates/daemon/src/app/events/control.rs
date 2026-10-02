@@ -1,3 +1,5 @@
+use super::super::runtime::control_socket_path;
+
 use anyhow::Result;
 use tokio::net::UnixStream;
 use veila_common::{
@@ -19,7 +21,6 @@ use super::super::{
         select_initial_background_path,
     },
     mpris::NowPlayingHandle,
-    runtime::ActiveRuntime,
     state::BackgroundSelectionState,
     state::RuntimeSlots,
     weather::WeatherHandle,
@@ -51,12 +52,7 @@ pub(crate) async fn handle_control_message(
 ) -> Result<bool> {
     let RuntimeSlots {
         state,
-        curtain,
-        auth_listener,
-        auth_socket_path,
-        control_socket_path,
-        auth_results,
-        auth_sender,
+        active,
         auth_state,
         active_latency_report,
     } = slots;
@@ -89,14 +85,7 @@ pub(crate) async fn handle_control_message(
                     loaded_config.config.lock.acquire_timeout_seconds,
                     daemon_config_load_ms,
                     daemon_config_load_us,
-                    ActiveRuntime::new(
-                        curtain,
-                        auth_listener,
-                        auth_socket_path,
-                        control_socket_path,
-                        auth_results,
-                        auth_sender,
-                    ),
+                    active,
                     *auth_policy,
                     auth_state,
                     suspend_state,
@@ -150,14 +139,14 @@ pub(crate) async fn handle_control_message(
         }
         DaemonControlMessage::Stop => {
             tracing::info!("received daemon stop request over control socket");
-            stop_response(*state, curtain.is_some())
+            stop_response(*state, active.is_some())
         }
         DaemonControlMessage::Status => (
             DaemonControlResponse::Status(build_daemon_status(
                 state,
                 session_path,
-                curtain.is_some(),
-                control_socket_path.as_deref(),
+                active.is_some(),
+                control_socket_path(active),
                 loaded_config,
                 last_reload_result.as_deref(),
                 *last_reload_unix_ms,
@@ -171,7 +160,7 @@ pub(crate) async fn handle_control_message(
             reload_config_response(
                 options,
                 state,
-                control_socket_path.as_deref(),
+                control_socket_path(active),
                 loaded_config,
                 last_reload_result,
                 last_reload_unix_ms,
@@ -219,6 +208,10 @@ mod tests {
             let (response, stop_requested) = stop_response(state, true);
             assert!(matches!(response, DaemonControlResponse::Error { .. }));
             assert!(!stop_requested);
+            assert!(matches!(
+                stop_response(state, false),
+                (DaemonControlResponse::Error { .. }, false)
+            ));
         }
         assert_eq!(
             stop_response(LockState::Unlocked, false),

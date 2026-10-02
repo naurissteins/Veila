@@ -3,15 +3,10 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use tokio::{
-    net::UnixListener,
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
-};
 use veila_common::LoadedConfig;
 use veila_common::config::BackgroundSlideshowOrder;
 use veila_common::ipc::{LatencyReportMode, LockPowerStatusSnapshot};
 
-use crate::adapters::process::CurtainHandle;
 use crate::domain::{
     auth::{AuthPolicy, AuthState},
     lock_state::LockState,
@@ -22,7 +17,7 @@ use super::{
     fingerprint::FingerprintHandle,
     idle::IdleMonitor,
     mpris::NowPlayingHandle,
-    runtime::AuthResult,
+    runtime::ActiveLock,
     sleep::SleepLockInhibitor,
     suspend::{LockedSuspendState, suspend_delay_seconds},
     weather::WeatherHandle,
@@ -38,13 +33,9 @@ pub(super) struct AppRuntime {
     pub(super) weather: WeatherHandle,
     pub(super) battery: BatteryHandle,
     pub(super) now_playing: NowPlayingHandle,
+    // Unresolved lock authority remains active even after its resources are gone.
     pub(super) state: LockState,
-    pub(super) curtain: Option<CurtainHandle>,
-    pub(super) auth_listener: Option<UnixListener>,
-    pub(super) auth_socket_path: Option<PathBuf>,
-    pub(super) control_socket_path: Option<PathBuf>,
-    pub(super) auth_results: Option<UnboundedReceiver<AuthResult>>,
-    pub(super) auth_sender: Option<UnboundedSender<AuthResult>>,
+    pub(super) active: Option<ActiveLock>,
     pub(super) auth_state: AuthState,
     pub(super) active_latency_report: LatencyReportMode,
     pub(super) background_selection: Option<BackgroundSelectionState>,
@@ -85,12 +76,7 @@ impl AppRuntime {
             battery,
             now_playing,
             state: LockState::Unlocked,
-            curtain: None,
-            auth_listener: None,
-            auth_socket_path: None,
-            control_socket_path: None,
-            auth_results: None,
-            auth_sender: None,
+            active: None,
             auth_state: AuthState::new(auth_policy),
             active_latency_report: LatencyReportMode::Disabled,
             background_selection: None,
@@ -117,12 +103,7 @@ impl AppRuntime {
     pub(super) fn slots(&mut self) -> RuntimeSlots<'_> {
         RuntimeSlots {
             state: &mut self.state,
-            curtain: &mut self.curtain,
-            auth_listener: &mut self.auth_listener,
-            auth_socket_path: &mut self.auth_socket_path,
-            control_socket_path: &mut self.control_socket_path,
-            auth_results: &mut self.auth_results,
-            auth_sender: &mut self.auth_sender,
+            active: &mut self.active,
             auth_state: &mut self.auth_state,
             active_latency_report: &mut self.active_latency_report,
         }
@@ -139,12 +120,7 @@ impl AppRuntime {
             auth_policy,
             suspend_state,
             state,
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
+            active,
             auth_state,
             active_latency_report,
             ..
@@ -155,12 +131,7 @@ impl AppRuntime {
             suspend_state,
             RuntimeSlots {
                 state,
-                curtain,
-                auth_listener,
-                auth_socket_path,
-                control_socket_path,
-                auth_results,
-                auth_sender,
+                active,
                 auth_state,
                 active_latency_report,
             },
@@ -177,12 +148,7 @@ impl AppRuntime {
             suspend_state,
             fingerprint,
             state,
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
+            active,
             auth_state,
             active_latency_report,
             ..
@@ -198,12 +164,7 @@ impl AppRuntime {
             fingerprint,
             slots: RuntimeSlots {
                 state,
-                curtain,
-                auth_listener,
-                auth_socket_path,
-                control_socket_path,
-                auth_results,
-                auth_sender,
+                active,
                 auth_state,
                 active_latency_report,
             },
@@ -308,64 +269,9 @@ fn next_u64(state: &mut u64) -> u64 {
 
 pub(super) struct RuntimeSlots<'a> {
     pub(super) state: &'a mut LockState,
-    pub(super) curtain: &'a mut Option<CurtainHandle>,
-    pub(super) auth_listener: &'a mut Option<UnixListener>,
-    pub(super) auth_socket_path: &'a mut Option<PathBuf>,
-    pub(super) control_socket_path: &'a mut Option<PathBuf>,
-    pub(super) auth_results: &'a mut Option<UnboundedReceiver<AuthResult>>,
-    pub(super) auth_sender: &'a mut Option<UnboundedSender<AuthResult>>,
+    pub(super) active: &'a mut Option<ActiveLock>,
     pub(super) auth_state: &'a mut AuthState,
     pub(super) active_latency_report: &'a mut LatencyReportMode,
-}
-
-impl<'a>
-    From<(
-        &'a mut LockState,
-        &'a mut Option<CurtainHandle>,
-        &'a mut Option<UnixListener>,
-        &'a mut Option<PathBuf>,
-        &'a mut Option<PathBuf>,
-        &'a mut Option<UnboundedReceiver<AuthResult>>,
-        &'a mut Option<UnboundedSender<AuthResult>>,
-        &'a mut AuthState,
-        &'a mut LatencyReportMode,
-    )> for RuntimeSlots<'a>
-{
-    fn from(
-        (
-            state,
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
-            auth_state,
-            active_latency_report,
-        ): (
-            &'a mut LockState,
-            &'a mut Option<CurtainHandle>,
-            &'a mut Option<UnixListener>,
-            &'a mut Option<PathBuf>,
-            &'a mut Option<PathBuf>,
-            &'a mut Option<UnboundedReceiver<AuthResult>>,
-            &'a mut Option<UnboundedSender<AuthResult>>,
-            &'a mut AuthState,
-            &'a mut LatencyReportMode,
-        ),
-    ) -> Self {
-        Self {
-            state,
-            curtain,
-            auth_listener,
-            auth_socket_path,
-            control_socket_path,
-            auth_results,
-            auth_sender,
-            auth_state,
-            active_latency_report,
-        }
-    }
 }
 
 #[cfg(test)]

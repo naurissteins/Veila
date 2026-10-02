@@ -9,7 +9,7 @@ use crate::{
     domain::{auth::AuthState, lock_state::LockState},
 };
 
-use super::state::AppRuntime;
+use super::{runtime::ActiveLock, state::AppRuntime};
 
 pub(super) async fn adopt_surviving_curtain(session: &str, runtime: &mut AppRuntime) -> Result<()> {
     let path = ownership::record_path(session)?;
@@ -80,17 +80,19 @@ pub(super) async fn adopt_surviving_curtain(session: &str, runtime: &mut AppRunt
         bail!("curtain {pid} exited as authentication was restored");
     }
     let (auth_sender, auth_results) = unbounded_channel();
-    runtime.curtain = Some(CurtainHandle::Adopted {
-        pid,
-        start_ticks,
-        owner_path: path,
-        next_check: tokio::time::Instant::now(),
+    runtime.active = Some(ActiveLock {
+        curtain: CurtainHandle::Adopted {
+            pid,
+            start_ticks,
+            owner_path: path,
+            next_check: tokio::time::Instant::now(),
+        },
+        auth_listener: listener,
+        auth_socket_path: record.auth_socket,
+        control_socket_path: record.control_socket,
+        auth_sender,
+        auth_results,
     });
-    runtime.auth_listener = Some(listener);
-    runtime.auth_socket_path = Some(record.auth_socket);
-    runtime.control_socket_path = Some(record.control_socket);
-    runtime.auth_sender = Some(auth_sender);
-    runtime.auth_results = Some(auth_results);
     runtime.auth_state = AuthState::after_daemon_recovery(runtime.auth_policy, Instant::now());
     runtime.state = LockState::Locked;
     runtime.suspend_state.arm(Instant::now());
