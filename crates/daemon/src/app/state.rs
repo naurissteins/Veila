@@ -105,7 +105,6 @@ impl AppRuntime {
             state: &mut self.state,
             active: &mut self.active,
             auth_state: &mut self.auth_state,
-            active_latency_report: &mut self.active_latency_report,
         }
     }
 
@@ -122,7 +121,6 @@ impl AppRuntime {
             state,
             active,
             auth_state,
-            active_latency_report,
             ..
         } = self;
 
@@ -133,54 +131,9 @@ impl AppRuntime {
                 state,
                 active,
                 auth_state,
-                active_latency_report,
             },
         )
     }
-
-    pub(super) fn control_inputs(&mut self) -> ControlInputs<'_> {
-        let Self {
-            loaded_config,
-            last_reload_result,
-            last_reload_unix_ms,
-            auth_policy,
-            background_selection,
-            suspend_state,
-            fingerprint,
-            state,
-            active,
-            auth_state,
-            active_latency_report,
-            ..
-        } = self;
-
-        ControlInputs {
-            loaded_config,
-            last_reload_result,
-            last_reload_unix_ms,
-            auth_policy,
-            background_selection,
-            suspend_state,
-            fingerprint,
-            slots: RuntimeSlots {
-                state,
-                active,
-                auth_state,
-                active_latency_report,
-            },
-        }
-    }
-}
-
-pub(super) struct ControlInputs<'a> {
-    pub(super) loaded_config: &'a mut LoadedConfig,
-    pub(super) last_reload_result: &'a mut Option<String>,
-    pub(super) last_reload_unix_ms: &'a mut Option<u64>,
-    pub(super) auth_policy: &'a mut AuthPolicy,
-    pub(super) background_selection: &'a mut Option<BackgroundSelectionState>,
-    pub(super) suspend_state: &'a mut LockedSuspendState,
-    pub(super) fingerprint: &'a mut FingerprintHandle,
-    pub(super) slots: RuntimeSlots<'a>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -271,7 +224,6 @@ pub(super) struct RuntimeSlots<'a> {
     pub(super) state: &'a mut LockState,
     pub(super) active: &'a mut Option<ActiveLock>,
     pub(super) auth_state: &'a mut AuthState,
-    pub(super) active_latency_report: &'a mut LatencyReportMode,
 }
 
 #[cfg(test)]

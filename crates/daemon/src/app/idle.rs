@@ -1,10 +1,8 @@
-use std::{path::Path, time::Duration};
+use std::time::Duration;
 
 use veila_common::IdleConfig;
 
-use crate::adapters::{idle::IdleNotifier, logind, user_units};
-
-use super::{events::handle_lock_signal, state::AppRuntime};
+use crate::adapters::{idle::IdleNotifier, user_units};
 
 #[derive(Default)]
 pub(super) struct IdleMonitor {
@@ -62,44 +60,6 @@ fn idle_timeout(config: &IdleConfig) -> Option<Duration> {
     config
         .effective_lock_after_seconds()
         .map(Duration::from_secs)
-}
-
-pub(super) async fn activate_triggered_lock(
-    trigger: &'static str,
-    runtime: &mut AppRuntime,
-    session_proxy: &logind::SessionProxy<'_>,
-    config_path: Option<&Path>,
-) {
-    let was_active = runtime.state.is_active();
-    let weather_snapshot = runtime.weather.current_snapshot();
-    let battery_snapshot = runtime.battery.current_snapshot();
-    let now_playing_snapshot = runtime.now_playing.current_snapshot();
-    let initial_background_path = runtime.select_initial_background_path();
-    let daemon_config_load_ms = runtime.daemon_config_load_ms;
-    let daemon_config_load_us = runtime.daemon_config_load_us;
-    let acquire_timeout_seconds = runtime.loaded_config.config.lock.acquire_timeout_seconds;
-    let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-    handle_lock_signal(
-        trigger,
-        session_proxy,
-        config_path,
-        initial_background_path.as_deref(),
-        weather_snapshot.as_ref(),
-        battery_snapshot.as_ref(),
-        now_playing_snapshot.as_ref(),
-        acquire_timeout_seconds,
-        daemon_config_load_ms,
-        daemon_config_load_us,
-        slots,
-        auth_policy,
-        suspend_state,
-    )
-    .await;
-    if !was_active && runtime.state.is_active() {
-        runtime.last_power_status_snapshot = None;
-        runtime.power_status_sent = false;
-        runtime.fingerprint.reset_for_new_lock().await;
-    }
 }
 
 #[cfg(test)]

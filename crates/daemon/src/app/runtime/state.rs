@@ -13,13 +13,12 @@ use crate::{
     },
     domain::auth::{AuthPolicy, AuthState},
 };
-use veila_common::ipc::LockLatencyReport;
 
 use super::{active::ActiveLock, auth::AuthResult};
 
 pub(crate) struct LockActivation {
     pub(crate) active: ActiveLock,
-    pub(crate) latency_report: Option<LockLatencyReport>,
+    pub(crate) readiness: super::activation::RichReadiness,
 }
 
 pub(crate) fn reset_runtime(

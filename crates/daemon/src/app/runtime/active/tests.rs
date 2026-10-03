@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -18,14 +19,19 @@ pub(crate) struct Fixture {
     pub(crate) active: Option<ActiveLock>,
 }
 
+static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
+
 impl Fixture {
     pub(crate) fn new() -> Self {
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("time")
             .as_nanos();
-        let root =
-            std::env::temp_dir().join(format!("veila-active-{}-{stamp}", std::process::id()));
+        let sequence = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
+        let root = std::env::temp_dir().join(format!(
+            "veila-active-{}-{stamp}-{sequence}",
+            std::process::id()
+        ));
         fs::create_dir_all(&root).expect("fixture directory");
         let auth_socket_path = root.join("auth.sock");
         let control_socket_path = root.join("control.sock");

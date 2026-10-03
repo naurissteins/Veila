@@ -4,17 +4,15 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow};
 use nix::unistd::{Uid, User};
 use veila_common::ipc::{
-    DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LatencyReportMode,
-    LiveReloadStatus,
+    DaemonControlResponse, DaemonHealth, DaemonReloadStatus, DaemonStatus, LiveReloadStatus,
 };
-use veila_common::{AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot, WeatherSnapshot};
+use veila_common::{AppConfig, LoadedConfig};
 
 use super::{
     battery::BatteryHandle,
     memory,
     mpris::NowPlayingHandle,
     prewarm,
-    runtime::{ActiveLock, activate_lock},
     state::BackgroundSelectionState,
     suspend::{LockedSuspendState, suspend_delay_seconds},
     watch::effective_auto_reload_debounce_ms,
@@ -22,104 +20,12 @@ use super::{
 };
 use crate::{
     DaemonOptions,
-    adapters::{logind, process},
+    adapters::process,
     domain::{
         auth::{AuthPolicy, AuthState},
         lock_state::LockState,
     },
 };
-
-#[allow(clippy::too_many_arguments)]
-pub(super) async fn activate_and_install(
-    trigger: &'static str,
-    session_proxy: &logind::SessionProxy<'_>,
-    state: &mut LockState,
-    config_path: Option<&std::path::Path>,
-    initial_background_path: Option<&Path>,
-    weather_snapshot: Option<&WeatherSnapshot>,
-    battery_snapshot: Option<&BatterySnapshot>,
-    now_playing_snapshot: Option<&NowPlayingSnapshot>,
-    force_emergency_ui: bool,
-    latency_report: LatencyReportMode,
-    acquire_timeout_seconds: u64,
-    daemon_config_load_ms: u64,
-    daemon_config_load_us: u64,
-    runtime: &mut Option<ActiveLock>,
-    auth_policy: AuthPolicy,
-    auth_state: &mut AuthState,
-    suspend_state: &mut LockedSuspendState,
-) -> Result<Option<veila_common::ipc::LockLatencyReport>> {
-    let activation = activate_lock(
-        trigger,
-        session_proxy,
-        state,
-        config_path,
-        initial_background_path,
-        weather_snapshot,
-        battery_snapshot,
-        now_playing_snapshot,
-        force_emergency_ui,
-        latency_report,
-        acquire_timeout_seconds,
-        daemon_config_load_ms,
-        daemon_config_load_us,
-    )
-    .await?;
-    let latency_report = activation.latency_report.clone();
-    *runtime = Some(activation.active);
-    *auth_state = AuthState::new(auth_policy);
-    suspend_state.arm(Instant::now());
-    Ok(latency_report)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(super) async fn activate_and_log(
-    trigger: &'static str,
-    session_proxy: &logind::SessionProxy<'_>,
-    state: &mut LockState,
-    config_path: Option<&std::path::Path>,
-    initial_background_path: Option<&Path>,
-    weather_snapshot: Option<&WeatherSnapshot>,
-    battery_snapshot: Option<&BatterySnapshot>,
-    now_playing_snapshot: Option<&NowPlayingSnapshot>,
-    force_emergency_ui: bool,
-    latency_report: LatencyReportMode,
-    acquire_timeout_seconds: u64,
-    daemon_config_load_ms: u64,
-    daemon_config_load_us: u64,
-    runtime: &mut Option<ActiveLock>,
-    auth_policy: AuthPolicy,
-    auth_state: &mut AuthState,
-    suspend_state: &mut LockedSuspendState,
-) -> Result<Option<veila_common::ipc::LockLatencyReport>> {
-    let started_at = Instant::now();
-    let report = activate_and_install(
-        trigger,
-        session_proxy,
-        state,
-        config_path,
-        initial_background_path,
-        weather_snapshot,
-        battery_snapshot,
-        now_playing_snapshot,
-        force_emergency_ui,
-        latency_report,
-        acquire_timeout_seconds,
-        daemon_config_load_ms,
-        daemon_config_load_us,
-        runtime,
-        auth_policy,
-        auth_state,
-        suspend_state,
-    )
-    .await?;
-    tracing::info!(
-        trigger,
-        activation_elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-        "lock timing summary"
-    );
-    Ok(report)
-}
 
 pub(super) fn current_username() -> Result<String> {
     let uid = Uid::current();

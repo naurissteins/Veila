@@ -34,7 +34,6 @@ pub(crate) async fn handle_auth_result(
         state,
         active,
         auth_state,
-        active_latency_report: _,
     } = slots;
 
     match result {

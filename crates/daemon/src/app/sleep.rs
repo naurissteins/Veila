@@ -6,7 +6,7 @@ use zbus::zvariant::OwnedFd;
 
 use crate::adapters::{logind, process};
 
-use super::{idle::activate_triggered_lock, state::AppRuntime};
+use super::{startup::PendingStartup, state::AppRuntime};
 
 /// Holds a logind sleep delay inhibitor while lock-before-sleep is enabled.
 #[derive(Default)]
@@ -53,28 +53,55 @@ impl SleepLockInhibitor {
 pub(super) async fn handle_prepare_for_sleep(
     start: bool,
     runtime: &mut AppRuntime,
-    session_proxy: &logind::SessionProxy<'_>,
+    startup: &mut PendingStartup,
+    connection: &zbus::Connection,
+    session_path: &zbus::zvariant::OwnedObjectPath,
     manager: &logind::ManagerProxy<'_>,
     config_path: Option<&Path>,
 ) {
     if start {
-        prepare_for_sleep(runtime, session_proxy, config_path).await;
+        if runtime.sleep_lock.enabled {
+            startup.begin(
+                "sleep",
+                runtime,
+                connection,
+                session_path,
+                config_path,
+                false,
+                veila_common::ipc::LatencyReportMode::Disabled,
+            );
+        }
+        if startup.is_acquiring() {
+            startup.deferred_sleep = Some(true);
+            return;
+        }
+        prepare_for_sleep(runtime).await;
     } else {
+        if startup.is_acquiring() && startup.deferred_sleep.is_some() {
+            startup.deferred_sleep = Some(false);
+            return;
+        }
         runtime.sleep_lock.arm(manager).await;
         resume_after_sleep(runtime).await;
     }
 }
 
-async fn prepare_for_sleep(
+pub(super) async fn finish_deferred_sleep(
+    startup: &mut PendingStartup,
     runtime: &mut AppRuntime,
-    session_proxy: &logind::SessionProxy<'_>,
-    config_path: Option<&Path>,
+    manager: &logind::ManagerProxy<'_>,
 ) {
-    if runtime.sleep_lock.enabled && !runtime.state.is_active() {
-        tracing::info!("locking before sleep");
-        activate_triggered_lock("sleep", runtime, session_proxy, config_path).await;
+    // Preserve guard/release/resume order even if logind's delay expires during acquisition.
+    if let Some(still_sleeping) = startup.deferred_sleep.take() {
+        prepare_for_sleep(runtime).await;
+        if !still_sleeping {
+            runtime.sleep_lock.arm(manager).await;
+            resume_after_sleep(runtime).await;
+        }
     }
+}
 
+async fn prepare_for_sleep(runtime: &mut AppRuntime) {
     if runtime.state.is_active()
         && let Some(control_socket_path) = control_socket_path(&runtime.active)
         && let Err(error) =

@@ -42,10 +42,10 @@ for the preview options such as
 .BR --preview-size .
 .TP
 .B lock
-Ask the running daemon to lock the current logind session.
+Ask the running daemon to lock the current logind session. Returns when the request is accepted, before compositor lock confirmation.
 .TP
 .B lock --wait-ready
-Wait until the secure lock surface is active before returning.
+Wait for compositor lock confirmation and rich startup readiness. If rich readiness times out after confirmation, the secure curtain and authentication remain active. Release or curtain exit before readiness returns an error.
 .TP
 .B status
 Print daemon runtime status.
