@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use veila_common::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot, ipc::LatencyReportMode};
+use veila_common::NowPlayingSnapshot;
 
 use crate::{
     adapters::{
@@ -10,64 +10,7 @@ use crate::{
     domain::{auth::AuthPolicy, lock_state::LockState},
 };
 
-use super::super::{
-    helpers::activate_and_log, runtime::reset_runtime, state::RuntimeSlots,
-    suspend::LockedSuspendState,
-};
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn handle_lock_signal(
-    trigger: &'static str,
-    session_proxy: &logind::SessionProxy<'_>,
-    config_path: Option<&Path>,
-    initial_background_path: Option<&Path>,
-    weather_snapshot: Option<&WeatherSnapshot>,
-    battery_snapshot: Option<&BatterySnapshot>,
-    now_playing_snapshot: Option<&NowPlayingSnapshot>,
-    acquire_timeout_seconds: u64,
-    daemon_config_load_ms: u64,
-    daemon_config_load_us: u64,
-    slots: RuntimeSlots<'_>,
-    auth_policy: AuthPolicy,
-    suspend_state: &mut LockedSuspendState,
-) {
-    let RuntimeSlots {
-        state,
-        active,
-        auth_state,
-        active_latency_report,
-    } = slots;
-
-    if state.is_active() {
-        tracing::debug!(state = %state, "ignoring duplicate lock signal");
-        return;
-    }
-
-    *active_latency_report = LatencyReportMode::Disabled;
-    if let Err(error) = activate_and_log(
-        trigger,
-        session_proxy,
-        state,
-        config_path,
-        initial_background_path,
-        weather_snapshot,
-        battery_snapshot,
-        now_playing_snapshot,
-        false,
-        LatencyReportMode::Disabled,
-        acquire_timeout_seconds,
-        daemon_config_load_ms,
-        daemon_config_load_us,
-        active,
-        auth_policy,
-        auth_state,
-        suspend_state,
-    )
-    .await
-    {
-        tracing::error!("failed to activate lock: {error:#}");
-    }
-}
+use super::super::{runtime::reset_runtime, state::RuntimeSlots, suspend::LockedSuspendState};
 
 pub(crate) async fn handle_unlock_signal(
     session_proxy: &logind::SessionProxy<'_>,
@@ -79,7 +22,6 @@ pub(crate) async fn handle_unlock_signal(
         state,
         active,
         auth_state,
-        active_latency_report: _,
     } = slots;
 
     if !state.is_active() {
@@ -112,7 +54,6 @@ pub(crate) async fn handle_curtain_exit(
         state,
         active,
         auth_state,
-        active_latency_report: _,
     } = slots;
 
     match status {
@@ -171,14 +112,12 @@ mod tests {
             let sender = fixture.active.as_ref().expect("active").auth_sender.clone();
             let mut state = initial;
             let mut auth_state = AuthState::default();
-            let mut latency = LatencyReportMode::Disabled;
             handle_curtain_exit(
                 CurtainExit::Adopted,
                 RuntimeSlots {
                     state: &mut state,
                     active: &mut fixture.active,
                     auth_state: &mut auth_state,
-                    active_latency_report: &mut latency,
                 },
                 AuthPolicy::default(),
             )
@@ -195,14 +134,12 @@ mod tests {
         let mut fixture = Fixture::new();
         let mut state = LockState::Unlocked;
         let mut auth_state = AuthState::default();
-        let mut latency = LatencyReportMode::Disabled;
         handle_curtain_exit(
             CurtainExit::Adopted,
             RuntimeSlots {
                 state: &mut state,
                 active: &mut fixture.active,
                 auth_state: &mut auth_state,
-                active_latency_report: &mut latency,
             },
             AuthPolicy::default(),
         )

@@ -34,7 +34,6 @@ pub(crate) async fn shutdown_runtime(
         state,
         active,
         auth_state,
-        active_latency_report: _,
     } = slots;
 
     if let Err(error) =

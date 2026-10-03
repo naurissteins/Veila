@@ -16,6 +16,7 @@ mod prewarm;
 mod recovery;
 mod runtime;
 mod sleep;
+mod startup;
 mod state;
 mod suspend;
 mod watch;
@@ -42,7 +43,7 @@ use self::runtime::{
     ClientMessageContext, accept_auth_connection, accept_control_connection, receive_auth_result,
     wait_for_curtain_exit,
 };
-use self::state::{AppRuntime, ControlInputs};
+use self::state::AppRuntime;
 use self::watch::AutoReloadWatcher;
 
 pub async fn run_background_prewarm_once(config_path: Option<&Path>) -> Result<()> {
@@ -120,6 +121,7 @@ pub async fn run(
         tokio::sync::mpsc::unbounded_channel();
     let mut curtain_wait_retry_at = None;
     let mut shutdown_gate = ShutdownGate::default();
+    let mut startup = startup::PendingStartup::default();
     let mut next_session_close_check = std::time::Instant::now();
 
     tracing::info!(
@@ -133,6 +135,29 @@ pub async fn run(
     idle::warn_about_legacy_idle_service();
 
     loop {
+        startup.reconcile(&runtime);
+        startup.resume_relock(
+            &mut runtime,
+            &connection,
+            &session_path,
+            options.config_path.as_deref(),
+        );
+        if !startup.is_acquiring() && startup.relock.is_none() {
+            sleep::finish_deferred_sleep(&mut startup, &mut runtime, &manager_proxy).await;
+        }
+        if !startup.is_pending()
+            && let Some(request) = startup.reloads.pop_front()
+        {
+            handle_control_message(
+                request.stream,
+                request.message,
+                &options,
+                session_path.as_str(),
+                &mut runtime,
+            )
+            .await?;
+            continue;
+        }
         if shutdown_gate.ready(runtime.state, runtime.active.is_some()) {
             tracing::info!("pending daemon shutdown can finish after unlock");
             break;
@@ -163,12 +188,28 @@ pub async fn run(
         };
         tokio::select! {
             Some(_) = lock_stream.next() => {
-                idle::activate_triggered_lock("logind", &mut runtime, &session_proxy, options.config_path.as_deref()).await;
+                startup.begin("logind", &mut runtime, &connection, &session_path, options.config_path.as_deref(), false, veila_common::ipc::LatencyReportMode::Disabled);
             }
             () = runtime.idle.idled() => {
-                idle::activate_triggered_lock("idle", &mut runtime, &session_proxy, options.config_path.as_deref()).await;
+                startup.begin("idle", &mut runtime, &connection, &session_path, options.config_path.as_deref(), false, veila_common::ipc::LatencyReportMode::Disabled);
+            }
+            milestone = startup.next() => {
+                startup.complete(milestone, &mut runtime).await;
+                if !startup.is_acquiring() {
+                    if startup.relock.is_none() {
+                        sleep::finish_deferred_sleep(&mut startup, &mut runtime, &manager_proxy).await;
+                    }
+                    if std::mem::take(&mut startup.unlock_requested) {
+                        let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
+                        handle_unlock_signal(&session_proxy, slots, auth_policy, suspend_state).await;
+                    }
+                }
             }
             Some(_) = unlock_stream.next() => {
+                if startup.is_acquiring() {
+                    startup.request_unlock();
+                    continue;
+                }
                 let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
                 handle_unlock_signal(
                     &session_proxy,
@@ -185,7 +226,7 @@ pub async fn run(
             Some(signal) = prepare_for_sleep_stream.next() => {
                 match signal.args() {
                     Ok(args) => {
-                        sleep::handle_prepare_for_sleep(*args.start(), &mut runtime, &session_proxy, &manager_proxy, options.config_path.as_deref()).await;
+                        sleep::handle_prepare_for_sleep(*args.start(), &mut runtime, &mut startup, &connection, &session_path, &manager_proxy, options.config_path.as_deref()).await;
                     }
                     Err(error) => {
                         tracing::warn!("failed to decode logind PrepareForSleep signal: {error}");
@@ -277,52 +318,12 @@ pub async fn run(
                     }
                 }
             }
-            Some(connection) = control_connections.recv() => {
-                let weather = runtime.weather.clone();
-                let battery = runtime.battery.clone();
-                let now_playing = runtime.now_playing.clone();
-                let weather_snapshot = weather.current_snapshot();
-                let battery_snapshot = battery.current_snapshot();
-                let now_playing_snapshot = runtime.now_playing.current_snapshot();
-                let daemon_config_load_ms = runtime.daemon_config_load_ms;
-                let daemon_config_load_us = runtime.daemon_config_load_us;
-                let ControlInputs {
-                    loaded_config,
-                    last_reload_result,
-                    last_reload_unix_ms,
-                    auth_policy,
-                    background_selection,
-                    suspend_state,
-                    fingerprint,
-                    slots,
-                } = runtime.control_inputs();
-                match handle_control_message(
-                    connection.stream,
-                    connection.message,
-                    &options,
-                    &session_proxy,
-                    &session_path,
-                    loaded_config,
-                    last_reload_result,
-                    last_reload_unix_ms,
-                    weather_snapshot.as_ref(),
-                    battery_snapshot.as_ref(),
-                    now_playing_snapshot.as_ref(),
-                    &weather,
-                    &battery,
-                    &now_playing,
-                    background_selection,
-                    suspend_state,
-                    fingerprint,
-                    slots,
-                    auth_policy,
-                    daemon_config_load_ms,
-                    daemon_config_load_us,
-                ).await {
-                    Ok(true) => break,
-                    Ok(false) => {}
-                    Err(error) => {
-                        tracing::warn!("failed to handle daemon control request: {error:#}");
+            Some(request) = control_connections.recv() => {
+                if let Some(request) = startup.handle_request(request, &mut runtime, &connection, &session_path, options.config_path.as_deref()).await {
+                    match handle_control_message(request.stream, request.message, &options, session_path.as_str(), &mut runtime).await {
+                        Ok(true) => break,
+                        Ok(false) => {},
+                        Err(error) => tracing::warn!("failed to handle daemon control request: {error:#}"),
                     }
                 }
             }
@@ -340,7 +341,7 @@ pub async fn run(
             }
             _ = maintenance_tick.tick() => {
                 let now = std::time::Instant::now();
-                if shutdown_gate.is_requested() && now >= next_session_close_check {
+                if shutdown_gate.is_requested() && !startup.is_acquiring() && now >= next_session_close_check {
                     next_session_close_check = now + std::time::Duration::from_secs(5);
                     if matches!(
                         time::timeout(std::time::Duration::from_millis(200), session_proxy.state()).await,
@@ -418,7 +419,7 @@ pub async fn run(
                     }
                 }
 
-                if runtime.state.is_active() {
+                if runtime.active.is_some() {
                     runtime.fingerprint.update(
                         true,
                         runtime.loaded_config.config.fingerprint.enabled,
@@ -471,7 +472,7 @@ pub async fn run(
                     runtime.power_status_sent = false;
                 }
 
-                if let Some(trigger) = auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
+                if !startup.is_pending() && let Some(trigger) = auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
                     auto_reload::handle(trigger, options.config_path.as_deref(), &mut runtime).await;
                 }
             }

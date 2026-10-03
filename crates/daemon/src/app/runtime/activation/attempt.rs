@@ -23,29 +23,27 @@ use super::super::{
     active::ActiveLock,
     state::{LockActivation, update_locked_hint},
 };
-use super::startup::{
-    log_latency_report, read_startup_message, remove_activation_sockets, startup_timeout,
-};
+use super::startup::{read_startup_message, remove_activation_sockets, startup_timeout};
 
 pub(super) struct AttemptFailure {
     pub(super) error: anyhow::Error,
-    pub(super) session_locked: bool,
+    pub(super) unresolved: bool,
     pub(super) retry_safe: bool,
 }
 
 impl AttemptFailure {
-    fn retryable(error: anyhow::Error, session_locked: bool) -> Self {
+    fn retryable(error: anyhow::Error, unresolved: bool) -> Self {
         Self {
             error,
-            session_locked,
+            unresolved,
             retry_safe: true,
         }
     }
 
-    fn unsafe_to_retry(error: anyhow::Error, session_locked: bool) -> Self {
+    fn unsafe_to_retry(error: anyhow::Error, unresolved: bool) -> Self {
         Self {
             error,
-            session_locked,
+            unresolved,
             retry_safe: false,
         }
     }
@@ -84,7 +82,7 @@ pub(super) async fn activate_lock_attempt(
                 "curtain ownership is unresolved at {}",
                 owner_path.display()
             ),
-            false,
+            true,
         ));
     }
     let notify_listener = ipc::bind_listener(&notify_path)
@@ -136,7 +134,12 @@ pub(super) async fn activate_lock_attempt(
         .and_then(|pid| owner.set_process(pid))
         .and_then(|()| ownership::publish(&owner_path, &owner));
     if let Err(error) = identity {
-        let _ = process::force_stop_curtain(child).await;
+        if let Err(stop_error) = process::force_stop_curtain(child).await {
+            return Err(AttemptFailure::unsafe_to_retry(
+                stop_error.context(error),
+                true,
+            ));
+        }
         let _ = ownership::remove(&owner_path);
         remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
         return Err(AttemptFailure::unsafe_to_retry(error, false));
@@ -146,7 +149,7 @@ pub(super) async fn activate_lock_attempt(
         if let Err(stop_error) = process::force_stop_curtain(child).await {
             return Err(AttemptFailure::unsafe_to_retry(
                 stop_error.context(error),
-                false,
+                true,
             ));
         }
         let _ = ownership::remove(&owner_path);
@@ -165,7 +168,7 @@ pub(super) async fn activate_lock_attempt(
             // partial gate write may have let the curtain acquire the lock
             return Err(AttemptFailure::unsafe_to_retry(
                 stop_error.context(error),
-                false,
+                true,
             ));
         }
         ownership::remove(&owner_path)
@@ -181,9 +184,6 @@ pub(super) async fn activate_lock_attempt(
     let (auth_sender, auth_results) = unbounded_channel();
     let ready_wait_started_at = Instant::now();
     let deadline = TokioInstant::now() + startup_timeout(acquire_timeout_seconds);
-    let mut session_locked = false;
-    let mut curtain_latency_report = None;
-    let mut ready_received = false;
 
     loop {
         tokio::select! {
@@ -191,36 +191,23 @@ pub(super) async fn activate_lock_attempt(
                 match accepted {
                     Ok((stream, _)) => match read_startup_message(stream).await {
                         Ok(Some(CurtainStartupMessage::SessionLocked)) => {
-                            if !session_locked {
-                                session_locked = true;
-                                *state = LockState::Locked;
-                                update_locked_hint(session_proxy, true).await;
-                                tracing::info!(trigger, "compositor confirmed the curtain session lock");
-                            }
-                        }
-                        Ok(Some(CurtainStartupMessage::Ready { latency_report: report })) => {
-                            if !session_locked {
-                                tracing::warn!("ignoring curtain readiness before compositor lock confirmation");
-                                continue;
-                            }
-                            curtain_latency_report = report.map(|report| *report);
-                            ready_received = true;
+                            update_locked_hint(session_proxy, true).await;
+                            tracing::info!(trigger, "compositor confirmed the curtain session lock");
                             break;
+                        }
+                        Ok(Some(CurtainStartupMessage::Ready { .. })) => {
+                            tracing::warn!("ignoring curtain readiness before compositor lock confirmation");
                         }
                         Ok(None) => tracing::warn!("curtain closed startup connection without a message"),
                         Err(error) => tracing::warn!("failed to read curtain startup message: {error:#}"),
                     },
                     Err(error) => {
                         let error = anyhow!(error).context("failed to accept curtain startup notification");
-                        if session_locked {
-                            tracing::warn!("{error:#}; preserving the locked curtain");
-                            break;
-                        }
                         if let Err(stop_error) = process::force_stop_curtain(child).await {
                             remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                             return Err(AttemptFailure::unsafe_to_retry(
                                 stop_error.context(error),
-                                false,
+                                true,
                             ));
                         }
                         let _ = ownership::remove(&owner_path);
@@ -240,30 +227,20 @@ pub(super) async fn activate_lock_attempt(
                         continue;
                     }
                 };
-                if !session_locked {
-                    let _ = ownership::remove(&owner_path);
-                    remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
-                }
+                // An exit after the gate opened cannot prove the compositor released the lock.
+                remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                 return Err(AttemptFailure::unsafe_to_retry(
                     anyhow!("curtain exited before readiness with status {status}"),
-                    session_locked,
+                    true,
                 ));
             }
             () = sleep_until(deadline) => {
-                if session_locked {
-                    tracing::warn!(
-                        acquire_timeout_seconds,
-                        "curtain readiness timed out after compositor lock confirmation; preserving the curtain and enabling authentication"
-                    );
-                    break;
-                }
-
                 let timeout_error = anyhow!("timed out waiting for compositor lock confirmation");
                 if let Err(error) = process::force_stop_curtain(child).await {
                     remove_activation_sockets(&notify_path, &auth_socket_path, &control_socket_path);
                     return Err(AttemptFailure::unsafe_to_retry(
                         error.context(timeout_error),
-                        false,
+                        true,
                     ));
                 }
                 let _ = ownership::remove(&owner_path);
@@ -273,37 +250,7 @@ pub(super) async fn activate_lock_attempt(
         }
     }
 
-    let ready_wait_elapsed_ms = elapsed_ms(ready_wait_started_at);
-    let ready_wait_elapsed_us = elapsed_us(ready_wait_started_at);
-    let _ = std::fs::remove_file(&notify_path);
-    let activation_elapsed_ms = elapsed_ms(activation_started_at);
-    let activation_elapsed_us = elapsed_us(activation_started_at);
-    let ready = ready_received;
-    let latency_report = latency_report.is_enabled().then_some(LockLatencyReport {
-        daemon_config_load_ms,
-        daemon_config_load_us,
-        socket_setup_ms: socket_setup_elapsed_ms,
-        socket_setup_us: socket_setup_elapsed_us,
-        curtain_spawn_ms: spawn_elapsed_ms,
-        curtain_spawn_us: spawn_elapsed_us,
-        curtain_ready_wait_ms: ready_wait_elapsed_ms,
-        curtain_ready_wait_us: ready_wait_elapsed_us,
-        activation_total_ms: activation_elapsed_ms,
-        activation_total_us: activation_elapsed_us,
-        curtain: curtain_latency_report,
-    });
-    if let Some(report) = latency_report.as_ref() {
-        log_latency_report(report);
-    }
-    tracing::info!(
-        trigger,
-        socket_setup_elapsed_ms,
-        spawn_elapsed_ms,
-        ready_wait_elapsed_ms,
-        activation_elapsed_ms,
-        ready,
-        "curtain startup completed; session considered locked"
-    );
+    *state = LockState::Locked;
     Ok(LockActivation {
         active: ActiveLock {
             curtain: CurtainHandle::Spawned { child, owner_path },
@@ -313,6 +260,22 @@ pub(super) async fn activate_lock_attempt(
             auth_results,
             auth_sender,
         },
-        latency_report,
+        readiness: super::readiness::RichReadiness {
+            listener: notify_listener,
+            path: notify_path,
+            deadline,
+            trigger,
+            activation_started_at,
+            ready_wait_started_at,
+            report: latency_report.is_enabled().then_some(LockLatencyReport {
+                daemon_config_load_ms,
+                daemon_config_load_us,
+                socket_setup_ms: socket_setup_elapsed_ms,
+                socket_setup_us: socket_setup_elapsed_us,
+                curtain_spawn_ms: spawn_elapsed_ms,
+                curtain_spawn_us: spawn_elapsed_us,
+                ..LockLatencyReport::default()
+            }),
+        },
     })
 }

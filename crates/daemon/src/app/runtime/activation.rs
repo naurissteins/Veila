@@ -1,5 +1,7 @@
 mod attempt;
+mod readiness;
 mod startup;
+pub(super) use readiness::RichReadiness;
 
 use super::state::{LockActivation, update_locked_hint};
 use crate::{adapters::logind, domain::lock_state::LockState};
@@ -23,8 +25,6 @@ pub(crate) async fn activate_lock(
     daemon_config_load_ms: u64,
     daemon_config_load_us: u64,
 ) -> Result<LockActivation> {
-    let mut lock_was_confirmed = false;
-
     for emergency_retry in [false, true] {
         let result = activate_lock_attempt(
             trigger,
@@ -66,23 +66,23 @@ pub(crate) async fn activate_lock(
         match result {
             Ok(activation) => return Ok(activation),
             Err(failure) => {
-                lock_was_confirmed |= failure.session_locked;
-                *state = if lock_was_confirmed {
-                    LockState::Locked
+                *state = if failure.unresolved {
+                    LockState::Locking
                 } else {
                     LockState::Unlocked
                 };
 
                 if !emergency_retry && failure.retry_safe {
                     tracing::error!(
-                        session_locked = failure.session_locked,
                         "curtain failed before readiness: {:#}; retrying with emergency UI",
                         failure.error
                     );
                     continue;
                 }
 
-                update_locked_hint(session_proxy, lock_was_confirmed).await;
+                if !state.is_active() {
+                    update_locked_hint(session_proxy, false).await;
+                }
                 return Err(failure.error).context(if emergency_retry {
                     "emergency curtain retry failed"
                 } else {
@@ -94,3 +94,6 @@ pub(crate) async fn activate_lock(
 
     Err(anyhow!("curtain activation attempts exhausted"))
 }
+
+#[cfg(test)]
+pub(crate) mod readiness_tests;

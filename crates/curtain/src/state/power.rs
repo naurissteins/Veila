@@ -159,7 +159,7 @@ impl CurtainApp {
         output: &smithay_client_toolkit::reexports::client::protocol::wl_output::WlOutput,
         queue_handle: &QueueHandle<Self>,
     ) -> Option<wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1::ZwlrOutputPowerV1>
-    {
+{
         if !self.output_power_control_enabled() {
             return None;
         }
