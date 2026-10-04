@@ -71,13 +71,14 @@ pub(super) async fn handle_prepare_for_sleep(
                 veila_common::ipc::LatencyReportMode::Disabled,
             );
         }
-        if startup.is_acquiring() {
+        if startup.is_acquiring() || startup.unlock_requested {
             startup.deferred_sleep = Some(true);
             return;
         }
         prepare_for_sleep(runtime).await;
     } else {
-        if startup.is_acquiring() && startup.deferred_sleep.is_some() {
+        if (startup.is_acquiring() || startup.unlock_requested) && startup.deferred_sleep.is_some()
+        {
             startup.deferred_sleep = Some(false);
             return;
         }

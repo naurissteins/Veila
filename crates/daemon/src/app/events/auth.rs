@@ -1,12 +1,8 @@
 use std::time::Instant;
 
-use crate::{adapters::logind, domain::auth::AuthPolicy};
-
 use super::super::{
     connections::AuthConnection,
-    runtime::{AuthResult, ClientMessageContext, deactivate_lock, handle_client_message},
-    state::RuntimeSlots,
-    suspend::LockedSuspendState,
+    runtime::{AuthResult, ClientMessageContext, handle_client_message},
 };
 
 pub(crate) async fn handle_auth_message(
@@ -23,24 +19,15 @@ pub(crate) async fn handle_auth_message(
     }
 }
 
-pub(crate) async fn handle_auth_result(
-    session_proxy: &logind::SessionProxy<'_>,
-    slots: RuntimeSlots<'_>,
-    auth_policy: AuthPolicy,
+pub(crate) fn handle_auth_result(
+    auth_state: &mut crate::domain::auth::AuthState,
     result: AuthResult,
-    suspend_state: &mut LockedSuspendState,
-) {
-    let RuntimeSlots {
-        state,
-        active,
-        auth_state,
-    } = slots;
-
+) -> Option<AuthResult> {
     match result {
         AuthResult::Succeeded {
             attempt_id,
-            started_at,
             elapsed_ms,
+            ..
         } => {
             tracing::info!(
                 attempt_id,
@@ -48,33 +35,7 @@ pub(crate) async fn handle_auth_result(
                 "starting unlock after successful authentication"
             );
             auth_state.finish_success();
-            let unlock_started_at = Instant::now();
-
-            if let Err(error) = deactivate_lock(
-                session_proxy,
-                state,
-                active,
-                auth_policy,
-                auth_state,
-                Some(attempt_id),
-            )
-            .await
-            {
-                tracing::error!("failed to unlock after successful authentication: {error:#}");
-            } else {
-                suspend_state.clear();
-                tracing::info!(
-                    attempt_id,
-                    auth_elapsed_ms = elapsed_ms,
-                    unlock_elapsed_ms = unlock_started_at
-                        .elapsed()
-                        .as_millis()
-                        .min(u128::from(u64::MAX)) as u64,
-                    daemon_total_ms =
-                        started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
-                    "unlock timing summary"
-                );
-            }
+            Some(result)
         }
         AuthResult::Rejected {
             attempt_id,
@@ -84,10 +45,11 @@ pub(crate) async fn handle_auth_result(
             tracing::info!(
                 attempt_id,
                 auth_elapsed_ms = elapsed_ms,
-                daemon_total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                daemon_total_ms = veila_common::time::elapsed_ms(started_at),
                 "recording failed authentication attempt"
             );
             auth_state.finish_failure(Instant::now());
+            None
         }
     }
 }

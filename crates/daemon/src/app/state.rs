@@ -111,29 +111,6 @@ impl AppRuntime {
     pub(super) fn slots_with_policy(&mut self) -> (AuthPolicy, RuntimeSlots<'_>) {
         (self.auth_policy, self.slots())
     }
-
-    pub(super) fn slots_with_policy_and_suspend(
-        &mut self,
-    ) -> (AuthPolicy, &mut LockedSuspendState, RuntimeSlots<'_>) {
-        let Self {
-            auth_policy,
-            suspend_state,
-            state,
-            active,
-            auth_state,
-            ..
-        } = self;
-
-        (
-            *auth_policy,
-            suspend_state,
-            RuntimeSlots {
-                state,
-                active,
-                auth_state,
-            },
-        )
-    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
