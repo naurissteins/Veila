@@ -1,3 +1,6 @@
+mod control;
+pub use control::send_daemon_control_message;
+
 use std::{
     ffi::{OsStr, OsString},
     os::unix::fs::{MetadataExt, PermissionsExt},
@@ -97,31 +100,6 @@ pub fn transient_socket_path(label: &str) -> Result<PathBuf> {
     Ok(runtime_dir()?.join(format!("veila-{label}-{stamp}.sock")))
 }
 
-pub async fn send_daemon_control_message(
-    path: &Path,
-    message: &DaemonControlMessage,
-) -> Result<DaemonControlResponse> {
-    let mut stream = UnixStream::connect(path)
-        .await
-        .with_context(|| format!("failed to connect to daemon socket {}", path.display()))?;
-    verify_peer_uid(&stream).context("daemon control socket peer rejected")?;
-
-    let mut payload = encode_message(message).context("failed to encode daemon control message")?;
-    payload.push('\n');
-    stream
-        .write_all(payload.as_bytes())
-        .await
-        .context("failed to write daemon control message")?;
-    stream
-        .flush()
-        .await
-        .context("failed to flush daemon control message")?;
-
-    read_daemon_control_response(&mut stream)
-        .await?
-        .ok_or_else(|| anyhow!("daemon closed control socket without a response"))
-}
-
 pub async fn read_client_message(stream: &mut UnixStream) -> Result<Option<ClientMessage>> {
     let Some(mut line) = read_bounded_line(stream, "auth request").await? else {
         return Ok(None);
@@ -175,18 +153,6 @@ pub async fn write_daemon_control_response(
         .flush()
         .await
         .context("failed to flush daemon control response")
-}
-
-async fn read_daemon_control_response(
-    stream: &mut UnixStream,
-) -> Result<Option<DaemonControlResponse>> {
-    let Some(line) = read_bounded_line(stream, "daemon control response").await? else {
-        return Ok(None);
-    };
-
-    decode_message(&line)
-        .map(Some)
-        .context("invalid daemon control response")
 }
 
 pub(crate) async fn accept_verified(listener: &UnixListener, label: &str) -> Result<UnixStream> {
