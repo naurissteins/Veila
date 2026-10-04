@@ -2,7 +2,7 @@ mod activation;
 mod active;
 mod auth;
 mod state;
-mod unlock;
+pub(super) mod unlock;
 
 pub(super) use activation::activate_lock;
 pub(super) use active::{ActiveLock, control_socket_path};

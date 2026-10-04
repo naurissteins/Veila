@@ -4,46 +4,13 @@ use veila_common::NowPlayingSnapshot;
 
 use crate::{
     adapters::{
-        logind, ownership,
+        ownership,
         process::{self, CurtainExit},
     },
     domain::{auth::AuthPolicy, lock_state::LockState},
 };
 
-use super::super::{runtime::reset_runtime, state::RuntimeSlots, suspend::LockedSuspendState};
-
-pub(crate) async fn handle_unlock_signal(
-    session_proxy: &logind::SessionProxy<'_>,
-    slots: RuntimeSlots<'_>,
-    auth_policy: AuthPolicy,
-    suspend_state: &mut LockedSuspendState,
-) {
-    let RuntimeSlots {
-        state,
-        active,
-        auth_state,
-    } = slots;
-
-    if !state.is_active() {
-        tracing::debug!(state = %state, "ignoring unlock signal while not locked");
-        return;
-    }
-
-    if let Err(error) = super::super::runtime::deactivate_lock(
-        session_proxy,
-        state,
-        active,
-        auth_policy,
-        auth_state,
-        None,
-    )
-    .await
-    {
-        tracing::error!("failed to deactivate lock: {error:#}");
-    } else {
-        suspend_state.clear();
-    }
-}
+use super::super::{runtime::reset_runtime, state::RuntimeSlots};
 
 pub(crate) async fn handle_curtain_exit(
     status: CurtainExit,

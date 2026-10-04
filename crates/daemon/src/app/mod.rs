@@ -19,6 +19,7 @@ mod sleep;
 mod startup;
 mod state;
 mod suspend;
+mod unlock;
 mod watch;
 mod weather;
 
@@ -36,7 +37,7 @@ use veila_common::{AppConfig, LoadedConfig};
 
 use self::events::{
     ShutdownGate, handle_auth_message, handle_auth_result, handle_control_message,
-    handle_curtain_exit, handle_now_playing_update, handle_unlock_signal, shutdown_runtime,
+    handle_curtain_exit, handle_now_playing_update, shutdown_runtime,
 };
 use self::helpers::current_username;
 use self::runtime::{
@@ -122,6 +123,7 @@ pub async fn run(
     let mut curtain_wait_retry_at = None;
     let mut shutdown_gate = ShutdownGate::default();
     let mut startup = startup::PendingStartup::default();
+    let mut unlock = unlock::PendingUnlock::default();
     let mut next_session_close_check = std::time::Instant::now();
 
     tracing::info!(
@@ -136,16 +138,31 @@ pub async fn run(
 
     loop {
         startup.reconcile(&runtime);
+        if startup.unlock_requested
+            && !startup.is_acquiring()
+            && !unlock.is_pending()
+            && startup.relock.is_none()
+        {
+            sleep::finish_deferred_sleep(&mut startup, &mut runtime, &manager_proxy).await;
+        }
+        if startup.unlock_requested
+            && !startup.is_acquiring()
+            && !unlock.is_pending()
+            && !unlock.begin(&mut runtime, None)
+        {
+            startup.unlock_requested = false;
+        }
         startup.resume_relock(
             &mut runtime,
             &connection,
             &session_path,
             options.config_path.as_deref(),
         );
-        if !startup.is_acquiring() && startup.relock.is_none() {
+        if !startup.is_acquiring() && !unlock.is_pending() && startup.relock.is_none() {
             sleep::finish_deferred_sleep(&mut startup, &mut runtime, &manager_proxy).await;
         }
         if !startup.is_pending()
+            && !unlock.is_pending()
             && let Some(request) = startup.reloads.pop_front()
         {
             handle_control_message(
@@ -193,35 +210,17 @@ pub async fn run(
             () = runtime.idle.idled() => {
                 startup.begin("idle", &mut runtime, &connection, &session_path, options.config_path.as_deref(), false, veila_common::ipc::LatencyReportMode::Disabled);
             }
-            milestone = startup.next() => {
+            milestone = startup.next(), if !unlock.is_pending() => {
                 startup.complete(milestone, &mut runtime).await;
-                if !startup.is_acquiring() {
-                    if startup.relock.is_none() {
-                        sleep::finish_deferred_sleep(&mut startup, &mut runtime, &manager_proxy).await;
-                    }
-                    if std::mem::take(&mut startup.unlock_requested) {
-                        let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-                        handle_unlock_signal(&session_proxy, slots, auth_policy, suspend_state).await;
-                    }
+            }
+            progress = unlock.next() => {
+                if unlock.advance(progress, &mut runtime).await {
+                    startup.unlock_requested = false;
+                    if !runtime.state.is_active() { runtime.fingerprint.stop().await; }
                 }
             }
             Some(_) = unlock_stream.next() => {
-                if startup.is_acquiring() {
-                    startup.request_unlock();
-                    continue;
-                }
-                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-                handle_unlock_signal(
-                    &session_proxy,
-                    slots,
-                    auth_policy,
-                    suspend_state,
-                ).await;
-                if !runtime.state.is_active() {
-                    runtime.last_power_status_snapshot = None;
-                    runtime.power_status_sent = false;
-                    runtime.fingerprint.stop().await;
-                }
+                if runtime.state.is_active() { startup.request_unlock(); }
             }
             Some(signal) = prepare_for_sleep_stream.next() => {
                 match signal.args() {
@@ -233,12 +232,16 @@ pub async fn run(
                     }
                 }
             }
-            result = wait_for_curtain_exit(curtain), if active_present && curtain_wait_retry_at.is_none_or(|retry_at| std::time::Instant::now() >= retry_at) => {
+            result = wait_for_curtain_exit(curtain), if active_present && unlock.can_wait_for_exit() && curtain_wait_retry_at.is_none_or(|retry_at| std::time::Instant::now() >= retry_at) => {
                 match result {
                     Ok(status) => {
                         curtain_wait_retry_at = None;
-                        let (auth_policy, slots) = runtime.slots_with_policy();
-                        handle_curtain_exit(status, slots, auth_policy).await;
+                        if unlock.is_pending() {
+                            unlock.released(&mut runtime, &connection, &session_path);
+                        } else {
+                            let (auth_policy, slots) = runtime.slots_with_policy();
+                            handle_curtain_exit(status, slots, auth_policy).await;
+                        }
                         if !runtime.state.is_active() {
                             runtime.last_power_status_snapshot = None;
                             runtime.power_status_sent = false;
@@ -247,13 +250,17 @@ pub async fn run(
                     }
                     Err(error) => {
                         tracing::warn!("failed while waiting for curtain process: {error:#}");
+                        if unlock.is_pending() {
+                            unlock.fail(&mut runtime);
+                            startup.unlock_requested = false;
+                        }
                         curtain_wait_retry_at = Some(
                             std::time::Instant::now() + std::time::Duration::from_millis(250),
                         );
                     }
                 }
             }
-            result = accept_auth_connection(auth_listener), if runtime.state.is_active() && active_present => {
+            result = accept_auth_connection(auth_listener), if runtime.state.is_active() && active_present && !unlock.is_pending() => {
                 match result {
                     Ok(stream) => {
                         if let Some(generation) = runtime.active.as_ref().map(|active| active.auth_socket_path.clone()) {
@@ -271,7 +278,7 @@ pub async fn run(
                     }
                 }
             }
-            Some(connection) = auth_connections.recv() => {
+            Some(connection) = auth_connections.recv(), if !unlock.is_pending() => {
                 if runtime.active.as_ref().map(|active| &active.auth_socket_path) != Some(&connection.generation) {
                     tracing::debug!("discarding auth request from an inactive lock generation");
                     continue;
@@ -289,7 +296,7 @@ pub async fn run(
                     connection,
                 ).await;
             }
-            result = receive_auth_result(auth_results), if active_present => {
+            result = receive_auth_result(auth_results), if active_present && !unlock.is_pending() => {
                 let Some(result) = result else {
                     continue;
                 };
@@ -298,14 +305,10 @@ pub async fn run(
                     continue;
                 }
 
-                let (auth_policy, suspend_state, slots) = runtime.slots_with_policy_and_suspend();
-                handle_auth_result(
-                    &session_proxy,
-                    slots,
-                    auth_policy,
-                    result,
-                    suspend_state,
-                ).await;
+                if let Some(result) = handle_auth_result(&mut runtime.auth_state, result) {
+                    startup.request_unlock();
+                    if !unlock.begin(&mut runtime, Some(result)) { startup.unlock_requested = false; }
+                }
             }
             result = accept_control_connection(&mut control_listener) => {
                 match result {
@@ -327,7 +330,7 @@ pub async fn run(
                     }
                 }
             }
-            result = now_playing_updates.changed() => {
+            result = now_playing_updates.changed(), if !unlock.is_pending() => {
                 if result.is_err() {
                     continue;
                 }
@@ -341,7 +344,7 @@ pub async fn run(
             }
             _ = maintenance_tick.tick() => {
                 let now = std::time::Instant::now();
-                if shutdown_gate.is_requested() && !startup.is_acquiring() && now >= next_session_close_check {
+                if shutdown_gate.is_requested() && !startup.is_acquiring() && !unlock.is_pending() && now >= next_session_close_check {
                     next_session_close_check = now + std::time::Duration::from_secs(5);
                     if matches!(
                         time::timeout(std::time::Duration::from_millis(200), session_proxy.state()).await,
@@ -354,7 +357,7 @@ pub async fn run(
                 }
                 let suspend_decision = runtime.suspend_state.evaluate(
                     now,
-                    runtime.state.is_active(),
+                    runtime.state.is_active() && !unlock.is_pending(),
                     runtime.auth_state.in_flight(),
                     runtime.battery.current_snapshot().as_ref(),
                     runtime.now_playing.currently_playing(),
@@ -419,7 +422,7 @@ pub async fn run(
                     }
                 }
 
-                if runtime.active.is_some() {
+                if runtime.active.is_some() && !unlock.is_pending() {
                     runtime.fingerprint.update(
                         true,
                         runtime.loaded_config.config.fingerprint.enabled,
@@ -472,7 +475,7 @@ pub async fn run(
                     runtime.power_status_sent = false;
                 }
 
-                if !startup.is_pending() && let Some(trigger) = auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
+                if !startup.is_pending() && !unlock.is_pending() && let Some(trigger) = auto_reload_watcher.poll(options.config_path.as_deref(), &runtime.loaded_config) {
                     auto_reload::handle(trigger, options.config_path.as_deref(), &mut runtime).await;
                 }
             }

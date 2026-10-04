@@ -34,7 +34,11 @@ impl PendingStartup {
                 latency_report,
                 sleep_transition,
             } => {
-                if runtime.state.is_active() && runtime.active.is_none() && !self.is_pending() {
+                if runtime.state.is_active()
+                    && runtime.active.is_none()
+                    && !self.is_pending()
+                    && !self.unlock_requested
+                {
                     respond(
                         request.stream,
                         DaemonControlResponse::Error {
@@ -96,7 +100,7 @@ impl PendingStartup {
                 }
                 None
             }
-            DaemonControlMessage::ReloadConfig if self.is_pending() => {
+            DaemonControlMessage::ReloadConfig if self.is_pending() || self.unlock_requested => {
                 if self.waiter_count() >= MAX_STARTUP_WAITERS {
                     respond(
                         request.stream,

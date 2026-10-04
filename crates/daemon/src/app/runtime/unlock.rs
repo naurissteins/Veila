@@ -89,7 +89,7 @@ pub(crate) enum CurtainStop {
     UnlockUndeliverable,
 }
 
-const GRACEFUL_EXIT_WINDOW: Duration = Duration::from_secs(5);
+pub(in crate::app) const GRACEFUL_EXIT_WINDOW: Duration = Duration::from_secs(5);
 const UNLOCK_DELIVERY_ATTEMPTS: u32 = 3;
 const UNLOCK_RETRY_DELAY: Duration = Duration::from_millis(100);
 
@@ -133,7 +133,10 @@ async fn stop_active_curtain(
     }
 }
 
-async fn deliver_unlock(control_socket_path: &Path, attempt_id: Option<u64>) -> Result<()> {
+pub(in crate::app) async fn deliver_unlock(
+    control_socket_path: &Path,
+    attempt_id: Option<u64>,
+) -> Result<()> {
     let mut last_error = None;
 
     for attempt in 1..=UNLOCK_DELIVERY_ATTEMPTS {
