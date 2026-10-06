@@ -8,6 +8,7 @@ mod include;
 mod lock;
 mod mutation;
 mod now_playing;
+mod paths;
 #[cfg(test)]
 mod tests;
 mod validation;

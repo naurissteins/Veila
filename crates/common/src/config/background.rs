@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use super::RgbColor;
+use super::{RgbColor, paths::expand_home_path};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -475,22 +475,6 @@ fn supported_slideshow_path(path: &Path) -> bool {
             .map(|extension| extension.to_ascii_lowercase()),
         Some(extension) if matches!(extension.as_str(), "jpg" | "jpeg" | "png" | "webp")
     )
-}
-
-fn expand_home_path(path: &Path) -> PathBuf {
-    if path == Path::new("~") {
-        return std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| path.to_path_buf());
-    }
-
-    if let Ok(rest) = path.strip_prefix("~")
-        && let Some(home) = std::env::var_os("HOME")
-    {
-        return PathBuf::from(home).join(rest);
-    }
-
-    path.to_path_buf()
 }
 
 fn slideshow_seed() -> u64 {
