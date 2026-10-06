@@ -11,15 +11,14 @@ use veila_common::AppConfig;
 
 use super::DAEMON_SERVICE;
 use crate::{
-    DaemonOptions,
     adapters::process::{CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME},
     logging::normalize_log_file_path,
-    options::LogTarget,
+    options::{LogOptions, LogTarget},
 };
 
-pub fn print_logs(options: &DaemonOptions) -> Result<()> {
-    if options.logs_file {
-        return print_file_logs(options);
+pub fn print_logs(config_path: Option<&Path>, options: &LogOptions) -> Result<()> {
+    if options.file {
+        return print_file_logs(config_path, options);
     }
 
     let mut command = Command::new("journalctl");
@@ -29,25 +28,25 @@ pub fn print_logs(options: &DaemonOptions) -> Result<()> {
         .arg("--no-pager")
         .arg("--output=cat");
 
-    apply_target(&mut command, options.logs_target);
+    apply_target(&mut command, options.target);
 
-    if options.logs_follow {
+    if options.follow {
         command.arg("--follow");
     }
 
-    if let Some(since) = options.logs_since.as_deref() {
+    if let Some(since) = options.since.as_deref() {
         command.arg(format!("--since={}", normalize_since(since)));
     } else {
         command.arg(format!(
             "--lines={}",
             options
-                .logs_lines
-                .unwrap_or(if options.logs_follow { 50 } else { 200 })
+                .lines
+                .unwrap_or(if options.follow { 50 } else { 200 })
         ));
     }
 
-    if let Some(lines) = options.logs_lines
-        && options.logs_since.is_some()
+    if let Some(lines) = options.lines
+        && options.since.is_some()
     {
         command.arg(format!("--lines={lines}"));
     }
@@ -62,20 +61,16 @@ pub fn print_logs(options: &DaemonOptions) -> Result<()> {
     Ok(())
 }
 
-fn print_file_logs(options: &DaemonOptions) -> Result<()> {
-    if options.logs_since.is_some() {
+fn print_file_logs(config_path: Option<&Path>, options: &LogOptions) -> Result<()> {
+    if options.since.is_some() {
         bail!("--since is only supported for journal logs");
     }
 
-    if !matches!(
-        options.logs_target,
-        LogTarget::LockService | LogTarget::Daemon
-    ) {
+    if !matches!(options.target, LogTarget::LockService | LogTarget::Daemon) {
         bail!("component filters are only supported for journal logs");
     }
 
-    let loaded = AppConfig::load(options.config_path.as_deref())
-        .context("failed to load config for file log path")?;
+    let loaded = AppConfig::load(config_path).context("failed to load config for file log path")?;
     let configured_path = normalize_log_file_path(&loaded.config.lock.log_file_path);
 
     if !loaded.config.lock.log_to_file {
@@ -103,10 +98,10 @@ fn print_file_logs(options: &DaemonOptions) -> Result<()> {
     }
 
     let lines = options
-        .logs_lines
-        .unwrap_or(if options.logs_follow { 50 } else { 200 });
+        .lines
+        .unwrap_or(if options.follow { 50 } else { 200 });
 
-    if options.logs_follow {
+    if options.follow {
         follow_file_logs(&configured_path, lines)?;
     } else {
         print_recent_file_lines(&configured_path, lines)?;
