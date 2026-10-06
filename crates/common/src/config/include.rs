@@ -5,6 +5,7 @@ use std::{
 
 use toml::Value;
 
+use super::paths::expand_home_path;
 use crate::error::{Result, VeilaError};
 
 pub(super) fn extract_paths(value: &Value, config_dir: Option<&Path>) -> Result<Vec<PathBuf>> {
@@ -41,28 +42,12 @@ pub(super) fn load_value(path: &Path) -> Result<Option<Value>> {
 }
 
 fn resolve_path(path: &str, config_dir: Option<&Path>) -> PathBuf {
-    let path = expand_home_path(path);
+    let path = expand_home_path(Path::new(path));
     if path.is_absolute() {
         return path;
     }
 
     config_dir.map(|dir| dir.join(&path)).unwrap_or(path)
-}
-
-fn expand_home_path(path: &str) -> PathBuf {
-    if path == "~" {
-        return std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from(path));
-    }
-
-    if let Some(rest) = path.strip_prefix("~/")
-        && let Some(home) = std::env::var_os("HOME")
-    {
-        return PathBuf::from(home).join(rest);
-    }
-
-    PathBuf::from(path)
 }
 
 fn invalid_include_error(message: &str) -> VeilaError {
