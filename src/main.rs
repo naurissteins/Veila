@@ -9,8 +9,8 @@ use anyhow::{Context, Result};
 use nix::sys::prctl;
 use veila_curtain::CurtainOptions;
 use veila_daemon::{
-    CURTAIN_PROCESS_NAME, DAEMON_PROCESS_NAME, DaemonOptions, PAM_HELPER_PROCESS_NAME,
-    PREWARM_PROCESS_NAME,
+    CURTAIN_PROCESS_NAME, ControlOptions, DAEMON_PROCESS_NAME, DaemonOptions,
+    PAM_HELPER_PROCESS_NAME, PREWARM_PROCESS_NAME,
 };
 
 use cli::{Invocation, Mode};
@@ -19,9 +19,7 @@ fn main() -> Result<()> {
     let Invocation { mode, args } = Invocation::parse(std::env::args().collect());
 
     match mode {
-        Mode::Control => block_on(veila_daemon::run_control(
-            DaemonOptions::parse_control_args(args)?,
-        )),
+        Mode::Control => block_on(veila_daemon::run_control(ControlOptions::parse_args(args)?)),
         Mode::Daemon | Mode::LegacyDaemon => run_daemon(args, mode == Mode::LegacyDaemon),
         Mode::Prewarm => {
             harden_process(PREWARM_PROCESS_NAME)?;

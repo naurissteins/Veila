@@ -18,4 +18,4 @@ pub use adapters::process::{
 pub use control::run_control;
 pub use entry::{run_daemon, run_prewarm};
 pub use logging::daemon_log_file_path;
-pub use options::DaemonOptions;
+pub use options::{ControlOptions, DaemonOptions};
