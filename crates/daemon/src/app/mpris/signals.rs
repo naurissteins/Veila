@@ -6,9 +6,13 @@ use veila_common::NowPlayingConfig;
 use zbus::{Connection, MatchRule, MessageStream, message::Type, zvariant::OwnedValue};
 
 use super::{
-    DBUS_INTERFACE, DBUS_PROPERTIES_INTERFACE, MPRIS_INTERFACE, MPRIS_NAMESPACE, MPRIS_PATH,
-    NowPlayingRefresh, fetch_snapshot,
+    NowPlayingRefresh,
+    query::{MPRIS_INTERFACE, MPRIS_PATH, fetch_snapshot},
 };
+
+const MPRIS_NAMESPACE: &str = "org.mpris.MediaPlayer2";
+const DBUS_INTERFACE: &str = "org.freedesktop.DBus";
+const DBUS_PROPERTIES_INTERFACE: &str = "org.freedesktop.DBus.Properties";
 
 pub(super) struct MprisClient {
     connection: Connection,
@@ -164,6 +168,47 @@ mod tests {
         let message = properties_changed_message(&[("Position", Value::from(42_i64))], &[]);
 
         assert!(!properties_changed_affects_snapshot(&message));
+    }
+
+    #[test]
+    fn invalidated_snapshot_fields_trigger_refresh() {
+        for property in ["Metadata", "PlaybackStatus"] {
+            assert!(properties_changed_affects_snapshot(
+                &properties_changed_message(&[], &[property])
+            ));
+        }
+        assert!(!properties_changed_affects_snapshot(
+            &properties_changed_message(&[], &["Position"])
+        ));
+    }
+
+    #[test]
+    fn unrelated_interface_does_not_trigger_refresh() {
+        let changed = HashMap::from([("Metadata", Value::from("track"))]);
+        let message = Message::signal(
+            super::MPRIS_PATH,
+            super::DBUS_PROPERTIES_INTERFACE,
+            "PropertiesChanged",
+        )
+        .expect("signal")
+        .build(&("org.example.Unrelated", changed, Vec::<String>::new()))
+        .expect("message");
+
+        assert!(!properties_changed_affects_snapshot(&message));
+    }
+
+    #[test]
+    fn malformed_property_signal_requests_a_refresh() {
+        let message = Message::signal(
+            super::MPRIS_PATH,
+            super::DBUS_PROPERTIES_INTERFACE,
+            "PropertiesChanged",
+        )
+        .expect("signal")
+        .build(&42_i64)
+        .expect("message");
+
+        assert!(properties_changed_affects_snapshot(&message));
     }
 
     fn properties_changed_message(changed: &[(&str, Value<'_>)], invalidated: &[&str]) -> Message {
