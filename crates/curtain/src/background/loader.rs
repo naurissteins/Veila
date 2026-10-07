@@ -11,7 +11,7 @@ use veila_renderer::{
     avatar::AvatarAsset,
     background::{
         BackgroundAsset, BackgroundTreatment, GeneratedBackground, load_cached_generated_render,
-        load_cached_render, store_cached_generated_render, store_cached_render,
+        load_cached_render, store_cached_generated_render, store_cached_render, unique_sizes,
     },
     cover::CoverArtAsset,
 };
@@ -55,7 +55,8 @@ pub(crate) fn spawn_loader(
     sender: Sender<BackgroundEvent>,
 ) {
     thread::spawn(move || {
-        let unique_sizes = unique_sizes(sizes);
+        let unique_sizes = unique_sizes(&sizes);
+        drop(sizes);
         let cached_started_at = Instant::now();
         let cached_buffers = load_cached_buffers(&path, treatment, &unique_sizes);
         let cached_sizes: Vec<_> = cached_buffers.iter().map(|(size, _)| *size).collect();
@@ -115,7 +116,9 @@ pub(crate) fn spawn_generated_loader(
             }
         };
         let mut buffers = Vec::new();
-        for size in unique_sizes(sizes) {
+        let unique_sizes = unique_sizes(&sizes);
+        drop(sizes);
+        for size in unique_sizes {
             let buffer = match load_cached_generated_render(generated, size, treatment) {
                 Ok(Some(buffer)) => Ok(buffer),
                 _ => asset.render(size).inspect(|buffer| {
@@ -190,7 +193,8 @@ pub(crate) fn spawn_preloader(
     sizes: Vec<FrameSize>,
 ) {
     thread::spawn(move || {
-        let unique_sizes = unique_sizes(sizes);
+        let unique_sizes = unique_sizes(&sizes);
+        drop(sizes);
         let cached_sizes: Vec<_> = load_cached_buffers(&path, treatment, &unique_sizes)
             .iter()
             .map(|(size, _)| *size)
@@ -272,18 +276,6 @@ fn store_cached_buffers(
     }
 }
 
-fn unique_sizes(sizes: Vec<FrameSize>) -> Vec<FrameSize> {
-    let mut unique = Vec::with_capacity(sizes.len());
-
-    for size in sizes {
-        if !unique.contains(&size) {
-            unique.push(size);
-        }
-    }
-
-    unique
-}
-
 #[cfg(test)]
 mod tests {
     use veila_renderer::FrameSize;
@@ -306,7 +298,7 @@ mod tests {
 
     #[test]
     fn deduplicates_matching_output_sizes() {
-        let sizes = unique_sizes(vec![
+        let sizes = unique_sizes(&[
             FrameSize::new(1920, 1080),
             FrameSize::new(2560, 1440),
             FrameSize::new(1920, 1080),

@@ -154,7 +154,8 @@ pub(super) fn decode_rgba_image(path: &Path) -> Result<RgbaImage> {
         .to_rgba8())
 }
 
-pub(super) fn unique_sizes(sizes: &[FrameSize]) -> Vec<FrameSize> {
+/// Keeps the first occurrence of every size, including empty sizes, in input order.
+pub fn unique_sizes(sizes: &[FrameSize]) -> Vec<FrameSize> {
     let mut unique = Vec::with_capacity(sizes.len());
 
     for size in sizes {
