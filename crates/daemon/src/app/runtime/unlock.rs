@@ -2,6 +2,7 @@ use std::{path::Path, time::Instant};
 
 use anyhow::{Result, anyhow};
 use tokio::time::{Duration, timeout};
+use veila_common::elapsed_ms;
 
 use crate::{
     adapters::{
@@ -38,7 +39,7 @@ pub(crate) async fn deactivate_lock(
         reset_runtime(runtime, auth_policy, auth_state);
         update_locked_hint(session_proxy, false).await;
         tracing::info!(
-            elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+            elapsed_ms = elapsed_ms(started_at),
             "deactivate_lock completed without active curtain"
         );
         return Ok(());
@@ -69,7 +70,7 @@ pub(crate) async fn deactivate_lock(
     *state = LockState::Unlocked;
     update_locked_hint(session_proxy, false).await;
 
-    let elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+    let elapsed_ms = elapsed_ms(started_at);
     if let Some(attempt_id) = attempt_id {
         tracing::info!(
             attempt_id,
