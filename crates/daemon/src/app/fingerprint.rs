@@ -15,7 +15,7 @@ use tokio::{
     task::JoinHandle,
     time::{Duration, sleep, timeout},
 };
-use veila_common::FingerprintStatus;
+use veila_common::{FingerprintStatus, elapsed_ms};
 
 use crate::{
     adapters::{fprint, process},
@@ -284,7 +284,7 @@ async fn run_fingerprint_loop(
                 if *cancel.borrow() {
                     return FingerprintTaskExit::Cancelled;
                 }
-                let elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+                let elapsed_ms = elapsed_ms(started_at);
                 let _ = auth_sender.send(AuthResult::Succeeded {
                     attempt_id,
                     started_at,

@@ -21,7 +21,9 @@ use nix::unistd::Uid;
 use veila_common::ipc::{
     CurtainControlMessage, CurtainControlResponse, CurtainLockState, decode_message, encode_message,
 };
-use veila_common::{FingerprintStatus, NowPlayingSnapshot, ipc::LockPowerStatusSnapshot};
+use veila_common::{
+    FingerprintStatus, NowPlayingSnapshot, duration_ms, ipc::LockPowerStatusSnapshot,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
@@ -141,7 +143,7 @@ fn run_listener(
             }
             Err(error) => {
                 tracing::warn!(
-                    retry_in_ms = accept_backoff.as_millis().min(u128::from(u64::MAX)) as u64,
+                    retry_in_ms = duration_ms(accept_backoff),
                     "failed to accept curtain control connection; retrying: {error}"
                 );
                 thread::sleep(accept_backoff);

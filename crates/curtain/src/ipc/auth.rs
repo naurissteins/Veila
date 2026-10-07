@@ -14,7 +14,7 @@ use super::read_bounded_line;
 use nix::sys::socket::{getsockopt, sockopt::PeerCredentials};
 use nix::unistd::Uid;
 use veila_common::{
-    PowerAction, Secret,
+    PowerAction, Secret, elapsed_ms,
     ipc::{ClientMessage, DaemonMessage, decode_message, encode_message, encode_secret_message},
 };
 
@@ -103,7 +103,7 @@ fn run_attempt(
     drop(payload);
     tracing::debug!(
         attempt_id,
-        elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        elapsed_ms = elapsed_ms(started_at),
         "submitted authentication request to daemon"
     );
 
@@ -168,7 +168,7 @@ fn run_attempt(
             }
             DaemonMessage::AuthenticationAccepted { attempt_id: id } if id == attempt_id => {
                 tracing::info!(
-                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                    elapsed_ms = elapsed_ms(started_at),
                     attempt_id,
                     "daemon accepted authentication request"
                 );
@@ -182,7 +182,7 @@ fn run_attempt(
                 message,
             } if id == attempt_id && message.as_deref().is_none_or(valid_pam_text) => {
                 tracing::info!(
-                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                    elapsed_ms = elapsed_ms(started_at),
                     attempt_id,
                     "daemon rejected authentication request"
                 );
@@ -196,7 +196,7 @@ fn run_attempt(
             }
             DaemonMessage::AuthenticationBusy { attempt_id: id } if id == attempt_id => {
                 tracing::debug!(
-                    elapsed_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                    elapsed_ms = elapsed_ms(started_at),
                     attempt_id,
                     "daemon reported authentication request is busy"
                 );

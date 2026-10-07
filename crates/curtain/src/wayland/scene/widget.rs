@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
+use veila_common::elapsed_ms;
 use veila_renderer::{copy_rect_from, shm::FrameResult};
 use veila_ui::{WidgetDamage, WidgetKind};
 
@@ -90,8 +91,7 @@ impl CurtainApp {
                     copy_rect_from(scene_base.as_ref(), buffer, damage)?;
                     ui_shell.render_widget_at_scale(buffer, scale, widget);
                     if let Some(started_at) = overlay_started_at {
-                        overlay_ms =
-                            started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+                        overlay_ms = elapsed_ms(started_at);
                     }
                     Ok(Some(damage))
                 },
@@ -110,10 +110,8 @@ impl CurtainApp {
         if result == FrameResult::Committed
             && let Some(started_at) = started_at
         {
-            let total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
-            let commit_ms = commit_started_at
-                .map(|instant| instant.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-                .unwrap_or(0);
+            let total_ms = elapsed_ms(started_at);
+            let commit_ms = commit_started_at.map(elapsed_ms).unwrap_or(0);
             self.render_profiler.record_dirty(DirtyRenderTimingSample {
                 dynamic_overlay_ms: overlay_ms,
                 commit_ms,

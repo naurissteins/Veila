@@ -33,7 +33,7 @@ use tokio::{
     signal::unix::{SignalKind, signal},
     time,
 };
-use veila_common::{AppConfig, LoadedConfig};
+use veila_common::{AppConfig, LoadedConfig, elapsed_ms, elapsed_us};
 
 use self::events::{
     ShutdownGate, handle_auth_message, handle_auth_result, handle_control_message,
@@ -72,14 +72,8 @@ pub async fn run(
             }
         }
     };
-    let daemon_config_load_ms = config_load_started_at
-        .elapsed()
-        .as_millis()
-        .min(u128::from(u64::MAX)) as u64;
-    let daemon_config_load_us = config_load_started_at
-        .elapsed()
-        .as_micros()
-        .min(u128::from(u64::MAX)) as u64;
+    let daemon_config_load_ms = elapsed_ms(config_load_started_at);
+    let daemon_config_load_us = elapsed_us(config_load_started_at);
     if let Err(error) = cache::harden_existing_cache_root() {
         tracing::warn!("failed to secure existing cache directory: {error}");
     }

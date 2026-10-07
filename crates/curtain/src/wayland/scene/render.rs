@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
+use veila_common::{duration_ms, duration_us, elapsed_ms};
 use veila_renderer::{PixelBuffer, shm};
 
 use crate::state::{CommittedWidgetFrame, CurtainApp, RedrawKind, RenderTimingSample, SurfaceSize};
@@ -73,9 +74,7 @@ impl CurtainApp {
         } else {
             false
         };
-        let background_prepare_ms = background_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
+        let background_prepare_ms = background_started_at.map(elapsed_ms).unwrap_or(0);
 
         if !ui_visible
             && !first_frame
@@ -111,17 +110,13 @@ impl CurtainApp {
             // Checked non-None immediately above
             .expect("scene base buffer should exist")
             .clone();
-        let background_restore_ms = background_restore_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
+        let background_restore_ms = background_restore_started_at.map(elapsed_ms).unwrap_or(0);
         let shm_pool_started_at = timing_enabled.then(Instant::now);
         if self.lock_surfaces[index].shm_pool.is_none() {
             self.lock_surfaces[index].shm_pool =
                 Some(shm::SurfaceBufferPool::new(&self.shm, frame_size)?);
         }
-        let shm_pool_prepare_ms = shm_pool_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
+        let shm_pool_prepare_ms = shm_pool_started_at.map(elapsed_ms).unwrap_or(0);
 
         let commit_started_at = timing_enabled.then(Instant::now);
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
@@ -144,8 +139,7 @@ impl CurtainApp {
                         buffer.pixels_mut().copy_from_slice(scene_base.pixels());
                         ui_shell.render_dynamic_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
-                            dynamic_overlay_ms =
-                                started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+                            dynamic_overlay_ms = elapsed_ms(started_at);
                         }
                         Ok(())
                     },
@@ -178,15 +172,8 @@ impl CurtainApp {
                 background_restore_ms,
                 dynamic_overlay_ms,
                 shm_pool_prepare_ms,
-                commit_ms: commit_started_at
-                    .map(|commit_started_at| {
-                        commit_started_at
-                            .elapsed()
-                            .as_millis()
-                            .min(u128::from(u64::MAX)) as u64
-                    })
-                    .unwrap_or(0),
-                total_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                commit_ms: commit_started_at.map(elapsed_ms).unwrap_or(0),
+                total_ms: elapsed_ms(started_at),
             };
             self.record_full_frame_timing(
                 index,
@@ -227,9 +214,7 @@ impl CurtainApp {
             self.lock_surfaces[index].shm_pool =
                 Some(shm::SurfaceBufferPool::new(&self.shm, frame_size)?);
         }
-        let shm_pool_prepare_ms = shm_pool_started_at
-            .map(|started_at| started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
-            .unwrap_or(0);
+        let shm_pool_prepare_ms = shm_pool_started_at.map(elapsed_ms).unwrap_or(0);
 
         let commit_started_at = timing_enabled.then(Instant::now);
         self.configure_viewport_for_surface(index, size);
@@ -266,15 +251,8 @@ impl CurtainApp {
                 background_restore_ms: 0,
                 dynamic_overlay_ms: 0,
                 shm_pool_prepare_ms,
-                commit_ms: commit_started_at
-                    .map(|commit_started_at| {
-                        commit_started_at
-                            .elapsed()
-                            .as_millis()
-                            .min(u128::from(u64::MAX)) as u64
-                    })
-                    .unwrap_or(0),
-                total_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+                commit_ms: commit_started_at.map(elapsed_ms).unwrap_or(0),
+                total_ms: elapsed_ms(started_at),
             };
             self.record_full_frame_timing(
                 index,
@@ -349,10 +327,9 @@ impl CurtainApp {
 
         let committed_at = Instant::now();
         self.first_frame_committed_at = Some(committed_at);
+        // Both units must use the same committed-frame instant.
         let elapsed = committed_at.saturating_duration_since(self.startup_started_at);
-        self.latency_timings.first_frame_ms =
-            Some(elapsed.as_millis().min(u128::from(u64::MAX)) as u64);
-        self.latency_timings.first_frame_us =
-            Some(elapsed.as_micros().min(u128::from(u64::MAX)) as u64);
+        self.latency_timings.first_frame_ms = Some(duration_ms(elapsed));
+        self.latency_timings.first_frame_us = Some(duration_us(elapsed));
     }
 }

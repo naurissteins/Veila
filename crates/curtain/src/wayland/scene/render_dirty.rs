@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
+use veila_common::elapsed_ms;
 use veila_renderer::copy_rect_from;
 
 use crate::state::{CurtainApp, DirtyRenderTimingSample, RedrawKind, SurfaceSize};
@@ -70,8 +71,7 @@ impl CurtainApp {
                         }
                         ui_shell.render_auth_dirty_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
-                            dynamic_overlay_ms =
-                                started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+                            dynamic_overlay_ms = elapsed_ms(started_at);
                         }
                         Ok(Some(damaged))
                     },
@@ -87,19 +87,12 @@ impl CurtainApp {
         }
 
         if let Some(started_at) = total_started_at {
-            let commit_ms = commit_started_at
-                .map(|commit_started_at| {
-                    commit_started_at
-                        .elapsed()
-                        .as_millis()
-                        .min(u128::from(u64::MAX)) as u64
-                })
-                .unwrap_or(0);
+            let commit_ms = commit_started_at.map(elapsed_ms).unwrap_or(0);
             let dirty_pixels = u64::try_from(damaged.width.max(0))
                 .unwrap_or(0)
                 .saturating_mul(u64::try_from(damaged.height.max(0)).unwrap_or(0));
             let dirty_bytes = dirty_pixels.saturating_mul(4);
-            let total_ms = started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+            let total_ms = elapsed_ms(started_at);
             self.render_profiler.record_dirty(DirtyRenderTimingSample {
                 dynamic_overlay_ms,
                 commit_ms,

@@ -5,6 +5,7 @@ use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
 use veila_common::{
     PowerAction, Secret,
     config::VisualConfig,
+    duration_ms, duration_us, elapsed_ms, elapsed_us,
     ipc::{ClientMessage, DaemonMessage, LatencyReportMode},
 };
 
@@ -95,7 +96,7 @@ pub(crate) async fn handle_client_message(
                     .await?;
                 }
                 AuthAdmission::RateLimited(delay) => {
-                    let retry_after_ms = delay.as_millis().min(u128::from(u64::MAX)) as u64;
+                    let retry_after_ms = duration_ms(delay);
                     ipc::write_daemon_message(
                         &mut stream,
                         &DaemonMessage::AuthenticationRejected {
@@ -162,23 +163,11 @@ async fn run_auth_attempt(attempt: AuthAttempt) {
         latency_report,
     } = attempt;
     let auth_started_at = Instant::now();
-    let worker_start_delay_ms = auth_started_at
-        .saturating_duration_since(started_at)
-        .as_millis()
-        .min(u128::from(u64::MAX)) as u64;
-    let worker_start_delay_us = auth_started_at
-        .saturating_duration_since(started_at)
-        .as_micros()
-        .min(u128::from(u64::MAX)) as u64;
+    let worker_start_delay_ms = duration_ms(auth_started_at.saturating_duration_since(started_at));
+    let worker_start_delay_us = duration_us(auth_started_at.saturating_duration_since(started_at));
     let result = pam::authenticate(&username, secret, attempt_id, &mut stream).await;
-    let elapsed_ms = auth_started_at
-        .elapsed()
-        .as_millis()
-        .min(u128::from(u64::MAX)) as u64;
-    let elapsed_us = auth_started_at
-        .elapsed()
-        .as_micros()
-        .min(u128::from(u64::MAX)) as u64;
+    let elapsed_ms = elapsed_ms(auth_started_at);
+    let elapsed_us = elapsed_us(auth_started_at);
 
     match result {
         Ok(pam::PamReply { accepted: true, .. }) => {
