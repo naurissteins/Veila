@@ -17,6 +17,7 @@ pub use asset::{
     load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
     load_cached_render_variant, store_cached_generated_render,
     store_cached_generated_render_variant, store_cached_render, store_cached_render_variant,
+    unique_sizes,
 };
 
 pub use prewarm::{

@@ -8,8 +8,8 @@ use super::{
     BackgroundAsset, BackgroundGradient, BackgroundKind, BackgroundLayered, BackgroundLayeredBase,
     BackgroundLayeredBlob, BackgroundRadial, BackgroundScaling, BackgroundTreatment,
     GeneratedBackground, RenderCacheSummary, SourceCacheStatus,
-    asset::unique_sizes,
     render::{cover_dimensions, fit_dimensions},
+    unique_sizes,
 };
 use crate::{ClearColor, FrameSize};
 
@@ -258,6 +258,45 @@ fn deduplicates_render_sizes() {
         ]),
         vec![FrameSize::new(1920, 1080), FrameSize::new(2560, 1440)]
     );
+}
+
+#[test]
+fn unique_sizes_preserves_first_occurrence_order() {
+    let small = FrameSize::new(640, 360);
+    let large = FrameSize::new(2560, 1440);
+    let medium = FrameSize::new(1920, 1080);
+    assert_eq!(
+        unique_sizes(&[large, small, large, medium, small]),
+        vec![large, small, medium]
+    );
+}
+
+#[test]
+fn unique_sizes_compares_both_dimensions() {
+    let sizes = [
+        FrameSize::new(100, 200),
+        FrameSize::new(200, 100),
+        FrameSize::new(100, 100),
+        FrameSize::new(200, 200),
+    ];
+    assert_eq!(unique_sizes(&sizes), sizes);
+}
+
+#[test]
+fn unique_sizes_keeps_invalid_sizes_for_render_validation() {
+    let empty = FrameSize::new(0, 0);
+    let zero_width = FrameSize::new(0, 100);
+    let zero_height = FrameSize::new(100, 0);
+    let huge = FrameSize::new(u32::MAX, u32::MAX);
+    assert_eq!(
+        unique_sizes(&[empty, zero_width, zero_height, huge, empty, huge]),
+        vec![empty, zero_width, zero_height, huge]
+    );
+}
+
+#[test]
+fn unique_sizes_handles_no_outputs() {
+    assert!(unique_sizes(&[]).is_empty());
 }
 
 #[test]
