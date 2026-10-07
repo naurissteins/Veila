@@ -2,18 +2,15 @@ use std::{
     fs::{self, OpenOptions},
     io::{self, Write},
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 const PRIVATE_DIR_MODE: u32 = 0o700;
 const PRIVATE_FILE_MODE: u32 = 0o600;
 
 pub(crate) fn harden_existing_cache_root() -> io::Result<()> {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+    let root = veila_renderer::cache::resolve_cache_root(None)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "cache home is unavailable"))?;
-    let root = base.join("veila");
     harden_existing_cache_root_at(&root)
 }
 

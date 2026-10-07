@@ -284,11 +284,9 @@ fn location_cache_path(location: &str) -> Result<PathBuf> {
 }
 
 fn cache_root() -> Result<PathBuf> {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+    let root = veila_renderer::cache::resolve_cache_root(None)
         .context("failed to resolve XDG cache directory")?;
-    Ok(base.join("veila").join("weather"))
+    Ok(root.join("weather"))
 }
 
 fn map_weather_code(code: u8, is_day: bool) -> WeatherCondition {

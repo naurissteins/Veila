@@ -89,11 +89,9 @@ fn preview_weather_location_cache_path(cache_root: &Path, location: &str) -> Pat
 }
 
 fn preview_weather_cache_root() -> Result<PathBuf> {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+    let root = veila_renderer::cache::resolve_cache_root(None)
         .context("failed to resolve XDG cache directory")?;
-    Ok(base.join("veila").join("weather"))
+    Ok(root.join("weather"))
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

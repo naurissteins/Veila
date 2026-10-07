@@ -10,17 +10,22 @@ use std::{
 };
 
 pub(crate) fn root(cache_home: Option<&Path>, directory: &str) -> io::Result<PathBuf> {
+    let root = resolve_cache_root(cache_home).ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "failed to resolve XDG cache directory",
+        )
+    })?;
+    Ok(root.join(directory))
+}
+
+/// resolves Veila's cache root without filesystem access, preferring an explicit cache home
+pub fn resolve_cache_root(cache_home: Option<&Path>) -> Option<PathBuf> {
     let base = cache_home
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from))
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::NotFound,
-                "failed to resolve XDG cache directory",
-            )
-        })?;
-    Ok(base.join("veila").join(directory))
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))?;
+    Some(base.join("veila"))
 }
 
 pub(crate) fn stable_hash(input: &str) -> u64 {
@@ -48,7 +53,7 @@ pub(crate) fn file_cache_key(path: &Path) -> io::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_cache_key, root, stable_hash};
+    use super::{file_cache_key, resolve_cache_root, root, stable_hash};
     use std::{
         fs::{self, File, FileTimes},
         path::Path,
@@ -69,6 +74,29 @@ mod tests {
                 Path::new("/tmp/cache/veila").join(directory)
             );
         }
+    }
+
+    #[test]
+    fn cache_root_preserves_explicit_native_path_bytes() {
+        use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
+
+        let cache_home = Path::new(OsStr::from_bytes(b"/tmp/veila-cache-\xff"));
+        assert_eq!(
+            resolve_cache_root(Some(cache_home)),
+            Some(cache_home.join("veila"))
+        );
+    }
+
+    #[test]
+    fn resolving_cache_root_does_not_create_a_directory() {
+        let cache_home =
+            std::env::temp_dir().join(format!("veila-resolve-root-{}", std::process::id()));
+        assert!(!cache_home.exists());
+        assert_eq!(
+            resolve_cache_root(Some(&cache_home)),
+            Some(cache_home.join("veila"))
+        );
+        assert!(!cache_home.exists());
     }
 
     #[test]

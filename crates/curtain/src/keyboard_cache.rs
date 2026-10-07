@@ -90,12 +90,7 @@ fn cache_path() -> Result<PathBuf> {
 }
 
 fn cache_root() -> Result<PathBuf> {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
-        .context("failed to resolve XDG cache directory")?;
-
-    Ok(base.join("veila"))
+    veila_renderer::cache::resolve_cache_root(None).context("failed to resolve XDG cache directory")
 }
 
 #[cfg(test)]
