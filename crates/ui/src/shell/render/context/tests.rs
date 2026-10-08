@@ -1,4 +1,5 @@
 use super::*;
+use crate::InputTheme;
 use crate::shell::{ShellAction, ShellKey};
 use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer};
 
@@ -72,8 +73,11 @@ fn theme_reload_invalidates_all_render_caches() {
         shell.render_scaled(&mut buffer(scale), scale);
     }
     let theme = ShellTheme {
+        input: InputTheme {
+            width: Some(300),
+            ..ShellTheme::default().input
+        },
         clock_font_size: Some(36),
-        input_width: Some(300),
         ..ShellTheme::default()
     };
     shell.apply_theme(theme.clone(), Some("New placeholder".into()), None, true);
@@ -205,31 +209,34 @@ fn cached_scale_draws_updated_media_metadata() {
 #[test]
 fn fractional_context_scales_configured_geometry_without_changing_integer_pixels() {
     let theme = ShellTheme {
-        input_width: Some(300),
-        input_height: Some(52),
-        input_font_size: Some(18),
+        input: InputTheme {
+            width: Some(300),
+            height: Some(52),
+            font_size: Some(18),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let one = shell.with_pixel_scale(RenderScale::ONE, |context| {
         (
-            context.theme.input_width,
-            context.theme.input_height,
-            context.theme.input_font_size,
+            context.theme.input.width,
+            context.theme.input.height,
+            context.theme.input.font_size,
         )
     });
     let fractional = shell.with_pixel_scale(RenderScale::from_units(180), |context| {
         (
-            context.theme.input_width,
-            context.theme.input_height,
-            context.theme.input_font_size,
+            context.theme.input.width,
+            context.theme.input.height,
+            context.theme.input.font_size,
         )
     });
     let integer = shell.with_pixel_scale(RenderScale::from_integer(2), |context| {
         (
-            context.theme.input_width,
-            context.theme.input_height,
-            context.theme.input_font_size,
+            context.theme.input.width,
+            context.theme.input.height,
+            context.theme.input.font_size,
         )
     });
     assert_eq!(one, (Some(300), Some(52), Some(18)));

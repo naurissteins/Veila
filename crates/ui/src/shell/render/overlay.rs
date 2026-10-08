@@ -517,11 +517,11 @@ impl RenderContext<'_> {
                 phase,
                 style: self.toggle_style(),
             }
-        } else if self.shell.caps_lock_active && self.theme.caps_lock_enabled {
+        } else if self.shell.caps_lock_active && self.theme.caps_lock.enabled {
             InputRightAdornment::CapsLock {
                 style: self.caps_lock_icon_style(),
             }
-        } else if self.theme.eye_enabled {
+        } else if self.theme.eye.enabled {
             InputRightAdornment::Toggle {
                 hovered: self.shell.reveal_toggle_hovered,
                 pressed: self.shell.reveal_toggle_pressed,
@@ -562,7 +562,7 @@ impl RenderContext<'_> {
             frame_height.max(1) as u32,
         ));
         if let Some(rect) = layout.floating_input {
-            return if self.theme.eye_enabled {
+            return if self.theme.eye.enabled {
                 input_toggle_hitbox(rect)
             } else {
                 veila_renderer::shape::Rect::new(0, 0, 0, 0)
@@ -573,7 +573,7 @@ impl RenderContext<'_> {
         if layout.anchors.identity_y.is_some() {
             for section in layout.model.sections_for_auth_group(AuthGroup::Input) {
                 if matches!(section.widget, SceneWidget::Input(_)) {
-                    return if self.theme.eye_enabled {
+                    return if self.theme.eye.enabled {
                         input_toggle_hitbox(layout.metrics.input_rect(y))
                     } else {
                         veila_renderer::shape::Rect::new(0, 0, 0, 0)
@@ -584,7 +584,7 @@ impl RenderContext<'_> {
         } else {
             for section in layout.model.sections_for_role(LayoutRole::Auth) {
                 if matches!(section.widget, SceneWidget::Input(_)) {
-                    return if self.theme.eye_enabled {
+                    return if self.theme.eye.enabled {
                         input_toggle_hitbox(layout.metrics.input_rect(y))
                     } else {
                         veila_renderer::shape::Rect::new(0, 0, 0, 0)
@@ -632,8 +632,8 @@ impl RenderContext<'_> {
             return self.shell.input_visible().then(|| text.clone());
         }
         if !self.shell.input_visible()
-            || !self.theme.status_enabled
-            || self.theme.status_mode != veila_common::StatusDisplayMode::Inline
+            || !self.theme.status.enabled
+            || self.theme.status.mode != veila_common::StatusDisplayMode::Inline
         {
             return None;
         }

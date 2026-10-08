@@ -23,7 +23,7 @@ impl RenderContext<'_> {
         metrics: SceneMetrics,
         block: &TextBlock,
     ) -> Option<Rect> {
-        if let Some(position) = self.theme.status_position {
+        if let Some(position) = self.theme.status.position {
             return Some(self.positioned_rect(
                 size,
                 position,
@@ -32,7 +32,7 @@ impl RenderContext<'_> {
             ));
         }
 
-        let position = self.theme.input_position?;
+        let position = self.theme.input.position?;
         let input = self.positioned_rect(size, position, metrics.input_width, metrics.input_height);
         let x = input.x + (input.width - block.width as i32) / 2;
         // Bottom-anchored input keeps its feedback above the field.

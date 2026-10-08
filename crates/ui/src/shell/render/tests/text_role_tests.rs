@@ -1,4 +1,5 @@
 use super::*;
+use crate::{InputTheme, RevealTheme, StatusTheme};
 use veila_common::FontStyle;
 use veila_renderer::text::FontStyle as RendererFontStyle;
 
@@ -6,12 +7,18 @@ use veila_renderer::text::FontStyle as RendererFontStyle;
 fn text_roles_keep_independent_size_limits() {
     for size in [0, 1, 511, 512, 513, 1024, 1025, u32::MAX] {
         let theme = ShellTheme {
+            input: InputTheme {
+                font_size: Some(size),
+                ..ShellTheme::default().input
+            },
+            reveal: RevealTheme {
+                font_size: Some(size),
+                ..ShellTheme::default().reveal
+            },
             clock_font_size: Some(size),
             clock_meridiem_font_size: Some(size),
             date_font_size: Some(size),
             username_font_size: Some(size),
-            input_font_size: Some(size),
-            reveal_font_size: Some(size),
             keyboard_size: Some(size),
             weather_temperature_font_size: Some(size),
             weather_location_font_size: Some(size),
@@ -49,12 +56,18 @@ fn text_roles_keep_independent_size_limits() {
 #[test]
 fn reveal_font_inherits_only_missing_properties_from_input() {
     let theme = ShellTheme {
-        input_font_family: Some(String::from("sans-serif")),
-        input_font_weight: Some(700),
-        input_font_style: Some(FontStyle::Italic),
-        input_font_size: Some(24),
-        reveal_font_weight: Some(400),
-        reveal_font_style: Some(FontStyle::Normal),
+        input: InputTheme {
+            font_family: Some(String::from("sans-serif")),
+            font_weight: Some(700),
+            font_style: Some(FontStyle::Italic),
+            font_size: Some(24),
+            ..ShellTheme::default().input
+        },
+        reveal: RevealTheme {
+            font_weight: Some(400),
+            font_style: Some(FontStyle::Normal),
+            ..ShellTheme::default().reveal
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -100,11 +113,17 @@ fn input_and_floating_status_keep_color_policy_for_every_auth_state() {
     let expected_colors = [neutral, neutral, neutral, pending, rejected];
     for (status, expected) in states.into_iter().zip(expected_colors) {
         let theme = ShellTheme {
-            status_color: Some(neutral),
-            status_pending_color: Some(pending),
-            status_rejected_color: Some(rejected),
-            input_font_size: Some(31),
-            input_font_weight: Some(500),
+            input: InputTheme {
+                font_size: Some(31),
+                font_weight: Some(500),
+                ..ShellTheme::default().input
+            },
+            status: StatusTheme {
+                color: Some(neutral),
+                pending_color: Some(pending),
+                rejected_color: Some(rejected),
+                ..ShellTheme::default().status
+            },
             ..ShellTheme::default()
         };
         let mut shell = ShellState::new(theme, None, None, true);

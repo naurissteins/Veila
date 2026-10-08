@@ -1,4 +1,5 @@
 use super::*;
+use crate::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, StatusTheme};
 use veila_common::Secret;
 
 #[test]
@@ -31,9 +32,12 @@ fn focused_input_style_uses_input_border() {
 #[test]
 fn explicit_input_alpha_is_preserved() {
     let theme = ShellTheme {
-        input: ClearColor::rgba(96, 164, 255, 51),
-        input_border: ClearColor::rgba(96, 164, 255, 64),
-        input_border_width: Some(2),
+        input: InputTheme {
+            background_color: ClearColor::rgba(96, 164, 255, 51),
+            border_color: ClearColor::rgba(96, 164, 255, 64),
+            border_width: Some(2),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -47,7 +51,10 @@ fn explicit_input_alpha_is_preserved() {
 #[test]
 fn input_style_uses_configured_radius() {
     let theme = ShellTheme {
-        input_radius: 18,
+        input: InputTheme {
+            radius: 18,
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -59,7 +66,10 @@ fn input_style_uses_configured_radius() {
 #[test]
 fn input_style_uses_configured_border_width() {
     let theme = ShellTheme {
-        input_border_width: Some(4),
+        input: InputTheme {
+            border_width: Some(4),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -71,7 +81,10 @@ fn input_style_uses_configured_border_width() {
 #[test]
 fn input_style_allows_disabling_border() {
     let theme = ShellTheme {
-        input_border_width: Some(0),
+        input: InputTheme {
+            border_width: Some(0),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -83,8 +96,14 @@ fn input_style_allows_disabling_border() {
 #[test]
 fn rejected_input_style_uses_rejected_status_color_for_border() {
     let theme = ShellTheme {
-        status_rejected_color: Some(ClearColor::opaque(220, 96, 96)),
-        input_border_width: Some(2),
+        input: InputTheme {
+            border_width: Some(2),
+            ..ShellTheme::default().input
+        },
+        status: StatusTheme {
+            rejected_color: Some(ClearColor::opaque(220, 96, 96)),
+            ..ShellTheme::default().status
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -106,9 +125,12 @@ fn rejected_input_style_uses_rejected_status_color_for_border() {
 #[test]
 fn selected_input_style_strengthens_fill_and_border() {
     let theme = ShellTheme {
-        input: ClearColor::rgba(96, 164, 255, 51),
-        input_border: ClearColor::rgba(96, 164, 255, 64),
-        input_border_width: Some(2),
+        input: InputTheme {
+            background_color: ClearColor::rgba(96, 164, 255, 51),
+            border_color: ClearColor::rgba(96, 164, 255, 64),
+            border_width: Some(2),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -124,9 +146,12 @@ fn selected_input_style_strengthens_fill_and_border() {
 #[test]
 fn explicit_input_opacity_is_preserved_without_style_boost() {
     let theme = ShellTheme {
-        input: ClearColor::rgba(255, 255, 255, 26),
-        input_border: ClearColor::rgba(255, 255, 255, 31),
-        input_border_width: Some(2),
+        input: InputTheme {
+            background_color: ClearColor::rgba(255, 255, 255, 26),
+            border_color: ClearColor::rgba(255, 255, 255, 31),
+            border_width: Some(2),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -176,7 +201,10 @@ fn avatar_style_uses_configured_icon_color() {
 #[test]
 fn toggle_style_uses_configured_eye_icon_color() {
     let theme = ShellTheme {
-        eye_icon_color: Some(ClearColor::rgba(244, 248, 255, 184)),
+        eye: EyeTheme {
+            color: Some(ClearColor::rgba(244, 248, 255, 184)),
+            ..ShellTheme::default().eye
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -188,7 +216,10 @@ fn toggle_style_uses_configured_eye_icon_color() {
 #[test]
 fn toggle_style_uses_opaque_eye_fallback_alpha() {
     let theme = ShellTheme {
-        eye_icon_color: Some(ClearColor::opaque(244, 248, 255)),
+        eye: EyeTheme {
+            color: Some(ClearColor::opaque(244, 248, 255)),
+            ..ShellTheme::default().eye
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -200,7 +231,10 @@ fn toggle_style_uses_opaque_eye_fallback_alpha() {
 #[test]
 fn toggle_style_preserves_explicit_eye_icon_alpha_when_unset() {
     let theme = ShellTheme {
-        eye_icon_color: Some(ClearColor::rgba(244, 248, 255, 128)),
+        eye: EyeTheme {
+            color: Some(ClearColor::rgba(244, 248, 255, 128)),
+            ..ShellTheme::default().eye
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -220,7 +254,10 @@ fn toggle_style_scales_padding_for_hidpi_render() {
 #[test]
 fn mask_style_uses_configured_input_mask_color() {
     let theme = ShellTheme {
-        input_mask_color: Some(ClearColor::opaque(169, 196, 255)),
+        input: InputTheme {
+            mask_color: Some(ClearColor::opaque(169, 196, 255)),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -270,9 +307,12 @@ fn avatar_style_uses_configured_ring_color() {
 #[test]
 fn avatar_style_softens_fallback_ring_color() {
     let theme = ShellTheme {
+        input: InputTheme {
+            border_color: ClearColor::opaque(148, 178, 255),
+            ..ShellTheme::default().input
+        },
         avatar_ring_color: None,
         avatar_ring_width: Some(1),
-        input_border: ClearColor::opaque(148, 178, 255),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -347,8 +387,8 @@ fn scene_metrics_use_configured_avatar_size() {
     let metrics = SceneMetrics::from_frame(
         1280,
         720,
-        shell.theme.input_width,
-        shell.theme.input_height,
+        shell.theme.input.width,
+        shell.theme.input.height,
         shell.theme.avatar_size,
     );
     assert_eq!(metrics.avatar_size, 88);
@@ -420,8 +460,11 @@ fn username_style_preserves_explicit_foreground_alpha_when_unset() {
 #[test]
 fn placeholder_style_uses_fallback_alpha_for_opaque_muted_colors() {
     let theme = ShellTheme {
+        placeholder: PlaceholderTheme {
+            color: None,
+            ..ShellTheme::default().placeholder
+        },
         muted: ClearColor::rgba(72, 82, 108, 255),
-        placeholder_color: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -434,7 +477,10 @@ fn placeholder_style_uses_fallback_alpha_for_opaque_muted_colors() {
 #[test]
 fn placeholder_style_uses_configured_color() {
     let theme = ShellTheme {
-        placeholder_color: Some(ClearColor::rgba(134, 148, 180, 153)),
+        placeholder: PlaceholderTheme {
+            color: Some(ClearColor::rgba(134, 148, 180, 153)),
+            ..ShellTheme::default().placeholder
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -449,9 +495,12 @@ fn placeholder_style_uses_configured_color() {
 #[test]
 fn input_text_styles_use_configured_font_family_and_weight() {
     let theme = ShellTheme {
-        input_font_family: Some(String::from("Geom")),
-        input_font_weight: Some(600),
-        input_font_size: Some(22),
+        input: InputTheme {
+            font_family: Some(String::from("Geom")),
+            font_weight: Some(600),
+            font_size: Some(22),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -481,7 +530,10 @@ fn input_text_styles_use_configured_font_family_and_weight() {
 #[test]
 fn status_style_uses_fallback_alpha_for_opaque_colors() {
     let theme = ShellTheme {
-        input_border: ClearColor::rgba(255, 255, 255, 255),
+        input: InputTheme {
+            border_color: ClearColor::rgba(255, 255, 255, 255),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -494,7 +546,10 @@ fn status_style_uses_fallback_alpha_for_opaque_colors() {
 #[test]
 fn status_style_uses_configured_color() {
     let theme = ShellTheme {
-        status_color: Some(ClearColor::rgba(255, 224, 160, 224)),
+        status: StatusTheme {
+            color: Some(ClearColor::rgba(255, 224, 160, 224)),
+            ..ShellTheme::default().status
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -509,8 +564,11 @@ fn status_style_uses_configured_color() {
 #[test]
 fn placeholder_style_preserves_explicit_muted_alpha_when_unset() {
     let theme = ShellTheme {
+        placeholder: PlaceholderTheme {
+            color: None,
+            ..ShellTheme::default().placeholder
+        },
         muted: ClearColor::rgba(72, 82, 108, 90),
-        placeholder_color: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -522,11 +580,14 @@ fn placeholder_style_preserves_explicit_muted_alpha_when_unset() {
 #[test]
 fn reveal_style_uses_configured_color_alpha_and_font() {
     let theme = ShellTheme {
-        reveal_color: Some(ClearColor::rgba(214, 227, 255, 168)),
-        reveal_font_family: Some(String::from("Geom")),
-        reveal_font_weight: Some(500),
-        reveal_font_style: Some(veila_common::FontStyle::Italic),
-        reveal_font_size: Some(22),
+        reveal: RevealTheme {
+            color: Some(ClearColor::rgba(214, 227, 255, 168)),
+            font_family: Some(String::from("Geom")),
+            font_weight: Some(500),
+            font_style: Some(veila_common::FontStyle::Italic),
+            font_size: Some(22),
+            ..ShellTheme::default().reveal
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -564,9 +625,12 @@ fn reveal_style_falls_back_to_placeholder_style_defaults() {
 #[test]
 fn status_style_preserves_explicit_pending_alpha_when_unset() {
     let theme = ShellTheme {
+        status: StatusTheme {
+            color: None,
+            pending_color: None,
+            ..ShellTheme::default().status
+        },
         pending: ClearColor::rgba(255, 194, 92, 90),
-        status_color: None,
-        status_pending_color: None,
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -584,8 +648,11 @@ fn status_style_preserves_explicit_pending_alpha_when_unset() {
 #[test]
 fn pending_status_style_prefers_state_specific_status_override() {
     let theme = ShellTheme {
-        status_color: Some(ClearColor::opaque(255, 255, 255)),
-        status_pending_color: Some(ClearColor::rgba(12, 34, 56, 153)),
+        status: StatusTheme {
+            color: Some(ClearColor::opaque(255, 255, 255)),
+            pending_color: Some(ClearColor::rgba(12, 34, 56, 153)),
+            ..ShellTheme::default().status
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -607,8 +674,11 @@ fn pending_status_style_prefers_state_specific_status_override() {
 #[test]
 fn rejected_status_style_prefers_state_specific_status_override() {
     let theme = ShellTheme {
-        status_color: Some(ClearColor::opaque(255, 255, 255)),
-        status_rejected_color: Some(ClearColor::rgba(180, 40, 40, 179)),
+        status: StatusTheme {
+            color: Some(ClearColor::opaque(255, 255, 255)),
+            rejected_color: Some(ClearColor::rgba(180, 40, 40, 179)),
+            ..ShellTheme::default().status
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -630,8 +700,14 @@ fn rejected_status_style_prefers_state_specific_status_override() {
 #[test]
 fn caps_lock_icon_style_uses_dedicated_override() {
     let theme = ShellTheme {
-        status_color: Some(ClearColor::rgba(255, 224, 160, 224)),
-        caps_lock_color: Some(ClearColor::rgba(255, 211, 122, 163)),
+        caps_lock: CapsLockTheme {
+            color: Some(ClearColor::rgba(255, 211, 122, 163)),
+            ..ShellTheme::default().caps_lock
+        },
+        status: StatusTheme {
+            color: Some(ClearColor::rgba(255, 224, 160, 224)),
+            ..ShellTheme::default().status
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -681,16 +757,19 @@ fn pending_status_text_appears_after_delay() {
 #[test]
 fn scene_metrics_use_configured_input_dimensions() {
     let theme = ShellTheme {
-        input_width: Some(280),
-        input_height: Some(54),
+        input: InputTheme {
+            width: Some(280),
+            height: Some(54),
+            ..ShellTheme::default().input
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
     let metrics = SceneMetrics::from_frame(
         1280,
         720,
-        shell.theme.input_width,
-        shell.theme.input_height,
+        shell.theme.input.width,
+        shell.theme.input.height,
         shell.theme.avatar_size,
     );
 

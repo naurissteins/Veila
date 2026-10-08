@@ -347,7 +347,7 @@ impl ShellState {
         now_playing_snapshot: Option<NowPlayingSnapshot>,
         avatar: AvatarAsset,
     ) -> Self {
-        let reveal_hint_text = theme.input_reveal_hint.clone();
+        let reveal_hint_text = theme.reveal.text.clone();
         Self {
             mode: ShellMode::Rich,
             secret: Secret::new(),
@@ -360,7 +360,7 @@ impl ShellState {
             power_status_text: None,
             fingerprint_status: None,
             reveal_secret: false,
-            auth_revealed: !theme.input_reveal_on_interaction,
+            auth_revealed: !theme.input.reveal_on_interaction,
             reveal_toggle_hovered: false,
             reveal_toggle_pressed: false,
             power_button_hovered: None,
@@ -545,7 +545,7 @@ impl ShellState {
         battery_snapshot: Option<BatterySnapshot>,
         now_playing_snapshot: Option<NowPlayingSnapshot>,
     ) {
-        let reveal_on_interaction = theme.input_reveal_on_interaction;
+        let reveal_on_interaction = theme.input.reveal_on_interaction;
         self.theme = theme;
         self.scaled_render_cache.get_mut().clear();
         *self.text_layout_cache.get_mut() = TextLayoutCache::default();
@@ -553,11 +553,11 @@ impl ShellState {
         self.hint_text = input_placeholder
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));
-        self.reveal_hint_text = self.theme.input_reveal_hint.clone();
+        self.reveal_hint_text = self.theme.reveal.text.clone();
         if !reveal_on_interaction {
             self.auth_revealed = true;
         }
-        if !self.theme.eye_enabled {
+        if !self.theme.eye.enabled {
             self.reveal_secret = false;
             self.reveal_toggle_hovered = false;
             self.reveal_toggle_pressed = false;
@@ -594,12 +594,12 @@ impl ShellState {
 
     pub(super) fn identity_visible(&self) -> bool {
         self.auth_revealed
-            || !self.theme.input_reveal_on_interaction
-            || self.theme.input_reveal_mode == InputRevealMode::Input
+            || !self.theme.input.reveal_on_interaction
+            || self.theme.input.reveal_mode == InputRevealMode::Input
     }
 
     pub(super) fn input_visible(&self) -> bool {
-        self.auth_revealed || !self.theme.input_reveal_on_interaction
+        self.auth_revealed || !self.theme.input.reveal_on_interaction
     }
 
     pub(super) fn set_secret_selected(&mut self, selected: bool) -> bool {
@@ -613,14 +613,14 @@ impl ShellState {
     }
 
     pub(super) fn hidden_reveal_hint(&self) -> Option<&str> {
-        (self.theme.reveal_enabled
+        (self.theme.reveal.enabled
             && !self.input_visible()
             && matches!(self.status, super::ShellStatus::Idle))
         .then_some(self.reveal_hint_text.as_str())
     }
 
     pub(super) fn reveal_auth(&mut self) -> bool {
-        if self.auth_revealed || !self.theme.input_reveal_on_interaction {
+        if self.auth_revealed || !self.theme.input.reveal_on_interaction {
             return false;
         }
 
@@ -630,7 +630,7 @@ impl ShellState {
     }
 
     pub(super) fn hide_auth(&mut self) -> bool {
-        if !self.auth_revealed || !self.theme.input_reveal_on_interaction {
+        if !self.auth_revealed || !self.theme.input.reveal_on_interaction {
             return false;
         }
 

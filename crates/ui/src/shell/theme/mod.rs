@@ -1,3 +1,6 @@
+mod auth;
+#[cfg(test)]
+mod auth_tests;
 mod color;
 mod font_warmup;
 #[cfg(test)]
@@ -7,13 +10,15 @@ use std::collections::HashMap;
 
 use veila_common::{
     AppConfig, BackdropMode, BackdropShowWhen, ClockAlignment, ClockFormat, ClockStyle, DateFormat,
-    FontStyle, GridVisualConfig, HorizontalAlign, InputRevealMode, LayerKind, PowerAction,
-    StatusDisplayMode, VerticalAlign, WidgetPositionConfig,
+    FontStyle, GridVisualConfig, HorizontalAlign, LayerKind, PowerAction, VerticalAlign,
+    WidgetPositionConfig,
 };
 use veila_renderer::{ClearColor, RenderScale};
 
 use self::color::to_color;
 use super::PreviewGrid;
+
+pub use auth::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, StatusTheme};
 
 // Missing surface colors retain the pre-theme fallback independently of config keys.
 const DEFAULT_SURFACE_COLOR: veila_common::RgbColor = veila_common::RgbColor::rgb(22, 28, 38);
@@ -88,29 +93,15 @@ pub struct PowerButton {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShellTheme {
+    pub input: InputTheme,
+    pub reveal: RevealTheme,
+    pub placeholder: PlaceholderTheme,
+    pub eye: EyeTheme,
+    pub caps_lock: CapsLockTheme,
+    pub status: StatusTheme,
     pub background: ClearColor,
     pub avatar_enabled: bool,
     pub avatar_background: ClearColor,
-    pub input: ClearColor,
-    pub input_border: ClearColor,
-    pub input_font_family: Option<String>,
-    pub input_font_weight: Option<u16>,
-    pub input_font_style: Option<FontStyle>,
-    pub input_font_size: Option<u32>,
-    pub input_reveal_on_interaction: bool,
-    pub input_reveal_mode: InputRevealMode,
-    pub input_reveal_hint: String,
-    pub reveal_enabled: bool,
-    pub reveal_color: Option<ClearColor>,
-    pub reveal_font_family: Option<String>,
-    pub reveal_font_weight: Option<u16>,
-    pub reveal_font_style: Option<FontStyle>,
-    pub reveal_font_size: Option<u32>,
-    pub input_position: Option<WidgetPosition>,
-    pub input_width: Option<i32>,
-    pub input_height: Option<i32>,
-    pub input_radius: i32,
-    pub input_border_width: Option<i32>,
     pub avatar_size: Option<i32>,
     pub avatar_radius: Option<i32>,
     pub avatar_offset_y: Option<i32>,
@@ -129,8 +120,6 @@ pub struct ShellTheme {
     pub username_position: Option<WidgetPosition>,
     pub avatar_gap: Option<i32>,
     pub username_gap: Option<i32>,
-    pub status_position: Option<WidgetPosition>,
-    pub status_mode: StatusDisplayMode,
     pub clock_gap: Option<i32>,
     pub clock_enabled: bool,
     pub clock_alignment: ClockAlignment,
@@ -156,11 +145,6 @@ pub struct ShellTheme {
     pub date_position: Option<WidgetPosition>,
     pub clock_font_size: Option<u32>,
     pub date_font_size: Option<u32>,
-    pub placeholder_enabled: bool,
-    pub placeholder_color: Option<ClearColor>,
-    pub eye_enabled: bool,
-    pub eye_icon_color: Option<ClearColor>,
-    pub caps_lock_enabled: bool,
     pub keyboard_enabled: bool,
     pub keyboard_position: Option<WidgetPosition>,
     pub keyboard_background_color: ClearColor,
@@ -224,12 +208,6 @@ pub struct ShellTheme {
     pub now_playing_title_font_size: Option<u32>,
     pub now_playing_title_font_weight: Option<u16>,
     pub now_playing_title_font_style: Option<FontStyle>,
-    pub status_enabled: bool,
-    pub status_color: Option<ClearColor>,
-    pub status_pending_color: Option<ClearColor>,
-    pub status_rejected_color: Option<ClearColor>,
-    pub caps_lock_color: Option<ClearColor>,
-    pub input_mask_color: Option<ClearColor>,
     pub foreground: ClearColor,
     pub muted: ClearColor,
     pub pending: ClearColor,
@@ -254,15 +232,9 @@ impl ShellTheme {
         }
 
         let mut theme = self.clone();
-        theme.input_font_size = scale_u32_opt(theme.input_font_size, scale);
-        theme.reveal_font_size = scale_u32_opt(theme.reveal_font_size, scale);
-        theme.input_position = theme
-            .input_position
-            .map(|position| scale_position(position, scale));
-        theme.input_width = scale_i32_opt(theme.input_width, scale);
-        theme.input_height = scale_i32_opt(theme.input_height, scale);
-        theme.input_radius = scale_i32(theme.input_radius, scale);
-        theme.input_border_width = scale_i32_opt(theme.input_border_width, scale);
+        theme.input.scale_for_render(scale);
+        theme.reveal.scale_for_render(scale);
+        theme.status.scale_for_render(scale);
         theme.avatar_size = scale_i32_opt(theme.avatar_size, scale);
         theme.avatar_radius = scale_i32_opt(theme.avatar_radius, scale);
         theme.avatar_offset_y = scale_i32_opt(theme.avatar_offset_y, scale);
@@ -278,9 +250,6 @@ impl ShellTheme {
             .map(|position| scale_position(position, scale));
         theme.avatar_gap = scale_i32_opt(theme.avatar_gap, scale);
         theme.username_gap = scale_i32_opt(theme.username_gap, scale);
-        theme.status_position = theme
-            .status_position
-            .map(|position| scale_position(position, scale));
         theme.clock_gap = scale_i32_opt(theme.clock_gap, scale);
         theme.clock_offset_x = scale_i32_opt(theme.clock_offset_x, scale);
         theme.clock_offset_y = scale_i32_opt(theme.clock_offset_y, scale);
@@ -449,30 +418,6 @@ fn resolve_clock_position(
         config.visuals.clock_position(),
         HorizontalAlign::Center,
         VerticalAlign::Top,
-        named_backdrops,
-    )
-}
-
-fn resolve_input_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.input_position(),
-        HorizontalAlign::Center,
-        VerticalAlign::Center,
-        named_backdrops,
-    )
-}
-
-fn resolve_status_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.status_position(),
-        HorizontalAlign::Center,
-        VerticalAlign::Center,
         named_backdrops,
     )
 }
@@ -822,6 +767,12 @@ impl ShellTheme {
         let now_playing_title_position =
             resolve_now_playing_title_position(config, &named_backdrops);
         Self {
+            input: InputTheme::from_config(config, &named_backdrops),
+            reveal: RevealTheme::from_config(config),
+            placeholder: PlaceholderTheme::from_config(config),
+            eye: EyeTheme::from_config(config),
+            caps_lock: CapsLockTheme::from_config(config),
+            status: StatusTheme::from_config(config, &named_backdrops),
             background: to_color(config.background.color),
             avatar_enabled: config.visuals.avatar_enabled(),
             avatar_background: config
@@ -829,26 +780,6 @@ impl ShellTheme {
                 .avatar_background_color()
                 .map(to_color)
                 .unwrap_or_else(|| to_color(DEFAULT_SURFACE_COLOR)),
-            input: to_color(config.visuals.input_background_color()),
-            input_border: to_color(config.visuals.input_border_color()),
-            input_font_family: config.visuals.input_font_family().map(str::to_owned),
-            input_font_weight: config.visuals.input_font_weight(),
-            input_font_style: config.visuals.input_font_style(),
-            input_font_size: config.visuals.input_font_size().map(u32::from),
-            input_reveal_on_interaction: config.visuals.input_reveal_on_interaction(),
-            input_reveal_mode: config.visuals.input_reveal_mode(),
-            input_reveal_hint: config.visuals.reveal_text(),
-            reveal_enabled: config.visuals.reveal_enabled(),
-            reveal_color: config.visuals.reveal_color().map(to_color),
-            reveal_font_family: config.visuals.reveal_font_family().map(str::to_owned),
-            reveal_font_weight: config.visuals.reveal_font_weight(),
-            reveal_font_style: config.visuals.reveal_font_style(),
-            reveal_font_size: config.visuals.reveal_font_size().map(u32::from),
-            input_position: resolve_input_position(config, &named_backdrops),
-            input_width: config.visuals.input_width().map(i32::from),
-            input_height: config.visuals.input_height().map(i32::from),
-            input_radius: i32::from(config.visuals.input_radius()),
-            input_border_width: config.visuals.input_border_width().map(i32::from),
             avatar_size: config.visuals.avatar_size().map(i32::from),
             avatar_radius: config
                 .visuals
@@ -870,8 +801,6 @@ impl ShellTheme {
             username_position,
             avatar_gap: Some(24),
             username_gap: Some(28),
-            status_position: resolve_status_position(config, &named_backdrops),
-            status_mode: config.visuals.status_mode(),
             clock_gap: Some(20),
             clock_enabled: config.visuals.clock_enabled(),
             clock_alignment: ClockAlignment::TopCenter,
@@ -897,11 +826,6 @@ impl ShellTheme {
             date_position,
             clock_font_size: config.visuals.clock_font_size().map(u32::from),
             date_font_size: config.visuals.date_font_size().map(u32::from),
-            placeholder_enabled: config.visuals.placeholder_enabled(),
-            placeholder_color: config.visuals.placeholder_color().map(to_color),
-            eye_enabled: config.visuals.eye_enabled(),
-            eye_icon_color: config.visuals.eye_icon_color().map(to_color),
-            caps_lock_enabled: config.visuals.caps_lock_enabled(),
             keyboard_enabled: config.visuals.keyboard_enabled(),
             keyboard_position,
             keyboard_background_color: config
@@ -1006,12 +930,6 @@ impl ShellTheme {
                 .map(u32::from),
             now_playing_title_font_weight: config.visuals.now_playing_title_font_weight(),
             now_playing_title_font_style: config.visuals.now_playing_title_font_style(),
-            status_enabled: config.visuals.status_enabled(),
-            status_color: config.visuals.status_color().map(to_color),
-            status_pending_color: config.visuals.status_pending_color().map(to_color),
-            status_rejected_color: config.visuals.status_rejected_color().map(to_color),
-            caps_lock_color: config.visuals.caps_lock_color().map(to_color),
-            input_mask_color: config.visuals.input_mask_color().map(to_color),
             foreground: to_color(config.visuals.foreground_color()),
             muted: to_color(config.visuals.muted_color()),
             pending: to_color(config.visuals.pending_color()),

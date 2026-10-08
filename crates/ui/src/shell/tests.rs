@@ -1,3 +1,4 @@
+use crate::{InputTheme, RevealTheme, StatusTheme};
 use std::{
     thread,
     time::{Duration, Instant},
@@ -49,8 +50,8 @@ fn pam_challenge_requires_fresh_input_and_can_be_cancelled() {
 #[test]
 fn pam_challenge_remains_visible_when_status_widget_is_disabled() {
     let mut shell = ShellState::default();
-    shell.theme.status_enabled = false;
-    shell.theme.status_mode = StatusDisplayMode::Hidden;
+    shell.theme.status.enabled = false;
+    shell.theme.status.mode = StatusDisplayMode::Hidden;
     shell.authentication_challenge(String::from("Security code:"), false);
     assert_eq!(
         shell.render_context().inline_input_status_text().as_deref(),
@@ -89,8 +90,8 @@ fn input_limit_reports_ignored_character_and_clears_after_backspace() {
 #[test]
 fn input_limit_feedback_preserves_pam_challenge() {
     let mut shell = ShellState::default();
-    shell.theme.status_enabled = false;
-    shell.theme.status_mode = StatusDisplayMode::Hidden;
+    shell.theme.status.enabled = false;
+    shell.theme.status.mode = StatusDisplayMode::Hidden;
     shell.authentication_challenge(String::from("Security code:"), false);
     for _ in 0..=super::MAX_SECRET_CHARACTERS {
         shell.handle_key(ShellKey::Character('7'));
@@ -324,7 +325,10 @@ fn emergency_mode_renders_without_theme_layers() {
 fn input_reveal_on_interaction_starts_hidden() {
     let shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -344,8 +348,11 @@ fn input_reveal_on_interaction_starts_hidden() {
 fn full_reveal_mode_starts_with_entire_auth_stack_hidden() {
     let shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
-            input_reveal_mode: InputRevealMode::Full,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                reveal_mode: InputRevealMode::Full,
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -365,8 +372,14 @@ fn full_reveal_mode_starts_with_entire_auth_stack_hidden() {
 fn disabled_reveal_hint_stays_hidden_even_when_auth_input_is_hidden() {
     let shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
-            reveal_enabled: false,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                ..ShellTheme::default().input
+            },
+            reveal: RevealTheme {
+                enabled: false,
+                ..ShellTheme::default().reveal
+            },
             ..ShellTheme::default()
         },
         None,
@@ -381,7 +394,10 @@ fn disabled_reveal_hint_stays_hidden_even_when_auth_input_is_hidden() {
 fn first_character_reveals_hidden_auth_stack() {
     let mut shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -409,7 +425,10 @@ fn first_character_reveals_hidden_auth_stack() {
 fn pointer_motion_does_not_reveal_hidden_auth_stack() {
     let mut shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -429,7 +448,10 @@ fn pointer_motion_does_not_reveal_hidden_auth_stack() {
 fn pointer_press_reveals_hidden_auth_stack() {
     let mut shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -449,7 +471,10 @@ fn pointer_press_reveals_hidden_auth_stack() {
 fn escape_rehides_auth_stack_when_enabled() {
     let mut shell = ShellState::new(
         ShellTheme {
-            input_reveal_on_interaction: true,
+            input: InputTheme {
+                reveal_on_interaction: true,
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -598,13 +623,16 @@ fn pending_inline_status_text_uses_short_copy_after_delay() {
 fn explicit_input_position_keeps_inline_status_when_mode_is_inline() {
     let mut shell = ShellState::new(
         ShellTheme {
-            input_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Center,
-                valign: VerticalAlign::Bottom,
-                x: 0,
-                y: -64,
-                target: crate::shell::theme::WidgetPositionTarget::Screen,
-            }),
+            input: InputTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Bottom,
+                    x: 0,
+                    y: -64,
+                    target: crate::shell::theme::WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -627,7 +655,10 @@ fn explicit_input_position_keeps_inline_status_when_mode_is_inline() {
 fn external_status_mode_disables_inline_status_text() {
     let mut shell = ShellState::new(
         ShellTheme {
-            status_mode: StatusDisplayMode::External,
+            status: StatusTheme {
+                mode: StatusDisplayMode::External,
+                ..ShellTheme::default().status
+            },
             ..ShellTheme::default()
         },
         None,
@@ -651,7 +682,10 @@ fn external_status_mode_disables_inline_status_text() {
 fn hidden_status_mode_suppresses_auth_feedback() {
     let mut shell = ShellState::new(
         ShellTheme {
-            status_mode: StatusDisplayMode::Hidden,
+            status: StatusTheme {
+                mode: StatusDisplayMode::Hidden,
+                ..ShellTheme::default().status
+            },
             ..ShellTheme::default()
         },
         None,

@@ -3,8 +3,8 @@ use super::ShellTheme;
 impl ShellTheme {
     pub fn font_warmup_families(&self) -> Vec<String> {
         let configured = [
-            self.input_font_family.as_deref(),
-            self.reveal_font_family.as_deref(),
+            self.input.font_family.as_deref(),
+            self.reveal.font_family.as_deref(),
             self.username_font_family.as_deref(),
             self.clock_font_family.as_deref(),
             self.date_font_family.as_deref(),

@@ -1,5 +1,6 @@
 use super::*;
 use crate::shell::theme::{WidgetPosition, WidgetPositionTarget};
+use crate::{InputTheme, StatusTheme};
 use veila_common::StatusDisplayMode;
 use veila_renderer::{RenderScale, copy_rect_from};
 
@@ -19,9 +20,15 @@ fn position(valign: VerticalAlign) -> WidgetPosition {
 
 fn theme(valign: VerticalAlign) -> ShellTheme {
     ShellTheme {
+        input: InputTheme {
+            position: Some(position(valign)),
+            ..ShellTheme::default().input
+        },
+        status: StatusTheme {
+            mode: StatusDisplayMode::External,
+            ..ShellTheme::default().status
+        },
         backdrops: Vec::new(),
-        input_position: Some(position(valign)),
-        status_mode: StatusDisplayMode::External,
         ..ShellTheme::default()
     }
 }
@@ -66,7 +73,7 @@ fn explicit_feedback_position_overrides_input_anchor() {
         VerticalAlign::Bottom,
     ] {
         let mut theme = theme(valign);
-        theme.status_position = Some(WidgetPosition {
+        theme.status.position = Some(WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Top,
             x: -32,
@@ -140,8 +147,8 @@ fn floating_geometry_and_hitbox_refresh_after_theme_reload() {
         });
     }
     let mut updated = theme(VerticalAlign::Bottom);
-    updated.input_width = Some(280);
-    updated.eye_enabled = true;
+    updated.input.width = Some(280);
+    updated.eye.enabled = true;
     updated.clock_position = Some(position(VerticalAlign::Top));
     updated.date_position = Some(position(VerticalAlign::Bottom));
     updated.avatar_position = Some(position(VerticalAlign::Top));

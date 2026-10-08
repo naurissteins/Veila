@@ -59,24 +59,24 @@ impl RenderContext<'_> {
         let metrics = SceneMetrics::new(
             size.width as i32,
             size.height as i32,
-            self.theme.input_width,
-            self.theme.input_height,
+            self.theme.input.width,
+            self.theme.input.height,
             self.theme.avatar_size,
         );
         let identity_visible = self.shell.identity_visible();
         let input_visible = self.shell.input_visible();
         let text_blocks = self.scene_text_blocks(metrics);
-        let status_mode_external = self.theme.status_mode == StatusDisplayMode::External;
+        let status_mode_external = self.theme.status.mode == StatusDisplayMode::External;
         let floating_avatar = self.theme.avatar_enabled && self.theme.avatar_position.is_some();
         let floating_username =
             self.theme.username_enabled && self.theme.username_position.is_some();
-        let floating_input = self.theme.input_position.is_some() && input_visible;
+        let floating_input = self.theme.input.position.is_some() && input_visible;
         let floating_status_follows_input = status_mode_external
             && input_visible
-            && self.theme.input_position.is_some()
-            && self.theme.status_position.is_none();
+            && self.theme.input.position.is_some()
+            && self.theme.status.position.is_none();
         let floating_status_explicit =
-            status_mode_external && input_visible && self.theme.status_position.is_some();
+            status_mode_external && input_visible && self.theme.status.position.is_some();
         let clock_in_flow = self.theme.clock_position.is_none();
         let date_in_flow = self.theme.date_position.is_none();
         let avatar_in_flow = !floating_avatar;
@@ -187,7 +187,8 @@ impl RenderContext<'_> {
             ),
             floating_input: self
                 .theme
-                .input_position
+                .input
+                .position
                 .filter(|_| floating_input)
                 .map(|position| {
                     self.positioned_rect(size, position, metrics.input_width, metrics.input_height)
@@ -413,7 +414,7 @@ impl RenderContext<'_> {
     fn scene_text_blocks(&self, metrics: SceneMetrics) -> SceneTextBlocks {
         let identity_visible = self.shell.identity_visible();
         let input_visible = self.shell.input_visible();
-        let status_mode_external = self.theme.status_mode == StatusDisplayMode::External;
+        let status_mode_external = self.theme.status.mode == StatusDisplayMode::External;
         let clock_text = self.shell.clock.primary_text(self.theme.clock_style);
         let clock_secondary_text = self.shell.clock.secondary_text(self.theme.clock_style);
         let clock_style = self.clock_text_style(metrics);
@@ -469,7 +470,7 @@ impl RenderContext<'_> {
                 username_style,
                 placeholder_text: input_visible
                     .then_some(())
-                    .and(self.theme.placeholder_enabled.then_some(()))
+                    .and(self.theme.placeholder.enabled.then_some(()))
                     .map(|_| {
                         if matches!(self.shell.status, super::ShellStatus::Challenge { .. }) {
                             "Response"
@@ -487,7 +488,8 @@ impl RenderContext<'_> {
                         )
                     {
                         self.theme
-                            .status_enabled
+                            .status
+                            .enabled
                             .then_some(())
                             .and(status_text.as_deref())
                     } else {
