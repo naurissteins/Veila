@@ -180,25 +180,23 @@ impl OutputHandler for CurtainApp {
         queue_handle: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     ) {
-        for surface in &mut self.lock_surfaces {
-            if surface.output == output {
-                if let Some(output_power) = surface.output_power.take() {
-                    output_power.destroy();
-                }
-                if let Some(fractional_scale) = surface.fractional_scale.take() {
-                    fractional_scale.destroy();
-                }
-                if let Some(viewport) = surface.viewport.take() {
-                    viewport.destroy();
-                }
-            }
-        }
         let removed_index = self
             .lock_surfaces
             .iter()
             .position(|entry| entry.output == output);
-        self.lock_surfaces.retain(|entry| entry.output != output);
         if let Some(removed_index) = removed_index {
+            // surface creation deduplicates outputs, preserve the remaining focus order
+            let surface = &mut self.lock_surfaces[removed_index];
+            if let Some(output_power) = surface.output_power.take() {
+                output_power.destroy();
+            }
+            if let Some(fractional_scale) = surface.fractional_scale.take() {
+                fractional_scale.destroy();
+            }
+            if let Some(viewport) = surface.viewport.take() {
+                viewport.destroy();
+            }
+            self.lock_surfaces.remove(removed_index);
             self.focused_surface_index = self.focused_surface_index.and_then(|focused| {
                 if focused == removed_index {
                     None

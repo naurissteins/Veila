@@ -114,11 +114,8 @@ impl AppConfig {
             });
         };
 
-        if !path.exists() {
-            if explicit_path.is_some() {
-                let _ = fs::File::open(&path)?;
-            }
-
+        // explicit paths must report the reader's I/O error rather than use defaults
+        if explicit_path.is_none() && !path.exists() {
             return Ok(LoadedConfig {
                 path: None,
                 config: Self::from_default_layers()?,
