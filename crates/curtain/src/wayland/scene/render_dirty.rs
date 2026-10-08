@@ -4,8 +4,11 @@ use anyhow::{Result, anyhow};
 use smithay_client_toolkit::{reexports::client::QueueHandle, session_lock::SessionLockSurface};
 use veila_common::elapsed_ms;
 use veila_renderer::copy_rect_from;
+use veila_ui::WidgetDamage;
 
-use crate::state::{CurtainApp, DirtyRenderTimingSample, RedrawKind, SurfaceSize};
+use crate::state::{
+    CommittedWidgetFrame, CurtainApp, DirtyRenderTimingSample, RedrawKind, SurfaceSize,
+};
 
 impl CurtainApp {
     pub(crate) fn render_auth_dirty_surface(
@@ -25,20 +28,27 @@ impl CurtainApp {
         let frame_size = size.buffer;
         let render_scale = size.render_scale;
         let revision = self.ui_shell.static_scene_revision();
+        let Some(previous) = self.lock_surfaces[index].widget_frame else {
+            return self.render_surface(surface, size, queue_handle);
+        };
         let Some(scene_base) = self.lock_surfaces[index].scene_base.as_ref().cloned() else {
             return self.render_surface(surface, size, queue_handle);
         };
-        if scene_base.size() != frame_size
+        if previous.size != frame_size
+            || previous.scale != render_scale
+            || previous.revision != revision
+            || scene_base.size() != frame_size
             || self.lock_surfaces[index].scene_base_revision != revision
             || self.lock_surfaces[index].scene_base_scale != render_scale
             || self.lock_surfaces[index].shm_pool.is_none()
+            || self.lock_surfaces[index].pending_redraw.requires_full()
         {
             return self.render_surface(surface, size, queue_handle);
         }
-        let Some(dirty_rect) = self
+        let current = self
             .ui_shell
-            .auth_dirty_rect_at_scale(frame_size, render_scale)
-        else {
+            .widget_regions_at_scale(frame_size, render_scale);
+        let WidgetDamage::Region(dirty_rect) = current.auth_damage_since(previous.regions) else {
             return self.render_surface(surface, size, queue_handle);
         };
 
@@ -55,7 +65,7 @@ impl CurtainApp {
             lock_surface
                 .shm_pool
                 .as_mut()
-                // assigned immediately above when None
+                // The fallback above guarantees a pool is present.
                 .expect("surface SHM pool should be initialized")
                 .render_buffer_region(
                     queue_handle,
@@ -85,6 +95,10 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        self.lock_surfaces[index].widget_frame = Some(CommittedWidgetFrame {
+            regions: current,
+            ..previous
+        });
 
         if let Some(started_at) = total_started_at {
             let commit_ms = commit_started_at.map(elapsed_ms).unwrap_or(0);
