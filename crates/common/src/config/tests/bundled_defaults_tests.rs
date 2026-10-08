@@ -43,7 +43,10 @@ fn first_run_defaults_match_bundled_theme() {
     assert_eq!(config.battery.refresh_seconds, 30);
     assert!(config.battery.mock_percent.is_none());
     assert!(config.battery.mock_charging.is_none());
-    assert!(matches!(config.visuals.input, InputVisualEntry::Section(_)));
+    assert_eq!(
+        config.visuals.input,
+        super::super::InputVisualConfig::default()
+    );
     assert_eq!(config.visuals.input_font_family(), Some("Google Sans Flex"));
     assert_eq!(config.visuals.input_font_weight(), Some(400));
     assert_eq!(config.visuals.input_font_style(), Some(FontStyle::Normal));

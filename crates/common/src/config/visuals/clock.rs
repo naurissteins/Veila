@@ -151,7 +151,7 @@ impl super::VisualConfig {
         self.clock
             .as_ref()
             .and_then(|clock| clock.font_family.as_deref())
-            .or(self.clock_font_family.as_deref())
+            .or(Some(super::DEFAULT_GEOM_FONT_FAMILY))
     }
 
     pub fn clock_enabled(&self) -> bool {
@@ -165,21 +165,20 @@ impl super::VisualConfig {
         self.clock
             .as_ref()
             .and_then(|clock| clock.font_weight)
-            .or(self.clock_font_weight)
+            .or(Some(600))
     }
 
     pub fn clock_font_style(&self) -> Option<FontStyle> {
         self.clock
             .as_ref()
             .and_then(|clock| clock.font_style)
-            .or(self.clock_font_style)
+            .or(Some(FontStyle::Normal))
     }
 
     pub fn clock_style(&self) -> ClockStyle {
         self.clock
             .as_ref()
             .and_then(|clock| clock.style)
-            .or(self.clock_style)
             .unwrap_or_default()
     }
 
@@ -187,7 +186,6 @@ impl super::VisualConfig {
         self.clock
             .as_ref()
             .and_then(|clock| clock.format)
-            .or(self.clock_format)
             .unwrap_or_default()
     }
 
@@ -195,35 +193,35 @@ impl super::VisualConfig {
         self.clock
             .as_ref()
             .and_then(|clock| clock.meridiem_font_size)
-            .or(self.clock_meridiem_font_size)
+            .or(Some(22))
     }
 
     pub fn clock_meridiem_x(&self) -> Option<i16> {
         self.clock
             .as_ref()
             .and_then(|clock| clock.meridiem_x)
-            .or(self.clock_meridiem_x)
+            .or(Some(6))
     }
 
     pub fn clock_meridiem_y(&self) -> Option<i16> {
         self.clock
             .as_ref()
             .and_then(|clock| clock.meridiem_y)
-            .or(self.clock_meridiem_y)
+            .or(Some(7))
     }
 
     pub fn clock_color(&self) -> Option<RgbColor> {
         self.clock
             .as_ref()
             .and_then(|clock| clock.color)
-            .or(self.clock_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 102)))
     }
 
     pub fn clock_font_size(&self) -> Option<u16> {
         self.clock
             .as_ref()
             .and_then(|clock| clock.font_size)
-            .or(self.clock_font_size)
+            .or(Some(88))
     }
 
     pub fn clock_position(&self) -> WidgetPositionConfig {
@@ -237,7 +235,7 @@ impl super::VisualConfig {
         self.date
             .as_ref()
             .and_then(|date| date.color)
-            .or(self.date_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 102)))
     }
 
     pub fn date_enabled(&self) -> bool {
@@ -272,7 +270,7 @@ impl super::VisualConfig {
         self.date
             .as_ref()
             .and_then(|date| date.font_size)
-            .or(self.date_font_size)
+            .or(Some(18))
     }
 
     pub fn date_position(&self) -> WidgetPositionConfig {

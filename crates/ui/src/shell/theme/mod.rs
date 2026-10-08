@@ -15,6 +15,9 @@ use veila_renderer::{ClearColor, RenderScale};
 use self::color::to_color;
 use super::PreviewGrid;
 
+// Missing surface colors retain the pre-theme fallback independently of config keys.
+const DEFAULT_SURFACE_COLOR: veila_common::RgbColor = veila_common::RgbColor::rgb(22, 28, 38);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WidgetPosition {
     pub halign: HorizontalAlign,
@@ -599,7 +602,7 @@ fn resolve_backdrops(config: &AppConfig) -> (Vec<Backdrop>, HashMap<String, usiz
                 Backdrop {
                     mode: backdrop.mode.unwrap_or_default(),
                     show_when: backdrop.show_when.unwrap_or_default(),
-                    color: to_color(backdrop.color.unwrap_or(config.visuals.panel)),
+                    color: to_color(backdrop.color.unwrap_or(DEFAULT_SURFACE_COLOR)),
                     blur_strength: backdrop.blur_strength.unwrap_or(12).min(24),
                     radius: i32::from(backdrop.radius.unwrap_or(0)).clamp(0, 160),
                     border_color: backdrop.border_color.map(to_color),
@@ -825,7 +828,7 @@ impl ShellTheme {
                 .visuals
                 .avatar_background_color()
                 .map(to_color)
-                .unwrap_or_else(|| to_color(config.visuals.panel)),
+                .unwrap_or_else(|| to_color(DEFAULT_SURFACE_COLOR)),
             input: to_color(config.visuals.input_background_color()),
             input_border: to_color(config.visuals.input_border_color()),
             input_font_family: config.visuals.input_font_family().map(str::to_owned),
