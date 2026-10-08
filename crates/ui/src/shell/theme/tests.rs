@@ -1,3 +1,4 @@
+use crate::InputTheme;
 use veila_common::{
     AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
     BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateFormat,
@@ -334,28 +335,28 @@ fn input_alpha_uses_rgba_values() {
     });
     let theme = ShellTheme::from_config(&config);
 
-    assert_eq!(theme.input.alpha, 200);
-    assert_eq!(theme.input_border.alpha, 180);
-    assert!(theme.input_reveal_on_interaction);
-    assert_eq!(theme.input_reveal_mode, InputRevealMode::Full);
-    assert_eq!(theme.input_reveal_hint, "Press any key or click to unlock");
-    assert!(theme.reveal_enabled);
+    assert_eq!(theme.input.background_color.alpha, 200);
+    assert_eq!(theme.input.border_color.alpha, 180);
+    assert!(theme.input.reveal_on_interaction);
+    assert_eq!(theme.input.reveal_mode, InputRevealMode::Full);
+    assert_eq!(theme.reveal.text, "Press any key or click to unlock");
+    assert!(theme.reveal.enabled);
     assert_eq!(
-        theme.reveal_color,
+        theme.reveal.color,
         Some(ClearColor::rgba(214, 227, 255, 168))
     );
-    assert_eq!(theme.reveal_font_family.as_deref(), Some("Geom"));
-    assert_eq!(theme.reveal_font_weight, Some(500));
-    assert_eq!(theme.reveal_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.reveal_font_size, Some(18));
-    assert_eq!(theme.input_font_family.as_deref(), Some("Geom"));
-    assert_eq!(theme.input_font_weight, Some(600));
-    assert_eq!(theme.input_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.input_font_size, Some(22));
+    assert_eq!(theme.reveal.font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.reveal.font_weight, Some(500));
+    assert_eq!(theme.reveal.font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.reveal.font_size, Some(18));
+    assert_eq!(theme.input.font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.input.font_weight, Some(600));
+    assert_eq!(theme.input.font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.input.font_size, Some(22));
     assert_eq!(theme.avatar_background, ClearColor::rgba(24, 30, 42, 92));
-    assert_eq!(theme.input_width, Some(280));
-    assert_eq!(theme.input_height, Some(54));
-    assert_eq!(theme.input_border_width, Some(3));
+    assert_eq!(theme.input.width, Some(280));
+    assert_eq!(theme.input.height, Some(54));
+    assert_eq!(theme.input.border_width, Some(3));
     assert_eq!(theme.avatar_size, Some(92));
     assert_eq!(theme.avatar_radius, Some(18));
     assert_eq!(theme.avatar_offset_y, Some(0));
@@ -412,13 +413,10 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.clock_font_size, Some(28));
     assert_eq!(theme.date_font_size, Some(22));
     assert_eq!(
-        theme.placeholder_color,
+        theme.placeholder.color,
         Some(ClearColor::rgba(134, 148, 180, 153))
     );
-    assert_eq!(
-        theme.eye_icon_color,
-        Some(ClearColor::rgba(244, 248, 255, 184))
-    );
+    assert_eq!(theme.eye.color, Some(ClearColor::rgba(244, 248, 255, 184)));
     assert_eq!(
         theme.keyboard_background_color,
         ClearColor::rgba(18, 22, 30, 82)
@@ -688,12 +686,12 @@ fn input_alpha_uses_rgba_values() {
         })
     );
     assert_eq!(
-        theme.status_color,
+        theme.status.color,
         Some(ClearColor::rgba(255, 224, 160, 224))
     );
-    assert_eq!(theme.status_mode, StatusDisplayMode::Inline);
+    assert_eq!(theme.status.mode, StatusDisplayMode::Inline);
     assert_eq!(
-        theme.input_mask_color,
+        theme.input.mask_color,
         Some(ClearColor::opaque(169, 196, 255))
     );
 }
@@ -807,7 +805,7 @@ fn explicit_input_and_status_positions_override_auth_flow_layout() {
     let theme = ShellTheme::from_config(&config);
 
     assert_eq!(
-        theme.input_position,
+        theme.input.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Left,
             valign: VerticalAlign::Bottom,
@@ -817,7 +815,7 @@ fn explicit_input_and_status_positions_override_auth_flow_layout() {
         })
     );
     assert_eq!(
-        theme.status_position,
+        theme.status.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Top,
@@ -826,7 +824,7 @@ fn explicit_input_and_status_positions_override_auth_flow_layout() {
             target: super::WidgetPositionTarget::Screen,
         })
     );
-    assert_eq!(theme.status_mode, StatusDisplayMode::External);
+    assert_eq!(theme.status.mode, StatusDisplayMode::External);
 }
 
 #[test]
@@ -901,23 +899,26 @@ fn avatar_background_falls_back_to_default_surface_color() {
 #[test]
 fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     let theme = ShellTheme {
-        input_width: Some(310),
-        input_height: Some(54),
+        input: InputTheme {
+            width: Some(310),
+            height: Some(54),
+            font_size: Some(18),
+            position: Some(super::WidgetPosition {
+                halign: HorizontalAlign::Center,
+                valign: VerticalAlign::Bottom,
+                x: 12,
+                y: -24,
+                target: super::WidgetPositionTarget::Screen,
+            }),
+            ..ShellTheme::default().input
+        },
         avatar_radius: Some(18),
-        input_font_size: Some(18),
         clock_font_size: Some(88),
         keyboard_size: Some(16),
         keyboard_background_size: Some(42),
         keyboard_radius: Some(12),
         battery_background_size: Some(44),
         battery_radius: Some(14),
-        input_position: Some(super::WidgetPosition {
-            halign: HorizontalAlign::Center,
-            valign: VerticalAlign::Bottom,
-            x: 12,
-            y: -24,
-            target: super::WidgetPositionTarget::Screen,
-        }),
         backdrops: vec![super::Backdrop {
             mode: BackdropMode::Blur,
             show_when: BackdropShowWhen::Always,
@@ -971,10 +972,10 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
 
     let scaled = theme.scaled_for_render(2);
 
-    assert_eq!(scaled.input_width, Some(620));
-    assert_eq!(scaled.input_height, Some(108));
+    assert_eq!(scaled.input.width, Some(620));
+    assert_eq!(scaled.input.height, Some(108));
     assert_eq!(scaled.avatar_radius, Some(36));
-    assert_eq!(scaled.input_font_size, Some(36));
+    assert_eq!(scaled.input.font_size, Some(36));
     assert_eq!(scaled.clock_font_size, Some(176));
     assert_eq!(scaled.keyboard_size, Some(32));
     assert_eq!(scaled.keyboard_background_size, Some(84));
@@ -983,7 +984,8 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     assert_eq!(scaled.battery_radius, Some(28));
     assert_eq!(
         scaled
-            .input_position
+            .input
+            .position
             .map(|position| (position.x, position.y)),
         Some((24, -48))
     );

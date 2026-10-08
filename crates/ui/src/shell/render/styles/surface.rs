@@ -20,11 +20,12 @@ impl RenderContext<'_> {
         let selection_active = self.shell.secret_selected;
         let base_border = if matches!(self.shell.status, ShellStatus::Rejected { .. }) {
             self.theme
-                .status_rejected_color
-                .or(self.theme.status_color)
+                .status
+                .rejected_color
+                .or(self.theme.status.color)
                 .unwrap_or(self.theme.rejected)
         } else {
-            self.theme.input_border
+            self.theme.input.border_color
         };
         let border = if selection_active {
             base_border.with_alpha(if base_border.alpha == u8::MAX {
@@ -37,18 +38,20 @@ impl RenderContext<'_> {
         } else {
             base_border.with_alpha(styled_alpha(base_border.alpha, 210))
         };
-        let border_width = self.theme.input_border_width.unwrap_or(2).max(0);
+        let border_width = self.theme.input.border_width.unwrap_or(2).max(0);
 
-        let style = PillStyle::new(self.theme.input.with_alpha(if selection_active {
-            if self.theme.input.alpha == u8::MAX {
-                244
+        let style = PillStyle::new(self.theme.input.background_color.with_alpha(
+            if selection_active {
+                if self.theme.input.background_color.alpha == u8::MAX {
+                    244
+                } else {
+                    self.theme.input.background_color.alpha.max(88)
+                }
             } else {
-                self.theme.input.alpha.max(88)
-            }
-        } else {
-            styled_alpha(self.theme.input.alpha, 232)
-        }))
-        .with_radius(self.theme.input_radius);
+                styled_alpha(self.theme.input.background_color.alpha, 232)
+            },
+        ))
+        .with_radius(self.theme.input.radius);
 
         if border_width == 0 {
             style
@@ -59,7 +62,7 @@ impl RenderContext<'_> {
 
     pub(crate) fn mask_style(&self) -> MaskedInputStyle {
         let mut style =
-            MaskedInputStyle::new(self.theme.input_mask_color.unwrap_or(self.theme.foreground));
+            MaskedInputStyle::new(self.theme.input.mask_color.unwrap_or(self.theme.foreground));
         let scale = self.render_scale;
         style.bullet_size = scale.apply_i32(style.bullet_size);
         style.spacing = scale.apply_i32(style.spacing);
@@ -72,7 +75,7 @@ impl RenderContext<'_> {
         let ring = if let Some(ring_color) = self.theme.avatar_ring_color {
             ring_color
         } else if self.shell.focused {
-            avatar_ring_color(self.theme.input_border, 108)
+            avatar_ring_color(self.theme.input.border_color, 108)
         } else {
             avatar_ring_color(self.theme.foreground, 54)
         };
@@ -104,13 +107,13 @@ impl RenderContext<'_> {
         } else {
             184
         };
-        let base = self.theme.eye_icon_color.unwrap_or(self.theme.foreground);
+        let base = self.theme.eye.color.unwrap_or(self.theme.foreground);
         let alpha = eye_icon_alpha(base.alpha, interaction_alpha);
         IconStyle::new(base.with_alpha(alpha)).with_padding(self.scaled_px(4))
     }
 
     pub(crate) fn caps_lock_icon_style(&self) -> IconStyle {
-        let base = self.theme.caps_lock_color.unwrap_or(self.theme.foreground);
+        let base = self.theme.caps_lock.color.unwrap_or(self.theme.foreground);
         let alpha = if base.alpha == u8::MAX {
             percent_to_alpha(72)
         } else {

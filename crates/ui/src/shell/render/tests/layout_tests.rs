@@ -1,5 +1,6 @@
 use super::*;
 use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
+use crate::{InputTheme, StatusTheme};
 use veila_common::{
     BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot,
     StatusDisplayMode, WeatherUnit,
@@ -1041,21 +1042,27 @@ fn username_stays_in_auth_flow_when_only_avatar_is_explicit() {
 fn explicit_input_and_status_positions_are_removed_from_auth_flow() {
     let mut shell = ShellState::new_with_username(
         ShellTheme {
-            input_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Center,
-                valign: VerticalAlign::Bottom,
-                x: 0,
-                y: -72,
-                target: WidgetPositionTarget::Screen,
-            }),
-            status_mode: StatusDisplayMode::External,
-            status_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Right,
-                valign: VerticalAlign::Top,
-                x: -32,
-                y: 48,
-                target: WidgetPositionTarget::Screen,
-            }),
+            input: InputTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Bottom,
+                    x: 0,
+                    y: -72,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().input
+            },
+            status: StatusTheme {
+                mode: StatusDisplayMode::External,
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Right,
+                    valign: VerticalAlign::Top,
+                    x: -32,
+                    y: 48,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().status
+            },
             ..ShellTheme::default()
         },
         None,
@@ -1091,13 +1098,16 @@ fn explicit_input_and_status_positions_are_removed_from_auth_flow() {
 fn inline_status_stays_inside_explicit_input_by_default() {
     let shell = ShellState::new_with_username(
         ShellTheme {
-            input_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Left,
-                valign: VerticalAlign::Bottom,
-                x: 24,
-                y: -64,
-                target: WidgetPositionTarget::Screen,
-            }),
+            input: InputTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Left,
+                    valign: VerticalAlign::Bottom,
+                    x: 24,
+                    y: -64,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().input
+            },
             ..ShellTheme::default()
         },
         None,
@@ -1125,14 +1135,20 @@ fn inline_status_stays_inside_explicit_input_by_default() {
 fn external_status_follows_explicit_input_when_status_position_is_unset() {
     let shell = ShellState::new_with_username(
         ShellTheme {
-            input_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Left,
-                valign: VerticalAlign::Bottom,
-                x: 24,
-                y: -64,
-                target: WidgetPositionTarget::Screen,
-            }),
-            status_mode: StatusDisplayMode::External,
+            input: InputTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Left,
+                    valign: VerticalAlign::Bottom,
+                    x: 24,
+                    y: -64,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().input
+            },
+            status: StatusTheme {
+                mode: StatusDisplayMode::External,
+                ..ShellTheme::default().status
+            },
             ..ShellTheme::default()
         },
         None,
@@ -1170,7 +1186,10 @@ fn external_status_follows_explicit_input_when_status_position_is_unset() {
 fn hidden_status_mode_removes_auth_feedback_from_layout() {
     let mut shell = ShellState::new_with_username(
         ShellTheme {
-            status_mode: StatusDisplayMode::Hidden,
+            status: StatusTheme {
+                mode: StatusDisplayMode::Hidden,
+                ..ShellTheme::default().status
+            },
             ..ShellTheme::default()
         },
         None,
