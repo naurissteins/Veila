@@ -3,6 +3,8 @@ use veila_renderer::{FrameSize, PixelBuffer, shape::Rect};
 
 use super::{RenderContext, layout::hero_block_x, model::SceneWidget};
 
+mod auth;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WidgetKind {
     Header,
