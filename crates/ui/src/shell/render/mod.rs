@@ -1,6 +1,7 @@
 mod api;
 mod cache;
 mod context;
+mod floating;
 mod indicators;
 mod layout;
 mod model;
@@ -42,14 +43,14 @@ struct SceneLayout {
     metrics: SceneMetrics,
     model: SceneModel,
     anchors: RoleAnchors,
-    floating_avatar: bool,
-    floating_input: bool,
+    // Floating geometry is shared by painting, damage tracking, and hit testing.
+    floating_avatar: Option<Rect>,
+    floating_input: Option<Rect>,
     floating_input_placeholder: Option<veila_renderer::text::TextBlock>,
-    floating_status: Option<veila_renderer::text::TextBlock>,
-    floating_status_follows_input: bool,
-    floating_username: Option<veila_renderer::text::TextBlock>,
-    floating_clock: Option<model::SceneClockBlocks>,
-    floating_date: Option<veila_renderer::text::TextBlock>,
+    floating_status: Option<(Rect, veila_renderer::text::TextBlock)>,
+    floating_username: Option<(Rect, veila_renderer::text::TextBlock)>,
+    floating_clock: Option<(Rect, model::SceneClockBlocks)>,
+    floating_date: Option<(Rect, veila_renderer::text::TextBlock)>,
     floating_weather: Option<model::SceneWeatherBlocks>,
 }
 
@@ -82,10 +83,16 @@ impl RenderContext<'_> {
         let username_in_flow = !floating_username;
         let input_in_flow = !floating_input;
         let status_in_flow = !floating_status_follows_input && !floating_status_explicit;
-        let floating_clock = (!clock_in_flow)
-            .then(|| text_blocks.clock.clone())
-            .flatten();
-        let floating_date = (!date_in_flow).then(|| text_blocks.date.clone()).flatten();
+        let floating_clock = self
+            .theme
+            .clock_position
+            .zip(text_blocks.clock.as_ref())
+            .map(|(position, clock)| {
+                let rect = self.positioned_rect(size, position, clock.width(), clock.height());
+                (rect, clock.clone())
+            });
+        let floating_date =
+            self.positioned_text_block(size, self.theme.date_position, text_blocks.date.as_ref());
         let floating_weather = text_blocks.weather.clone();
         let model = SceneModel::standard(
             SceneTextBlocks {
@@ -173,18 +180,33 @@ impl RenderContext<'_> {
             metrics,
             model,
             anchors,
-            floating_avatar,
-            floating_input,
+            floating_avatar: self.theme.avatar_position.filter(|_| floating_avatar).map(
+                |position| {
+                    self.positioned_rect(size, position, metrics.avatar_size, metrics.avatar_size)
+                },
+            ),
+            floating_input: self
+                .theme
+                .input_position
+                .filter(|_| floating_input)
+                .map(|position| {
+                    self.positioned_rect(size, position, metrics.input_width, metrics.input_height)
+                }),
             floating_input_placeholder: floating_input
                 .then(|| text_blocks.placeholder.clone())
                 .flatten(),
             floating_status: (!status_in_flow)
                 .then(|| text_blocks.status.clone())
-                .flatten(),
-            floating_status_follows_input,
-            floating_username: floating_username
-                .then(|| text_blocks.username.clone())
-                .flatten(),
+                .flatten()
+                .and_then(|block| {
+                    self.floating_status_rect(size, metrics, &block)
+                        .map(|rect| (rect, block))
+                }),
+            floating_username: self.positioned_text_block(
+                size,
+                self.theme.username_position.filter(|_| floating_username),
+                text_blocks.username.as_ref(),
+            ),
             floating_clock,
             floating_date,
             floating_weather,

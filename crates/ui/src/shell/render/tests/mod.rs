@@ -11,6 +11,7 @@ use veila_renderer::{
 };
 
 mod auth_style_tests;
+mod floating_tests;
 mod header_style_tests;
 mod layout_tests;
 mod text_cache_tests;
