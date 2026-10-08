@@ -990,7 +990,7 @@ fn explicit_avatar_and_username_positions_are_removed_from_auth_flow() {
         .render_context()
         .scene_layout(FrameSize::new(1280, 720));
 
-    assert!(layout.floating_avatar);
+    assert!(layout.floating_avatar.is_some());
     assert!(layout.floating_username.is_some());
     assert!(
         layout
@@ -1027,7 +1027,7 @@ fn username_stays_in_auth_flow_when_only_avatar_is_explicit() {
         .render_context()
         .scene_layout(FrameSize::new(1280, 720));
 
-    assert!(layout.floating_avatar);
+    assert!(layout.floating_avatar.is_some());
     assert!(layout.floating_username.is_none());
     assert!(
         layout
@@ -1074,7 +1074,7 @@ fn explicit_input_and_status_positions_are_removed_from_auth_flow() {
         .render_context()
         .scene_layout(FrameSize::new(1280, 720));
 
-    assert!(layout.floating_input);
+    assert!(layout.floating_input.is_some());
     assert!(layout.floating_status.is_some());
     assert!(
         layout
@@ -1117,9 +1117,8 @@ fn inline_status_stays_inside_explicit_input_by_default() {
         .render_context()
         .scene_layout(FrameSize::new(1280, 720));
 
-    assert!(layout.floating_input);
+    assert!(layout.floating_input.is_some());
     assert!(layout.floating_status.is_none());
-    assert!(!layout.floating_status_follows_input);
 }
 
 #[test]
@@ -1153,9 +1152,12 @@ fn external_status_follows_explicit_input_when_status_position_is_unset() {
         .render_context()
         .scene_layout(FrameSize::new(1280, 720));
 
-    assert!(layout.floating_input);
+    assert!(layout.floating_input.is_some());
     assert!(layout.floating_status.is_some());
-    assert!(layout.floating_status_follows_input);
+    let input = layout.floating_input.unwrap();
+    let (status, _) = layout.floating_status.as_ref().unwrap();
+    assert_eq!(status.y + status.height + 14, input.y);
+    assert_eq!(status.x, input.x + (input.width - status.width) / 2);
     assert!(
         layout
             .model

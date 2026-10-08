@@ -191,26 +191,10 @@ impl RenderContext<'_> {
     }
 
     fn render_floating_header_widgets(&self, buffer: &mut impl PixelBuffer, layout: &SceneLayout) {
-        if let Some(clock) = layout.floating_clock.as_ref() {
-            let position = self
-                .theme
-                .clock_position
-                .expect("floating clock requires explicit position");
-            let rect = self.positioned_rect(buffer.size(), position, clock.width(), clock.height());
+        if let Some((rect, clock)) = layout.floating_clock.as_ref() {
             draw_clock_widget(buffer, rect.x, rect.y, clock);
         }
-
-        if let Some(date) = layout.floating_date.as_ref() {
-            let position = self
-                .theme
-                .date_position
-                .expect("floating date requires resolved position");
-            let rect = self.positioned_rect(
-                buffer.size(),
-                position,
-                date.width as i32,
-                date.height as i32,
-            );
+        if let Some((rect, date)) = layout.floating_date.as_ref() {
             draw_block(buffer, rect.x, rect.y, date);
         }
     }
@@ -220,13 +204,8 @@ impl RenderContext<'_> {
         buffer: &mut impl PixelBuffer,
         layout: &SceneLayout,
     ) {
-        if layout.floating_avatar {
-            let position = self
-                .theme
-                .avatar_position
-                .expect("floating avatar requires explicit position");
+        if let Some(rect) = layout.floating_avatar {
             let size = layout.metrics.avatar_size;
-            let rect = self.positioned_rect(buffer.size(), position, size, size);
             draw_avatar_widget(
                 buffer,
                 &self.shell.avatar,
@@ -236,18 +215,7 @@ impl RenderContext<'_> {
                 self.avatar_style(),
             );
         }
-
-        if let Some(username) = layout.floating_username.as_ref() {
-            let position = self
-                .theme
-                .username_position
-                .expect("floating username requires resolved position");
-            let rect = self.positioned_rect(
-                buffer.size(),
-                position,
-                username.width as i32,
-                username.height as i32,
-            );
+        if let Some((rect, username)) = layout.floating_username.as_ref() {
             draw_block(buffer, rect.x, rect.y, username);
         }
     }
@@ -258,19 +226,12 @@ impl RenderContext<'_> {
         layout: &SceneLayout,
         dynamic: bool,
     ) {
-        if layout.floating_input {
-            let rect = self
-                .floating_input_rect(layout, buffer.size())
-                .expect("floating input requires explicit position");
+        if let Some(rect) = layout.floating_input {
             let placeholder = layout.floating_input_placeholder.clone();
             self.render_input_widget(buffer, rect, placeholder, dynamic);
         }
-
-        if dynamic && let Some(status) = layout.floating_status.as_ref() {
-            let (x, y) = self
-                .floating_status_origin(layout, buffer.size(), status)
-                .expect("floating status requires explicit origin");
-            draw_block(buffer, x, y, status);
+        if dynamic && let Some((rect, status)) = layout.floating_status.as_ref() {
+            draw_block(buffer, rect.x, rect.y, status);
         }
     }
 
@@ -396,65 +357,13 @@ impl RenderContext<'_> {
         );
     }
 
-    fn floating_input_rect(&self, layout: &SceneLayout, size: FrameSize) -> Option<Rect> {
-        let position = self.theme.input_position?;
-        Some(self.positioned_rect(
-            size,
-            position,
-            layout.metrics.input_width,
-            layout.metrics.input_height,
-        ))
-    }
-
-    fn floating_status_origin(
-        &self,
-        layout: &SceneLayout,
-        size: FrameSize,
-        block: &veila_renderer::text::TextBlock,
-    ) -> Option<(i32, i32)> {
-        if let Some(position) = self.theme.status_position {
-            let rect =
-                self.positioned_rect(size, position, block.width as i32, block.height as i32);
-            return Some((rect.x, rect.y));
-        }
-
-        if layout.floating_status_follows_input {
-            let input_rect = self.floating_input_rect(layout, size)?;
-            let x = input_rect.x + (input_rect.width - block.width as i32) / 2;
-            let gap = 14;
-            let y = if matches!(
-                self.theme.input_position?.valign,
-                veila_common::VerticalAlign::Bottom
-            ) {
-                input_rect.y - gap - block.height as i32
-            } else {
-                input_rect.y + input_rect.height + gap
-            };
-            return Some((x, y));
-        }
-
-        None
-    }
-
     pub(super) fn auth_dirty_rect(&self, size: FrameSize) -> Option<Rect> {
         let layout = self.scene_layout(size);
         let mut dirty = None;
 
-        if layout.floating_input {
-            dirty = union_rect(
-                dirty,
-                self.floating_input_rect(&layout, size)
-                    .map(auth_dirty_padding),
-            );
-        }
-
-        if let Some(status) = layout.floating_status.as_ref()
-            && let Some((x, y)) = self.floating_status_origin(&layout, size, status)
-        {
-            dirty = union_rect(
-                dirty,
-                Some(Rect::new(x, y, status.width as i32, status.height as i32)),
-            );
+        dirty = union_rect(dirty, layout.floating_input.map(auth_dirty_padding));
+        if let Some((rect, _)) = layout.floating_status.as_ref() {
+            dirty = union_rect(dirty, Some(*rect));
         }
 
         let sections = if layout.anchors.identity_y.is_some() {
@@ -652,14 +561,9 @@ impl RenderContext<'_> {
             frame_width.max(1) as u32,
             frame_height.max(1) as u32,
         ));
-        if layout.floating_input {
+        if let Some(rect) = layout.floating_input {
             return if self.theme.eye_enabled {
-                self.floating_input_rect(
-                    &layout,
-                    FrameSize::new(frame_width.max(1) as u32, frame_height.max(1) as u32),
-                )
-                .map(input_toggle_hitbox)
-                .unwrap_or_else(|| veila_renderer::shape::Rect::new(0, 0, 0, 0))
+                input_toggle_hitbox(rect)
             } else {
                 veila_renderer::shape::Rect::new(0, 0, 0, 0)
             };

@@ -178,21 +178,11 @@ impl RenderContext<'_> {
             region = merge(region, next);
             y += section.height(layout.metrics, &self.shell.status) + section.gap_after;
         }
-        if let (Some(clock), Some(position)) =
-            (layout.floating_clock.as_ref(), self.theme.clock_position)
-        {
-            region = merge(
-                region,
-                Some(self.positioned_rect(size, position, clock.width(), clock.height())),
-            );
+        if let Some((rect, _)) = layout.floating_clock.as_ref() {
+            region = merge(region, Some(*rect));
         }
-        if let (Some(date), Some(position)) =
-            (layout.floating_date.as_ref(), self.theme.date_position)
-        {
-            region = merge(
-                region,
-                Some(self.positioned_rect(size, position, date.width as i32, date.height as i32)),
-            );
+        if let Some((rect, _)) = layout.floating_date.as_ref() {
+            region = merge(region, Some(*rect));
         }
         region
     }
