@@ -3,10 +3,10 @@ use std::fs;
 use super::{
     AppConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig, BackgroundMode,
     BackgroundScaling, ClockFormat, ClockStyle, DateFormat, FontStyle, HorizontalAlign,
-    InputRevealMode, InputVisualEntry, LayerKind, LayerVisualConfig, OutputUiMode, RgbColor,
-    VerticalAlign, WeatherUnit, WidgetPositionConfig, active_include_source_paths,
-    active_theme_name, active_theme_source_path, bundled_theme_names, init_config,
-    read_theme_source, resolve_default_path, set_theme_in_config, unset_theme_in_config,
+    InputRevealMode, LayerKind, LayerVisualConfig, OutputUiMode, RgbColor, VerticalAlign,
+    WeatherUnit, WidgetPositionConfig, active_include_source_paths, active_theme_name,
+    active_theme_source_path, bundled_theme_names, init_config, read_theme_source,
+    resolve_default_path, set_theme_in_config, unset_theme_in_config,
 };
 use crate::VeilaError;
 
@@ -23,3 +23,4 @@ mod path_resolution_tests;
 mod theme_loading_tests;
 mod theme_mutation_safety_tests;
 mod theme_mutation_tests;
+mod visual_schema_tests;

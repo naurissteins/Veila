@@ -283,7 +283,7 @@ impl super::VisualConfig {
         self.placeholder
             .as_ref()
             .and_then(|placeholder| placeholder.color)
-            .or(self.placeholder_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 230)))
     }
 
     pub fn placeholder_enabled(&self) -> bool {
@@ -294,10 +294,7 @@ impl super::VisualConfig {
     }
 
     pub fn status_color(&self) -> Option<RgbColor> {
-        self.status
-            .as_ref()
-            .and_then(|status| status.color)
-            .or(self.status_color)
+        self.status.as_ref().and_then(|status| status.color)
     }
 
     pub fn status_mode(&self) -> StatusDisplayMode {
@@ -335,7 +332,7 @@ impl super::VisualConfig {
         self.eye
             .as_ref()
             .and_then(|eye| eye.color)
-            .or(self.eye_icon_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 184)))
     }
 
     pub fn eye_enabled(&self) -> bool {
@@ -369,7 +366,7 @@ impl super::VisualConfig {
         self.keyboard
             .as_ref()
             .and_then(|keyboard| keyboard.color)
-            .or(self.keyboard_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 173)))
     }
 
     pub fn keyboard_background_color(&self) -> Option<RgbColor> {
@@ -382,7 +379,7 @@ impl super::VisualConfig {
         self.keyboard
             .as_ref()
             .and_then(|keyboard| keyboard.background_size)
-            .or(self.keyboard_background_size)
+            .or(Some(46))
     }
 
     pub fn keyboard_radius(&self) -> Option<u16> {
@@ -393,7 +390,7 @@ impl super::VisualConfig {
         self.keyboard
             .as_ref()
             .and_then(|keyboard| keyboard.size)
-            .or(self.keyboard_size)
+            .or(Some(16))
     }
 
     pub fn keyboard_position(&self) -> WidgetPositionConfig {
@@ -414,21 +411,21 @@ impl super::VisualConfig {
         self.battery
             .as_ref()
             .and_then(|battery| battery.color)
-            .or(self.battery_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 173)))
     }
 
     pub fn battery_background_color(&self) -> Option<RgbColor> {
         self.battery
             .as_ref()
             .and_then(|battery| battery.background_color)
-            .or(self.battery_background_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 10)))
     }
 
     pub fn battery_background_size(&self) -> Option<u16> {
         self.battery
             .as_ref()
             .and_then(|battery| battery.background_size)
-            .or(self.battery_background_size)
+            .or(Some(46))
     }
 
     pub fn battery_radius(&self) -> Option<u16> {
@@ -439,7 +436,7 @@ impl super::VisualConfig {
         self.battery
             .as_ref()
             .and_then(|battery| battery.size)
-            .or(self.battery_size)
+            .or(Some(20))
     }
 
     pub fn battery_position(&self) -> WidgetPositionConfig {

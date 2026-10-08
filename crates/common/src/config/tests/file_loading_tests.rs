@@ -34,32 +34,6 @@ fn loads_config_from_file() {
             mock_percent = 84
             mock_charging = true
 
-            [visuals]
-            avatar_background_color = "rgba(24, 30, 42, 0.82)"
-            avatar_size = 92
-            avatar_radius = 18
-            avatar_placeholder_padding = 12
-            avatar_icon_color = "#E8EEF9"
-            avatar_ring_color = "#94B2FF"
-            avatar_ring_width = 3
-            username_color = "#D7E3FFB8"
-            username_font_size = 22
-            clock_font_family = "Bebas Neue"
-            clock_font_weight = 700
-            clock_font_style = "italic"
-            clock_style = "stacked"
-            clock_format = "12h"
-            clock_meridiem_font_size = 22
-            clock_meridiem_x = 6
-            clock_meridiem_y = -2
-            clock_color = "#F8FBFFF5"
-            date_color = "#C8D4ECBD"
-            clock_font_size = 28
-            date_font_size = 22
-            placeholder_color = "#8694B499"
-            eye_icon_color = "#F4F8FFB8"
-            status_color = "#FFE0A0E0"
-
             [visuals.input]
             placeholder = "Type your password"
             background_color = "#FFFFFF1A"
@@ -75,6 +49,13 @@ fn loads_config_from_file() {
             mask_color = "#A9C4FF"
 
             [visuals.avatar]
+            background_color = "rgba(24, 30, 42, 0.82)"
+            size = 92
+            radius = 18
+            placeholder_padding = 12
+            icon_color = "#E8EEF9"
+            ring_color = "#94B2FF"
+            ring_width = 3
             image_path = "/tmp/avatar-new.png"
             halign = "center"
             valign = "center"
@@ -82,6 +63,8 @@ fn loads_config_from_file() {
             y = 32
 
             [visuals.username]
+            color = "#D7E3FFB8"
+            font_size = 22
             enabled = false
             text = "anonymous"
             halign = "center"
@@ -90,22 +73,41 @@ fn loads_config_from_file() {
             y = 220
 
             [visuals.clock]
+            font_family = "Bebas Neue"
+            font_weight = 700
+            font_style = "italic"
+            style = "stacked"
+            format = "12h"
+            meridiem_font_size = 22
+            meridiem_x = 6
+            meridiem_y = -2
+            color = "#F8FBFFF5"
+            font_size = 28
             halign = "left"
             valign = "top"
             x = 24
             y = 40
 
             [visuals.date]
+            color = "#C8D4ECBD"
+            font_size = 22
             halign = "left"
             valign = "top"
             x = 24
             y = 156
 
             [visuals.status]
+            color = "#FFE0A0E0"
             halign = "center"
             valign = "bottom"
             x = 0
             y = -24
+
+            [visuals.placeholder]
+            color = "#8694B499"
+
+            [visuals.eye]
+            color = "#F4F8FFB8"
         "##,
     )
     .expect("config file");

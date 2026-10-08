@@ -11,7 +11,7 @@ use std::{
     time::Instant,
 };
 
-use veila_common::{AppConfig, BackdropVisualConfig, LayerVisualConfig, RgbColor, elapsed_ms};
+use veila_common::{AppConfig, BackdropVisualConfig, LayerVisualConfig, elapsed_ms};
 use veila_renderer::{
     ClearColor, FrameSize,
     background::{BackgroundTreatment, FileBackgroundPrewarm, GeneratedBackground},
@@ -109,7 +109,6 @@ fn prewarm_inputs(config: &AppConfig) -> BackgroundPrewarmInputs {
         background: config.background.clone(),
         backdrop: config.visuals.backdrop.clone(),
         layer: config.visuals.layer.clone(),
-        panel: config.visuals.panel,
     }
 }
 
@@ -331,7 +330,6 @@ struct BackgroundPrewarmInputs {
     background: veila_common::config::BackgroundConfig,
     backdrop: Vec<BackdropVisualConfig>,
     layer: Vec<LayerVisualConfig>,
-    panel: RgbColor,
 }
 
 #[cfg(test)]

@@ -3,10 +3,6 @@ use super::*;
 pub(super) fn nested_visual_config() -> AppConfig {
     AppConfig::from_toml_str(
         r##"
-            [visuals]
-            input_border = "#111111"
-            username_color = "#111111"
-            foreground = "#111111"
 
 [visuals.input]
 reveal_on_interaction = true

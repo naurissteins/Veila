@@ -69,7 +69,10 @@ fn parses_partial_config_with_defaults() {
     assert_eq!(config.battery.refresh_seconds, 30);
     assert!(config.battery.mock_percent.is_none());
     assert!(config.battery.mock_charging.is_none());
-    assert!(matches!(config.visuals.input, InputVisualEntry::Color(_)));
+    assert_eq!(
+        config.visuals.input,
+        super::super::InputVisualConfig::default()
+    );
     assert!(config.visuals.input_font_family().is_none());
     assert!(config.visuals.input_font_weight().is_none());
     assert!(config.visuals.input_font_style().is_none());

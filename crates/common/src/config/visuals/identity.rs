@@ -110,49 +110,45 @@ impl super::VisualConfig {
         self.avatar
             .as_ref()
             .and_then(|avatar| avatar.background_color)
-            .or(self.avatar_background_color)
     }
 
     pub fn avatar_size(&self) -> Option<u16> {
         self.avatar
             .as_ref()
             .and_then(|avatar| avatar.size)
-            .or(self.avatar_size)
+            .or(Some(150))
     }
 
     pub fn avatar_radius(&self) -> Option<u16> {
-        self.avatar
-            .as_ref()
-            .and_then(|avatar| avatar.radius)
-            .or(self.avatar_radius)
+        self.avatar.as_ref().and_then(|avatar| avatar.radius)
     }
 
     pub fn avatar_placeholder_padding(&self) -> Option<u16> {
         self.avatar
             .as_ref()
             .and_then(|avatar| avatar.placeholder_padding)
-            .or(self.avatar_placeholder_padding)
+            .or(Some(28))
     }
 
     pub fn avatar_ring_color(&self) -> Option<RgbColor> {
         self.avatar
             .as_ref()
             .and_then(|avatar| avatar.ring_color)
-            .or(self.avatar_ring_color)
+            .or(Some(RgbColor::rgb(148, 178, 255)))
     }
 
     pub fn avatar_ring_width(&self) -> Option<u16> {
         self.avatar
             .as_ref()
             .and_then(|avatar| avatar.ring_width)
-            .or(self.avatar_ring_width)
+            .or(Some(0))
     }
 
     pub fn avatar_icon_color(&self) -> Option<RgbColor> {
         self.avatar
             .as_ref()
             .and_then(|avatar| avatar.icon_color)
-            .or(self.avatar_icon_color)
+            .or(Some(RgbColor::rgb(255, 255, 255)))
     }
 
     pub fn avatar_position(&self) -> WidgetPositionConfig {
@@ -166,7 +162,7 @@ impl super::VisualConfig {
         self.username
             .as_ref()
             .and_then(|username| username.color)
-            .or(self.username_color)
+            .or(Some(RgbColor::rgba(255, 255, 255, 214)))
     }
 
     pub fn username_enabled(&self) -> bool {
@@ -204,7 +200,7 @@ impl super::VisualConfig {
         self.username
             .as_ref()
             .and_then(|username| username.font_size)
-            .or(self.username_font_size)
+            .or(Some(28))
     }
 
     pub fn username_position(&self) -> WidgetPositionConfig {

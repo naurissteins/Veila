@@ -51,14 +51,13 @@ pub use visuals::{
     AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig, BatteryVisualConfig,
     CapsLockVisualConfig, ClockAlignment, ClockFormat, ClockStyle, ClockVisualConfig, DateFormat,
     DateVisualConfig, EyeVisualConfig, FontStyle, GridVisualConfig, HorizontalAlign,
-    InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerKind,
-    LayerVisualConfig, NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig,
-    NowPlayingVisualConfig, OutputUiMode, OutputVisualConfig, PaletteVisualConfig,
-    PlaceholderVisualConfig, PowerButtonVisualConfig, PowerStatusVisualConfig, PowerVisualConfig,
-    RevealDisplayMode, RevealVisualConfig, StatusDisplayMode, StatusVisualConfig,
-    UsernameVisualConfig, VerticalAlign, VisualConfig, WeatherIconVisualConfig,
-    WeatherLocationVisualConfig, WeatherTemperatureVisualConfig, WeatherVisualConfig,
-    WidgetPositionConfig,
+    InputRevealMode, InputVisualConfig, KeyboardVisualConfig, LayerKind, LayerVisualConfig,
+    NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
+    OutputUiMode, OutputVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig,
+    PowerButtonVisualConfig, PowerStatusVisualConfig, PowerVisualConfig, RevealDisplayMode,
+    RevealVisualConfig, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    VisualConfig, WeatherIconVisualConfig, WeatherLocationVisualConfig,
+    WeatherTemperatureVisualConfig, WeatherVisualConfig, WidgetPositionConfig,
 };
 pub use weather::{GeoCoordinate, WeatherConfig, WeatherUnit};
 
@@ -395,7 +394,6 @@ fn resolve_bundled_theme_path(theme: &str) -> Result<PathBuf> {
 }
 
 fn merge_config_layer(base: &mut Value, override_value: Value) {
-    apply_legacy_visual_override_precedence(base, &override_value);
     merge_toml_values(base, override_value);
 }
 
@@ -406,79 +404,6 @@ pub(super) fn remove_config_metadata(value: &mut Value) {
     table.remove("theme");
     table.remove("include");
 }
-
-fn apply_legacy_visual_override_precedence(base: &mut Value, override_value: &Value) {
-    let Some(override_visuals) = override_value.get("visuals").and_then(Value::as_table) else {
-        return;
-    };
-    let Some(base_visuals) = base.get_mut("visuals").and_then(Value::as_table_mut) else {
-        return;
-    };
-
-    for (flat_key, section, nested_key) in LEGACY_VISUAL_MAPPINGS {
-        if override_visuals.contains_key(*flat_key) {
-            remove_nested_visual_value(base_visuals, section, nested_key);
-        }
-    }
-}
-
-fn remove_nested_visual_value(base_visuals: &mut toml::Table, section: &str, nested_key: &str) {
-    let Some(nested) = base_visuals.get_mut(section).and_then(Value::as_table_mut) else {
-        return;
-    };
-    nested.remove(nested_key);
-}
-
-const LEGACY_VISUAL_MAPPINGS: &[(&str, &str, &str)] = &[
-    ("input_font_family", "input", "font_family"),
-    ("input_font_weight", "input", "font_weight"),
-    ("input_font_style", "input", "font_style"),
-    ("input_font_size", "input", "font_size"),
-    ("input_border", "input", "border_color"),
-    ("input_width", "input", "width"),
-    ("input_height", "input", "height"),
-    ("input_radius", "input", "radius"),
-    ("input_border_width", "input", "border_width"),
-    ("input_mask_color", "input", "mask_color"),
-    ("avatar_background_color", "avatar", "background_color"),
-    ("avatar_size", "avatar", "size"),
-    (
-        "avatar_placeholder_padding",
-        "avatar",
-        "placeholder_padding",
-    ),
-    ("avatar_icon_color", "avatar", "icon_color"),
-    ("avatar_ring_color", "avatar", "ring_color"),
-    ("avatar_ring_width", "avatar", "ring_width"),
-    ("username_color", "username", "color"),
-    ("username_font_size", "username", "font_size"),
-    ("clock_font_family", "clock", "font_family"),
-    ("clock_font_weight", "clock", "font_weight"),
-    ("clock_font_style", "clock", "font_style"),
-    ("clock_style", "clock", "style"),
-    ("clock_format", "clock", "format"),
-    ("clock_meridiem_font_size", "clock", "meridiem_font_size"),
-    ("clock_meridiem_x", "clock", "meridiem_x"),
-    ("clock_meridiem_y", "clock", "meridiem_y"),
-    ("clock_color", "clock", "color"),
-    ("clock_font_size", "clock", "font_size"),
-    ("date_color", "date", "color"),
-    ("date_font_size", "date", "font_size"),
-    ("placeholder_color", "placeholder", "color"),
-    ("eye_icon_color", "eye", "color"),
-    ("keyboard_color", "keyboard", "color"),
-    ("keyboard_background_size", "keyboard", "background_size"),
-    ("keyboard_size", "keyboard", "size"),
-    ("battery_color", "battery", "color"),
-    ("battery_background_color", "battery", "background_color"),
-    ("battery_background_size", "battery", "background_size"),
-    ("battery_size", "battery", "size"),
-    ("status_color", "status", "color"),
-    ("foreground", "palette", "foreground"),
-    ("muted", "palette", "muted"),
-    ("pending", "palette", "pending"),
-    ("rejected", "palette", "rejected"),
-];
 
 fn merge_toml_values(base: &mut Value, override_value: Value) {
     match (base, override_value) {

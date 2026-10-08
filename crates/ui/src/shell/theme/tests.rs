@@ -2,11 +2,11 @@ use veila_common::{
     AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
     BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateFormat,
     DateVisualConfig, EyeVisualConfig, FontStyle, GridVisualConfig, HorizontalAlign,
-    InputRevealMode, InputVisualConfig, InputVisualEntry, KeyboardVisualConfig, LayerKind,
-    LayerVisualConfig, NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig,
-    NowPlayingVisualConfig, PaletteVisualConfig, PlaceholderVisualConfig, PowerAction,
-    PowerButtonVisualConfig, PowerStatusVisualConfig, PowerVisualConfig, RevealDisplayMode,
-    RevealVisualConfig, StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
+    InputRevealMode, InputVisualConfig, KeyboardVisualConfig, LayerKind, LayerVisualConfig,
+    NowPlayingArtworkVisualConfig, NowPlayingTextVisualConfig, NowPlayingVisualConfig,
+    PaletteVisualConfig, PlaceholderVisualConfig, PowerAction, PowerButtonVisualConfig,
+    PowerStatusVisualConfig, PowerVisualConfig, RevealDisplayMode, RevealVisualConfig,
+    StatusDisplayMode, StatusVisualConfig, UsernameVisualConfig, VerticalAlign,
     WeatherIconVisualConfig, WeatherLocationVisualConfig, WeatherTemperatureVisualConfig,
     WeatherVisualConfig, WidgetPositionConfig,
 };
@@ -17,7 +17,7 @@ use super::ShellTheme;
 #[test]
 fn input_alpha_uses_rgba_values() {
     let mut config = AppConfig::default();
-    config.visuals.input = InputVisualEntry::Section(InputVisualConfig {
+    config.visuals.input = InputVisualConfig {
         placeholder: None,
         reveal_on_interaction: Some(true),
         reveal_mode: Some(InputRevealMode::Full),
@@ -34,7 +34,7 @@ fn input_alpha_uses_rgba_values() {
         border_width: Some(3),
         mask_color: Some(ConfigColor::rgb(169, 196, 255)),
         position: WidgetPositionConfig::default(),
-    });
+    };
     config.visuals.avatar = Some(AvatarVisualConfig {
         enabled: Some(true),
         image_path: None,
@@ -867,9 +867,8 @@ fn explicit_widget_position_can_target_named_backdrop() {
 }
 
 #[test]
-fn nested_palette_overrides_flat_palette_keys() {
+fn nested_palette_sets_theme_colors() {
     let mut config = AppConfig::default();
-    config.visuals.foreground = ConfigColor::rgb(10, 20, 30);
     config.visuals.palette = Some(PaletteVisualConfig {
         foreground: Some(ConfigColor::rgb(240, 244, 250)),
         muted: Some(ConfigColor::rgb(68, 78, 102)),
@@ -886,19 +885,17 @@ fn nested_palette_overrides_flat_palette_keys() {
 }
 
 #[test]
-fn avatar_background_falls_back_to_legacy_panel_color() {
+fn avatar_background_falls_back_to_default_surface_color() {
     let mut config = AppConfig::default();
-    config.visuals.panel = ConfigColor::rgb(31, 39, 52);
     config.visuals.avatar = Some(veila_common::AvatarVisualConfig {
         enabled: Some(true),
         background_color: None,
         ..Default::default()
     });
-    config.visuals.avatar_background_color = None;
 
     let theme = ShellTheme::from_config(&config);
 
-    assert_eq!(theme.avatar_background, ClearColor::opaque(31, 39, 52));
+    assert_eq!(theme.avatar_background, ClearColor::opaque(22, 28, 38));
 }
 
 #[test]

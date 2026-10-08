@@ -65,27 +65,27 @@ impl super::VisualConfig {
         self.palette
             .as_ref()
             .and_then(|palette| palette.foreground)
-            .unwrap_or(self.foreground)
+            .unwrap_or_else(super::default_foreground_color)
     }
 
     pub fn muted_color(&self) -> RgbColor {
         self.palette
             .as_ref()
             .and_then(|palette| palette.muted)
-            .unwrap_or(self.muted)
+            .unwrap_or_else(super::default_muted_color)
     }
 
     pub fn pending_color(&self) -> RgbColor {
         self.palette
             .as_ref()
             .and_then(|palette| palette.pending)
-            .unwrap_or(self.pending)
+            .unwrap_or_else(super::default_pending_color)
     }
 
     pub fn rejected_color(&self) -> RgbColor {
         self.palette
             .as_ref()
             .and_then(|palette| palette.rejected)
-            .unwrap_or(self.rejected)
+            .unwrap_or_else(super::default_rejected_color)
     }
 }

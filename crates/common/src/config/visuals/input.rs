@@ -3,19 +3,6 @@ use serde::{Deserialize, Serialize};
 use super::{RgbColor, WidgetPositionConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(untagged)]
-pub enum InputVisualEntry {
-    Color(RgbColor),
-    Section(InputVisualConfig),
-}
-
-impl Default for InputVisualEntry {
-    fn default() -> Self {
-        Self::Color(default_input_color())
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
 pub struct InputVisualConfig {
     pub placeholder: Option<String>,
@@ -103,127 +90,79 @@ pub(crate) fn sanitized_reveal_hint(hint: Option<&str>) -> String {
 
 impl super::VisualConfig {
     pub fn input_placeholder(&self) -> String {
-        match &self.input {
-            InputVisualEntry::Color(_) => String::from(DEFAULT_INPUT_PLACEHOLDER),
-            InputVisualEntry::Section(config) => config
-                .placeholder
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .unwrap_or(DEFAULT_INPUT_PLACEHOLDER)
-                .to_string(),
-        }
+        self.input
+            .placeholder
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or(DEFAULT_INPUT_PLACEHOLDER)
+            .to_owned()
     }
 
     pub fn input_background_color(&self) -> RgbColor {
-        match &self.input {
-            InputVisualEntry::Color(color) => *color,
-            InputVisualEntry::Section(config) => {
-                config.background_color.unwrap_or_else(default_input_color)
-            }
-        }
+        self.input
+            .background_color
+            .unwrap_or_else(default_input_color)
     }
 
     pub fn input_border_color(&self) -> RgbColor {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_border,
-            InputVisualEntry::Section(config) => config.border_color.unwrap_or(self.input_border),
-        }
-    }
-
-    pub fn input_width(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_width,
-            InputVisualEntry::Section(config) => config.width.or(self.input_width),
-        }
+        self.input
+            .border_color
+            .unwrap_or(RgbColor::rgba(255, 255, 255, 0))
     }
 
     pub fn input_font_family(&self) -> Option<&str> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_font_family.as_deref(),
-            InputVisualEntry::Section(config) => config
-                .font_family
-                .as_deref()
-                .or(self.input_font_family.as_deref()),
-        }
+        self.input
+            .font_family
+            .as_deref()
+            .or(Some(super::DEFAULT_INPUT_FONT_FAMILY))
     }
 
     pub fn input_reveal_on_interaction(&self) -> bool {
-        match &self.input {
-            InputVisualEntry::Color(_) => false,
-            InputVisualEntry::Section(config) => config.reveal_on_interaction.unwrap_or(false),
-        }
+        self.input.reveal_on_interaction.unwrap_or(false)
     }
 
     pub fn input_reveal_mode(&self) -> InputRevealMode {
-        match &self.input {
-            InputVisualEntry::Color(_) => InputRevealMode::Input,
-            InputVisualEntry::Section(config) => config.reveal_mode.unwrap_or_default(),
-        }
+        self.input.reveal_mode.unwrap_or_default()
     }
 
     pub fn input_reveal_hint(&self) -> String {
-        match &self.input {
-            InputVisualEntry::Color(_) => sanitized_reveal_hint(None),
-            InputVisualEntry::Section(config) => {
-                sanitized_reveal_hint(config.reveal_hint.as_deref())
-            }
-        }
+        sanitized_reveal_hint(self.input.reveal_hint.as_deref())
     }
 
     pub fn input_position(&self) -> WidgetPositionConfig {
-        match &self.input {
-            InputVisualEntry::Color(_) => WidgetPositionConfig::default(),
-            InputVisualEntry::Section(config) => config.position.clone(),
-        }
+        self.input.position.clone()
     }
 
     pub fn input_font_weight(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_font_weight,
-            InputVisualEntry::Section(config) => config.font_weight.or(self.input_font_weight),
-        }
+        self.input.font_weight.or(Some(400))
     }
 
     pub fn input_font_style(&self) -> Option<FontStyle> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_font_style,
-            InputVisualEntry::Section(config) => config.font_style.or(self.input_font_style),
-        }
+        self.input.font_style.or(Some(FontStyle::Normal))
     }
 
     pub fn input_font_size(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_font_size,
-            InputVisualEntry::Section(config) => config.font_size.or(self.input_font_size),
-        }
+        self.input.font_size.or(Some(16))
+    }
+
+    pub fn input_width(&self) -> Option<u16> {
+        self.input.width.or(Some(310))
     }
 
     pub fn input_height(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_height,
-            InputVisualEntry::Section(config) => config.height.or(self.input_height),
-        }
+        self.input.height.or(Some(54))
     }
 
     pub fn input_radius(&self) -> u16 {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_radius,
-            InputVisualEntry::Section(config) => config.radius.unwrap_or(self.input_radius),
-        }
+        self.input.radius.unwrap_or(10)
     }
 
     pub fn input_border_width(&self) -> Option<u16> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_border_width,
-            InputVisualEntry::Section(config) => config.border_width.or(self.input_border_width),
-        }
+        self.input.border_width.or(Some(0))
     }
 
     pub fn input_mask_color(&self) -> Option<RgbColor> {
-        match &self.input {
-            InputVisualEntry::Color(_) => self.input_mask_color,
-            InputVisualEntry::Section(config) => config.mask_color.or(self.input_mask_color),
-        }
+        self.input.mask_color.or(Some(RgbColor::rgb(255, 255, 255)))
     }
 }

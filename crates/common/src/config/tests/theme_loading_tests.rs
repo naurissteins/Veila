@@ -67,17 +67,20 @@ fn explicit_user_background_mode_overrides_wallpaper_path() {
 }
 
 #[test]
-fn flat_visual_overrides_win_over_bundled_default_theme_layer() {
-    let dir = std::env::temp_dir().join(format!("veila-flat-default-{}", std::process::id()));
+fn nested_visual_overrides_win_over_bundled_default_theme_layer() {
+    let dir = std::env::temp_dir().join(format!("veila-nested-default-{}", std::process::id()));
     fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("config.toml");
     fs::write(
         &path,
         r##"
-            [visuals]
-            avatar_background_color = "rgba(24, 30, 42, 0.82)"
-            clock_font_family = "Bebas Neue"
-            clock_color = "#F8FBFFF5"
+
+            [visuals.avatar]
+            background_color = "rgba(24, 30, 42, 0.82)"
+
+            [visuals.clock]
+            font_family = "Bebas Neue"
+            color = "#F8FBFFF5"
         "##,
     )
     .expect("config file");
