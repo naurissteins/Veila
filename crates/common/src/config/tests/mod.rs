@@ -12,6 +12,7 @@ use crate::VeilaError;
 
 mod bundled_defaults_tests;
 mod defaults_tests;
+mod explicit_loading_tests;
 mod file_loading_tests;
 mod home_path_tests;
 mod idle_tests;
