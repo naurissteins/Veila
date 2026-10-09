@@ -3,6 +3,9 @@ mod auth;
 mod auth_tests;
 mod color;
 mod font_warmup;
+mod identity;
+#[cfg(test)]
+mod identity_tests;
 #[cfg(test)]
 mod tests;
 
@@ -19,6 +22,7 @@ use self::color::to_color;
 use super::PreviewGrid;
 
 pub use auth::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, StatusTheme};
+pub use identity::{AvatarTheme, UsernameTheme};
 
 // Missing surface colors retain the pre-theme fallback independently of config keys.
 const DEFAULT_SURFACE_COLOR: veila_common::RgbColor = veila_common::RgbColor::rgb(22, 28, 38);
@@ -93,6 +97,8 @@ pub struct PowerButton {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShellTheme {
+    pub avatar: AvatarTheme,
+    pub username: UsernameTheme,
     pub input: InputTheme,
     pub reveal: RevealTheme,
     pub placeholder: PlaceholderTheme,
@@ -100,26 +106,6 @@ pub struct ShellTheme {
     pub caps_lock: CapsLockTheme,
     pub status: StatusTheme,
     pub background: ClearColor,
-    pub avatar_enabled: bool,
-    pub avatar_background: ClearColor,
-    pub avatar_size: Option<i32>,
-    pub avatar_radius: Option<i32>,
-    pub avatar_offset_y: Option<i32>,
-    pub avatar_position: Option<WidgetPosition>,
-    pub avatar_placeholder_padding: Option<i32>,
-    pub avatar_icon_color: Option<ClearColor>,
-    pub avatar_ring_color: Option<ClearColor>,
-    pub avatar_ring_width: Option<i32>,
-    pub username_enabled: bool,
-    pub username_font_family: Option<String>,
-    pub username_font_weight: Option<u16>,
-    pub username_font_style: Option<FontStyle>,
-    pub username_color: Option<ClearColor>,
-    pub username_font_size: Option<u32>,
-    pub username_offset_y: Option<i32>,
-    pub username_position: Option<WidgetPosition>,
-    pub avatar_gap: Option<i32>,
-    pub username_gap: Option<i32>,
     pub clock_gap: Option<i32>,
     pub clock_enabled: bool,
     pub clock_alignment: ClockAlignment,
@@ -235,21 +221,8 @@ impl ShellTheme {
         theme.input.scale_for_render(scale);
         theme.reveal.scale_for_render(scale);
         theme.status.scale_for_render(scale);
-        theme.avatar_size = scale_i32_opt(theme.avatar_size, scale);
-        theme.avatar_radius = scale_i32_opt(theme.avatar_radius, scale);
-        theme.avatar_offset_y = scale_i32_opt(theme.avatar_offset_y, scale);
-        theme.avatar_position = theme
-            .avatar_position
-            .map(|position| scale_position(position, scale));
-        theme.avatar_placeholder_padding = scale_i32_opt(theme.avatar_placeholder_padding, scale);
-        theme.avatar_ring_width = scale_i32_opt(theme.avatar_ring_width, scale);
-        theme.username_font_size = scale_u32_opt(theme.username_font_size, scale);
-        theme.username_offset_y = scale_i32_opt(theme.username_offset_y, scale);
-        theme.username_position = theme
-            .username_position
-            .map(|position| scale_position(position, scale));
-        theme.avatar_gap = scale_i32_opt(theme.avatar_gap, scale);
-        theme.username_gap = scale_i32_opt(theme.username_gap, scale);
+        theme.avatar.scale_for_render(scale);
+        theme.username.scale_for_render(scale);
         theme.clock_gap = scale_i32_opt(theme.clock_gap, scale);
         theme.clock_offset_x = scale_i32_opt(theme.clock_offset_x, scale);
         theme.clock_offset_y = scale_i32_opt(theme.clock_offset_y, scale);
@@ -715,38 +688,12 @@ fn resolve_date_position(
     )
 }
 
-fn resolve_avatar_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.avatar_position(),
-        HorizontalAlign::Center,
-        VerticalAlign::Center,
-        named_backdrops,
-    )
-}
-
-fn resolve_username_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.username_position(),
-        HorizontalAlign::Center,
-        VerticalAlign::Center,
-        named_backdrops,
-    )
-}
-
 impl ShellTheme {
     pub fn from_config(config: &AppConfig) -> Self {
         let (backdrops, named_backdrops) = resolve_backdrops(config);
         let layers = resolve_layers(config, &named_backdrops);
         let clock_position = resolve_clock_position(config, &named_backdrops);
         let date_position = resolve_date_position(config, &named_backdrops);
-        let avatar_position = resolve_avatar_position(config, &named_backdrops);
-        let username_position = resolve_username_position(config, &named_backdrops);
         let keyboard_position = resolve_keyboard_position(config, &named_backdrops);
         let weather_icon_position = resolve_weather_icon_position(config, &named_backdrops);
         let weather_temperature_position =
@@ -767,6 +714,8 @@ impl ShellTheme {
         let now_playing_title_position =
             resolve_now_playing_title_position(config, &named_backdrops);
         Self {
+            avatar: AvatarTheme::from_config(config, &named_backdrops),
+            username: UsernameTheme::from_config(config, &named_backdrops),
             input: InputTheme::from_config(config, &named_backdrops),
             reveal: RevealTheme::from_config(config),
             placeholder: PlaceholderTheme::from_config(config),
@@ -774,33 +723,6 @@ impl ShellTheme {
             caps_lock: CapsLockTheme::from_config(config),
             status: StatusTheme::from_config(config, &named_backdrops),
             background: to_color(config.background.color),
-            avatar_enabled: config.visuals.avatar_enabled(),
-            avatar_background: config
-                .visuals
-                .avatar_background_color()
-                .map(to_color)
-                .unwrap_or_else(|| to_color(DEFAULT_SURFACE_COLOR)),
-            avatar_size: config.visuals.avatar_size().map(i32::from),
-            avatar_radius: config
-                .visuals
-                .avatar_radius()
-                .map(|radius| i32::from(radius).clamp(0, 320)),
-            avatar_offset_y: Some(0),
-            avatar_position,
-            avatar_placeholder_padding: config.visuals.avatar_placeholder_padding().map(i32::from),
-            avatar_icon_color: config.visuals.avatar_icon_color().map(to_color),
-            avatar_ring_color: config.visuals.avatar_ring_color().map(to_color),
-            avatar_ring_width: config.visuals.avatar_ring_width().map(i32::from),
-            username_enabled: config.visuals.username_enabled(),
-            username_font_family: config.visuals.username_font_family().map(str::to_owned),
-            username_font_weight: config.visuals.username_font_weight(),
-            username_font_style: config.visuals.username_font_style(),
-            username_color: config.visuals.username_color().map(to_color),
-            username_font_size: config.visuals.username_font_size().map(u32::from),
-            username_offset_y: Some(0),
-            username_position,
-            avatar_gap: Some(24),
-            username_gap: Some(28),
             clock_gap: Some(20),
             clock_enabled: config.visuals.clock_enabled(),
             clock_alignment: ClockAlignment::TopCenter,

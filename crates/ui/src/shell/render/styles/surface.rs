@@ -71,29 +71,30 @@ impl RenderContext<'_> {
     }
 
     pub(crate) fn avatar_style(&self) -> AvatarStyle {
-        let ring_width = self.theme.avatar_ring_width.unwrap_or(2).clamp(0, 12);
-        let ring = if let Some(ring_color) = self.theme.avatar_ring_color {
+        let ring_width = self.theme.avatar.ring_width.unwrap_or(2).clamp(0, 12);
+        let ring = if let Some(ring_color) = self.theme.avatar.ring_color {
             ring_color
         } else if self.shell.focused {
             avatar_ring_color(self.theme.input.border_color, 108)
         } else {
             avatar_ring_color(self.theme.foreground, 54)
         };
-        let background = self.theme.avatar_background;
+        let background = self.theme.avatar.background_color;
 
         let placeholder = self
             .theme
-            .avatar_icon_color
+            .avatar
+            .icon_color
             .unwrap_or(self.theme.foreground)
             .with_alpha(224);
         let mut style = AvatarStyle::new(background, placeholder);
-        if let Some(radius) = self.theme.avatar_radius {
+        if let Some(radius) = self.theme.avatar.radius {
             style = style.with_radius(radius);
         }
         if ring_width > 0 {
             style = style.with_ring(BorderStyle::new(ring, ring_width));
         }
-        if let Some(padding) = self.theme.avatar_placeholder_padding {
+        if let Some(padding) = self.theme.avatar.placeholder_padding {
             style = style.with_placeholder_padding(padding);
         }
         style

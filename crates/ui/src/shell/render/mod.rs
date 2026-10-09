@@ -61,15 +61,15 @@ impl RenderContext<'_> {
             size.height as i32,
             self.theme.input.width,
             self.theme.input.height,
-            self.theme.avatar_size,
+            self.theme.avatar.size,
         );
         let identity_visible = self.shell.identity_visible();
         let input_visible = self.shell.input_visible();
         let text_blocks = self.scene_text_blocks(metrics);
         let status_mode_external = self.theme.status.mode == StatusDisplayMode::External;
-        let floating_avatar = self.theme.avatar_enabled && self.theme.avatar_position.is_some();
+        let floating_avatar = self.theme.avatar.enabled && self.theme.avatar.position.is_some();
         let floating_username =
-            self.theme.username_enabled && self.theme.username_position.is_some();
+            self.theme.username.enabled && self.theme.username.position.is_some();
         let floating_input = self.theme.input.position.is_some() && input_visible;
         let floating_status_follows_input = status_mode_external
             && input_visible
@@ -126,10 +126,10 @@ impl RenderContext<'_> {
             StandardSceneConfig {
                 identity_visible,
                 input_visible: input_visible && input_in_flow,
-                avatar_enabled: self.theme.avatar_enabled && avatar_in_flow,
+                avatar_enabled: self.theme.avatar.enabled && avatar_in_flow,
                 clock_gap: self.theme.clock_gap,
-                avatar_gap: self.theme.avatar_gap,
-                username_gap: self.theme.username_gap,
+                avatar_gap: self.theme.avatar.gap,
+                username_gap: self.theme.username.gap,
             },
         );
         let anchors = role_anchors_with_groups(RoleAnchorInput {
@@ -180,7 +180,7 @@ impl RenderContext<'_> {
             metrics,
             model,
             anchors,
-            floating_avatar: self.theme.avatar_position.filter(|_| floating_avatar).map(
+            floating_avatar: self.theme.avatar.position.filter(|_| floating_avatar).map(
                 |position| {
                     self.positioned_rect(size, position, metrics.avatar_size, metrics.avatar_size)
                 },
@@ -205,7 +205,7 @@ impl RenderContext<'_> {
                 }),
             floating_username: self.positioned_text_block(
                 size,
-                self.theme.username_position.filter(|_| floating_username),
+                self.theme.username.position.filter(|_| floating_username),
                 text_blocks.username.as_ref(),
             ),
             floating_clock,
@@ -465,7 +465,7 @@ impl RenderContext<'_> {
                 date_style,
                 username_text: identity_visible
                     .then_some(())
-                    .and(self.theme.username_enabled.then_some(()))
+                    .and(self.theme.username.enabled.then_some(()))
                     .and(username_text),
                 username_style,
                 placeholder_text: input_visible

@@ -1,5 +1,6 @@
 use super::*;
 use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
+use crate::{AvatarTheme, UsernameTheme};
 use crate::{InputTheme, StatusTheme};
 use veila_common::{
     BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot,
@@ -720,9 +721,15 @@ fn custom_visual_layer_renders_background_surface() {
 fn static_overlay_includes_custom_visual_layers() {
     let shell = ShellState::new(
         ShellTheme {
+            avatar: AvatarTheme {
+                enabled: false,
+                ..ShellTheme::default().avatar
+            },
+            username: UsernameTheme {
+                enabled: false,
+                ..ShellTheme::default().username
+            },
             background: ClearColor::rgba(0, 0, 0, 0),
-            avatar_enabled: false,
-            username_enabled: false,
             clock_enabled: false,
             date_enabled: false,
             layers: vec![VisualLayer {
@@ -765,9 +772,15 @@ fn static_overlay_includes_custom_visual_layers() {
 fn static_overlay_without_layers_omits_custom_visual_layers() {
     let shell = ShellState::new(
         ShellTheme {
+            avatar: AvatarTheme {
+                enabled: false,
+                ..ShellTheme::default().avatar
+            },
+            username: UsernameTheme {
+                enabled: false,
+                ..ShellTheme::default().username
+            },
             background: ClearColor::rgba(0, 0, 0, 0),
-            avatar_enabled: false,
-            username_enabled: false,
             clock_enabled: false,
             date_enabled: false,
             layers: vec![VisualLayer {
@@ -852,6 +865,10 @@ fn icon_visual_layer_centers_visible_glyph_bounds() {
 fn preview_grid_renders_centered_major_and_minor_lines() {
     let mut shell = ShellState::new(
         ShellTheme {
+            avatar: AvatarTheme {
+                enabled: false,
+                ..ShellTheme::default().avatar
+            },
             background: ClearColor::opaque(0, 0, 0),
             grid: Some(crate::shell::PreviewGrid {
                 cell_size: 40,
@@ -859,7 +876,6 @@ fn preview_grid_renders_centered_major_and_minor_lines() {
                 major_every: 4,
                 major_color: ClearColor::rgba(255, 255, 255, 38),
             }),
-            avatar_enabled: false,
             ..ShellTheme::default()
         },
         None,
@@ -965,20 +981,26 @@ fn floating_weather_does_not_shift_auth_or_use_footer_role() {
 fn explicit_avatar_and_username_positions_are_removed_from_auth_flow() {
     let shell = ShellState::new_with_username(
         ShellTheme {
-            avatar_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Left,
-                valign: VerticalAlign::Top,
-                x: 24,
-                y: 32,
-                target: WidgetPositionTarget::Screen,
-            }),
-            username_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Left,
-                valign: VerticalAlign::Top,
-                x: 24,
-                y: 200,
-                target: WidgetPositionTarget::Screen,
-            }),
+            avatar: AvatarTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Left,
+                    valign: VerticalAlign::Top,
+                    x: 24,
+                    y: 32,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().avatar
+            },
+            username: UsernameTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Left,
+                    valign: VerticalAlign::Top,
+                    x: 24,
+                    y: 200,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().username
+            },
             ..ShellTheme::default()
         },
         None,
@@ -1008,14 +1030,20 @@ fn explicit_avatar_and_username_positions_are_removed_from_auth_flow() {
 fn username_stays_in_auth_flow_when_only_avatar_is_explicit() {
     let shell = ShellState::new_with_username(
         ShellTheme {
-            avatar_position: Some(crate::shell::theme::WidgetPosition {
-                halign: HorizontalAlign::Center,
-                valign: VerticalAlign::Center,
-                x: 12,
-                y: -48,
-                target: WidgetPositionTarget::Screen,
-            }),
-            username_position: None,
+            avatar: AvatarTheme {
+                position: Some(crate::shell::theme::WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 12,
+                    y: -48,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().avatar
+            },
+            username: UsernameTheme {
+                position: None,
+                ..ShellTheme::default().username
+            },
             ..ShellTheme::default()
         },
         None,

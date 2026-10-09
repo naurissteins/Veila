@@ -5,7 +5,7 @@ impl ShellTheme {
         let configured = [
             self.input.font_family.as_deref(),
             self.reveal.font_family.as_deref(),
-            self.username_font_family.as_deref(),
+            self.username.font_family.as_deref(),
             self.clock_font_family.as_deref(),
             self.date_font_family.as_deref(),
             self.weather_temperature_font_family.as_deref(),

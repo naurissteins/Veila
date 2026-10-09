@@ -455,16 +455,16 @@ impl RenderContext<'_> {
                 draw_centered_block(
                     buffer,
                     metrics.auth_center_x,
-                    y + self.theme.username_offset_y.unwrap_or(0),
+                    y + self.theme.username.offset_y.unwrap_or(0),
                     block,
                 );
             }
-            SceneWidget::Avatar if !dynamic && self.theme.avatar_enabled => {
+            SceneWidget::Avatar if !dynamic && self.theme.avatar.enabled => {
                 draw_avatar_widget(
                     buffer,
                     &self.shell.avatar,
                     metrics.auth_center_x,
-                    y + self.theme.avatar_offset_y.unwrap_or(0),
+                    y + self.theme.avatar.offset_y.unwrap_or(0),
                     metrics.avatar_size as u32,
                     self.avatar_style(),
                 );

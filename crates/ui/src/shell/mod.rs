@@ -20,7 +20,8 @@ const MAX_SECRET_CHARACTERS: usize = veila_common::SECRET_CAPACITY / 4;
 
 pub use avatar::{has_avatar_candidate, load_avatar, load_cached_avatar};
 pub use theme::{
-    CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, ShellTheme, StatusTheme,
+    AvatarTheme, CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, ShellTheme,
+    StatusTheme, UsernameTheme,
 };
 
 use std::{cell::RefCell, collections::HashMap, time::Instant};

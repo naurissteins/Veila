@@ -10,17 +10,18 @@ const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
 impl RenderContext<'_> {
     pub(crate) fn username_text_style(&self) -> TextStyle {
         let style = TextStyle::new_px(
-            username_color(self.theme.username_color.unwrap_or(self.theme.foreground)),
+            username_color(self.theme.username.color.unwrap_or(self.theme.foreground)),
             self.theme
-                .username_font_size
+                .username
+                .font_size
                 .unwrap_or(28)
                 .clamp(1, MAX_USERNAME_FONT_SIZE_PX),
         );
         self.apply_font_overrides(
             style,
-            self.resolved_font_family(self.theme.username_font_family.as_deref()),
-            self.theme.username_font_weight,
-            self.theme.username_font_style,
+            self.resolved_font_family(self.theme.username.font_family.as_deref()),
+            self.theme.username.font_weight,
+            self.theme.username.font_style,
         )
     }
 

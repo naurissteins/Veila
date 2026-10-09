@@ -1,5 +1,6 @@
 use super::*;
 use crate::shell::theme::{WidgetPosition, WidgetPositionTarget};
+use crate::{AvatarTheme, UsernameTheme};
 use crate::{InputTheme, StatusTheme};
 use veila_common::StatusDisplayMode;
 use veila_renderer::{RenderScale, copy_rect_from};
@@ -97,10 +98,16 @@ fn floating_auth_dirty_frame_matches_full_frame_at_every_scale() {
             let scale = RenderScale::from_units(units);
             let size = scale.frame_size(FrameSize::new(960, 640));
             let theme = ShellTheme {
+                avatar: AvatarTheme {
+                    enabled: false,
+                    ..ShellTheme::default().avatar
+                },
+                username: UsernameTheme {
+                    enabled: false,
+                    ..ShellTheme::default().username
+                },
                 clock_enabled: false,
                 date_enabled: false,
-                avatar_enabled: false,
-                username_enabled: false,
                 ..theme(valign)
             };
             let mut shell = ShellState::new(theme, None, None, true);
@@ -151,8 +158,8 @@ fn floating_geometry_and_hitbox_refresh_after_theme_reload() {
     updated.eye.enabled = true;
     updated.clock_position = Some(position(VerticalAlign::Top));
     updated.date_position = Some(position(VerticalAlign::Bottom));
-    updated.avatar_position = Some(position(VerticalAlign::Top));
-    updated.username_position = Some(position(VerticalAlign::Bottom));
+    updated.avatar.position = Some(position(VerticalAlign::Top));
+    updated.username.position = Some(position(VerticalAlign::Bottom));
     shell.apply_theme(updated.clone(), None, None, true);
     shell.set_preview_time(time::OffsetDateTime::UNIX_EPOCH);
     shell.status = rejected();
