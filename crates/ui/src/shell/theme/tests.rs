@@ -1,3 +1,4 @@
+use crate::AvatarTheme;
 use crate::InputTheme;
 use veila_common::{
     AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
@@ -353,36 +354,39 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.input.font_weight, Some(600));
     assert_eq!(theme.input.font_style, Some(FontStyle::Italic));
     assert_eq!(theme.input.font_size, Some(22));
-    assert_eq!(theme.avatar_background, ClearColor::rgba(24, 30, 42, 92));
+    assert_eq!(
+        theme.avatar.background_color,
+        ClearColor::rgba(24, 30, 42, 92)
+    );
     assert_eq!(theme.input.width, Some(280));
     assert_eq!(theme.input.height, Some(54));
     assert_eq!(theme.input.border_width, Some(3));
-    assert_eq!(theme.avatar_size, Some(92));
-    assert_eq!(theme.avatar_radius, Some(18));
-    assert_eq!(theme.avatar_offset_y, Some(0));
-    assert_eq!(theme.avatar_position, None);
-    assert_eq!(theme.avatar_placeholder_padding, Some(14));
+    assert_eq!(theme.avatar.size, Some(92));
+    assert_eq!(theme.avatar.radius, Some(18));
+    assert_eq!(theme.avatar.offset_y, Some(0));
+    assert_eq!(theme.avatar.position, None);
+    assert_eq!(theme.avatar.placeholder_padding, Some(14));
     assert_eq!(
-        theme.avatar_icon_color,
+        theme.avatar.icon_color,
         Some(ClearColor::opaque(232, 238, 249))
     );
     assert_eq!(
-        theme.avatar_ring_color,
+        theme.avatar.ring_color,
         Some(ClearColor::opaque(148, 178, 255))
     );
-    assert_eq!(theme.avatar_ring_width, Some(3));
+    assert_eq!(theme.avatar.ring_width, Some(3));
     assert_eq!(
-        theme.username_color,
+        theme.username.color,
         Some(ClearColor::rgba(215, 227, 255, 184))
     );
-    assert_eq!(theme.username_font_family.as_deref(), Some("Geom"));
-    assert_eq!(theme.username_font_weight, Some(600));
-    assert_eq!(theme.username_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.username_font_size, Some(22));
-    assert_eq!(theme.username_offset_y, Some(0));
-    assert_eq!(theme.username_position, None);
-    assert_eq!(theme.avatar_gap, Some(24));
-    assert_eq!(theme.username_gap, Some(28));
+    assert_eq!(theme.username.font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.username.font_weight, Some(600));
+    assert_eq!(theme.username.font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.username.font_size, Some(22));
+    assert_eq!(theme.username.offset_y, Some(0));
+    assert_eq!(theme.username.position, None);
+    assert_eq!(theme.avatar.gap, Some(24));
+    assert_eq!(theme.username.gap, Some(28));
     assert_eq!(theme.clock_gap, Some(20));
     assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
     assert_eq!(theme.clock_font_weight, Some(700));
@@ -761,7 +765,7 @@ fn explicit_avatar_and_username_positions_override_legacy_auth_layout() {
     let theme = ShellTheme::from_config(&config);
 
     assert_eq!(
-        theme.avatar_position,
+        theme.avatar.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Top,
@@ -771,7 +775,7 @@ fn explicit_avatar_and_username_positions_override_legacy_auth_layout() {
         })
     );
     assert_eq!(
-        theme.username_position,
+        theme.username.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Center,
             valign: VerticalAlign::Bottom,
@@ -893,12 +897,19 @@ fn avatar_background_falls_back_to_default_surface_color() {
 
     let theme = ShellTheme::from_config(&config);
 
-    assert_eq!(theme.avatar_background, ClearColor::opaque(22, 28, 38));
+    assert_eq!(
+        theme.avatar.background_color,
+        ClearColor::opaque(22, 28, 38)
+    );
 }
 
 #[test]
 fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     let theme = ShellTheme {
+        avatar: AvatarTheme {
+            radius: Some(18),
+            ..ShellTheme::default().avatar
+        },
         input: InputTheme {
             width: Some(310),
             height: Some(54),
@@ -912,7 +923,6 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
             }),
             ..ShellTheme::default().input
         },
-        avatar_radius: Some(18),
         clock_font_size: Some(88),
         keyboard_size: Some(16),
         keyboard_background_size: Some(42),
@@ -974,7 +984,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
 
     assert_eq!(scaled.input.width, Some(620));
     assert_eq!(scaled.input.height, Some(108));
-    assert_eq!(scaled.avatar_radius, Some(36));
+    assert_eq!(scaled.avatar.radius, Some(36));
     assert_eq!(scaled.input.font_size, Some(36));
     assert_eq!(scaled.clock_font_size, Some(176));
     assert_eq!(scaled.keyboard_size, Some(32));

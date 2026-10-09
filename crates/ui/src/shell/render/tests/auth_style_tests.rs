@@ -1,4 +1,5 @@
 use super::*;
+use crate::{AvatarTheme, UsernameTheme};
 use crate::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, StatusTheme};
 use veila_common::Secret;
 
@@ -165,7 +166,10 @@ fn explicit_input_opacity_is_preserved_without_style_boost() {
 #[test]
 fn avatar_style_uses_configured_placeholder_padding() {
     let theme = ShellTheme {
-        avatar_placeholder_padding: Some(16),
+        avatar: AvatarTheme {
+            placeholder_padding: Some(16),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -177,7 +181,10 @@ fn avatar_style_uses_configured_placeholder_padding() {
 #[test]
 fn avatar_style_uses_configured_radius() {
     let theme = ShellTheme {
-        avatar_radius: Some(18),
+        avatar: AvatarTheme {
+            radius: Some(18),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -189,7 +196,10 @@ fn avatar_style_uses_configured_radius() {
 #[test]
 fn avatar_style_uses_configured_icon_color() {
     let theme = ShellTheme {
-        avatar_icon_color: Some(ClearColor::opaque(232, 238, 249)),
+        avatar: AvatarTheme {
+            icon_color: Some(ClearColor::opaque(232, 238, 249)),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -279,7 +289,10 @@ fn mask_style_scales_spacing_for_hidpi_render() {
 #[test]
 fn avatar_style_uses_configured_ring_width() {
     let theme = ShellTheme {
-        avatar_ring_width: Some(4),
+        avatar: AvatarTheme {
+            ring_width: Some(4),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -291,8 +304,11 @@ fn avatar_style_uses_configured_ring_width() {
 #[test]
 fn avatar_style_uses_configured_ring_color() {
     let theme = ShellTheme {
-        avatar_ring_color: Some(ClearColor::opaque(148, 178, 255)),
-        avatar_ring_width: Some(1),
+        avatar: AvatarTheme {
+            ring_color: Some(ClearColor::opaque(148, 178, 255)),
+            ring_width: Some(1),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -307,12 +323,15 @@ fn avatar_style_uses_configured_ring_color() {
 #[test]
 fn avatar_style_softens_fallback_ring_color() {
     let theme = ShellTheme {
+        avatar: AvatarTheme {
+            ring_color: None,
+            ring_width: Some(1),
+            ..ShellTheme::default().avatar
+        },
         input: InputTheme {
             border_color: ClearColor::opaque(148, 178, 255),
             ..ShellTheme::default().input
         },
-        avatar_ring_color: None,
-        avatar_ring_width: Some(1),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -327,8 +346,11 @@ fn avatar_style_softens_fallback_ring_color() {
 #[test]
 fn avatar_style_preserves_explicit_ring_alpha() {
     let theme = ShellTheme {
-        avatar_ring_color: Some(ClearColor::rgba(148, 178, 255, 48)),
-        avatar_ring_width: Some(1),
+        avatar: AvatarTheme {
+            ring_color: Some(ClearColor::rgba(148, 178, 255, 48)),
+            ring_width: Some(1),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -340,7 +362,10 @@ fn avatar_style_preserves_explicit_ring_alpha() {
 #[test]
 fn avatar_style_allows_disabling_ring() {
     let theme = ShellTheme {
-        avatar_ring_width: Some(0),
+        avatar: AvatarTheme {
+            ring_width: Some(0),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -352,7 +377,10 @@ fn avatar_style_allows_disabling_ring() {
 #[test]
 fn avatar_style_preserves_explicit_background_alpha() {
     let theme = ShellTheme {
-        avatar_background: ClearColor::rgba(24, 30, 42, 80),
+        avatar: AvatarTheme {
+            background_color: ClearColor::rgba(24, 30, 42, 80),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -364,7 +392,10 @@ fn avatar_style_preserves_explicit_background_alpha() {
 #[test]
 fn avatar_style_preserves_opaque_backgrounds() {
     let theme = ShellTheme {
-        avatar_background: ClearColor::opaque(24, 30, 42),
+        avatar: AvatarTheme {
+            background_color: ClearColor::opaque(24, 30, 42),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -376,7 +407,10 @@ fn avatar_style_preserves_opaque_backgrounds() {
 #[test]
 fn scene_metrics_use_configured_avatar_size() {
     let theme = ShellTheme {
-        avatar_size: Some(88),
+        avatar: AvatarTheme {
+            size: Some(88),
+            ..ShellTheme::default().avatar
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -389,7 +423,7 @@ fn scene_metrics_use_configured_avatar_size() {
         720,
         shell.theme.input.width,
         shell.theme.input.height,
-        shell.theme.avatar_size,
+        shell.theme.avatar.size,
     );
     assert_eq!(metrics.avatar_size, 88);
 }
@@ -397,8 +431,11 @@ fn scene_metrics_use_configured_avatar_size() {
 #[test]
 fn username_style_uses_configured_alpha_and_size() {
     let theme = ShellTheme {
-        username_color: Some(ClearColor::rgba(240, 244, 250, 184)),
-        username_font_size: Some(22),
+        username: UsernameTheme {
+            color: Some(ClearColor::rgba(240, 244, 250, 184)),
+            font_size: Some(22),
+            ..ShellTheme::default().username
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -411,8 +448,11 @@ fn username_style_uses_configured_alpha_and_size() {
 #[test]
 fn username_style_uses_configured_font_family_and_weight() {
     let theme = ShellTheme {
-        username_font_family: Some(String::from("Geom")),
-        username_font_weight: Some(600),
+        username: UsernameTheme {
+            font_family: Some(String::from("Geom")),
+            font_weight: Some(600),
+            ..ShellTheme::default().username
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -431,7 +471,10 @@ fn username_style_uses_configured_font_family_and_weight() {
 #[test]
 fn username_style_uses_configured_color() {
     let theme = ShellTheme {
-        username_color: Some(ClearColor::rgba(215, 227, 255, 184)),
+        username: UsernameTheme {
+            color: Some(ClearColor::rgba(215, 227, 255, 184)),
+            ..ShellTheme::default().username
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -446,8 +489,11 @@ fn username_style_uses_configured_color() {
 #[test]
 fn username_style_preserves_explicit_foreground_alpha_when_unset() {
     let theme = ShellTheme {
+        username: UsernameTheme {
+            color: None,
+            ..ShellTheme::default().username
+        },
         foreground: ClearColor::rgba(240, 244, 250, 90),
-        username_color: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -770,7 +816,7 @@ fn scene_metrics_use_configured_input_dimensions() {
         720,
         shell.theme.input.width,
         shell.theme.input.height,
-        shell.theme.avatar_size,
+        shell.theme.avatar.size,
     );
 
     assert_eq!(metrics.input_width, 280);
