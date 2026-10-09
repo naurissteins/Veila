@@ -1,5 +1,4 @@
-use crate::AvatarTheme;
-use crate::InputTheme;
+use crate::{AvatarTheme, ClockTheme, InputTheme};
 use veila_common::{
     AppConfig, AvatarVisualConfig, BackdropMode, BackdropShowWhen, BackdropVisualConfig,
     BatteryVisualConfig, ClockFormat, ClockStyle, ClockVisualConfig, ConfigColor, DateFormat,
@@ -387,35 +386,35 @@ fn input_alpha_uses_rgba_values() {
     assert_eq!(theme.username.position, None);
     assert_eq!(theme.avatar.gap, Some(24));
     assert_eq!(theme.username.gap, Some(28));
-    assert_eq!(theme.clock_gap, Some(20));
-    assert_eq!(theme.clock_font_family.as_deref(), Some("Bebas Neue"));
-    assert_eq!(theme.clock_font_weight, Some(700));
-    assert_eq!(theme.clock_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.clock_style, ClockStyle::Stacked);
+    assert_eq!(theme.clock.gap, Some(20));
+    assert_eq!(theme.clock.font_family.as_deref(), Some("Bebas Neue"));
+    assert_eq!(theme.clock.font_weight, Some(700));
+    assert_eq!(theme.clock.font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.clock.style, ClockStyle::Stacked);
     assert_eq!(
-        theme.clock_alignment,
+        theme.clock.alignment,
         veila_common::ClockAlignment::TopCenter
     );
-    assert!(!theme.clock_center_in_layer);
-    assert_eq!(theme.clock_offset_x, Some(0));
-    assert_eq!(theme.clock_offset_y, Some(0));
-    assert_eq!(theme.clock_position, None);
-    assert_eq!(theme.clock_format, ClockFormat::TwelveHour);
-    assert_eq!(theme.clock_meridiem_font_size, Some(22));
-    assert_eq!(theme.clock_meridiem_x, Some(6));
-    assert_eq!(theme.clock_meridiem_y, Some(-2));
+    assert!(!theme.clock.center_in_layer);
+    assert_eq!(theme.clock.offset_x, Some(0));
+    assert_eq!(theme.clock.offset_y, Some(0));
+    assert_eq!(theme.clock.position, None);
+    assert_eq!(theme.clock.format, ClockFormat::TwelveHour);
+    assert_eq!(theme.clock.meridiem_font_size, Some(22));
+    assert_eq!(theme.clock.meridiem_x, Some(6));
+    assert_eq!(theme.clock.meridiem_y, Some(-2));
     assert_eq!(
-        theme.clock_color,
+        theme.clock.color,
         Some(ClearColor::rgba(248, 251, 255, 245))
     );
-    assert_eq!(theme.date_font_family.as_deref(), Some("Geom"));
-    assert_eq!(theme.date_font_weight, Some(600));
-    assert_eq!(theme.date_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.date_format, DateFormat::Iso);
-    assert_eq!(theme.date_color, Some(ClearColor::rgba(200, 212, 236, 189)));
-    assert_eq!(theme.date_position, None);
-    assert_eq!(theme.clock_font_size, Some(28));
-    assert_eq!(theme.date_font_size, Some(22));
+    assert_eq!(theme.date.font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.date.font_weight, Some(600));
+    assert_eq!(theme.date.font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.date.format, DateFormat::Iso);
+    assert_eq!(theme.date.color, Some(ClearColor::rgba(200, 212, 236, 189)));
+    assert_eq!(theme.date.position, None);
+    assert_eq!(theme.clock.font_size, Some(28));
+    assert_eq!(theme.date.font_size, Some(22));
     assert_eq!(
         theme.placeholder.color,
         Some(ClearColor::rgba(134, 148, 180, 153))
@@ -722,7 +721,7 @@ fn explicit_clock_and_date_positions_override_legacy_header_layout() {
     let theme = ShellTheme::from_config(&config);
 
     assert_eq!(
-        theme.clock_position,
+        theme.clock.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Left,
             valign: VerticalAlign::Bottom,
@@ -732,7 +731,7 @@ fn explicit_clock_and_date_positions_override_legacy_header_layout() {
         })
     );
     assert_eq!(
-        theme.date_position,
+        theme.date.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Top,
@@ -857,7 +856,7 @@ fn explicit_widget_position_can_target_named_backdrop() {
     let theme = ShellTheme::from_config(&config);
 
     assert_eq!(
-        theme.clock_position,
+        theme.clock.position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Center,
             valign: VerticalAlign::Top,
@@ -906,6 +905,10 @@ fn avatar_background_falls_back_to_default_surface_color() {
 #[test]
 fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     let theme = ShellTheme {
+        clock: ClockTheme {
+            font_size: Some(88),
+            ..ShellTheme::default().clock
+        },
         avatar: AvatarTheme {
             radius: Some(18),
             ..ShellTheme::default().avatar
@@ -923,7 +926,6 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
             }),
             ..ShellTheme::default().input
         },
-        clock_font_size: Some(88),
         keyboard_size: Some(16),
         keyboard_background_size: Some(42),
         keyboard_radius: Some(12),
@@ -986,7 +988,7 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     assert_eq!(scaled.input.height, Some(108));
     assert_eq!(scaled.avatar.radius, Some(36));
     assert_eq!(scaled.input.font_size, Some(36));
-    assert_eq!(scaled.clock_font_size, Some(176));
+    assert_eq!(scaled.clock.font_size, Some(176));
     assert_eq!(scaled.keyboard_size, Some(32));
     assert_eq!(scaled.keyboard_background_size, Some(84));
     assert_eq!(scaled.keyboard_radius, Some(24));

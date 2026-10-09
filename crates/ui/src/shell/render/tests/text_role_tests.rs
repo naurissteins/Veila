@@ -1,6 +1,5 @@
 use super::*;
-use crate::UsernameTheme;
-use crate::{InputTheme, RevealTheme, StatusTheme};
+use crate::{ClockTheme, DateTheme, InputTheme, RevealTheme, StatusTheme, UsernameTheme};
 use veila_common::FontStyle;
 use veila_renderer::text::FontStyle as RendererFontStyle;
 
@@ -8,6 +7,15 @@ use veila_renderer::text::FontStyle as RendererFontStyle;
 fn text_roles_keep_independent_size_limits() {
     for size in [0, 1, 511, 512, 513, 1024, 1025, u32::MAX] {
         let theme = ShellTheme {
+            clock: ClockTheme {
+                font_size: Some(size),
+                meridiem_font_size: Some(size),
+                ..ShellTheme::default().clock
+            },
+            date: DateTheme {
+                font_size: Some(size),
+                ..ShellTheme::default().date
+            },
             username: UsernameTheme {
                 font_size: Some(size),
                 ..ShellTheme::default().username
@@ -20,9 +28,6 @@ fn text_roles_keep_independent_size_limits() {
                 font_size: Some(size),
                 ..ShellTheme::default().reveal
             },
-            clock_font_size: Some(size),
-            clock_meridiem_font_size: Some(size),
-            date_font_size: Some(size),
             keyboard_size: Some(size),
             weather_temperature_font_size: Some(size),
             weather_location_font_size: Some(size),

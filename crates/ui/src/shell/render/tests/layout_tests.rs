@@ -1,7 +1,6 @@
 use super::*;
 use crate::shell::theme::{Backdrop, VisualLayer, WidgetPosition, WidgetPositionTarget};
-use crate::{AvatarTheme, UsernameTheme};
-use crate::{InputTheme, StatusTheme};
+use crate::{AvatarTheme, ClockTheme, DateTheme, InputTheme, StatusTheme, UsernameTheme};
 use veila_common::{
     BackdropMode, BackdropShowWhen, BatterySnapshot, LayerKind, NowPlayingSnapshot,
     StatusDisplayMode, WeatherUnit,
@@ -721,6 +720,14 @@ fn custom_visual_layer_renders_background_surface() {
 fn static_overlay_includes_custom_visual_layers() {
     let shell = ShellState::new(
         ShellTheme {
+            clock: ClockTheme {
+                enabled: false,
+                ..ShellTheme::default().clock
+            },
+            date: DateTheme {
+                enabled: false,
+                ..ShellTheme::default().date
+            },
             avatar: AvatarTheme {
                 enabled: false,
                 ..ShellTheme::default().avatar
@@ -730,8 +737,6 @@ fn static_overlay_includes_custom_visual_layers() {
                 ..ShellTheme::default().username
             },
             background: ClearColor::rgba(0, 0, 0, 0),
-            clock_enabled: false,
-            date_enabled: false,
             layers: vec![VisualLayer {
                 kind: LayerKind::Text,
                 text: String::from("."),
@@ -772,6 +777,14 @@ fn static_overlay_includes_custom_visual_layers() {
 fn static_overlay_without_layers_omits_custom_visual_layers() {
     let shell = ShellState::new(
         ShellTheme {
+            clock: ClockTheme {
+                enabled: false,
+                ..ShellTheme::default().clock
+            },
+            date: DateTheme {
+                enabled: false,
+                ..ShellTheme::default().date
+            },
             avatar: AvatarTheme {
                 enabled: false,
                 ..ShellTheme::default().avatar
@@ -781,8 +794,6 @@ fn static_overlay_without_layers_omits_custom_visual_layers() {
                 ..ShellTheme::default().username
             },
             background: ClearColor::rgba(0, 0, 0, 0),
-            clock_enabled: false,
-            date_enabled: false,
             layers: vec![VisualLayer {
                 kind: LayerKind::Text,
                 text: String::from("."),

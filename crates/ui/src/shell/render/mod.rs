@@ -77,22 +77,23 @@ impl RenderContext<'_> {
             && self.theme.status.position.is_none();
         let floating_status_explicit =
             status_mode_external && input_visible && self.theme.status.position.is_some();
-        let clock_in_flow = self.theme.clock_position.is_none();
-        let date_in_flow = self.theme.date_position.is_none();
+        let clock_in_flow = self.theme.clock.position.is_none();
+        let date_in_flow = self.theme.date.position.is_none();
         let avatar_in_flow = !floating_avatar;
         let username_in_flow = !floating_username;
         let input_in_flow = !floating_input;
         let status_in_flow = !floating_status_follows_input && !floating_status_explicit;
         let floating_clock = self
             .theme
-            .clock_position
+            .clock
+            .position
             .zip(text_blocks.clock.as_ref())
             .map(|(position, clock)| {
                 let rect = self.positioned_rect(size, position, clock.width(), clock.height());
                 (rect, clock.clone())
             });
         let floating_date =
-            self.positioned_text_block(size, self.theme.date_position, text_blocks.date.as_ref());
+            self.positioned_text_block(size, self.theme.date.position, text_blocks.date.as_ref());
         let floating_weather = text_blocks.weather.clone();
         let model = SceneModel::standard(
             SceneTextBlocks {
@@ -127,7 +128,7 @@ impl RenderContext<'_> {
                 identity_visible,
                 input_visible: input_visible && input_in_flow,
                 avatar_enabled: self.theme.avatar.enabled && avatar_in_flow,
-                clock_gap: self.theme.clock_gap,
+                clock_gap: self.theme.clock.gap,
                 avatar_gap: self.theme.avatar.gap,
                 username_gap: self.theme.username.gap,
             },
@@ -171,8 +172,8 @@ impl RenderContext<'_> {
                 clearance: 0,
             },
             offsets: AnchorOffsets {
-                clock_alignment: self.theme.clock_alignment,
-                clock_offset_y: self.theme.clock_offset_y,
+                clock_alignment: self.theme.clock.alignment,
+                clock_offset_y: self.theme.clock.offset_y,
             },
         });
 
@@ -415,13 +416,13 @@ impl RenderContext<'_> {
         let identity_visible = self.shell.identity_visible();
         let input_visible = self.shell.input_visible();
         let status_mode_external = self.theme.status.mode == StatusDisplayMode::External;
-        let clock_text = self.shell.clock.primary_text(self.theme.clock_style);
-        let clock_secondary_text = self.shell.clock.secondary_text(self.theme.clock_style);
+        let clock_text = self.shell.clock.primary_text(self.theme.clock.style);
+        let clock_secondary_text = self.shell.clock.secondary_text(self.theme.clock.style);
         let clock_style = self.clock_text_style(metrics);
         let clock_meridiem_text = self.shell.clock.meridiem_text();
         let clock_meridiem_style = self.clock_meridiem_text_style(metrics);
-        let clock_meridiem_x = self.theme.clock_meridiem_x;
-        let clock_meridiem_y = self.theme.clock_meridiem_y;
+        let clock_meridiem_x = self.theme.clock.meridiem_x;
+        let clock_meridiem_y = self.theme.clock.meridiem_y;
         let date_text = self.shell.clock.date_text();
         let date_style = self.date_text_style();
         let username_text = self.shell.username_text.as_deref();
@@ -445,23 +446,25 @@ impl RenderContext<'_> {
         self.text_layout_cache
             .borrow_mut()
             .scene_text_blocks(SceneTextInputs {
-                clock_style_mode: self.theme.clock_style,
-                clock_text: self.theme.clock_enabled.then_some(clock_text),
+                clock_style_mode: self.theme.clock.style,
+                clock_text: self.theme.clock.enabled.then_some(clock_text),
                 clock_secondary_text: self
                     .theme
-                    .clock_enabled
+                    .clock
+                    .enabled
                     .then_some(())
                     .and(clock_secondary_text),
                 clock_style,
                 clock_meridiem_text: self
                     .theme
-                    .clock_enabled
+                    .clock
+                    .enabled
                     .then_some(())
                     .and(clock_meridiem_text),
                 clock_meridiem_style,
                 clock_meridiem_x,
                 clock_meridiem_y,
-                date_text: self.theme.date_enabled.then_some(date_text),
+                date_text: self.theme.date.enabled.then_some(date_text),
                 date_style,
                 username_text: identity_visible
                     .then_some(())

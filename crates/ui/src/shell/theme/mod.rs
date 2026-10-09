@@ -3,6 +3,9 @@ mod auth;
 mod auth_tests;
 mod color;
 mod font_warmup;
+mod header;
+#[cfg(test)]
+mod header_tests;
 mod identity;
 #[cfg(test)]
 mod identity_tests;
@@ -12,9 +15,8 @@ mod tests;
 use std::collections::HashMap;
 
 use veila_common::{
-    AppConfig, BackdropMode, BackdropShowWhen, ClockAlignment, ClockFormat, ClockStyle, DateFormat,
-    FontStyle, GridVisualConfig, HorizontalAlign, LayerKind, PowerAction, VerticalAlign,
-    WidgetPositionConfig,
+    AppConfig, BackdropMode, BackdropShowWhen, FontStyle, GridVisualConfig, HorizontalAlign,
+    LayerKind, PowerAction, VerticalAlign, WidgetPositionConfig,
 };
 use veila_renderer::{ClearColor, RenderScale};
 
@@ -22,6 +24,7 @@ use self::color::to_color;
 use super::PreviewGrid;
 
 pub use auth::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, StatusTheme};
+pub use header::{ClockTheme, DateTheme};
 pub use identity::{AvatarTheme, UsernameTheme};
 
 // Missing surface colors retain the pre-theme fallback independently of config keys.
@@ -97,6 +100,8 @@ pub struct PowerButton {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShellTheme {
+    pub clock: ClockTheme,
+    pub date: DateTheme,
     pub avatar: AvatarTheme,
     pub username: UsernameTheme,
     pub input: InputTheme,
@@ -106,31 +111,6 @@ pub struct ShellTheme {
     pub caps_lock: CapsLockTheme,
     pub status: StatusTheme,
     pub background: ClearColor,
-    pub clock_gap: Option<i32>,
-    pub clock_enabled: bool,
-    pub clock_alignment: ClockAlignment,
-    pub clock_center_in_layer: bool,
-    pub clock_offset_x: Option<i32>,
-    pub clock_offset_y: Option<i32>,
-    pub clock_position: Option<WidgetPosition>,
-    pub clock_font_family: Option<String>,
-    pub clock_font_weight: Option<u16>,
-    pub clock_font_style: Option<FontStyle>,
-    pub clock_style: ClockStyle,
-    pub clock_format: ClockFormat,
-    pub clock_meridiem_font_size: Option<u32>,
-    pub clock_meridiem_x: Option<i32>,
-    pub clock_meridiem_y: Option<i32>,
-    pub clock_color: Option<ClearColor>,
-    pub date_enabled: bool,
-    pub date_font_family: Option<String>,
-    pub date_font_weight: Option<u16>,
-    pub date_font_style: Option<FontStyle>,
-    pub date_format: DateFormat,
-    pub date_color: Option<ClearColor>,
-    pub date_position: Option<WidgetPosition>,
-    pub clock_font_size: Option<u32>,
-    pub date_font_size: Option<u32>,
     pub keyboard_enabled: bool,
     pub keyboard_position: Option<WidgetPosition>,
     pub keyboard_background_color: ClearColor,
@@ -223,20 +203,8 @@ impl ShellTheme {
         theme.status.scale_for_render(scale);
         theme.avatar.scale_for_render(scale);
         theme.username.scale_for_render(scale);
-        theme.clock_gap = scale_i32_opt(theme.clock_gap, scale);
-        theme.clock_offset_x = scale_i32_opt(theme.clock_offset_x, scale);
-        theme.clock_offset_y = scale_i32_opt(theme.clock_offset_y, scale);
-        theme.clock_position = theme
-            .clock_position
-            .map(|position| scale_position(position, scale));
-        theme.clock_meridiem_font_size = scale_u32_opt(theme.clock_meridiem_font_size, scale);
-        theme.clock_meridiem_x = scale_i32_opt(theme.clock_meridiem_x, scale);
-        theme.clock_meridiem_y = scale_i32_opt(theme.clock_meridiem_y, scale);
-        theme.date_position = theme
-            .date_position
-            .map(|position| scale_position(position, scale));
-        theme.clock_font_size = scale_u32_opt(theme.clock_font_size, scale);
-        theme.date_font_size = scale_u32_opt(theme.date_font_size, scale);
+        theme.clock.scale_for_render(scale);
+        theme.date.scale_for_render(scale);
         theme.keyboard_position = theme
             .keyboard_position
             .map(|position| scale_position(position, scale));
@@ -381,18 +349,6 @@ fn resolve_position(
             .and_then(|name| named_backdrops.get(name).copied())
             .map_or(WidgetPositionTarget::Screen, WidgetPositionTarget::Backdrop),
     })
-}
-
-fn resolve_clock_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.clock_position(),
-        HorizontalAlign::Center,
-        VerticalAlign::Top,
-        named_backdrops,
-    )
 }
 
 fn resolve_keyboard_position(
@@ -676,24 +632,10 @@ fn resolve_now_playing_title_position(
     )
 }
 
-fn resolve_date_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.date_position(),
-        HorizontalAlign::Center,
-        VerticalAlign::Top,
-        named_backdrops,
-    )
-}
-
 impl ShellTheme {
     pub fn from_config(config: &AppConfig) -> Self {
         let (backdrops, named_backdrops) = resolve_backdrops(config);
         let layers = resolve_layers(config, &named_backdrops);
-        let clock_position = resolve_clock_position(config, &named_backdrops);
-        let date_position = resolve_date_position(config, &named_backdrops);
         let keyboard_position = resolve_keyboard_position(config, &named_backdrops);
         let weather_icon_position = resolve_weather_icon_position(config, &named_backdrops);
         let weather_temperature_position =
@@ -714,6 +656,8 @@ impl ShellTheme {
         let now_playing_title_position =
             resolve_now_playing_title_position(config, &named_backdrops);
         Self {
+            clock: ClockTheme::from_config(config, &named_backdrops),
+            date: DateTheme::from_config(config, &named_backdrops),
             avatar: AvatarTheme::from_config(config, &named_backdrops),
             username: UsernameTheme::from_config(config, &named_backdrops),
             input: InputTheme::from_config(config, &named_backdrops),
@@ -723,31 +667,6 @@ impl ShellTheme {
             caps_lock: CapsLockTheme::from_config(config),
             status: StatusTheme::from_config(config, &named_backdrops),
             background: to_color(config.background.color),
-            clock_gap: Some(20),
-            clock_enabled: config.visuals.clock_enabled(),
-            clock_alignment: ClockAlignment::TopCenter,
-            clock_center_in_layer: false,
-            clock_offset_x: Some(0),
-            clock_offset_y: Some(0),
-            clock_position,
-            clock_font_family: config.visuals.clock_font_family().map(str::to_owned),
-            clock_font_weight: config.visuals.clock_font_weight(),
-            clock_font_style: config.visuals.clock_font_style(),
-            clock_style: config.visuals.clock_style(),
-            clock_format: config.visuals.clock_format(),
-            clock_meridiem_font_size: config.visuals.clock_meridiem_font_size().map(u32::from),
-            clock_meridiem_x: config.visuals.clock_meridiem_x().map(i32::from),
-            clock_meridiem_y: config.visuals.clock_meridiem_y().map(i32::from),
-            clock_color: config.visuals.clock_color().map(to_color),
-            date_enabled: config.visuals.date_enabled(),
-            date_font_family: config.visuals.date_font_family().map(str::to_owned),
-            date_font_weight: config.visuals.date_font_weight(),
-            date_font_style: config.visuals.date_font_style(),
-            date_format: config.visuals.date_format(),
-            date_color: config.visuals.date_color().map(to_color),
-            date_position,
-            clock_font_size: config.visuals.clock_font_size().map(u32::from),
-            date_font_size: config.visuals.date_font_size().map(u32::from),
             keyboard_enabled: config.visuals.keyboard_enabled(),
             keyboard_position,
             keyboard_background_color: config
