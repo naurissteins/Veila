@@ -31,7 +31,7 @@ fn artwork_size(size: FrameSize, render_scale: RenderScale, configured_size: Opt
 
 impl RenderContext<'_> {
     pub(super) fn now_playing_region(&self, size: FrameSize) -> Option<Rect> {
-        if !self.theme.now_playing_enabled {
+        if !self.theme.now_playing.enabled {
             return None;
         }
         let mut region = None;
@@ -78,7 +78,7 @@ impl RenderContext<'_> {
         _layout: &SceneLayout,
     ) {
         let fade_progress = self.shell.now_playing_fade_progress();
-        if !self.theme.now_playing_enabled
+        if !self.theme.now_playing.enabled
             || (self.shell.now_playing.is_none()
                 && self
                     .shell
@@ -143,7 +143,7 @@ impl RenderContext<'_> {
         fade_percent: u8,
     ) -> Option<NowPlayingSnapshotLayout<'a>> {
         let mut text_layout_cache = self.text_layout_cache.borrow_mut();
-        let title = if self.theme.now_playing_title_enabled {
+        let title = if self.theme.now_playing.title_enabled {
             self.now_playing_title_part(
                 size,
                 &mut text_layout_cache,
@@ -153,14 +153,14 @@ impl RenderContext<'_> {
         } else {
             None
         };
-        let artist = if self.theme.now_playing_artist_enabled {
+        let artist = if self.theme.now_playing.artist_enabled {
             now_playing.artist.as_deref().and_then(|artist| {
                 self.now_playing_artist_part(size, &mut text_layout_cache, artist, fade_percent)
             })
         } else {
             None
         };
-        let artwork = (self.theme.now_playing_artwork_enabled)
+        let artwork = (self.theme.now_playing.artwork_enabled)
             .then(|| self.now_playing_artwork_part(size, now_playing, fade_percent))
             .flatten();
 
@@ -182,7 +182,7 @@ impl RenderContext<'_> {
         fade_percent: u8,
     ) -> Option<NowPlayingArtworkPart<'a>> {
         let asset = now_playing.artwork.as_ref()?;
-        let position = self.theme.now_playing_artwork_position?;
+        let position = self.theme.now_playing.artwork_position?;
         let artwork_size = self.now_playing_artwork_size(size);
         let rect = self.positioned_rect(size, position, artwork_size, artwork_size);
 
@@ -190,17 +190,18 @@ impl RenderContext<'_> {
             asset,
             rect,
             radius: self.now_playing_artwork_radius(artwork_size),
-            opacity: combine_optional_fade(self.theme.now_playing_artwork_opacity, fade_percent),
+            opacity: combine_optional_fade(self.theme.now_playing.artwork_opacity, fade_percent),
         })
     }
 
     fn now_playing_artwork_size(&self, size: FrameSize) -> i32 {
-        artwork_size(size, self.render_scale, self.theme.now_playing_artwork_size)
+        artwork_size(size, self.render_scale, self.theme.now_playing.artwork_size)
     }
 
     fn now_playing_artwork_radius(&self, artwork_size: i32) -> i32 {
         self.theme
-            .now_playing_artwork_radius
+            .now_playing
+            .artwork_radius
             .unwrap_or(8)
             .clamp(0, artwork_size / 2)
     }
@@ -212,8 +213,8 @@ impl RenderContext<'_> {
         artist: &str,
         fade_percent: u8,
     ) -> Option<NowPlayingTextPart> {
-        let position = self.theme.now_playing_artist_position?;
-        let box_width = self.now_playing_text_width(self.theme.now_playing_artist_width);
+        let position = self.theme.now_playing.artist_position?;
+        let box_width = self.now_playing_text_width(self.theme.now_playing.artist_width);
         let block = apply_text_fade(
             text_layout_cache.now_playing_artist_block(
                 artist,
@@ -237,8 +238,8 @@ impl RenderContext<'_> {
         title: &str,
         fade_percent: u8,
     ) -> Option<NowPlayingTextPart> {
-        let position = self.theme.now_playing_title_position?;
-        let box_width = self.now_playing_text_width(self.theme.now_playing_title_width);
+        let position = self.theme.now_playing.title_position?;
+        let box_width = self.now_playing_text_width(self.theme.now_playing.title_width);
         let block = apply_text_fade(
             text_layout_cache.now_playing_title_block(
                 title,
@@ -311,7 +312,8 @@ impl crate::shell::ShellState {
     ) -> u32 {
         let configured = self
             .theme
-            .now_playing_artwork_size
+            .now_playing
+            .artwork_size
             .map(|value| scale.apply_i32(value));
         artwork_size(size, scale, configured).max(1) as u32
     }
@@ -327,9 +329,12 @@ mod tests {
     fn artist_can_render_without_title() {
         let shell = ShellState::new_with_username_and_widgets(
             ShellTheme {
-                now_playing_enabled: true,
-                now_playing_artist_enabled: true,
-                now_playing_title_enabled: false,
+                now_playing: crate::NowPlayingTheme {
+                    enabled: true,
+                    artist_enabled: true,
+                    title_enabled: false,
+                    ..ShellTheme::default().now_playing
+                },
                 ..ShellTheme::default()
             },
             None,
@@ -365,11 +370,14 @@ mod tests {
     fn fallback_title_width_scales_with_output_scale() {
         let title = "VHS DREAMS '88 | 2 Hour Synthwave, Chillwave & Retrowave Mix";
         let theme = ShellTheme {
-            now_playing_enabled: true,
-            now_playing_artist_enabled: false,
-            now_playing_title_enabled: true,
-            now_playing_title_width: None,
-            now_playing_title_font_size: Some(16),
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                artist_enabled: false,
+                title_enabled: true,
+                title_width: None,
+                title_font_size: Some(16),
+                ..ShellTheme::default().now_playing
+            },
             ..ShellTheme::default()
         };
         let shell = ShellState::new_with_username_and_widgets(
@@ -418,7 +426,10 @@ mod tests {
     fn configured_artwork_size_is_preserved_above_previous_cap() {
         let shell = ShellState::new(
             ShellTheme {
-                now_playing_artwork_size: Some(175),
+                now_playing: crate::NowPlayingTheme {
+                    artwork_size: Some(175),
+                    ..ShellTheme::default().now_playing
+                },
                 ..ShellTheme::default()
             },
             None,
@@ -437,7 +448,10 @@ mod tests {
     #[test]
     fn configured_artwork_size_scales_for_hidpi_render() {
         let theme = ShellTheme {
-            now_playing_artwork_size: Some(175),
+            now_playing: crate::NowPlayingTheme {
+                artwork_size: Some(175),
+                ..ShellTheme::default().now_playing
+            },
             ..ShellTheme::default()
         };
         let shell = ShellState::new(theme.clone(), None, None, true);
@@ -459,7 +473,10 @@ mod tests {
     fn configured_artwork_size_uses_viewport_safety_limit() {
         let shell = ShellState::new(
             ShellTheme {
-                now_playing_artwork_size: Some(1200),
+                now_playing: crate::NowPlayingTheme {
+                    artwork_size: Some(1200),
+                    ..ShellTheme::default().now_playing
+                },
                 ..ShellTheme::default()
             },
             None,
@@ -479,7 +496,10 @@ mod tests {
     fn artwork_radius_clamps_to_half_artwork_size() {
         let shell = ShellState::new(
             ShellTheme {
-                now_playing_artwork_radius: Some(240),
+                now_playing: crate::NowPlayingTheme {
+                    artwork_radius: Some(240),
+                    ..ShellTheme::default().now_playing
+                },
                 ..ShellTheme::default()
             },
             None,

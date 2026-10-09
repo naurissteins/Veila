@@ -269,7 +269,10 @@ fn widget_position_can_center_inside_backdrop_rect() {
 #[test]
 fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
     let theme = ShellTheme {
-        now_playing_enabled: true,
+        now_playing: crate::NowPlayingTheme {
+            enabled: true,
+            ..ShellTheme::default().now_playing
+        },
         backdrops: vec![Backdrop {
             mode: BackdropMode::Solid,
             show_when: BackdropShowWhen::NowPlaying,
@@ -337,7 +340,10 @@ fn conditional_now_playing_backdrop_renders_only_when_widget_is_visible() {
 fn static_backdrops_skip_conditional_now_playing_backdrop() {
     let shell = ShellState::new_with_username_and_widgets(
         ShellTheme {
-            now_playing_enabled: true,
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                ..ShellTheme::default().now_playing
+            },
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Solid,
                 show_when: BackdropShowWhen::NowPlaying,
@@ -394,10 +400,13 @@ fn static_backdrops_skip_conditional_now_playing_backdrop() {
 fn dynamic_overlay_draws_conditional_backdrop_when_visual_layers_exist() {
     let shell = ShellState::new_with_username_and_widgets(
         ShellTheme {
-            now_playing_enabled: true,
-            now_playing_artwork_enabled: false,
-            now_playing_artist_enabled: false,
-            now_playing_title_enabled: false,
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                artwork_enabled: false,
+                artist_enabled: false,
+                title_enabled: false,
+                ..ShellTheme::default().now_playing
+            },
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Solid,
                 show_when: BackdropShowWhen::NowPlaying,

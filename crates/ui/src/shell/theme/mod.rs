@@ -9,6 +9,9 @@ mod header_tests;
 mod identity;
 #[cfg(test)]
 mod identity_tests;
+mod media;
+#[cfg(test)]
+mod media_tests;
 #[cfg(test)]
 mod tests;
 
@@ -26,6 +29,7 @@ use super::PreviewGrid;
 pub use auth::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealTheme, StatusTheme};
 pub use header::{ClockTheme, DateTheme};
 pub use identity::{AvatarTheme, UsernameTheme};
+pub use media::NowPlayingTheme;
 
 // Missing surface colors retain the pre-theme fallback independently of config keys.
 const DEFAULT_SURFACE_COLOR: veila_common::RgbColor = veila_common::RgbColor::rgb(22, 28, 38);
@@ -151,29 +155,7 @@ pub struct ShellTheme {
     pub weather_location_font_style: Option<FontStyle>,
     pub weather_location_font_size: Option<u32>,
     pub weather_location_position: Option<WidgetPosition>,
-    pub now_playing_enabled: bool,
-    pub now_playing_fade_duration_ms: Option<u64>,
-    pub now_playing_artwork_enabled: bool,
-    pub now_playing_artist_enabled: bool,
-    pub now_playing_title_enabled: bool,
-    pub now_playing_artwork_position: Option<WidgetPosition>,
-    pub now_playing_artwork_size: Option<i32>,
-    pub now_playing_artwork_radius: Option<i32>,
-    pub now_playing_artwork_opacity: Option<u8>,
-    pub now_playing_artist_position: Option<WidgetPosition>,
-    pub now_playing_artist_width: Option<i32>,
-    pub now_playing_artist_color: Option<ClearColor>,
-    pub now_playing_artist_font_family: Option<String>,
-    pub now_playing_artist_font_size: Option<u32>,
-    pub now_playing_artist_font_weight: Option<u16>,
-    pub now_playing_artist_font_style: Option<FontStyle>,
-    pub now_playing_title_position: Option<WidgetPosition>,
-    pub now_playing_title_width: Option<i32>,
-    pub now_playing_title_color: Option<ClearColor>,
-    pub now_playing_title_font_family: Option<String>,
-    pub now_playing_title_font_size: Option<u32>,
-    pub now_playing_title_font_weight: Option<u16>,
-    pub now_playing_title_font_style: Option<FontStyle>,
+    pub now_playing: NowPlayingTheme,
     pub foreground: ClearColor,
     pub muted: ClearColor,
     pub pending: ClearColor,
@@ -249,22 +231,7 @@ impl ShellTheme {
         theme.weather_location_position = theme
             .weather_location_position
             .map(|position| scale_position(position, scale));
-        theme.now_playing_artwork_position = theme
-            .now_playing_artwork_position
-            .map(|position| scale_position(position, scale));
-        theme.now_playing_artwork_size = scale_i32_opt(theme.now_playing_artwork_size, scale);
-        theme.now_playing_artwork_radius = scale_i32_opt(theme.now_playing_artwork_radius, scale);
-        theme.now_playing_artist_position = theme
-            .now_playing_artist_position
-            .map(|position| scale_position(position, scale));
-        theme.now_playing_artist_width = scale_i32_opt(theme.now_playing_artist_width, scale);
-        theme.now_playing_artist_font_size =
-            scale_u32_opt(theme.now_playing_artist_font_size, scale);
-        theme.now_playing_title_position = theme
-            .now_playing_title_position
-            .map(|position| scale_position(position, scale));
-        theme.now_playing_title_width = scale_i32_opt(theme.now_playing_title_width, scale);
-        theme.now_playing_title_font_size = scale_u32_opt(theme.now_playing_title_font_size, scale);
+        theme.now_playing.scale_for_render(scale);
         theme
     }
 }
@@ -596,42 +563,6 @@ fn resolve_layers(
     layers
 }
 
-fn resolve_now_playing_artwork_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.now_playing_artwork_position(),
-        HorizontalAlign::Right,
-        VerticalAlign::Bottom,
-        named_backdrops,
-    )
-}
-
-fn resolve_now_playing_artist_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.now_playing_artist_position(),
-        HorizontalAlign::Right,
-        VerticalAlign::Bottom,
-        named_backdrops,
-    )
-}
-
-fn resolve_now_playing_title_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.now_playing_title_position(),
-        HorizontalAlign::Right,
-        VerticalAlign::Bottom,
-        named_backdrops,
-    )
-}
-
 impl ShellTheme {
     pub fn from_config(config: &AppConfig) -> Self {
         let (backdrops, named_backdrops) = resolve_backdrops(config);
@@ -649,12 +580,6 @@ impl ShellTheme {
         ];
         let battery_position = resolve_battery_position(config, &named_backdrops);
         let grid = resolve_grid(config);
-        let now_playing_artwork_position =
-            resolve_now_playing_artwork_position(config, &named_backdrops);
-        let now_playing_artist_position =
-            resolve_now_playing_artist_position(config, &named_backdrops);
-        let now_playing_title_position =
-            resolve_now_playing_title_position(config, &named_backdrops);
         Self {
             clock: ClockTheme::from_config(config, &named_backdrops),
             date: DateTheme::from_config(config, &named_backdrops),
@@ -733,44 +658,7 @@ impl ShellTheme {
             weather_location_font_style: config.visuals.weather_location_font_style(),
             weather_location_font_size: config.visuals.weather_location_font_size().map(u32::from),
             weather_location_position,
-            now_playing_enabled: config.visuals.now_playing_enabled(),
-            now_playing_fade_duration_ms: config
-                .visuals
-                .now_playing_fade_duration_ms()
-                .map(u64::from),
-            now_playing_artwork_enabled: config.visuals.now_playing_artwork_enabled(),
-            now_playing_artist_enabled: config.visuals.now_playing_artist_enabled(),
-            now_playing_title_enabled: config.visuals.now_playing_title_enabled(),
-            now_playing_artwork_position,
-            now_playing_artwork_size: config.visuals.now_playing_artwork_size().map(i32::from),
-            now_playing_artwork_radius: config.visuals.now_playing_artwork_radius().map(i32::from),
-            now_playing_artwork_opacity: config.visuals.now_playing_artwork_opacity(),
-            now_playing_artist_position,
-            now_playing_artist_width: config.visuals.now_playing_artist_width().map(i32::from),
-            now_playing_artist_color: config.visuals.now_playing_artist_color().map(to_color),
-            now_playing_artist_font_family: config
-                .visuals
-                .now_playing_artist_font_family()
-                .map(str::to_owned),
-            now_playing_artist_font_size: config
-                .visuals
-                .now_playing_artist_font_size()
-                .map(u32::from),
-            now_playing_artist_font_weight: config.visuals.now_playing_artist_font_weight(),
-            now_playing_artist_font_style: config.visuals.now_playing_artist_font_style(),
-            now_playing_title_position,
-            now_playing_title_width: config.visuals.now_playing_title_width().map(i32::from),
-            now_playing_title_color: config.visuals.now_playing_title_color().map(to_color),
-            now_playing_title_font_family: config
-                .visuals
-                .now_playing_title_font_family()
-                .map(str::to_owned),
-            now_playing_title_font_size: config
-                .visuals
-                .now_playing_title_font_size()
-                .map(u32::from),
-            now_playing_title_font_weight: config.visuals.now_playing_title_font_weight(),
-            now_playing_title_font_style: config.visuals.now_playing_title_font_style(),
+            now_playing: NowPlayingTheme::from_config(config, &named_backdrops),
             foreground: to_color(config.visuals.foreground_color()),
             muted: to_color(config.visuals.muted_color()),
             pending: to_color(config.visuals.pending_color()),

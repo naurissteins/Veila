@@ -177,15 +177,18 @@ fn cached_scale_draws_updated_media_metadata() {
     use veila_common::{HorizontalAlign, NowPlayingSnapshot, VerticalAlign};
 
     let theme = ShellTheme {
-        now_playing_enabled: true,
-        now_playing_title_enabled: true,
-        now_playing_title_position: Some(WidgetPosition {
-            halign: HorizontalAlign::Left,
-            valign: VerticalAlign::Top,
-            x: 20,
-            y: 20,
-            target: WidgetPositionTarget::Screen,
-        }),
+        now_playing: crate::NowPlayingTheme {
+            enabled: true,
+            title_enabled: true,
+            title_position: Some(WidgetPosition {
+                halign: HorizontalAlign::Left,
+                valign: VerticalAlign::Top,
+                x: 20,
+                y: 20,
+                target: WidgetPositionTarget::Screen,
+            }),
+            ..ShellTheme::default().now_playing
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);

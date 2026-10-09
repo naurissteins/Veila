@@ -108,15 +108,18 @@ fn keyboard_chip_partial_frame_matches_full_render() {
 fn media_change_partial_frame_matches_full_render() {
     let mut shell = ShellState::new(
         ShellTheme {
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                title_enabled: true,
+                title_position: Some(position(
+                    HorizontalAlign::Left,
+                    VerticalAlign::Bottom,
+                    24,
+                    -24,
+                )),
+                ..ShellTheme::default().now_playing
+            },
             backdrops: Vec::new(),
-            now_playing_enabled: true,
-            now_playing_title_enabled: true,
-            now_playing_title_position: Some(position(
-                HorizontalAlign::Left,
-                VerticalAlign::Bottom,
-                24,
-                -24,
-            )),
             ..ShellTheme::default()
         },
         None,
@@ -150,6 +153,17 @@ fn media_change_partial_frame_matches_full_render() {
 fn media_backdrop_appearance_and_removal_match_full_render() {
     let mut shell = ShellState::new(
         ShellTheme {
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                title_enabled: true,
+                title_position: Some(position(
+                    HorizontalAlign::Left,
+                    VerticalAlign::Bottom,
+                    24,
+                    -24,
+                )),
+                ..ShellTheme::default().now_playing
+            },
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Blur,
                 show_when: BackdropShowWhen::NowPlaying,
@@ -170,14 +184,6 @@ fn media_backdrop_appearance_and_removal_match_full_render() {
                 position: position(HorizontalAlign::Left, VerticalAlign::Bottom, 16, -16),
                 z: 0,
             }],
-            now_playing_enabled: true,
-            now_playing_title_enabled: true,
-            now_playing_title_position: Some(position(
-                HorizontalAlign::Left,
-                VerticalAlign::Bottom,
-                24,
-                -24,
-            )),
             ..ShellTheme::default()
         },
         None,

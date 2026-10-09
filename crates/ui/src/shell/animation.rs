@@ -171,7 +171,8 @@ impl ShellState {
     fn now_playing_fade_duration(&self) -> Duration {
         Duration::from_millis(
             self.theme
-                .now_playing_fade_duration_ms
+                .now_playing
+                .fade_duration_ms
                 .unwrap_or(DEFAULT_NOW_PLAYING_FADE_DURATION_MS)
                 .clamp(1, 10_000),
         )

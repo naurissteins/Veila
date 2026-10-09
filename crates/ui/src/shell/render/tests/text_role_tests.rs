@@ -7,6 +7,11 @@ use veila_renderer::text::FontStyle as RendererFontStyle;
 fn text_roles_keep_independent_size_limits() {
     for size in [0, 1, 511, 512, 513, 1024, 1025, u32::MAX] {
         let theme = ShellTheme {
+            now_playing: crate::NowPlayingTheme {
+                title_font_size: Some(size),
+                artist_font_size: Some(size),
+                ..ShellTheme::default().now_playing
+            },
             clock: ClockTheme {
                 font_size: Some(size),
                 meridiem_font_size: Some(size),
@@ -31,8 +36,6 @@ fn text_roles_keep_independent_size_limits() {
             keyboard_size: Some(size),
             weather_temperature_font_size: Some(size),
             weather_location_font_size: Some(size),
-            now_playing_title_font_size: Some(size),
-            now_playing_artist_font_size: Some(size),
             ..ShellTheme::default()
         };
         let shell = ShellState::new(theme, None, None, true);
