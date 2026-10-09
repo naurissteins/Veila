@@ -12,7 +12,7 @@ impl ShellState {
 
     pub fn advance_animated_state_update(&mut self) -> ShellAnimationUpdate {
         let header_changed =
-            (self.theme.clock_enabled || self.theme.date_enabled) && self.clock.refresh();
+            (self.theme.clock.enabled || self.theme.date.enabled) && self.clock.refresh();
         let indicators_changed = self.clear_expired_power_confirmation(Instant::now());
         let fade_duration = self.now_playing_fade_duration();
         let mut media_changed = false;
@@ -95,7 +95,7 @@ impl ShellState {
     }
 
     pub fn next_animation_in(&self, now: Instant) -> Option<Duration> {
-        let next_minute = (self.theme.clock_enabled || self.theme.date_enabled).then(|| {
+        let next_minute = (self.theme.clock.enabled || self.theme.date.enabled).then(|| {
             let since_epoch = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default();

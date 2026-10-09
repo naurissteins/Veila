@@ -1,9 +1,13 @@
 use super::*;
+use crate::{ClockTheme, DateTheme};
 
 #[test]
 fn clock_style_uses_fallback_alpha_for_opaque_colors() {
     let theme = ShellTheme {
-        clock_color: Some(ClearColor::rgba(240, 244, 250, 255)),
+        clock: ClockTheme {
+            color: Some(ClearColor::rgba(240, 244, 250, 255)),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -18,7 +22,10 @@ fn clock_style_uses_fallback_alpha_for_opaque_colors() {
 #[test]
 fn clock_style_uses_configured_color() {
     let theme = ShellTheme {
-        clock_color: Some(ClearColor::rgba(248, 251, 255, 245)),
+        clock: ClockTheme {
+            color: Some(ClearColor::rgba(248, 251, 255, 245)),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -37,8 +44,11 @@ fn clock_style_uses_configured_font_family() {
     let bundled_family =
         bundled_clock_font_family().expect("bundled clock font family should resolve");
     let theme = ShellTheme {
-        clock_font_family: Some(bundled_family.clone()),
-        clock_font_weight: Some(700),
+        clock: ClockTheme {
+            font_family: Some(bundled_family.clone()),
+            font_weight: Some(700),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -80,8 +90,11 @@ fn clock_style_defaults_to_bundled_font_family() {
 #[test]
 fn date_style_uses_fallback_alpha_for_opaque_colors() {
     let theme = ShellTheme {
+        date: DateTheme {
+            color: Some(ClearColor::rgba(240, 244, 250, 255)),
+            ..ShellTheme::default().date
+        },
         foreground: ClearColor::rgba(240, 244, 250, 255),
-        date_color: Some(ClearColor::rgba(240, 244, 250, 255)),
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -94,7 +107,10 @@ fn date_style_uses_fallback_alpha_for_opaque_colors() {
 #[test]
 fn date_style_uses_configured_color() {
     let theme = ShellTheme {
-        date_color: Some(ClearColor::rgba(200, 212, 236, 189)),
+        date: DateTheme {
+            color: Some(ClearColor::rgba(200, 212, 236, 189)),
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -109,7 +125,10 @@ fn date_style_uses_configured_color() {
 #[test]
 fn clock_style_uses_configured_size() {
     let theme = ShellTheme {
-        clock_font_size: Some(28),
+        clock: ClockTheme {
+            font_size: Some(28),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -123,7 +142,10 @@ fn clock_style_uses_configured_size() {
 #[test]
 fn clock_meridiem_style_is_smaller_than_main_clock() {
     let theme = ShellTheme {
-        clock_font_size: Some(76),
+        clock: ClockTheme {
+            font_size: Some(76),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -141,7 +163,10 @@ fn clock_meridiem_style_is_smaller_than_main_clock() {
 #[test]
 fn clock_meridiem_style_uses_configured_size() {
     let theme = ShellTheme {
-        clock_meridiem_font_size: Some(34),
+        clock: ClockTheme {
+            meridiem_font_size: Some(34),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -166,7 +191,10 @@ fn header_styles_do_not_add_extra_line_spacing() {
 #[test]
 fn clock_style_allows_sizes_above_previous_cap() {
     let theme = ShellTheme {
-        clock_font_size: Some(76),
+        clock: ClockTheme {
+            font_size: Some(76),
+            ..ShellTheme::default().clock
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -180,7 +208,10 @@ fn clock_style_allows_sizes_above_previous_cap() {
 #[test]
 fn date_style_uses_configured_size() {
     let theme = ShellTheme {
-        date_font_size: Some(22),
+        date: DateTheme {
+            font_size: Some(22),
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -192,7 +223,10 @@ fn date_style_uses_configured_size() {
 #[test]
 fn date_style_uses_configured_font_weight() {
     let theme = ShellTheme {
-        date_font_weight: Some(600),
+        date: DateTheme {
+            font_weight: Some(600),
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -204,7 +238,10 @@ fn date_style_uses_configured_font_weight() {
 #[test]
 fn date_style_uses_configured_font_family() {
     let theme = ShellTheme {
-        date_font_family: Some(String::from("Geom")),
+        date: DateTheme {
+            font_family: Some(String::from("Geom")),
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -222,7 +259,10 @@ fn date_style_uses_configured_font_family() {
 #[test]
 fn date_style_allows_sizes_above_previous_cap() {
     let theme = ShellTheme {
-        date_font_size: Some(76),
+        date: DateTheme {
+            font_size: Some(76),
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -234,9 +274,15 @@ fn date_style_allows_sizes_above_previous_cap() {
 #[test]
 fn header_styles_preserve_explicit_foreground_alpha_when_unset() {
     let theme = ShellTheme {
+        clock: ClockTheme {
+            color: None,
+            ..ShellTheme::default().clock
+        },
+        date: DateTheme {
+            color: None,
+            ..ShellTheme::default().date
+        },
         foreground: ClearColor::rgba(240, 244, 250, 90),
-        clock_color: None,
-        date_color: None,
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

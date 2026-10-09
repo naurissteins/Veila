@@ -76,7 +76,7 @@ impl ClockState {
 impl super::ShellState {
     pub fn set_preview_time(&mut self, datetime: OffsetDateTime) {
         self.clock =
-            ClockState::from_datetime(datetime, self.theme.clock_format, self.theme.date_format);
+            ClockState::from_datetime(datetime, self.theme.clock.format, self.theme.date.format);
     }
 }
 

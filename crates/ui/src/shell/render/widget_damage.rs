@@ -147,7 +147,8 @@ impl RenderContext<'_> {
         {
             let backdrop_center = self
                 .theme
-                .clock_center_in_layer
+                .clock
+                .center_in_layer
                 .then(|| self.first_backdrop_center_x(size))
                 .flatten();
             let next = match &section.widget {
@@ -155,9 +156,9 @@ impl RenderContext<'_> {
                     hero_block_x(
                         size.width as i32,
                         clock.width(),
-                        self.theme.clock_alignment,
+                        self.theme.clock.alignment,
                         backdrop_center,
-                        self.theme.clock_offset_x,
+                        self.theme.clock.offset_x,
                     ),
                     y,
                     clock.width(),
@@ -167,9 +168,9 @@ impl RenderContext<'_> {
                     hero_block_x(
                         size.width as i32,
                         date.width as i32,
-                        self.theme.clock_alignment,
+                        self.theme.clock.alignment,
                         backdrop_center,
-                        self.theme.clock_offset_x,
+                        self.theme.clock.offset_x,
                     ),
                     y,
                     date.width as i32,

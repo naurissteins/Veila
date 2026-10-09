@@ -371,7 +371,7 @@ impl ShellState {
             static_scene_variant_cache: RefCell::new(std::collections::HashMap::new()),
             focused: true,
             status: ShellStatus::Idle,
-            clock: ClockState::current(theme.clock_format, theme.date_format),
+            clock: ClockState::current(theme.clock.format, theme.date.format),
             theme,
             hint_text: input_placeholder
                 .filter(|hint| !hint.trim().is_empty())
@@ -549,7 +549,7 @@ impl ShellState {
         self.theme = theme;
         self.scaled_render_cache.get_mut().clear();
         *self.text_layout_cache.get_mut() = TextLayoutCache::default();
-        self.clock = ClockState::current(self.theme.clock_format, self.theme.date_format);
+        self.clock = ClockState::current(self.theme.clock.format, self.theme.date.format);
         self.hint_text = input_placeholder
             .filter(|hint| !hint.trim().is_empty())
             .unwrap_or_else(|| String::from("Type your password to unlock"));

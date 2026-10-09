@@ -1,4 +1,4 @@
-use crate::{InputTheme, RevealTheme, StatusTheme};
+use crate::{ClockTheme, DateTheme, InputTheme, RevealTheme, StatusTheme};
 use std::{
     thread,
     time::{Duration, Instant},
@@ -544,8 +544,14 @@ fn pending_state_waits_for_status_delay_before_animation() {
 #[test]
 fn visible_pending_state_redraws_only_for_a_new_spinner_phase() {
     let theme = ShellTheme {
-        clock_enabled: false,
-        date_enabled: false,
+        clock: ClockTheme {
+            enabled: false,
+            ..ShellTheme::default().clock
+        },
+        date: DateTheme {
+            enabled: false,
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);
@@ -1048,18 +1054,24 @@ fn applying_theme_changes_static_scene_revision() {
 fn applying_theme_updates_clock_format() {
     let mut shell = ShellState::default();
     let theme = ShellTheme {
-        clock_format: ClockFormat::TwelveHour,
-        date_format: DateFormat::Iso,
+        clock: ClockTheme {
+            format: ClockFormat::TwelveHour,
+            ..ShellTheme::default().clock
+        },
+        date: DateTheme {
+            format: DateFormat::Iso,
+            ..ShellTheme::default().date
+        },
         ..ShellTheme::default()
     };
 
     shell.apply_theme(theme.clone(), None, None, true);
 
-    assert_eq!(shell.theme.clock_format, ClockFormat::TwelveHour);
-    assert_eq!(shell.theme.date_format, DateFormat::Iso);
+    assert_eq!(shell.theme.clock.format, ClockFormat::TwelveHour);
+    assert_eq!(shell.theme.date.format, DateFormat::Iso);
     assert_eq!(
         shell.clock,
-        super::clock::ClockState::current(theme.clock_format, theme.date_format)
+        super::clock::ClockState::current(theme.clock.format, theme.date.format)
     );
 }
 
@@ -1640,8 +1652,8 @@ fn now_playing_transition_requests_active_animation_timer() {
 #[test]
 fn media_fade_ignores_unrelated_event_wakes_between_animation_phases() {
     let mut shell = ShellState::default();
-    shell.theme.clock_enabled = false;
-    shell.theme.date_enabled = false;
+    shell.theme.clock.enabled = false;
+    shell.theme.date.enabled = false;
     shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
         title: String::from("Track"),
         artist: None,
@@ -1672,8 +1684,8 @@ fn media_fade_ignores_unrelated_event_wakes_between_animation_phases() {
 #[test]
 fn disabled_clock_and_date_leave_idle_shell_without_deadline() {
     let mut shell = ShellState::default();
-    shell.theme.clock_enabled = false;
-    shell.theme.date_enabled = false;
+    shell.theme.clock.enabled = false;
+    shell.theme.date.enabled = false;
 
     assert_eq!(shell.next_animation_in(Instant::now()), None);
 }

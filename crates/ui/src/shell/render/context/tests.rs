@@ -1,6 +1,6 @@
 use super::*;
-use crate::InputTheme;
 use crate::shell::{ShellAction, ShellKey};
+use crate::{ClockTheme, InputTheme};
 use veila_renderer::{ClearColor, FrameSize, SoftwareBuffer};
 
 fn shell() -> ShellState {
@@ -73,11 +73,14 @@ fn theme_reload_invalidates_all_render_caches() {
         shell.render_scaled(&mut buffer(scale), scale);
     }
     let theme = ShellTheme {
+        clock: ClockTheme {
+            font_size: Some(36),
+            ..ShellTheme::default().clock
+        },
         input: InputTheme {
             width: Some(300),
             ..ShellTheme::default().input
         },
-        clock_font_size: Some(36),
         ..ShellTheme::default()
     };
     shell.apply_theme(theme.clone(), Some("New placeholder".into()), None, true);

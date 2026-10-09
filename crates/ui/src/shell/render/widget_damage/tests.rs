@@ -1,6 +1,7 @@
 use super::*;
 use crate::shell::theme::{Backdrop, WidgetPosition, WidgetPositionTarget};
 use crate::shell::{ShellState, ShellTheme};
+use crate::{ClockTheme, DateTheme};
 use veila_common::{BackdropMode, HorizontalAlign, NowPlayingSnapshot, VerticalAlign};
 use veila_renderer::{ClearColor, RenderScale, SoftwareBuffer, copy_rect_from};
 
@@ -48,9 +49,15 @@ fn verify_widget_change(
 fn clock_minute_partial_frame_matches_full_render_at_fractional_scale() {
     let mut shell = ShellState::new(
         ShellTheme {
+            clock: ClockTheme {
+                enabled: true,
+                ..ShellTheme::default().clock
+            },
+            date: DateTheme {
+                enabled: true,
+                ..ShellTheme::default().date
+            },
             backdrops: Vec::new(),
-            clock_enabled: true,
-            date_enabled: true,
             ..ShellTheme::default()
         },
         None,

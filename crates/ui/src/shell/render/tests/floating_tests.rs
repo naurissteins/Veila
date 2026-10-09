@@ -1,7 +1,6 @@
 use super::*;
 use crate::shell::theme::{WidgetPosition, WidgetPositionTarget};
-use crate::{AvatarTheme, UsernameTheme};
-use crate::{InputTheme, StatusTheme};
+use crate::{AvatarTheme, ClockTheme, DateTheme, InputTheme, StatusTheme, UsernameTheme};
 use veila_common::StatusDisplayMode;
 use veila_renderer::{RenderScale, copy_rect_from};
 
@@ -98,6 +97,14 @@ fn floating_auth_dirty_frame_matches_full_frame_at_every_scale() {
             let scale = RenderScale::from_units(units);
             let size = scale.frame_size(FrameSize::new(960, 640));
             let theme = ShellTheme {
+                clock: ClockTheme {
+                    enabled: false,
+                    ..ShellTheme::default().clock
+                },
+                date: DateTheme {
+                    enabled: false,
+                    ..ShellTheme::default().date
+                },
                 avatar: AvatarTheme {
                     enabled: false,
                     ..ShellTheme::default().avatar
@@ -106,8 +113,6 @@ fn floating_auth_dirty_frame_matches_full_frame_at_every_scale() {
                     enabled: false,
                     ..ShellTheme::default().username
                 },
-                clock_enabled: false,
-                date_enabled: false,
                 ..theme(valign)
             };
             let mut shell = ShellState::new(theme, None, None, true);
@@ -156,8 +161,8 @@ fn floating_geometry_and_hitbox_refresh_after_theme_reload() {
     let mut updated = theme(VerticalAlign::Bottom);
     updated.input.width = Some(280);
     updated.eye.enabled = true;
-    updated.clock_position = Some(position(VerticalAlign::Top));
-    updated.date_position = Some(position(VerticalAlign::Bottom));
+    updated.clock.position = Some(position(VerticalAlign::Top));
+    updated.date.position = Some(position(VerticalAlign::Bottom));
     updated.avatar.position = Some(position(VerticalAlign::Top));
     updated.username.position = Some(position(VerticalAlign::Bottom));
     shell.apply_theme(updated.clone(), None, None, true);

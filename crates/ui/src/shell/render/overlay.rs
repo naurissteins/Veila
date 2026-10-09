@@ -420,15 +420,16 @@ impl RenderContext<'_> {
             SceneWidget::Clock(block) if dynamic => {
                 let backdrop_center_x = self
                     .theme
-                    .clock_center_in_layer
+                    .clock
+                    .center_in_layer
                     .then(|| self.first_backdrop_center_x(buffer.size()))
                     .flatten();
                 let x = hero_block_x(
                     buffer.size().width as i32,
                     block.width(),
-                    self.theme.clock_alignment,
+                    self.theme.clock.alignment,
                     backdrop_center_x,
-                    self.theme.clock_offset_x,
+                    self.theme.clock.offset_x,
                 );
                 draw_clock_widget(buffer, x, y, block);
             }
@@ -438,15 +439,16 @@ impl RenderContext<'_> {
                 } else {
                     let backdrop_center_x = self
                         .theme
-                        .clock_center_in_layer
+                        .clock
+                        .center_in_layer
                         .then(|| self.first_backdrop_center_x(buffer.size()))
                         .flatten();
                     let x = hero_block_x(
                         buffer.size().width as i32,
                         block.width as i32,
-                        self.theme.clock_alignment,
+                        self.theme.clock.alignment,
                         backdrop_center_x,
-                        self.theme.clock_offset_x,
+                        self.theme.clock.offset_x,
                     );
                     draw_block(buffer, x, y, block);
                 }
