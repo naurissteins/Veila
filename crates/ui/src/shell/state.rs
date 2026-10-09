@@ -147,7 +147,7 @@ impl ShellState {
     }
 
     pub(super) fn now_playing_widget_visible(&self) -> bool {
-        self.theme.now_playing_enabled
+        self.theme.now_playing.enabled
             && (self.now_playing.is_some()
                 || self
                     .now_playing_transition
@@ -469,9 +469,9 @@ impl ShellState {
     }
 
     pub fn pending_now_playing_artwork_path(&self) -> Option<&Path> {
-        if !self.theme.now_playing_enabled
-            || !self.theme.now_playing_artwork_enabled
-            || self.theme.now_playing_artwork_position.is_none()
+        if !self.theme.now_playing.enabled
+            || !self.theme.now_playing.artwork_enabled
+            || self.theme.now_playing.artwork_position.is_none()
         {
             return None;
         }

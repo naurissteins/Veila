@@ -10,8 +10,8 @@ impl ShellTheme {
             self.date.font_family.as_deref(),
             self.weather_temperature_font_family.as_deref(),
             self.weather_location_font_family.as_deref(),
-            self.now_playing_artist_font_family.as_deref(),
-            self.now_playing_title_font_family.as_deref(),
+            self.now_playing.artist_font_family.as_deref(),
+            self.now_playing.title_font_family.as_deref(),
         ];
         let mut families = Vec::new();
         for family in configured.into_iter().flatten().chain(

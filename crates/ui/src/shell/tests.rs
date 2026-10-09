@@ -1231,15 +1231,18 @@ fn deferred_artwork_applies_only_to_current_path_and_survives_metadata_refresh()
 
     let mut shell = ShellState::new(
         ShellTheme {
-            now_playing_enabled: true,
-            now_playing_artwork_enabled: true,
-            now_playing_artwork_position: Some(WidgetPosition {
-                halign: HorizontalAlign::Center,
-                valign: VerticalAlign::Center,
-                x: 0,
-                y: 0,
-                target: WidgetPositionTarget::Screen,
-            }),
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                artwork_enabled: true,
+                artwork_position: Some(WidgetPosition {
+                    halign: HorizontalAlign::Center,
+                    valign: VerticalAlign::Center,
+                    x: 0,
+                    y: 0,
+                    target: WidgetPositionTarget::Screen,
+                }),
+                ..ShellTheme::default().now_playing
+            },
             ..ShellTheme::default()
         },
         None,
@@ -1370,7 +1373,10 @@ fn updating_now_playing_snapshot_starts_transition_without_static_scene_revision
 fn conditional_now_playing_backdrop_appearing_keeps_static_scene_revision() {
     let mut shell = ShellState::new(
         ShellTheme {
-            now_playing_enabled: true,
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                ..ShellTheme::default().now_playing
+            },
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Solid,
                 show_when: BackdropShowWhen::NowPlaying,
@@ -1419,7 +1425,10 @@ fn conditional_now_playing_backdrop_appearing_keeps_static_scene_revision() {
 fn static_scene_cache_variant_ignores_conditional_backdrop_visibility() {
     let mut shell = ShellState::new(
         ShellTheme {
-            now_playing_enabled: true,
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                ..ShellTheme::default().now_playing
+            },
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Solid,
                 show_when: BackdropShowWhen::NowPlaying,
@@ -1558,8 +1567,11 @@ fn now_playing_transition_clears_after_fade_duration() {
 fn conditional_now_playing_backdrop_disappearing_after_fade_keeps_static_scene_revision() {
     let mut shell = ShellState::new_with_username_and_widgets(
         ShellTheme {
-            now_playing_enabled: true,
-            now_playing_fade_duration_ms: Some(10),
+            now_playing: crate::NowPlayingTheme {
+                enabled: true,
+                fade_duration_ms: Some(10),
+                ..ShellTheme::default().now_playing
+            },
             backdrops: vec![Backdrop {
                 mode: BackdropMode::Solid,
                 show_when: BackdropShowWhen::NowPlaying,
@@ -1615,7 +1627,10 @@ fn conditional_now_playing_backdrop_disappearing_after_fade_keeps_static_scene_r
 #[test]
 fn now_playing_transition_uses_configured_fade_duration() {
     let theme = ShellTheme {
-        now_playing_fade_duration_ms: Some(10),
+        now_playing: crate::NowPlayingTheme {
+            fade_duration_ms: Some(10),
+            ..ShellTheme::default().now_playing
+        },
         ..ShellTheme::default()
     };
     let mut shell = ShellState::new(theme, None, None, true);

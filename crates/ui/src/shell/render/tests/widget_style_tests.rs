@@ -116,15 +116,18 @@ fn weather_styles_preserve_opaque_configured_colors() {
 #[test]
 fn now_playing_styles_use_configured_theme_values() {
     let theme = ShellTheme {
-        now_playing_title_color: Some(ClearColor::rgba(248, 251, 255, 208)),
-        now_playing_artist_color: Some(ClearColor::rgba(200, 212, 236, 99)),
-        now_playing_title_font_family: Some("Geom".to_owned()),
-        now_playing_artist_font_family: Some("Prototype".to_owned()),
-        now_playing_title_font_weight: Some(700),
-        now_playing_artist_font_weight: Some(500),
-        now_playing_title_font_size: Some(22),
-        now_playing_artist_font_size: Some(16),
-        now_playing_title_width: Some(220),
+        now_playing: crate::NowPlayingTheme {
+            title_color: Some(ClearColor::rgba(248, 251, 255, 208)),
+            artist_color: Some(ClearColor::rgba(200, 212, 236, 99)),
+            title_font_family: Some("Geom".to_owned()),
+            artist_font_family: Some("Prototype".to_owned()),
+            title_font_weight: Some(700),
+            artist_font_weight: Some(500),
+            title_font_size: Some(22),
+            artist_font_size: Some(16),
+            title_width: Some(220),
+            ..ShellTheme::default().now_playing
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -146,7 +149,7 @@ fn now_playing_styles_use_configured_theme_values() {
     assert_eq!(artist_style.scale, 1);
     assert_eq!(artist_style.font_size_px, Some(16));
     assert_eq!(artist_style.font_weight, Some(500));
-    assert_eq!(shell.theme.now_playing_title_width, Some(220));
+    assert_eq!(shell.theme.now_playing.title_width, Some(220));
     assert!(
         artist_style
             .font_family
@@ -159,8 +162,11 @@ fn now_playing_styles_use_configured_theme_values() {
 #[test]
 fn now_playing_styles_preserve_opaque_configured_colors() {
     let theme = ShellTheme {
-        now_playing_title_color: Some(ClearColor::opaque(249, 226, 175)),
-        now_playing_artist_color: Some(ClearColor::opaque(203, 166, 247)),
+        now_playing: crate::NowPlayingTheme {
+            title_color: Some(ClearColor::opaque(249, 226, 175)),
+            artist_color: Some(ClearColor::opaque(203, 166, 247)),
+            ..ShellTheme::default().now_playing
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

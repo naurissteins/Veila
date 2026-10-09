@@ -631,35 +631,35 @@ fn input_alpha_uses_rgba_values() {
         })
     );
     assert_eq!(
-        theme.now_playing_title_color,
+        theme.now_playing.title_color,
         Some(ClearColor::rgba(248, 251, 255, 208))
     );
     assert_eq!(
-        theme.now_playing_artist_color,
+        theme.now_playing.artist_color,
         Some(ClearColor::rgba(200, 212, 236, 99))
     );
-    assert_eq!(theme.now_playing_fade_duration_ms, Some(320));
-    assert_eq!(theme.now_playing_title_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.now_playing.fade_duration_ms, Some(320));
+    assert_eq!(theme.now_playing.title_font_family.as_deref(), Some("Geom"));
     assert_eq!(
-        theme.now_playing_artist_font_family.as_deref(),
+        theme.now_playing.artist_font_family.as_deref(),
         Some("Prototype")
     );
-    assert_eq!(theme.now_playing_title_font_weight, Some(700));
-    assert_eq!(theme.now_playing_artist_font_weight, Some(500));
-    assert_eq!(theme.now_playing_title_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.now_playing_artist_font_style, Some(FontStyle::Italic));
-    assert!(theme.now_playing_artwork_enabled);
-    assert!(theme.now_playing_artist_enabled);
-    assert!(theme.now_playing_title_enabled);
-    assert_eq!(theme.now_playing_artwork_opacity, Some(61));
-    assert_eq!(theme.now_playing_title_font_size, Some(16));
-    assert_eq!(theme.now_playing_artist_font_size, Some(10));
-    assert_eq!(theme.now_playing_title_width, Some(198));
-    assert_eq!(theme.now_playing_artist_width, Some(198));
-    assert_eq!(theme.now_playing_artwork_size, Some(64));
-    assert_eq!(theme.now_playing_artwork_radius, Some(16));
+    assert_eq!(theme.now_playing.title_font_weight, Some(700));
+    assert_eq!(theme.now_playing.artist_font_weight, Some(500));
+    assert_eq!(theme.now_playing.title_font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.now_playing.artist_font_style, Some(FontStyle::Italic));
+    assert!(theme.now_playing.artwork_enabled);
+    assert!(theme.now_playing.artist_enabled);
+    assert!(theme.now_playing.title_enabled);
+    assert_eq!(theme.now_playing.artwork_opacity, Some(61));
+    assert_eq!(theme.now_playing.title_font_size, Some(16));
+    assert_eq!(theme.now_playing.artist_font_size, Some(10));
+    assert_eq!(theme.now_playing.title_width, Some(198));
+    assert_eq!(theme.now_playing.artist_width, Some(198));
+    assert_eq!(theme.now_playing.artwork_size, Some(64));
+    assert_eq!(theme.now_playing.artwork_radius, Some(16));
     assert_eq!(
-        theme.now_playing_artwork_position,
+        theme.now_playing.artwork_position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Bottom,
@@ -669,7 +669,7 @@ fn input_alpha_uses_rgba_values() {
         })
     );
     assert_eq!(
-        theme.now_playing_artist_position,
+        theme.now_playing.artist_position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Bottom,
@@ -679,7 +679,7 @@ fn input_alpha_uses_rgba_values() {
         })
     );
     assert_eq!(
-        theme.now_playing_title_position,
+        theme.now_playing.title_position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Bottom,

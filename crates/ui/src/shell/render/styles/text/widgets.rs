@@ -82,24 +82,26 @@ impl RenderContext<'_> {
     pub(crate) fn now_playing_title_text_style(&self) -> TextStyle {
         let base_color = self
             .theme
-            .now_playing_title_color
+            .now_playing
+            .title_color
             .unwrap_or(self.theme.foreground);
         let style = TextStyle::new_px(
             base_color,
             self.theme
-                .now_playing_title_font_size
+                .now_playing
+                .title_font_size
                 .unwrap_or(16)
                 .clamp(1, MAX_NOW_PLAYING_TITLE_FONT_SIZE_PX),
         );
-        let style = match self.theme.now_playing_title_font_weight {
+        let style = match self.theme.now_playing.title_font_weight {
             Some(weight) => style.with_font_weight(weight),
             None => style.with_font_weight(600),
         };
         self.apply_font_overrides(
             style,
-            self.resolved_font_family(self.theme.now_playing_title_font_family.as_deref()),
+            self.resolved_font_family(self.theme.now_playing.title_font_family.as_deref()),
             None,
-            self.theme.now_playing_title_font_style,
+            self.theme.now_playing.title_font_style,
         )
         .with_line_spacing(0)
     }
@@ -107,20 +109,22 @@ impl RenderContext<'_> {
     pub(crate) fn now_playing_artist_text_style(&self) -> TextStyle {
         let base_color = self
             .theme
-            .now_playing_artist_color
+            .now_playing
+            .artist_color
             .unwrap_or(self.theme.muted);
         let style = TextStyle::new_px(
             base_color,
             self.theme
-                .now_playing_artist_font_size
+                .now_playing
+                .artist_font_size
                 .unwrap_or(16)
                 .clamp(1, MAX_NOW_PLAYING_ARTIST_FONT_SIZE_PX),
         );
         self.apply_font_overrides(
             style,
-            self.resolved_font_family(self.theme.now_playing_artist_font_family.as_deref()),
-            self.theme.now_playing_artist_font_weight,
-            self.theme.now_playing_artist_font_style,
+            self.resolved_font_family(self.theme.now_playing.artist_font_family.as_deref()),
+            self.theme.now_playing.artist_font_weight,
+            self.theme.now_playing.artist_font_style,
         )
         .with_line_spacing(0)
     }
