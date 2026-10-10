@@ -8,8 +8,8 @@ impl ShellTheme {
             self.username.font_family.as_deref(),
             self.clock.font_family.as_deref(),
             self.date.font_family.as_deref(),
-            self.weather_temperature_font_family.as_deref(),
-            self.weather_location_font_family.as_deref(),
+            self.weather.temperature_font_family.as_deref(),
+            self.weather.location_font_family.as_deref(),
             self.now_playing.artist_font_family.as_deref(),
             self.now_playing.title_font_family.as_deref(),
         ];

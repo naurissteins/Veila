@@ -202,7 +202,7 @@ impl RenderContext<'_> {
     fn weather_region(&self, size: FrameSize, layout: &super::SceneLayout) -> Option<Rect> {
         let weather = layout.floating_weather.as_ref()?;
         let mut region = None;
-        if let (Some(icon), Some(position)) = (weather.icon, self.theme.weather_icon_position) {
+        if let (Some(icon), Some(position)) = (weather.icon, self.theme.weather.icon_position) {
             region = merge(
                 region,
                 Some(self.positioned_rect(size, position, icon.size, icon.size)),
@@ -210,7 +210,7 @@ impl RenderContext<'_> {
         }
         if let (Some(block), Some(position)) = (
             weather.temperature.as_ref(),
-            self.theme.weather_temperature_position,
+            self.theme.weather.temperature_position,
         ) {
             region = merge(
                 region,
@@ -219,7 +219,7 @@ impl RenderContext<'_> {
         }
         if let (Some(block), Some(position)) = (
             weather.location.as_ref(),
-            self.theme.weather_location_position,
+            self.theme.weather.location_position,
         ) {
             region = merge(
                 region,

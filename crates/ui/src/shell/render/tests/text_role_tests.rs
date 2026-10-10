@@ -34,8 +34,11 @@ fn text_roles_keep_independent_size_limits() {
                 ..ShellTheme::default().reveal
             },
             keyboard_size: Some(size),
-            weather_temperature_font_size: Some(size),
-            weather_location_font_size: Some(size),
+            weather: crate::WeatherTheme {
+                temperature_font_size: Some(size),
+                location_font_size: Some(size),
+                ..ShellTheme::default().weather
+            },
             ..ShellTheme::default()
         };
         let shell = ShellState::new(theme, None, None, true);

@@ -49,15 +49,18 @@ fn weather_styles_use_configured_font_size_px() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
         muted: ClearColor::rgba(180, 190, 210, 255),
-        weather_temperature_color: Some(ClearColor::rgba(255, 255, 255, 186)),
-        weather_location_color: Some(ClearColor::rgba(214, 227, 255, 74)),
-        weather_temperature_font_family: Some(String::from("Prototype")),
-        weather_temperature_font_weight: Some(600),
-        weather_temperature_letter_spacing: Some(2),
-        weather_location_font_family: Some(String::from("Geom")),
-        weather_location_font_weight: Some(500),
-        weather_temperature_font_size: Some(42),
-        weather_location_font_size: Some(22),
+        weather: crate::WeatherTheme {
+            temperature_color: Some(ClearColor::rgba(255, 255, 255, 186)),
+            location_color: Some(ClearColor::rgba(214, 227, 255, 74)),
+            temperature_font_family: Some(String::from("Prototype")),
+            temperature_font_weight: Some(600),
+            temperature_letter_spacing: Some(2),
+            location_font_family: Some(String::from("Geom")),
+            location_font_weight: Some(500),
+            temperature_font_size: Some(42),
+            location_font_size: Some(22),
+            ..ShellTheme::default().weather
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);
@@ -94,8 +97,11 @@ fn weather_styles_use_configured_font_size_px() {
 #[test]
 fn weather_styles_preserve_opaque_configured_colors() {
     let theme = ShellTheme {
-        weather_temperature_color: Some(ClearColor::opaque(249, 226, 175)),
-        weather_location_color: Some(ClearColor::opaque(249, 226, 175)),
+        weather: crate::WeatherTheme {
+            temperature_color: Some(ClearColor::opaque(249, 226, 175)),
+            location_color: Some(ClearColor::opaque(249, 226, 175)),
+            ..ShellTheme::default().weather
+        },
         ..ShellTheme::default()
     };
     let shell = ShellState::new(theme, None, None, true);

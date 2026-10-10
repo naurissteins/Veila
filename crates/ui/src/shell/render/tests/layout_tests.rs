@@ -608,7 +608,10 @@ fn conditional_battery_backdrop_follows_battery_data_not_icon_visibility() {
 #[test]
 fn conditional_weather_backdrop_renders_only_when_widget_is_visible() {
     let theme = ShellTheme {
-        weather_enabled: true,
+        weather: crate::WeatherTheme {
+            enabled: true,
+            ..ShellTheme::default().weather
+        },
         backdrops: vec![Backdrop {
             mode: BackdropMode::Solid,
             show_when: BackdropShowWhen::Weather,
@@ -938,28 +941,31 @@ fn visible_alpha_x_bounds(buffer: &SoftwareBuffer) -> Option<(i32, i32)> {
 #[test]
 fn floating_weather_does_not_shift_auth_or_use_footer_role() {
     let theme = ShellTheme {
-        weather_enabled: true,
-        weather_icon_position: Some(crate::shell::theme::WidgetPosition {
-            halign: HorizontalAlign::Left,
-            valign: VerticalAlign::Bottom,
-            x: 32,
-            y: -120,
-            target: WidgetPositionTarget::Screen,
-        }),
-        weather_temperature_position: Some(crate::shell::theme::WidgetPosition {
-            halign: HorizontalAlign::Left,
-            valign: VerticalAlign::Bottom,
-            x: 32,
-            y: -72,
-            target: WidgetPositionTarget::Screen,
-        }),
-        weather_location_position: Some(crate::shell::theme::WidgetPosition {
-            halign: HorizontalAlign::Left,
-            valign: VerticalAlign::Bottom,
-            x: 32,
-            y: -40,
-            target: WidgetPositionTarget::Screen,
-        }),
+        weather: crate::WeatherTheme {
+            enabled: true,
+            icon_position: Some(crate::shell::theme::WidgetPosition {
+                halign: HorizontalAlign::Left,
+                valign: VerticalAlign::Bottom,
+                x: 32,
+                y: -120,
+                target: WidgetPositionTarget::Screen,
+            }),
+            temperature_position: Some(crate::shell::theme::WidgetPosition {
+                halign: HorizontalAlign::Left,
+                valign: VerticalAlign::Bottom,
+                x: 32,
+                y: -72,
+                target: WidgetPositionTarget::Screen,
+            }),
+            location_position: Some(crate::shell::theme::WidgetPosition {
+                halign: HorizontalAlign::Left,
+                valign: VerticalAlign::Bottom,
+                x: 32,
+                y: -40,
+                target: WidgetPositionTarget::Screen,
+            }),
+            ..ShellTheme::default().weather
+        },
         ..ShellTheme::default()
     };
     let without_weather = ShellState::new(theme.clone(), None, None, true);

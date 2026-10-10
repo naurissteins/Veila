@@ -8,6 +8,6 @@ mod shell;
 pub use shell::{
     AvatarTheme, CapsLockTheme, ClockTheme, DateTheme, EyeTheme, InputTheme, NowPlayingTheme,
     PlaceholderTheme, RevealTheme, ShellAction, ShellAnimationUpdate, ShellKey, ShellState,
-    ShellTheme, StatusTheme, UsernameTheme, WidgetDamage, WidgetKind, WidgetRegions,
+    ShellTheme, StatusTheme, UsernameTheme, WeatherTheme, WidgetDamage, WidgetKind, WidgetRegions,
     has_avatar_candidate, load_avatar, load_cached_avatar,
 };

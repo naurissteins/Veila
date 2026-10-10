@@ -143,7 +143,7 @@ impl ShellState {
     }
 
     pub(super) fn weather_widget_visible(&self) -> bool {
-        self.theme.weather_enabled && self.weather.is_some()
+        self.theme.weather.enabled && self.weather.is_some()
     }
 
     pub(super) fn now_playing_widget_visible(&self) -> bool {

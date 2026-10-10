@@ -35,23 +35,25 @@ impl RenderContext<'_> {
     pub(crate) fn weather_temperature_text_style(&self) -> TextStyle {
         let base_color = self
             .theme
-            .weather_temperature_color
+            .weather
+            .temperature_color
             .unwrap_or(self.theme.foreground);
         let style = TextStyle::new_px(
             base_color,
             self.theme
-                .weather_temperature_font_size
+                .weather
+                .temperature_font_size
                 .unwrap_or(40)
                 .clamp(1, MAX_WEATHER_TEMPERATURE_FONT_SIZE_PX),
         );
 
         let style = self.apply_font_overrides(
             style,
-            self.resolved_font_family(self.theme.weather_temperature_font_family.as_deref()),
-            self.theme.weather_temperature_font_weight,
-            self.theme.weather_temperature_font_style,
+            self.resolved_font_family(self.theme.weather.temperature_font_family.as_deref()),
+            self.theme.weather.temperature_font_weight,
+            self.theme.weather.temperature_font_style,
         );
-        let style = match self.theme.weather_temperature_letter_spacing {
+        let style = match self.theme.weather.temperature_letter_spacing {
             Some(letter_spacing) => style.with_letter_spacing(letter_spacing),
             None => style,
         };
@@ -62,20 +64,22 @@ impl RenderContext<'_> {
     pub(crate) fn weather_location_text_style(&self) -> TextStyle {
         let location_font_size = self
             .theme
-            .weather_location_font_size
+            .weather
+            .location_font_size
             .unwrap_or(22)
             .clamp(1, MAX_WEATHER_LOCATION_FONT_SIZE_PX);
         let base_color = self
             .theme
-            .weather_location_color
+            .weather
+            .location_color
             .unwrap_or(self.theme.muted);
         let style = TextStyle::new_px(base_color, location_font_size).with_line_spacing(0);
 
         self.apply_font_overrides(
             style,
-            self.resolved_font_family(self.theme.weather_location_font_family.as_deref()),
-            self.theme.weather_location_font_weight,
-            self.theme.weather_location_font_style,
+            self.resolved_font_family(self.theme.weather.location_font_family.as_deref()),
+            self.theme.weather.location_font_weight,
+            self.theme.weather.location_font_style,
         )
     }
 

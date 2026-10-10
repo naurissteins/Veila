@@ -241,14 +241,14 @@ impl RenderContext<'_> {
         };
 
         if let Some(icon) = weather.icon
-            && let Some(position) = self.theme.weather_icon_position
+            && let Some(position) = self.theme.weather.icon_position
         {
             let rect = self.positioned_rect(buffer.size(), position, icon.size, icon.size);
             draw_weather_icon(buffer, rect.x, rect.y, icon.asset, icon.size, icon.opacity);
         }
 
         if let Some(temperature) = weather.temperature.as_ref()
-            && let Some(position) = self.theme.weather_temperature_position
+            && let Some(position) = self.theme.weather.temperature_position
         {
             let rect = self.positioned_rect(
                 buffer.size(),
@@ -260,7 +260,7 @@ impl RenderContext<'_> {
         }
 
         if let Some(location) = weather.location.as_ref()
-            && let Some(position) = self.theme.weather_location_position
+            && let Some(position) = self.theme.weather.location_position
         {
             let rect = self.positioned_rect(
                 buffer.size(),
