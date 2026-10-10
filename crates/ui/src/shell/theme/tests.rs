@@ -572,36 +572,36 @@ fn input_alpha_uses_rgba_values() {
             major_color: ClearColor::rgba(255, 255, 255, 44),
         })
     );
-    assert!(theme.weather_icon_enabled);
-    assert!(theme.weather_temperature_enabled);
-    assert!(theme.weather_location_enabled);
-    assert_eq!(theme.weather_icon_opacity, Some(41));
+    assert!(theme.weather.icon_enabled);
+    assert!(theme.weather.temperature_enabled);
+    assert!(theme.weather.location_enabled);
+    assert_eq!(theme.weather.icon_opacity, Some(41));
     assert_eq!(
-        theme.weather_temperature_color,
+        theme.weather.temperature_color,
         Some(ClearColor::rgba(255, 255, 255, 179))
     );
     assert_eq!(
-        theme.weather_location_color,
+        theme.weather.location_color,
         Some(ClearColor::rgba(214, 227, 255, 98))
     );
     assert_eq!(
-        theme.weather_temperature_font_family.as_deref(),
+        theme.weather.temperature_font_family.as_deref(),
         Some("Prototype")
     );
-    assert_eq!(theme.weather_temperature_font_weight, Some(600));
+    assert_eq!(theme.weather.temperature_font_weight, Some(600));
     assert_eq!(
-        theme.weather_temperature_font_style,
+        theme.weather.temperature_font_style,
         Some(FontStyle::Italic)
     );
-    assert_eq!(theme.weather_location_font_family.as_deref(), Some("Geom"));
-    assert_eq!(theme.weather_location_font_weight, Some(500));
-    assert_eq!(theme.weather_location_font_style, Some(FontStyle::Italic));
-    assert_eq!(theme.weather_temperature_letter_spacing, Some(2));
-    assert_eq!(theme.weather_temperature_font_size, Some(40));
-    assert_eq!(theme.weather_location_font_size, Some(22));
-    assert_eq!(theme.weather_icon_size, Some(36));
+    assert_eq!(theme.weather.location_font_family.as_deref(), Some("Geom"));
+    assert_eq!(theme.weather.location_font_weight, Some(500));
+    assert_eq!(theme.weather.location_font_style, Some(FontStyle::Italic));
+    assert_eq!(theme.weather.temperature_letter_spacing, Some(2));
+    assert_eq!(theme.weather.temperature_font_size, Some(40));
+    assert_eq!(theme.weather.location_font_size, Some(22));
+    assert_eq!(theme.weather.icon_size, Some(36));
     assert_eq!(
-        theme.weather_icon_position,
+        theme.weather.icon_position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Bottom,
@@ -611,7 +611,7 @@ fn input_alpha_uses_rgba_values() {
         })
     );
     assert_eq!(
-        theme.weather_temperature_position,
+        theme.weather.temperature_position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Bottom,
@@ -621,7 +621,7 @@ fn input_alpha_uses_rgba_values() {
         })
     );
     assert_eq!(
-        theme.weather_location_position,
+        theme.weather.location_position,
         Some(super::WidgetPosition {
             halign: HorizontalAlign::Right,
             valign: VerticalAlign::Bottom,

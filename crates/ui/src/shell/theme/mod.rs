@@ -14,6 +14,9 @@ mod media;
 mod media_tests;
 #[cfg(test)]
 mod tests;
+mod weather;
+#[cfg(test)]
+mod weather_tests;
 
 use std::collections::HashMap;
 
@@ -30,6 +33,7 @@ pub use auth::{CapsLockTheme, EyeTheme, InputTheme, PlaceholderTheme, RevealThem
 pub use header::{ClockTheme, DateTheme};
 pub use identity::{AvatarTheme, UsernameTheme};
 pub use media::NowPlayingTheme;
+pub use weather::WeatherTheme;
 
 // Missing surface colors retain the pre-theme fallback independently of config keys.
 const DEFAULT_SURFACE_COLOR: veila_common::RgbColor = veila_common::RgbColor::rgb(22, 28, 38);
@@ -135,26 +139,7 @@ pub struct ShellTheme {
     pub backdrops: Vec<Backdrop>,
     pub layers: Vec<VisualLayer>,
     pub grid: Option<PreviewGrid>,
-    pub weather_enabled: bool,
-    pub weather_icon_enabled: bool,
-    pub weather_icon_position: Option<WidgetPosition>,
-    pub weather_icon_size: Option<i32>,
-    pub weather_icon_opacity: Option<u8>,
-    pub weather_temperature_enabled: bool,
-    pub weather_temperature_color: Option<ClearColor>,
-    pub weather_temperature_font_family: Option<String>,
-    pub weather_temperature_font_weight: Option<u16>,
-    pub weather_temperature_font_style: Option<FontStyle>,
-    pub weather_temperature_letter_spacing: Option<u32>,
-    pub weather_temperature_font_size: Option<u32>,
-    pub weather_temperature_position: Option<WidgetPosition>,
-    pub weather_location_enabled: bool,
-    pub weather_location_color: Option<ClearColor>,
-    pub weather_location_font_family: Option<String>,
-    pub weather_location_font_weight: Option<u16>,
-    pub weather_location_font_style: Option<FontStyle>,
-    pub weather_location_font_size: Option<u32>,
-    pub weather_location_position: Option<WidgetPosition>,
+    pub weather: WeatherTheme,
     pub now_playing: NowPlayingTheme,
     pub foreground: ClearColor,
     pub muted: ClearColor,
@@ -216,21 +201,7 @@ impl ShellTheme {
             .map(|layer| scale_visual_layer(layer, scale))
             .collect();
         theme.grid = theme.grid.map(|grid| scale_grid(grid, scale));
-        theme.weather_icon_position = theme
-            .weather_icon_position
-            .map(|position| scale_position(position, scale));
-        theme.weather_icon_size = scale_i32_opt(theme.weather_icon_size, scale);
-        theme.weather_temperature_font_size =
-            scale_u32_opt(theme.weather_temperature_font_size, scale);
-        theme.weather_temperature_letter_spacing =
-            scale_u32_opt(theme.weather_temperature_letter_spacing, scale);
-        theme.weather_temperature_position = theme
-            .weather_temperature_position
-            .map(|position| scale_position(position, scale));
-        theme.weather_location_font_size = scale_u32_opt(theme.weather_location_font_size, scale);
-        theme.weather_location_position = theme
-            .weather_location_position
-            .map(|position| scale_position(position, scale));
+        theme.weather.scale_for_render(scale);
         theme.now_playing.scale_for_render(scale);
         theme
     }
@@ -338,42 +309,6 @@ fn resolve_battery_position(
         config.visuals.battery_position(),
         HorizontalAlign::Right,
         VerticalAlign::Top,
-        named_backdrops,
-    )
-}
-
-fn resolve_weather_icon_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.weather_icon_position(),
-        HorizontalAlign::Left,
-        VerticalAlign::Bottom,
-        named_backdrops,
-    )
-}
-
-fn resolve_weather_temperature_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.weather_temperature_position(),
-        HorizontalAlign::Left,
-        VerticalAlign::Bottom,
-        named_backdrops,
-    )
-}
-
-fn resolve_weather_location_position(
-    config: &AppConfig,
-    named_backdrops: &HashMap<String, usize>,
-) -> Option<WidgetPosition> {
-    resolve_position(
-        config.visuals.weather_location_position(),
-        HorizontalAlign::Left,
-        VerticalAlign::Bottom,
         named_backdrops,
     )
 }
@@ -568,10 +503,6 @@ impl ShellTheme {
         let (backdrops, named_backdrops) = resolve_backdrops(config);
         let layers = resolve_layers(config, &named_backdrops);
         let keyboard_position = resolve_keyboard_position(config, &named_backdrops);
-        let weather_icon_position = resolve_weather_icon_position(config, &named_backdrops);
-        let weather_temperature_position =
-            resolve_weather_temperature_position(config, &named_backdrops);
-        let weather_location_position = resolve_weather_location_position(config, &named_backdrops);
         let power_status_position = resolve_power_status_position(config, &named_backdrops);
         let power_buttons = [
             resolve_power_button(config, PowerAction::Suspend, &named_backdrops),
@@ -626,38 +557,7 @@ impl ShellTheme {
             backdrops,
             layers,
             grid,
-            weather_enabled: config.visuals.weather_enabled(),
-            weather_icon_enabled: config.visuals.weather_icon_enabled(),
-            weather_icon_position,
-            weather_icon_size: config.visuals.weather_icon_size().map(i32::from),
-            weather_icon_opacity: config.visuals.weather_icon_opacity(),
-            weather_temperature_enabled: config.visuals.weather_temperature_enabled(),
-            weather_temperature_color: config.visuals.weather_temperature_color().map(to_color),
-            weather_temperature_font_family: config
-                .visuals
-                .weather_temperature_font_family()
-                .map(str::to_owned),
-            weather_temperature_font_weight: config.visuals.weather_temperature_font_weight(),
-            weather_temperature_font_style: config.visuals.weather_temperature_font_style(),
-            weather_temperature_letter_spacing: config
-                .visuals
-                .weather_temperature_letter_spacing()
-                .map(u32::from),
-            weather_temperature_font_size: config
-                .visuals
-                .weather_temperature_font_size()
-                .map(u32::from),
-            weather_temperature_position,
-            weather_location_enabled: config.visuals.weather_location_enabled(),
-            weather_location_color: config.visuals.weather_location_color().map(to_color),
-            weather_location_font_family: config
-                .visuals
-                .weather_location_font_family()
-                .map(str::to_owned),
-            weather_location_font_weight: config.visuals.weather_location_font_weight(),
-            weather_location_font_style: config.visuals.weather_location_font_style(),
-            weather_location_font_size: config.visuals.weather_location_font_size().map(u32::from),
-            weather_location_position,
+            weather: WeatherTheme::from_config(config, &named_backdrops),
             now_playing: NowPlayingTheme::from_config(config, &named_backdrops),
             foreground: to_color(config.visuals.foreground_color()),
             muted: to_color(config.visuals.muted_color()),

@@ -502,29 +502,29 @@ impl RenderContext<'_> {
                     hidden_reveal_hint
                 },
                 status_style,
-                weather_temperature_text: if self.theme.weather_enabled
-                    && self.theme.weather_temperature_enabled
+                weather_temperature_text: if self.theme.weather.enabled
+                    && self.theme.weather.temperature_enabled
                 {
                     weather.map(|weather| weather.temperature_text.as_str())
                 } else {
                     None
                 },
                 weather_temperature_style,
-                weather_location_text: if self.theme.weather_enabled
-                    && self.theme.weather_location_enabled
+                weather_location_text: if self.theme.weather.enabled
+                    && self.theme.weather.location_enabled
                 {
                     weather.map(|weather| weather.location.as_str())
                 } else {
                     None
                 },
                 weather_location_style,
-                weather_icon: if self.theme.weather_enabled && self.theme.weather_icon_enabled {
+                weather_icon: if self.theme.weather.enabled && self.theme.weather.icon_enabled {
                     weather.map(|weather| weather.icon)
                 } else {
                     None
                 },
-                weather_icon_size: self.theme.weather_icon_size,
-                weather_icon_opacity: self.theme.weather_icon_opacity,
+                weather_icon_size: self.theme.weather.icon_size,
+                weather_icon_opacity: self.theme.weather.icon_opacity,
                 metrics,
             })
     }
