@@ -8,11 +8,9 @@ use std::{
 use tokio::{net::UnixListener, sync::mpsc::unbounded_channel};
 
 use super::ActiveLock;
+use crate::adapters::{ownership, process::CurtainHandle};
 use crate::app::runtime::state::reset_runtime;
-use crate::{
-    adapters::{ownership, process::CurtainHandle},
-    domain::auth::{AuthPolicy, AuthState},
-};
+use veila_auth::policy::{AuthPolicy, AuthState};
 
 pub(crate) struct Fixture {
     pub(crate) root: PathBuf,
@@ -74,7 +72,7 @@ async fn reset_releases_all_resources_but_keeps_unresolved_ownership() {
     let mut fixture = Fixture::new();
     let sender = fixture.active.as_ref().expect("active").auth_sender.clone();
     let policy = AuthPolicy::default();
-    let mut auth_state = AuthState::after_daemon_recovery(policy, Instant::now());
+    let mut auth_state = AuthState::after_recovery(policy, Instant::now());
     reset_runtime(&mut fixture.active, policy, &mut auth_state);
     assert!(fixture.active.is_none());
     assert!(sender.is_closed());
@@ -83,7 +81,7 @@ async fn reset_releases_all_resources_but_keeps_unresolved_ownership() {
     assert!(fixture.root.join("owner.json").exists());
     assert!(matches!(
         auth_state.admit(Instant::now()),
-        crate::domain::auth::AuthAdmission::Allowed
+        veila_auth::policy::AuthAdmission::Allowed
     ));
     reset_runtime(&mut fixture.active, policy, &mut auth_state);
     assert!(fixture.root.join("owner.json").exists());

@@ -1,7 +1,5 @@
-use crate::{
-    adapters::logind,
-    domain::{auth::AuthPolicy, lock_state::LockState},
-};
+use crate::{adapters::logind, domain::lock_state::LockState};
+use veila_auth::policy::AuthPolicy;
 
 use super::super::{runtime::deactivate_lock, state::RuntimeSlots};
 

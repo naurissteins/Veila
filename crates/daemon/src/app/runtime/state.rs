@@ -6,13 +6,11 @@ use tokio::{
     sync::mpsc::UnboundedReceiver,
 };
 
-use crate::{
-    adapters::{
-        ipc, logind,
-        process::{CurtainExit, CurtainHandle},
-    },
-    domain::auth::{AuthPolicy, AuthState},
+use crate::adapters::{
+    ipc, logind,
+    process::{CurtainExit, CurtainHandle},
 };
+use veila_auth::policy::{AuthPolicy, AuthState};
 
 use super::{active::ActiveLock, auth::AuthResult};
 

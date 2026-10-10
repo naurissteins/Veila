@@ -7,10 +7,10 @@ use std::{ffi::CString, future::Future};
 
 use anyhow::{Context, Result};
 use nix::sys::prctl;
+use veila_auth::PAM_HELPER_PROCESS_NAME;
 use veila_curtain::CurtainOptions;
 use veila_daemon::{
-    CURTAIN_PROCESS_NAME, ControlOptions, DAEMON_PROCESS_NAME, DaemonOptions,
-    PAM_HELPER_PROCESS_NAME, PREWARM_PROCESS_NAME,
+    CURTAIN_PROCESS_NAME, ControlOptions, DAEMON_PROCESS_NAME, DaemonOptions, PREWARM_PROCESS_NAME,
 };
 
 use cli::{Invocation, Mode};
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         }
         Mode::PamHelper => {
             harden_process(PAM_HELPER_PROCESS_NAME)?;
-            veila_daemon::run_pam_helper()
+            Ok(veila_auth::run_helper()?)
         }
         Mode::Curtain => {
             harden_process(CURTAIN_PROCESS_NAME)?;

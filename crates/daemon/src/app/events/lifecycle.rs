@@ -7,8 +7,9 @@ use crate::{
         ownership,
         process::{self, CurtainExit},
     },
-    domain::{auth::AuthPolicy, lock_state::LockState},
+    domain::lock_state::LockState,
 };
+use veila_auth::policy::AuthPolicy;
 
 use super::super::{runtime::reset_runtime, state::RuntimeSlots};
 
@@ -70,7 +71,7 @@ pub(crate) async fn handle_now_playing_update(
 mod tests {
     use super::*;
     use crate::app::runtime::Fixture;
-    use crate::domain::auth::AuthState;
+    use veila_auth::policy::AuthState;
 
     #[tokio::test]
     async fn active_curtain_exit_clears_resources_without_authorizing_unlock() {

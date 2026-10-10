@@ -9,11 +9,9 @@ use crate::{
         logind, ownership,
         process::{self, CurtainHandle},
     },
-    domain::{
-        auth::{AuthPolicy, AuthState},
-        lock_state::LockState,
-    },
+    domain::lock_state::LockState,
 };
+use veila_auth::policy::{AuthPolicy, AuthState};
 
 use super::{
     active::ActiveLock,

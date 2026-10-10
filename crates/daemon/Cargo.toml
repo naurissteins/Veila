@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+veila-auth = { path = "../auth" }
 veila-common = { path = "../common" }
 zeroize = { workspace = true }
 veila-renderer = { path = "../renderer" }
@@ -16,7 +17,6 @@ veila-ui = { path = "../ui" }
 anyhow = { workspace = true }
 futures-util = { workspace = true }
 nix = { workspace = true }
-nonstick = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 smithay-client-toolkit = { workspace = true }

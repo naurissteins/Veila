@@ -1,10 +1,6 @@
 use anyhow::Result;
 
-use crate::{
-    DaemonOptions,
-    adapters::{ipc, pam},
-    app,
-};
+use crate::{DaemonOptions, adapters::ipc, app};
 
 pub async fn run_daemon(options: DaemonOptions) -> Result<()> {
     if options.help {
@@ -12,7 +8,7 @@ pub async fn run_daemon(options: DaemonOptions) -> Result<()> {
         return Ok(());
     }
 
-    pam::report_service_selection();
+    veila_auth::report_service_selection();
     let daemon_socket_path = ipc::daemon_socket_path()?;
     let control_listener = ipc::bind_single_instance_listener(&daemon_socket_path).await?;
     app::run(options, control_listener, daemon_socket_path).await

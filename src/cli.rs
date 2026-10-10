@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use veila_daemon::{CURTAIN_SUBCOMMAND, PAM_HELPER_SUBCOMMAND, PREWARM_SUBCOMMAND};
+use veila_auth::PAM_HELPER_SUBCOMMAND;
+use veila_daemon::{CURTAIN_SUBCOMMAND, PREWARM_SUBCOMMAND};
 
 const LEGACY_DAEMON_NAME: &str = "veilad";
 

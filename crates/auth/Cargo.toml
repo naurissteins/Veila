@@ -1,0 +1,19 @@
+[package]
+name = "veila-auth"
+description = "PAM helper, helper protocol, and authentication backoff for Veila"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+veila-common = { path = "../common" }
+nix = { workspace = true }
+nonstick = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+zeroize = { workspace = true }

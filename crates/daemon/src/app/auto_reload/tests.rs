@@ -9,11 +9,9 @@ use veila_common::AppConfig;
 use super::{AppRuntime, AutoReloadTrigger, handle};
 use crate::{
     app::{runtime::Fixture, suspend::SuspendDecision},
-    domain::{
-        auth::{AuthAdmission, AuthState},
-        lock_state::LockState,
-    },
+    domain::lock_state::LockState,
 };
+use veila_auth::policy::{AuthAdmission, AuthState};
 
 const TRIGGERS: [AutoReloadTrigger; 4] = [
     AutoReloadTrigger::Config,
@@ -179,7 +177,7 @@ async fn live_reload_preserves_backoff_in_flight_auth_and_suspend_deadline() {
         runtime.active = fixture.active.take();
         runtime.state = LockState::Locked;
         let now = Instant::now();
-        runtime.auth_state = AuthState::after_daemon_recovery(runtime.auth_policy, now);
+        runtime.auth_state = AuthState::after_recovery(runtime.auth_policy, now);
         runtime.auth_state.start_attempt();
         runtime
             .suspend_state
@@ -221,7 +219,7 @@ async fn failed_live_reload_keeps_active_resources_and_records_error_for_every_t
         let mut runtime = runtime(&fixture, true);
         runtime.active = fixture.active.take();
         runtime.state = LockState::Locked;
-        runtime.auth_state = AuthState::after_daemon_recovery(runtime.auth_policy, Instant::now());
+        runtime.auth_state = AuthState::after_recovery(runtime.auth_policy, Instant::now());
         fs::write(fixture.root.join("config.toml"), config(true, 2000)).expect("edit");
         let before = SystemTime::now()
             .duration_since(UNIX_EPOCH)

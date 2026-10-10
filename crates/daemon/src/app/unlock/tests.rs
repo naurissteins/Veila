@@ -1,6 +1,7 @@
 use super::*;
-use crate::{app::runtime::Fixture, domain::auth::AuthAdmission};
+use crate::app::runtime::Fixture;
 use tokio::{io::AsyncReadExt, net::UnixListener};
+use veila_auth::policy::AuthAdmission;
 use veila_common::{AppConfig, LoadedConfig};
 
 fn runtime(fixture: &mut Fixture) -> AppRuntime {
