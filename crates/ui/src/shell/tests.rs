@@ -522,7 +522,7 @@ fn delayed_pending_state_becomes_visible_after_timeout() {
 }
 
 #[test]
-fn pending_state_waits_for_status_delay_before_animation() {
+fn pending_state_schedules_spinner_before_status_delay() {
     let mut shell = ShellState::default();
 
     assert_eq!(
@@ -532,7 +532,7 @@ fn pending_state_waits_for_status_delay_before_animation() {
 
     assert!(matches!(
         shell.next_animation_in(Instant::now()),
-        Some(timeout) if timeout <= Duration::from_secs(1)
+        Some(timeout) if timeout <= Duration::from_millis(80)
     ));
     assert_ne!(
         shell.advance_animated_state_update(),

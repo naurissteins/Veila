@@ -5,15 +5,22 @@ use super::{ShellAnimationUpdate, ShellState, ShellStatus, avatar::current_retry
 const DEFAULT_NOW_PLAYING_FADE_DURATION_MS: u64 = 450;
 const ACTIVE_ANIMATION_POLL_INTERVAL_MS: u64 = 80;
 
+#[cfg(test)]
+mod tests;
+
 impl ShellState {
     pub fn advance_animated_state(&mut self) -> bool {
         self.advance_animated_state_update() != ShellAnimationUpdate::None
     }
 
     pub fn advance_animated_state_update(&mut self) -> ShellAnimationUpdate {
+        self.advance_animated_state_at(Instant::now())
+    }
+
+    fn advance_animated_state_at(&mut self, now: Instant) -> ShellAnimationUpdate {
         let header_changed =
             (self.theme.clock.enabled || self.theme.date.enabled) && self.clock.refresh();
-        let indicators_changed = self.clear_expired_power_confirmation(Instant::now());
+        let indicators_changed = self.clear_expired_power_confirmation(now);
         let fade_duration = self.now_playing_fade_duration();
         let mut media_changed = false;
         if let Some(transition) = self.now_playing_transition.as_mut() {
@@ -39,25 +46,17 @@ impl ShellState {
             ..
         } = &mut self.status
         {
-            let now = Instant::now();
-            if !*shown {
-                if now < *visible_after {
-                    return widget_update;
-                }
+            let status_became_visible = !*shown && now >= *visible_after;
+            if status_became_visible {
                 *shown = true;
-                *displayed_phase = spinner_phase(*started_at, now);
-                return if widget_update != ShellAnimationUpdate::None {
-                    ShellAnimationUpdate::Full
-                } else {
-                    ShellAnimationUpdate::AuthDirty
-                };
             }
+            // The spinner is visible immediately, independently of the delayed status text.
             let phase = spinner_phase(*started_at, now);
             let phase_changed = phase != *displayed_phase;
             *displayed_phase = phase;
             return if widget_update != ShellAnimationUpdate::None {
                 ShellAnimationUpdate::Full
-            } else if phase_changed {
+            } else if phase_changed || status_became_visible {
                 ShellAnimationUpdate::AuthDirty
             } else {
                 ShellAnimationUpdate::None
@@ -104,20 +103,20 @@ impl ShellState {
         });
         let pending = match self.status {
             ShellStatus::Pending {
-                visible_after,
-                shown: false,
-                ..
-            } => Some(visible_after.saturating_duration_since(now)),
-            ShellStatus::Pending {
                 started_at,
-                shown: true,
+                visible_after,
+                shown,
                 ..
             } => {
                 let phase_nanos = u128::from(ACTIVE_ANIMATION_POLL_INTERVAL_MS) * 1_000_000;
                 let elapsed_nanos = now.saturating_duration_since(started_at).as_nanos();
-                Some(Duration::from_nanos(
-                    (phase_nanos - elapsed_nanos % phase_nanos) as u64,
-                ))
+                let next_phase =
+                    Duration::from_nanos((phase_nanos - elapsed_nanos % phase_nanos) as u64);
+                Some(if shown {
+                    next_phase
+                } else {
+                    next_phase.min(visible_after.saturating_duration_since(now))
+                })
             }
             _ => None,
         };
