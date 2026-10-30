@@ -4,10 +4,11 @@ use crate::{
         runtime::{Fixture, LockActivation, monitor},
         state::AppRuntime,
     },
-    domain::{auth::AuthAdmission, lock_state::LockState},
+    domain::lock_state::LockState,
 };
 use std::{future::pending, time::Instant};
 use tokio::{net::UnixStream, time::Duration};
+use veila_auth::policy::AuthAdmission;
 use veila_common::{
     AppConfig, LoadedConfig,
     ipc::{DaemonControlResponse, LockLatencyReport},

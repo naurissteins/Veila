@@ -7,10 +7,8 @@ use veila_common::LoadedConfig;
 use veila_common::config::BackgroundSlideshowOrder;
 use veila_common::ipc::{LatencyReportMode, LockPowerStatusSnapshot};
 
-use crate::domain::{
-    auth::{AuthPolicy, AuthState},
-    lock_state::LockState,
-};
+use crate::domain::lock_state::LockState;
+use veila_auth::policy::{AuthPolicy, AuthState};
 
 use super::{
     battery::BatteryHandle,

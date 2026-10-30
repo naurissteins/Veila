@@ -2051,8 +2051,23 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "veila-auth",
  "veila-curtain",
  "veila-daemon",
+]
+
+[[package]]
+name = "veila-auth"
+version = "0.4.4"
+dependencies = [
+ "nix",
+ "nonstick",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "veila-common",
+ "zeroize",
 ]
 
 [[package]]
@@ -2093,7 +2108,6 @@ dependencies = [
  "anyhow",
  "futures-util",
  "nix",
- "nonstick",
  "serde",
  "serde_json",
  "smithay-client-toolkit",
@@ -2101,6 +2115,7 @@ dependencies = [
  "tokio",
  "tracing",
  "ureq",
+ "veila-auth",
  "veila-common",
  "veila-renderer",
  "veila-ui",

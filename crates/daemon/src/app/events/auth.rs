@@ -20,7 +20,7 @@ pub(crate) async fn handle_auth_message(
 }
 
 pub(crate) fn handle_auth_result(
-    auth_state: &mut crate::domain::auth::AuthState,
+    auth_state: &mut veila_auth::policy::AuthState,
     result: AuthResult,
 ) -> Option<AuthResult> {
     match result {

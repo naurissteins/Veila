@@ -6,8 +6,9 @@ use veila_common::ipc::CurtainLockState;
 
 use crate::{
     adapters::{ipc, ownership, process::CurtainHandle},
-    domain::{auth::AuthState, lock_state::LockState},
+    domain::lock_state::LockState,
 };
+use veila_auth::policy::AuthState;
 
 use super::{runtime::ActiveLock, state::AppRuntime};
 
@@ -93,7 +94,7 @@ pub(super) async fn adopt_surviving_curtain(session: &str, runtime: &mut AppRunt
         auth_sender,
         auth_results,
     });
-    runtime.auth_state = AuthState::after_daemon_recovery(runtime.auth_policy, Instant::now());
+    runtime.auth_state = AuthState::after_recovery(runtime.auth_policy, Instant::now());
     runtime.state = LockState::Locked;
     runtime.suspend_state.arm(Instant::now());
     tracing::warn!(pid, "adopted surviving locked curtain after daemon restart");

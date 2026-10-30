@@ -12,8 +12,8 @@ use veila_common::{
 use crate::{
     adapters::{ipc, logind, pam},
     app::suspend::LockedSuspendState,
-    domain::auth::{AuthAdmission, AuthState},
 };
+use veila_auth::policy::{AuthAdmission, AuthState};
 
 const AUTH_RESPONSE_WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 

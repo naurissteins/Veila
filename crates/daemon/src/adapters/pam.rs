@@ -1,66 +1,27 @@
-mod conversation;
-mod protocol;
-pub(crate) mod service;
-
-use std::{process::Stdio, time::Duration};
+use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow, bail};
-use nix::{
-    sys::{prctl, signal::Signal},
-    unistd::getppid,
+use serde::{Serialize, de::DeserializeOwned};
+use tokio::{
+    io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    net::UnixStream,
+    process::Command,
+    time::timeout,
 };
-use tokio::{io::BufReader, net::UnixStream, process::Command, time::timeout};
+use veila_auth::protocol::{
+    self, FrameBuffer, HelperMessage, HelperRequest, INITIAL_DEADLINE, INTERACTIVE_DEADLINE,
+    PROMPT_DEADLINE, WRITE_DEADLINE,
+};
 use veila_common::{
     Secret,
     ipc::{ClientMessage, DaemonMessage},
 };
 
-use super::{
-    ipc,
-    process::{PAM_HELPER_PROCESS_NAME, PAM_HELPER_SUBCOMMAND},
-};
-use protocol::{HelperMessage, HelperRequest};
-
-const INITIAL_DEADLINE: Duration = Duration::from_secs(30);
-const INTERACTIVE_DEADLINE: Duration = Duration::from_secs(120);
-const PROMPT_DEADLINE: Duration = Duration::from_secs(60);
-const WRITE_DEADLINE: Duration = Duration::from_secs(2);
+use super::ipc;
 
 pub struct PamReply {
     pub accepted: bool,
     pub message: Option<String>,
-}
-
-pub(crate) fn report_service_selection() {
-    #[cfg(debug_assertions)]
-    if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
-        tracing::warn!(service, "debug PAM service override is active");
-        return;
-    }
-
-    match service::selected_service() {
-        Some(selected) if selected.fallback => tracing::warn!(
-            service = selected.name,
-            "Veila PAM service is missing; using fallback"
-        ),
-        Some(_) => {}
-        None => tracing::error!(
-            "no Veila PAM service or supported fallback exists in /etc/pam.d; password authentication is unavailable"
-        ),
-    }
-}
-
-pub fn run_helper() -> Result<()> {
-    let expected_parent = std::env::var("VEILA_PAM_PARENT_PID")
-        .context("PAM helper parent identity is missing")?
-        .parse::<i32>()
-        .context("invalid PAM helper parent identity")?;
-    prctl::set_pdeathsig(Signal::SIGKILL)
-        .context("failed to arm PAM helper parent-death signal")?;
-    if getppid().as_raw() != expected_parent {
-        bail!("PAM helper daemon exited before startup");
-    }
-    conversation::run_helper()
 }
 
 pub async fn authenticate(
@@ -69,13 +30,7 @@ pub async fn authenticate(
     attempt_id: u64,
     stream: &mut UnixStream,
 ) -> Result<PamReply> {
-    let mut child = Command::new("/proc/self/exe")
-        .arg0(PAM_HELPER_PROCESS_NAME)
-        .arg(PAM_HELPER_SUBCOMMAND)
-        .env("VEILA_PAM_PARENT_PID", std::process::id().to_string())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+    let mut child = Command::from(veila_auth::helper_command())
         .kill_on_drop(true)
         .spawn()
         .context("failed to start PAM helper")?;
@@ -136,7 +91,7 @@ async fn exchange(
         .ok_or_else(|| anyhow!("PAM helper stdout missing"))?;
     timeout(
         WRITE_DEADLINE,
-        protocol::write_async(
+        write_frame(
             &mut input,
             &HelperRequest::Start {
                 username: username.to_owned(),
@@ -161,7 +116,7 @@ async fn exchange(
         if remaining.is_zero() {
             bail!("PAM helper exceeded authentication deadline");
         }
-        let message: HelperMessage = timeout(remaining, protocol::read_async(&mut output))
+        let message: HelperMessage = timeout(remaining, read_frame(&mut output))
             .await
             .context("PAM helper exceeded authentication deadline")??
             .ok_or_else(|| anyhow!("PAM helper closed without verdict"))?;
@@ -212,10 +167,7 @@ async fn exchange(
                     {
                         timeout(
                             WRITE_DEADLINE,
-                            protocol::write_async(
-                                &mut input,
-                                &HelperRequest::Response { sequence, secret },
-                            ),
+                            write_frame(&mut input, &HelperRequest::Response { sequence, secret }),
                         )
                         .await
                         .context("PAM response write timed out")??;
@@ -226,7 +178,7 @@ async fn exchange(
                     } if id == attempt_id && answer == sequence => {
                         let _ = timeout(
                             WRITE_DEADLINE,
-                            protocol::write_async(&mut input, &HelperRequest::Cancel { sequence }),
+                            write_frame(&mut input, &HelperRequest::Cancel { sequence }),
                         )
                         .await;
                         bail!("authentication cancelled");
@@ -268,8 +220,45 @@ async fn exchange(
     }
 }
 
+async fn read_frame<R: AsyncBufRead + Unpin, T: DeserializeOwned>(
+    reader: &mut R,
+) -> Result<Option<T>> {
+    let mut frame = FrameBuffer::default();
+    loop {
+        let available = reader
+            .fill_buf()
+            .await
+            .context("failed to read PAM helper frame")?;
+        if available.is_empty() {
+            return Ok(frame.end_of_input()?);
+        }
+        let (consumed, complete) = frame.push(available)?;
+        reader.consume(consumed);
+        if complete {
+            return Ok(Some(frame.decode()?));
+        }
+    }
+}
+
+async fn write_frame<W: AsyncWrite + Unpin, T: Serialize>(
+    writer: &mut W,
+    message: &T,
+) -> Result<()> {
+    let frame = protocol::encode_frame(message)?;
+    writer
+        .write_all(&frame)
+        .await
+        .context("failed to write PAM helper frame")?;
+    writer
+        .flush()
+        .await
+        .context("failed to flush PAM helper frame")
+}
+
 #[cfg(test)]
 mod tests {
+    use std::process::Stdio;
+
     use super::*;
 
     #[tokio::test]

@@ -14,10 +14,8 @@ use super::{
     runtime::{LockActivation, activate_lock},
     state::AppRuntime,
 };
-use crate::{
-    adapters::logind,
-    domain::{auth::AuthState, lock_state::LockState},
-};
+use crate::{adapters::logind, domain::lock_state::LockState};
+use veila_auth::policy::AuthState;
 
 pub(super) enum Milestone {
     Secured(Box<LockActivation>),

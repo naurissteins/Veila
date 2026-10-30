@@ -58,8 +58,8 @@ impl AuthState {
         }
     }
 
-    pub fn after_daemon_recovery(policy: AuthPolicy, now: Instant) -> Self {
-        // the old daemon's attempt count is unavailable, so resume at the policy ceiling
+    pub fn after_recovery(policy: AuthPolicy, now: Instant) -> Self {
+        // the previous process's attempt count is unavailable, so resume at the policy ceiling
         Self {
             failed_attempts: 0,
             backoff_level: u8::MAX,
@@ -180,10 +180,10 @@ mod tests {
     }
 
     #[test]
-    fn recovering_daemon_does_not_reset_password_backoff() {
+    fn recovery_does_not_reset_password_backoff() {
         let policy = AuthPolicy::new(Duration::from_secs(1), Duration::from_secs(12));
         let now = Instant::now();
-        let mut state = AuthState::after_daemon_recovery(policy, now);
+        let mut state = AuthState::after_recovery(policy, now);
 
         assert_eq!(state.failed_attempts(), 0);
         assert_eq!(state.next_failed_attempts(), 1);

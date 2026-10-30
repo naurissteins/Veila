@@ -8,7 +8,6 @@ mod wayland;
 use std::path::Path;
 
 use super::local_build_info;
-use crate::adapters::pam;
 
 pub(super) async fn print_doctor_report(config_path: Option<&Path>, session_id: Option<&str>) {
     let mut summary = DoctorSummary::default();
@@ -154,7 +153,7 @@ fn check_pam(summary: &mut DoctorSummary) {
         return;
     }
 
-    match pam::service::selected_service() {
+    match veila_auth::selected_service() {
         Some(service) => {
             println!("pam.service={}", service.name);
             println!("pam.service_path=/etc/pam.d/{}", service.name);

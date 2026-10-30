@@ -4,17 +4,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{Result, bail};
 use nonstick::{
     AuthnFlags, ConversationAdapter, ErrorCode, Result as PamResult, Transaction,
     TransactionBuilder,
 };
 use veila_common::Secret;
 
-use super::{
-    protocol::{self, HelperMessage, HelperRequest},
-    service,
-};
+use super::{HelperError, pam_service};
+use crate::protocol::{self, HelperMessage, HelperRequest};
 
 struct ConversationState {
     input: Box<dyn BufRead + Send>,
@@ -49,7 +46,7 @@ impl InteractiveConversation {
         let text = protocol::sanitize_text(&request.to_string_lossy());
         // Each later prompt consumes exactly one fresh answer from the curtain.
         let ConversationState { input, output, .. } = &mut *state;
-        protocol::write_sync(
+        protocol::write_frame(
             output,
             &HelperMessage::Challenge {
                 sequence,
@@ -58,7 +55,7 @@ impl InteractiveConversation {
             },
         )
         .map_err(|_| ErrorCode::ConversationError)?;
-        match protocol::read_sync::<_, HelperRequest>(input)
+        match protocol::read_frame::<_, HelperRequest>(input)
             .map_err(|_| ErrorCode::ConversationError)?
         {
             Some(HelperRequest::Response {
@@ -84,7 +81,7 @@ impl InteractiveConversation {
         }
         state.notices += 1;
         if state.notices <= protocol::MAX_NOTICES {
-            let _ = protocol::write_sync(&mut state.output, &HelperMessage::Notice { text });
+            let _ = protocol::write_frame(&mut state.output, &HelperMessage::Notice { text });
         }
     }
 }
@@ -106,31 +103,13 @@ impl ConversationAdapter for InteractiveConversation {
     }
 }
 
-fn pam_service() -> Result<String> {
-    #[cfg(debug_assertions)]
-    if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
-        tracing::warn!(service, "using debug PAM service override");
-        return Ok(service);
-    }
-    let Some(selected) = service::selected_service() else {
-        bail!("no Veila PAM service or supported fallback exists in /etc/pam.d");
-    };
-    if selected.fallback {
-        tracing::warn!(
-            service = selected.name,
-            "Veila PAM service missing; using fallback"
-        );
-    }
-    Ok(selected.name.to_owned())
-}
-
-pub(super) fn run_helper() -> Result<()> {
+pub(super) fn run() -> Result<(), HelperError> {
     let mut input = BufReader::new(std::io::stdin());
-    let Some(HelperRequest::Start { username, secret }) = protocol::read_sync(&mut input)? else {
-        bail!("PAM helper expected start request");
+    let Some(HelperRequest::Start { username, secret }) = protocol::read_frame(&mut input)? else {
+        return Err(HelperError::InvalidStart);
     };
     if username.is_empty() || username.len() > 256 || !protocol::valid_secret(&secret) {
-        bail!("invalid PAM helper start request");
+        return Err(HelperError::InvalidStart);
     }
     let last_message = Arc::new(Mutex::new(None));
     let state = Arc::new(Mutex::new(ConversationState {
@@ -144,18 +123,14 @@ pub(super) fn run_helper() -> Result<()> {
         state: Arc::clone(&state),
         last_message: Arc::clone(&last_message),
     };
-    let service = match pam_service() {
-        Ok(service) => service,
-        Err(error) => {
-            tracing::error!("PAM service selection failed: {error:#}");
-            return protocol::write_sync(
-                &mut std::io::stdout(),
-                &HelperMessage::Verdict {
-                    accepted: false,
-                    message: Some(String::from("PAM service unavailable; run veila doctor")),
-                },
-            );
-        }
+    let Some(service) = pam_service() else {
+        return Ok(protocol::write_frame(
+            &mut std::io::stdout(),
+            &HelperMessage::Verdict {
+                accepted: false,
+                message: Some(String::from("PAM service unavailable; run veila doctor")),
+            },
+        )?);
     };
     let result = TransactionBuilder::new_with_service(&service)
         .username(&username)
@@ -165,13 +140,13 @@ pub(super) fn run_helper() -> Result<()> {
     let notice_overflow = state
         .lock()
         .map_or(true, |state| state.notices > protocol::MAX_NOTICES);
-    protocol::write_sync(
+    Ok(protocol::write_frame(
         &mut std::io::stdout(),
         &HelperMessage::Verdict {
             accepted: result.is_ok() && !notice_overflow,
             message,
         },
-    )
+    )?)
 }
 
 #[cfg(test)]
@@ -198,7 +173,7 @@ mod tests {
     ) -> (InteractiveConversation, Arc<Mutex<Vec<u8>>>) {
         let mut input = Vec::new();
         for response in responses {
-            protocol::write_sync(&mut input, &response).expect("encode response");
+            protocol::write_frame(&mut input, &response).expect("encode response");
         }
         let output = Arc::new(Mutex::new(Vec::new()));
         (

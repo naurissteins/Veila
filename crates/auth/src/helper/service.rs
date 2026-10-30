@@ -1,12 +1,12 @@
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct PamService {
-    pub(crate) name: &'static str,
-    pub(crate) fallback: bool,
+pub struct PamService {
+    pub name: &'static str,
+    pub fallback: bool,
 }
 
-pub(crate) fn selected_service() -> Option<PamService> {
+pub fn selected_service() -> Option<PamService> {
     select_service_at(Path::new("/etc/pam.d"))
 }
 

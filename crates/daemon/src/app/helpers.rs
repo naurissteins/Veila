@@ -18,14 +18,8 @@ use super::{
     watch::effective_auto_reload_debounce_ms,
     weather::WeatherHandle,
 };
-use crate::{
-    DaemonOptions,
-    adapters::process,
-    domain::{
-        auth::{AuthPolicy, AuthState},
-        lock_state::LockState,
-    },
-};
+use crate::{DaemonOptions, adapters::process, domain::lock_state::LockState};
+use veila_auth::policy::{AuthPolicy, AuthState};
 
 pub(super) fn current_username() -> Result<String> {
     let uid = Uid::current();
