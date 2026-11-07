@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
+pub mod adapters;
 mod app;
+mod integrations;
 mod latency;
 pub mod logging;
 mod options;
 mod record;
-mod snapshots;
+pub mod services;
 mod spawn;
 pub use options::LockOptions;
 

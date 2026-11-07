@@ -16,14 +16,14 @@ const FALLBACK_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const LOG_TARGET: &str = module_path!();
 
 #[derive(Clone)]
-pub(super) struct NowPlayingHandle {
+pub struct NowPlayingHandle {
     config_tx: watch::Sender<NowPlayingConfig>,
     snapshot_rx: watch::Receiver<Option<NowPlayingSnapshot>>,
     playback_active_rx: watch::Receiver<bool>,
 }
 
 impl NowPlayingHandle {
-    pub(super) fn spawn(config: &NowPlayingConfig) -> Self {
+    pub fn spawn(config: &NowPlayingConfig) -> Self {
         let (config_tx, config_rx) = watch::channel(config.clone());
         let (snapshot_tx, snapshot_rx) = watch::channel(None);
         let (playback_active_tx, playback_active_rx) = watch::channel(false);
@@ -39,19 +39,19 @@ impl NowPlayingHandle {
         }
     }
 
-    pub(super) fn current_snapshot(&self) -> Option<NowPlayingSnapshot> {
+    pub fn current_snapshot(&self) -> Option<NowPlayingSnapshot> {
         self.snapshot_rx.borrow().clone()
     }
 
-    pub(super) fn subscribe(&self) -> watch::Receiver<Option<NowPlayingSnapshot>> {
+    pub fn subscribe(&self) -> watch::Receiver<Option<NowPlayingSnapshot>> {
         self.snapshot_rx.clone()
     }
 
-    pub(super) fn currently_playing(&self) -> bool {
+    pub fn currently_playing(&self) -> bool {
         *self.playback_active_rx.borrow()
     }
 
-    pub(super) fn update_config(&self, config: &NowPlayingConfig) {
+    pub fn update_config(&self, config: &NowPlayingConfig) {
         let _ = self.config_tx.send(config.clone());
     }
 }

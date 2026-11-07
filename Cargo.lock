@@ -2036,10 +2036,10 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "ureq",
  "veila-auth",
  "veila-common",
  "veila-renderer",
+ "veila-session",
  "veila-ui",
  "zbus",
  "zeroize",
@@ -2067,11 +2067,16 @@ name = "veila-session"
 version = "0.4.4"
 dependencies = [
  "anyhow",
+ "futures-util",
  "nix",
  "serde",
  "serde_json",
+ "time",
+ "tokio",
  "tracing",
+ "ureq",
  "veila-common",
+ "zbus",
 ]
 
 [[package]]

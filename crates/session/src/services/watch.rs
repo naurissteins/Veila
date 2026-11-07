@@ -14,7 +14,7 @@ const MIN_AUTO_RELOAD_DEBOUNCE_MS: u64 = 250;
 const MAX_AUTO_RELOAD_DEBOUNCE_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AutoReloadTrigger {
+pub enum AutoReloadTrigger {
     Config,
     Include,
     Theme,
@@ -65,7 +65,7 @@ fn file_content_hash(path: &Path) -> Option<u64> {
 }
 
 #[derive(Debug)]
-pub(super) struct AutoReloadWatcher {
+pub struct AutoReloadWatcher {
     config_path: Option<PathBuf>,
     config_stamp: Option<FileStamp>,
     wallpaper_path: Option<PathBuf>,
@@ -78,7 +78,7 @@ pub(super) struct AutoReloadWatcher {
 }
 
 impl AutoReloadWatcher {
-    pub(super) fn new(config_path_override: Option<&Path>, loaded_config: &LoadedConfig) -> Self {
+    pub fn new(config_path_override: Option<&Path>, loaded_config: &LoadedConfig) -> Self {
         let mut watcher = Self {
             config_path: None,
             config_stamp: None,
@@ -94,7 +94,7 @@ impl AutoReloadWatcher {
         watcher
     }
 
-    pub(super) fn poll(
+    pub fn poll(
         &mut self,
         config_path_override: Option<&Path>,
         loaded_config: &LoadedConfig,
@@ -159,7 +159,7 @@ impl AutoReloadWatcher {
         }
     }
 
-    pub(super) fn is_pending(&self) -> bool {
+    pub fn is_pending(&self) -> bool {
         self.pending.is_some()
     }
 
@@ -198,7 +198,7 @@ impl AutoReloadWatcher {
     }
 }
 
-pub(super) fn effective_auto_reload_debounce_ms(loaded_config: &LoadedConfig) -> u64 {
+pub fn effective_auto_reload_debounce_ms(loaded_config: &LoadedConfig) -> u64 {
     loaded_config
         .config
         .lock
@@ -250,3 +250,23 @@ struct WatchedFile {
 mod regression_tests;
 #[cfg(test)]
 mod tests;
+
+impl AutoReloadTrigger {
+    pub fn source(self) -> &'static str {
+        match self {
+            Self::Config => "config-change",
+            Self::Include => "include-change",
+            Self::Theme => "theme-change",
+            Self::Wallpaper => "wallpaper-change",
+        }
+    }
+
+    pub fn change_description(self) -> &'static str {
+        match self {
+            Self::Config => "config file change",
+            Self::Include => "include file change",
+            Self::Theme => "theme file change",
+            Self::Wallpaper => "wallpaper change",
+        }
+    }
+}

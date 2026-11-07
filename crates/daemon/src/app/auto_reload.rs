@@ -9,26 +9,6 @@ use super::{
     watch::{AutoReloadTrigger, effective_auto_reload_debounce_ms},
 };
 
-impl AutoReloadTrigger {
-    fn source(self) -> &'static str {
-        match self {
-            Self::Config => "config-change",
-            Self::Include => "include-change",
-            Self::Theme => "theme-change",
-            Self::Wallpaper => "wallpaper-change",
-        }
-    }
-
-    fn change_description(self) -> &'static str {
-        match self {
-            Self::Config => "config file change",
-            Self::Include => "include file change",
-            Self::Theme => "theme file change",
-            Self::Wallpaper => "wallpaper change",
-        }
-    }
-}
-
 pub(super) async fn handle(
     trigger: AutoReloadTrigger,
     config_path: Option<&Path>,

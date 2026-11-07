@@ -1,5 +1,6 @@
 mod channel;
 mod events;
+mod integrations;
 mod polling;
 mod recovery;
 
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::{os::unix::net::UnixStream, process::Child, time::Instant};
 use veila_common::{
     AppConfig, elapsed_ms, elapsed_us,
-    ipc::{LineAccumulator, LockLatencyReport},
+    ipc::LockLatencyReport,
     session::{self, frame},
 };
 
@@ -33,8 +34,13 @@ pub(crate) struct Running {
     recovery: recovery::Recovery,
     notifications: Vec<std::fs::File>,
     idle_notify: Option<std::fs::File>,
-    snapshots: Option<UnixStream>,
-    snapshot_line: LineAccumulator,
+    integrations: Option<crate::integrations::Handle>,
+    generation: u64,
+    revision: u64,
+    auth_in_flight: bool,
+    activity: Instant,
+    guard_request: u64,
+    guard_ack: Option<(u64, tokio::sync::oneshot::Sender<()>)>,
     pending: Vec<u8>,
     written: usize,
     notified: bool,
@@ -122,8 +128,13 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
         recovery: recovery::Recovery::default(),
         notifications,
         idle_notify,
-        snapshots: None,
-        snapshot_line: LineAccumulator::with_limit(session::MAX_FRAME_BYTES),
+        integrations: None,
+        generation: 0,
+        revision: 0,
+        auth_in_flight: false,
+        activity: Instant::now(),
+        guard_request: 0,
+        guard_ack: None,
         pending: Vec::new(),
         written: 0,
         notified: false,
@@ -135,7 +146,13 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
         config,
     };
     running.launch()?;
-    running.event_loop(signals)
+    let result = running.event_loop(signals);
+    if matches!(result, Ok(session::EXIT_UNLOCKED))
+        && let Some(handle) = &running.integrations
+    {
+        handle.finish();
+    }
+    result
 }
 
 impl Running {

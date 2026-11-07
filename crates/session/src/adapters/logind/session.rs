@@ -7,7 +7,7 @@ use selection::{SessionCandidate, read_snapshot, select_session, validate_sessio
 
 mod selection;
 
-pub(crate) async fn get_session_path(
+pub async fn get_session_path(
     conn: &zbus::Connection,
     session_id_override: Option<&str>,
 ) -> anyhow::Result<OwnedObjectPath> {

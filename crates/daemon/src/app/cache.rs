@@ -1,11 +1,9 @@
-mod private;
-
 use std::time::Duration;
 
 use tokio::{task, time};
 use veila_renderer::cache::{CacheKind, CachePrunePolicy, CachePruneReport, prune_cache};
 
-pub(super) use private::{harden_existing_cache_root, write_private_file};
+pub(super) use veila_session::services::cache::harden_existing_cache_root;
 
 const INITIAL_PRUNE_DELAY: Duration = Duration::from_secs(60);
 const PRUNE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);

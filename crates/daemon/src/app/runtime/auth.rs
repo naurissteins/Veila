@@ -1,9 +1,10 @@
 use std::time::Instant;
+use veila_session::services::power::{request_power_action, validate_power_action};
 
 use anyhow::{Context, Result, anyhow};
 use tokio::{net::UnixStream, sync::mpsc::UnboundedSender};
 use veila_common::{
-    PowerAction, Secret,
+    Secret,
     config::VisualConfig,
     duration_ms, duration_us, elapsed_ms, elapsed_us,
     ipc::{ClientMessage, DaemonMessage, LatencyReportMode},
@@ -116,27 +117,6 @@ pub(crate) async fn handle_client_message(
         }
     }
 
-    Ok(())
-}
-
-fn validate_power_action(visuals: &VisualConfig, action: PowerAction) -> Result<()> {
-    // daemon applies the current config independently of curtain UI visibility
-    if !visuals.power_button_enabled(action) {
-        return Err(anyhow!("power action {action:?} is disabled"));
-    }
-    Ok(())
-}
-
-async fn request_power_action(
-    manager_proxy: &logind::ManagerProxy<'_>,
-    action: PowerAction,
-) -> Result<()> {
-    tracing::info!(?action, "received daemon-mediated power action request");
-    match action {
-        PowerAction::Suspend => manager_proxy.suspend(false).await?,
-        PowerAction::Reboot => manager_proxy.reboot(false).await?,
-        PowerAction::Poweroff => manager_proxy.power_off(false).await?,
-    }
     Ok(())
 }
 

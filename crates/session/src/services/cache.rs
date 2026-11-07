@@ -8,8 +8,8 @@ use std::{
 const PRIVATE_DIR_MODE: u32 = 0o700;
 const PRIVATE_FILE_MODE: u32 = 0o600;
 
-pub(crate) fn harden_existing_cache_root() -> io::Result<()> {
-    let root = veila_renderer::cache::resolve_cache_root(None)
+pub fn harden_existing_cache_root() -> io::Result<()> {
+    let root = veila_common::cache::resolve_root(None)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "cache home is unavailable"))?;
     harden_existing_cache_root_at(&root)
 }
@@ -31,7 +31,7 @@ fn harden_existing_cache_root_at(root: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub(crate) fn write_private_file(path: &Path, contents: &[u8]) -> io::Result<()> {
+pub fn write_private_file(path: &Path, contents: &[u8]) -> io::Result<()> {
     let parent = path
         .parent()
         .ok_or_else(|| io::Error::other("cache path has no parent"))?;

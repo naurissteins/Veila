@@ -5,7 +5,7 @@ use std::{
     process::ExitStatus,
     time::{Duration, Instant},
 };
-use veila_common::{elapsed_ms, elapsed_us, ipc::LineAccumulator, session};
+use veila_common::{elapsed_ms, elapsed_us, session};
 
 #[derive(Default)]
 pub(super) struct Recovery {
@@ -41,6 +41,7 @@ impl Recovery {
 impl Running {
     pub(super) fn launch(&mut self) -> Result<()> {
         self.recovery.retry_at = None;
+        self.generation = self.generation.saturating_add(1);
         let started = Instant::now();
         let log = self
             .log
@@ -119,8 +120,9 @@ impl Running {
         self.locked = false;
         self.ready = false;
         self.report.curtain = None;
-        self.snapshots = None;
-        self.snapshot_line = LineAccumulator::with_limit(session::MAX_FRAME_BYTES);
+        self.auth_in_flight = false;
+        self.guard_ack = None;
+        self.publish_integrations();
         self.pending.clear();
         self.written = 0;
         if self.recovery.confirmed {

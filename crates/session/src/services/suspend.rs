@@ -7,7 +7,7 @@ use veila_common::ipc::LockPowerStatusSnapshot;
 use crate::adapters::logind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum SuspendSkipReason {
+pub enum SuspendSkipReason {
     AuthInFlight,
     OnAcPower,
     NoBatteryDetected,
@@ -15,7 +15,7 @@ pub(super) enum SuspendSkipReason {
 }
 
 impl SuspendSkipReason {
-    pub(super) const fn as_str(self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::AuthInFlight => "auth-in-flight",
             Self::OnAcPower => "on-ac-power",
@@ -26,14 +26,14 @@ impl SuspendSkipReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum SuspendDecision {
+pub enum SuspendDecision {
     Pending,
     Ready,
     Skipped(SuspendSkipReason),
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct LockedSuspendState {
+pub struct LockedSuspendState {
     delay: Option<Duration>,
     battery_only: bool,
     skip_while_media_playing: bool,
@@ -43,7 +43,7 @@ pub(super) struct LockedSuspendState {
 }
 
 impl LockedSuspendState {
-    pub(super) fn new(
+    pub fn new(
         delay: Option<Duration>,
         battery_only: bool,
         skip_while_media_playing: bool,
@@ -58,7 +58,7 @@ impl LockedSuspendState {
         }
     }
 
-    pub(super) fn set_policy(
+    pub fn set_policy(
         &mut self,
         delay: Option<Duration>,
         battery_only: bool,
@@ -78,7 +78,7 @@ impl LockedSuspendState {
         };
     }
 
-    pub(super) fn arm(&mut self, now: Instant) {
+    pub fn arm(&mut self, now: Instant) {
         if self.delay.is_none() {
             return;
         }
@@ -88,13 +88,13 @@ impl LockedSuspendState {
         self.last_reported_skip_reason = None;
     }
 
-    pub(super) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.last_activity_at = None;
         self.suspend_requested = false;
         self.last_reported_skip_reason = None;
     }
 
-    pub(super) fn note_activity(&mut self, now: Instant) {
+    pub fn note_activity(&mut self, now: Instant) {
         if self.delay.is_none() {
             return;
         }
@@ -104,7 +104,7 @@ impl LockedSuspendState {
         self.last_reported_skip_reason = None;
     }
 
-    pub(super) fn evaluate(
+    pub fn evaluate(
         &self,
         now: Instant,
         active_lock: bool,
@@ -153,10 +153,7 @@ impl LockedSuspendState {
         SuspendDecision::Ready
     }
 
-    pub(super) fn note_skip_reason(
-        &mut self,
-        reason: SuspendSkipReason,
-    ) -> Option<SuspendSkipReason> {
+    pub fn note_skip_reason(&mut self, reason: SuspendSkipReason) -> Option<SuspendSkipReason> {
         if self.last_reported_skip_reason == Some(reason) {
             return None;
         }
@@ -165,16 +162,16 @@ impl LockedSuspendState {
         Some(reason)
     }
 
-    pub(super) fn clear_reported_skip_reason(&mut self) {
+    pub fn clear_reported_skip_reason(&mut self) {
         self.last_reported_skip_reason = None;
     }
 
-    pub(super) fn mark_requested(&mut self) {
+    pub fn mark_requested(&mut self) {
         self.suspend_requested = true;
         self.last_reported_skip_reason = None;
     }
 
-    pub(super) fn power_status_snapshot(
+    pub fn power_status_snapshot(
         &self,
         now: Instant,
         active_lock: bool,
@@ -198,7 +195,7 @@ impl LockedSuspendState {
     }
 }
 
-pub(super) fn suspend_delay_seconds(config: &veila_common::AppConfig) -> Option<u64> {
+pub fn suspend_delay_seconds(config: &veila_common::AppConfig) -> Option<u64> {
     config.lock.suspend_seconds.filter(|seconds| *seconds > 0)
 }
 
@@ -226,7 +223,7 @@ fn remaining_seconds(duration: Duration) -> u64 {
     }
 }
 
-pub(super) async fn request_system_suspend(connection: &zbus::Connection) -> Result<()> {
+pub async fn request_system_suspend(connection: &zbus::Connection) -> Result<()> {
     let manager = logind::ManagerProxy::new(connection)
         .await
         .context("failed to create logind manager proxy for suspend")?;

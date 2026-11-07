@@ -45,7 +45,9 @@ A failed curtain is replaced with the emergency prompt
 and maximum authentication backoff.
 After secure confirmation, recovery retries indefinitely
 with delays capped at five seconds.
-System integrations are not yet provided by the internal supervisor.
+After secure confirmation the internal supervisor runs logind, sleep/resume,
+configured power actions and locked suspend, live widgets and automatic reload.
+Fingerprint verification is not yet provided in this development mode.
 .SH COMMANDS
 .TP
 .B daemon

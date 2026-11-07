@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+veila-session = { path = "../session" }
 veila-auth = { path = "../auth" }
 veila-common = { path = "../common" }
 zeroize = { workspace = true }
@@ -23,7 +24,6 @@ smithay-client-toolkit = { workspace = true }
 tokio = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
-ureq = { workspace = true }
 zbus = { workspace = true }
 
 [dev-dependencies]

@@ -23,16 +23,15 @@ fn weather_agent() -> ureq::Agent {
 }
 
 #[derive(Clone)]
-pub(super) struct WeatherHandle {
+pub struct WeatherHandle {
     config_tx: watch::Sender<WeatherConfig>,
     snapshot_rx: watch::Receiver<Option<WeatherSnapshot>>,
 }
 
 impl WeatherHandle {
-    pub(super) fn spawn(config: &WeatherConfig) -> Self {
-        let initial_snapshot = load_cached_snapshot(config).ok().flatten();
+    pub fn spawn(config: &WeatherConfig) -> Self {
         let (config_tx, config_rx) = watch::channel(config.clone());
-        let (snapshot_tx, snapshot_rx) = watch::channel(initial_snapshot);
+        let (snapshot_tx, snapshot_rx) = watch::channel(None);
 
         tokio::spawn(async move {
             run_weather_service(config_rx, snapshot_tx).await;
@@ -44,11 +43,11 @@ impl WeatherHandle {
         }
     }
 
-    pub(super) fn current_snapshot(&self) -> Option<WeatherSnapshot> {
+    pub fn current_snapshot(&self) -> Option<WeatherSnapshot> {
         self.snapshot_rx.borrow().clone()
     }
 
-    pub(super) fn update_config(&self, config: &WeatherConfig) {
+    pub fn update_config(&self, config: &WeatherConfig) {
         let _ = self.config_tx.send(config.clone());
     }
 }
@@ -59,14 +58,42 @@ async fn run_weather_service(
 ) {
     let mut config = config_rx.borrow().clone();
     let mut needs_refresh = true;
+    snapshot_tx.send_replace(cached_async(config.clone()).await);
 
     loop {
         if weather_enabled(&config) {
-            if needs_refresh && let Some(snapshot) = fetch_snapshot_async(config.clone()).await {
+            let delay = snapshot_tx
+                .borrow()
+                .as_ref()
+                .map_or(Duration::ZERO, |snapshot| {
+                    cache_delay(
+                        snapshot,
+                        &config,
+                        OffsetDateTime::now_utc().unix_timestamp(),
+                    )
+                });
+            if needs_refresh
+                && delay.is_zero()
+                && let Some(snapshot) = fetch_snapshot_async(config.clone()).await
+            {
                 snapshot_tx.send_replace(Some(snapshot));
             }
-
-            let refresh = tokio::time::sleep(refresh_interval(&config));
+            let delay =
+                snapshot_tx
+                    .borrow()
+                    .as_ref()
+                    .map_or(refresh_interval(&config), |snapshot| {
+                        cache_delay(
+                            snapshot,
+                            &config,
+                            OffsetDateTime::now_utc().unix_timestamp(),
+                        )
+                    });
+            let refresh = tokio::time::sleep(if delay.is_zero() {
+                refresh_interval(&config)
+            } else {
+                delay
+            });
             tokio::pin!(refresh);
 
             tokio::select! {
@@ -78,7 +105,7 @@ async fn run_weather_service(
                         break;
                     }
                     config = config_rx.borrow().clone();
-                    snapshot_tx.send_replace(load_cached_snapshot(&config).ok().flatten());
+                    snapshot_tx.send_replace(cached_async(config.clone()).await);
                     needs_refresh = true;
                 }
             }
@@ -91,6 +118,22 @@ async fn run_weather_service(
             needs_refresh = true;
         }
     }
+}
+
+async fn cached_async(config: WeatherConfig) -> Option<WeatherSnapshot> {
+    tokio::task::spawn_blocking(move || load_cached_snapshot(&config).ok().flatten())
+        .await
+        .ok()
+        .flatten()
+}
+fn cache_delay(snapshot: &WeatherSnapshot, config: &WeatherConfig, now: i64) -> Duration {
+    let Some(age) = now
+        .checked_sub(snapshot.fetched_at_unix)
+        .and_then(|age| u64::try_from(age).ok())
+    else {
+        return Duration::ZERO;
+    };
+    refresh_interval(config).saturating_sub(Duration::from_secs(age))
 }
 
 async fn fetch_snapshot_async(config: WeatherConfig) -> Option<WeatherSnapshot> {
@@ -284,8 +327,8 @@ fn location_cache_path(location: &str) -> Result<PathBuf> {
 }
 
 fn cache_root() -> Result<PathBuf> {
-    let root = veila_renderer::cache::resolve_cache_root(None)
-        .context("failed to resolve XDG cache directory")?;
+    let root =
+        veila_common::cache::resolve_root(None).context("failed to resolve XDG cache directory")?;
     Ok(root.join("weather"))
 }
 
@@ -346,52 +389,4 @@ struct GeocodedLocationCache {
 }
 
 #[cfg(test)]
-mod tests {
-    use veila_common::WeatherUnit;
-
-    use super::{
-        GeocodingResponse, GeocodingResult, WeatherConfig, first_geocoding_result, weather_enabled,
-    };
-
-    #[test]
-    fn enables_weather_with_location_only() {
-        let config = WeatherConfig {
-            enabled: true,
-            location: Some(String::from("Riga")),
-            latitude: None,
-            longitude: None,
-            refresh_minutes: 15,
-            unit: WeatherUnit::Celsius,
-        };
-
-        assert!(weather_enabled(&config));
-    }
-
-    #[test]
-    fn uses_first_geocoding_result_coordinates() {
-        let payload = GeocodingResponse {
-            results: vec![
-                GeocodingResult {
-                    latitude: 56.9496,
-                    longitude: 24.1052,
-                },
-                GeocodingResult {
-                    latitude: 57.0,
-                    longitude: 24.2,
-                },
-            ],
-        };
-
-        assert_eq!(first_geocoding_result(payload), Some((56.9496, 24.1052)));
-    }
-
-    #[test]
-    fn returns_none_when_geocoding_has_no_results() {
-        assert_eq!(
-            first_geocoding_result(GeocodingResponse {
-                results: Vec::new(),
-            }),
-            None
-        );
-    }
-}
+mod tests;

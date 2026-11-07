@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::io::Write;
 use veila_common::{
     AppConfig, elapsed_ms, elapsed_us,
-    session::{CurtainMessage, SupervisorMessage, frame},
+    session::{CurtainMessage, frame},
 };
 
 impl Running {
@@ -18,23 +18,13 @@ impl Running {
                     );
                 }
                 self.recovery.confirmed = true;
-                self.snapshots = if self.options.emergency {
-                    None
-                } else {
-                    match crate::snapshots::start(self.config.clone()) {
-                        Ok(reader) => Some(reader),
-                        Err(error) => {
-                            tracing::warn!(%error,"optional initial data unavailable");
-                            None
-                        }
-                    }
-                };
                 self.locked = true;
                 self.record.value.state = State::Locked;
                 if let Err(error) = self.record.save() {
                     tracing::error!(%error, "failed to update confirmed lock record; retaining ownership");
                 }
                 tracing::info!("supervisor observed secure lock confirmation");
+                self.start_integrations();
                 if !self.options.wait_ready && !self.notified {
                     self.update_report();
                     self.notify(0, false)?;
@@ -56,10 +46,26 @@ impl Running {
                     self.notify(0, false)?;
                 }
             }
-            CurtainMessage::Activity | CurtainMessage::AuthInFlight(_) => {}
-            CurtainMessage::RequestPowerAction { action } => {
-                tracing::warn!(?action, "supervisor power integration is not enabled yet")
+            CurtainMessage::Activity => {
+                self.activity = std::time::Instant::now();
+                self.publish_integrations();
             }
+            CurtainMessage::AuthInFlight(active) => {
+                self.auth_in_flight = active;
+                self.publish_integrations();
+            }
+            CurtainMessage::ResumeGuardArmed { request } => {
+                if self
+                    .guard_ack
+                    .as_ref()
+                    .is_some_and(|(token, _)| *token == request)
+                    && let Some((_, ack)) = self.guard_ack.take()
+                {
+                    tracing::debug!(request, "supervisor resume guard acknowledged");
+                    let _ = ack.send(());
+                }
+            }
+            CurtainMessage::RequestPowerAction { action } => self.request_power(action),
             _ => tracing::warn!("ignoring duplicate or out-of-order curtain startup event"),
         }
         Ok(())
@@ -78,26 +84,9 @@ impl Running {
                 return;
             }
         };
-        let payload = match frame::encode(&SupervisorMessage::ReloadConfig {
-            config: Box::new(config.clone()),
-        }) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                tracing::warn!(%error,"resolved reload exceeds channel limit");
-                return;
-            }
-        };
-        if !self.pending.is_empty() {
-            tracing::warn!("reload still pending; retaining current config");
-            return;
-        }
-        self.snapshots = None;
-        self.pending = payload;
-        self.written = 0;
-        self.config = config;
-        self.flush_reload();
+        self.apply_reload(config);
     }
-    pub(super) fn flush_reload(&mut self) {
+    pub(super) fn flush_updates(&mut self) {
         let Some(channel) = &mut self.channel else {
             return;
         };
@@ -111,7 +100,7 @@ impl Running {
                 if self.written == self.pending.len() {
                     self.pending.clear();
                     self.written = 0;
-                    tracing::info!("sent resolved config reload");
+                    tracing::info!("sent supervisor update");
                 }
             }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}

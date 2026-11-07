@@ -6,13 +6,13 @@ use veila_common::{BatteryConfig, BatterySnapshot};
 use crate::adapters::power;
 
 #[derive(Clone)]
-pub(super) struct BatteryHandle {
+pub struct BatteryHandle {
     config_tx: watch::Sender<BatteryServiceConfig>,
     snapshot_rx: watch::Receiver<Option<BatterySnapshot>>,
 }
 
 impl BatteryHandle {
-    pub(super) fn spawn(config: &BatteryConfig, force_refresh: bool) -> Self {
+    pub fn spawn(config: &BatteryConfig, force_refresh: bool) -> Self {
         let initial_snapshot = config.mock_snapshot();
         let (config_tx, config_rx) = watch::channel(BatteryServiceConfig {
             battery: config.clone(),
@@ -30,11 +30,11 @@ impl BatteryHandle {
         }
     }
 
-    pub(super) fn current_snapshot(&self) -> Option<BatterySnapshot> {
+    pub fn current_snapshot(&self) -> Option<BatterySnapshot> {
         self.snapshot_rx.borrow().clone()
     }
 
-    pub(super) fn update_config(&self, config: &BatteryConfig, force_refresh: bool) {
+    pub fn update_config(&self, config: &BatteryConfig, force_refresh: bool) {
         let _ = self.config_tx.send(BatteryServiceConfig {
             battery: config.clone(),
             force_refresh,

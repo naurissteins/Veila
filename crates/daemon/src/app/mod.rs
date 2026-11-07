@@ -1,7 +1,7 @@
 use self::runtime::control_socket_path;
 
 mod auto_reload;
-mod battery;
+use veila_session::services::battery;
 mod cache;
 mod connections;
 mod events;
@@ -10,7 +10,7 @@ mod helpers;
 mod idle;
 mod maintenance;
 mod memory;
-mod mpris;
+use veila_session::services::mpris;
 pub(crate) mod output_probe;
 mod prewarm;
 mod recovery;
@@ -18,10 +18,10 @@ mod runtime;
 mod sleep;
 mod startup;
 mod state;
-mod suspend;
+use veila_session::services::suspend;
 mod unlock;
-mod watch;
-mod weather;
+use veila_session::services::watch;
+use veila_session::services::weather;
 
 use std::path::{Path, PathBuf};
 

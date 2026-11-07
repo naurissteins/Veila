@@ -16,6 +16,7 @@ pub const EXIT_ABNORMAL: i32 = 1;
 #[serde(deny_unknown_fields)]
 pub enum SupervisorMessage {
     Control(CurtainControlMessage),
+    ArmResumeInputGuard { request: u64 },
     ReloadConfig { config: Box<AppConfig> },
     UpdateWeather { snapshot: Option<WeatherSnapshot> },
     UpdateBattery { snapshot: Option<BatterySnapshot> },
@@ -27,6 +28,9 @@ pub enum CurtainMessage {
     SessionLocked,
     Ready {
         latency_report: Option<Box<CurtainLatencyReport>>,
+    },
+    ResumeGuardArmed {
+        request: u64,
     },
     Activity,
     AuthInFlight(bool),

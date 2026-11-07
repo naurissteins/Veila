@@ -15,3 +15,12 @@ nix.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+
+futures-util.workspace = true
+tokio.workspace = true
+time.workspace = true
+ureq.workspace = true
+zbus.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

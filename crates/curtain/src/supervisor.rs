@@ -79,6 +79,10 @@ impl CurtainApp {
         queue: &smithay_client_toolkit::reexports::client::QueueHandle<Self>,
     ) {
         match message {
+            SupervisorMessage::ArmResumeInputGuard { request } => {
+                self.handle_control_event(ControlEvent::ArmResumeInputGuard, queue);
+                self.notify_supervisor(CurtainMessage::ResumeGuardArmed { request });
+            }
             SupervisorMessage::ReloadConfig { config } => self.apply_config(*config, queue),
             SupervisorMessage::Control(CurtainControlMessage::ReloadConfig) => {
                 tracing::warn!("ignoring disk reload on resolved supervisor channel");

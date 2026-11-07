@@ -53,9 +53,9 @@ impl Running {
                         },
                 ));
             }
-            let snapshot_index = fds.len();
-            if let Some(reader) = &self.snapshots {
-                fds.push(PollFd::new(reader.as_fd(), PollFlags::POLLIN));
+            let integration_index = fds.len();
+            if let Some(handle) = &self.integrations {
+                fds.push(PollFd::new(handle.reader.as_fd(), PollFlags::POLLIN));
             }
             let wait = self.poll_timeout(timeout);
             match poll(&mut fds, wait) {
@@ -73,18 +73,18 @@ impl Running {
                 && fds
                     .get(1)
                     .is_some_and(|f| f.revents().is_some_and(|r| r.contains(PollFlags::POLLOUT)));
-            let snapshot_ready = self.snapshots.is_some()
-                && fds.get(snapshot_index).is_some_and(|fd| {
+            let integration_ready = self.integrations.is_some()
+                && fds.get(integration_index).is_some_and(|fd| {
                     fd.revents().is_some_and(|flags| {
                         flags.intersects(PollFlags::POLLIN | PollFlags::POLLHUP)
                     })
                 });
             drop(fds);
-            if snapshot_ready {
-                self.read_snapshots();
+            if integration_ready {
+                self.read_integrations();
             }
             if writable {
-                self.flush_reload();
+                self.flush_updates();
             }
             if socket_ready {
                 self.read_events(&mut line, &mut connected)?;
