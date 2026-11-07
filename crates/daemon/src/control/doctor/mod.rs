@@ -1,4 +1,5 @@
 mod idle;
+mod relock;
 mod renderer;
 mod runtime;
 mod services;
@@ -27,6 +28,7 @@ pub(super) async fn print_doctor_report(config_path: Option<&Path>, session_id: 
     services::check_daemon_service(&mut summary);
     runtime::check_logind(&mut summary, session_id).await;
     let idle_protocol = wayland::check_wayland(&mut summary);
+    relock::check_relock(&mut summary).await;
     idle::check_idle(&mut summary, config_path, idle_protocol);
     renderer::check_renderer(&mut summary, config_path);
 

@@ -65,12 +65,13 @@ pub(crate) fn curtain(
     let channel_flags = fd::inheritable(&inherited, false);
     let record_flags = fd::inheritable(&record.file, false);
     let mut child = child.context("failed to spawn curtain")?;
-    channel_flags?;
-    record_flags?;
-    record.value.curtain_pid = Some(child.id());
-    record.value.curtain_start_ticks = Some(start_ticks(child.id())?);
-    record.save()?;
     let startup = (|| -> Result<()> {
+        channel_flags?;
+        record_flags?;
+        channel.set_nonblocking(true)?;
+        record.value.curtain_pid = Some(child.id());
+        record.value.curtain_start_ticks = Some(start_ticks(child.id())?);
+        record.save()?;
         let mut input = child.stdin.take().context("missing curtain startup pipe")?;
         input.write_all(&config_frame)?;
         input.write_all(&snapshot_frame)?;
@@ -78,14 +79,25 @@ pub(crate) fn curtain(
     })();
     if let Err(error) = startup {
         let _ = child.kill();
-        let _ = child.wait();
+        // Never start a replacement unless the failed spawn is known to have exited.
+        if child.wait().is_err() {
+            return Err(anyhow::Error::new(UnresolvedChild).context(error));
+        }
         return Err(error);
     }
-    channel.set_nonblocking(true)?;
     // The inherited endpoint is dropped here; supervisor EOF can now reach the curtain.
     drop(inherited);
     Ok((child, channel))
 }
+
+#[derive(Debug)]
+pub(crate) struct UnresolvedChild;
+impl std::fmt::Display for UnresolvedChild {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("cannot prove failed curtain exited; refusing concurrent recovery")
+    }
+}
+impl std::error::Error for UnresolvedChild {}
 
 pub(crate) fn background(options: LockOptions, mut args: Vec<String>) -> Result<i32> {
     use std::io::BufReader;

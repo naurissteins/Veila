@@ -13,7 +13,10 @@ impl Running {
     ) -> Result<()> {
         loop {
             let mut bytes = [0; 8192];
-            match self.channel.read(&mut bytes) {
+            let Some(channel) = &mut self.channel else {
+                break;
+            };
+            match channel.read(&mut bytes) {
                 Ok(0) => {
                     *connected = false;
                     break;

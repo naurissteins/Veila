@@ -17,18 +17,25 @@ impl Running {
                         &veila_common::ipc::CurtainStartupMessage::SessionLocked,
                     );
                 }
-                self.snapshots = match crate::snapshots::start(self.config.clone()) {
-                    Ok(reader) => Some(reader),
-                    Err(error) => {
-                        tracing::warn!(%error,"optional initial data unavailable");
-                        None
+                self.recovery.confirmed = true;
+                self.snapshots = if self.options.emergency {
+                    None
+                } else {
+                    match crate::snapshots::start(self.config.clone()) {
+                        Ok(reader) => Some(reader),
+                        Err(error) => {
+                            tracing::warn!(%error,"optional initial data unavailable");
+                            None
+                        }
                     }
                 };
                 self.locked = true;
                 self.record.value.state = State::Locked;
-                self.record.save()?;
+                if let Err(error) = self.record.save() {
+                    tracing::error!(%error, "failed to update confirmed lock record; retaining ownership");
+                }
                 tracing::info!("supervisor observed secure lock confirmation");
-                if !self.options.wait_ready {
+                if !self.options.wait_ready && !self.notified {
                     self.update_report();
                     self.notify(0, false)?;
                 }
@@ -91,7 +98,10 @@ impl Running {
         self.flush_reload();
     }
     pub(super) fn flush_reload(&mut self) {
-        match self.channel.write(&self.pending[self.written..]) {
+        let Some(channel) = &mut self.channel else {
+            return;
+        };
+        match channel.write(&self.pending[self.written..]) {
             Ok(0) => {
                 self.pending.clear();
                 self.written = 0;

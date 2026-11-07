@@ -1,4 +1,4 @@
-.TH VEILA 1 "May 2026" "Veila 0.4.0" "User Commands"
+.TH VEILA 1 "November 7, 2026" "Veila 0.4.0" "User Commands"
 .SH NAME
 veila \- secure Wayland screen locker
 .SH SYNOPSIS
@@ -41,7 +41,11 @@ The internal
 supervisor is available for daemonless development tests. It owns one lock lifetime;
 .B --daemonize --wait-ready
 returns after secure startup. Normal lock and service commands continue using the daemon.
-The internal supervisor does not yet provide automatic curtain respawn or system integrations.
+A failed curtain is replaced with the emergency prompt
+and maximum authentication backoff.
+After secure confirmation, recovery retries indefinitely
+with delays capped at five seconds.
+System integrations are not yet provided by the internal supervisor.
 .SH COMMANDS
 .TP
 .B daemon
