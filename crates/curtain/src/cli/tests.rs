@@ -174,3 +174,30 @@ fn parses_direct_lock_argument() {
     assert!(options.lock);
     assert!(options.force_emergency_ui);
 }
+
+#[test]
+fn initial_backoff_parses_both_forms_and_rejects_invalid_values() {
+    for args in [
+        vec!["--initial-backoff-ms=500"],
+        vec!["--initial-backoff-ms", "500"],
+    ] {
+        let options = crate::CurtainOptions::parse_args(
+            std::iter::once("veila").chain(args).map(str::to_owned),
+        )
+        .expect("initial delay");
+        assert_eq!(options.initial_backoff_ms, 500);
+    }
+    for args in [
+        vec!["--initial-backoff-ms"],
+        vec!["--initial-backoff-ms=-1"],
+        vec!["--initial-backoff-ms=bad"],
+        vec!["--initial-backoff-ms", "--lock"],
+    ] {
+        assert!(
+            crate::CurtainOptions::parse_args(
+                std::iter::once("veila").chain(args).map(str::to_owned)
+            )
+            .is_err()
+        );
+    }
+}

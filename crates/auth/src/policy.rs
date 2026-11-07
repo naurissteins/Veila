@@ -59,12 +59,19 @@ impl AuthState {
     }
 
     pub fn after_recovery(policy: AuthPolicy, now: Instant) -> Self {
-        // the previous process's attempt count is unavailable, so resume at the policy ceiling
+        Self::with_initial_backoff(policy, now, policy.max_delay)
+    }
+
+    /// Preserves a respawn delay and resumes failures at the policy ceiling.
+    pub fn with_initial_backoff(policy: AuthPolicy, now: Instant, delay: Duration) -> Self {
+        if delay.is_zero() {
+            return Self::new(policy);
+        }
         Self {
             failed_attempts: 0,
             backoff_level: u8::MAX,
             retry_after: Some(
-                now.checked_add(policy.max_delay)
+                now.checked_add(delay)
                     .unwrap_or(now + Duration::from_secs(30)),
             ),
             in_flight: false,
@@ -201,6 +208,43 @@ mod tests {
         assert!(matches!(
             state.admit(now + Duration::from_secs(13)),
             AuthAdmission::RateLimited(_)
+        ));
+    }
+    #[test]
+    fn respawn_preserves_the_supplied_delay_and_future_failure_ceiling() {
+        let policy = AuthPolicy::new(Duration::from_millis(100), Duration::from_secs(2));
+        let now = Instant::now();
+        let mut state = AuthState::with_initial_backoff(policy, now, Duration::from_millis(500));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(499)),
+            AuthAdmission::RateLimited(_)
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(500)),
+            AuthAdmission::Allowed
+        ));
+        state.start_attempt();
+        state.finish_failure(now + Duration::from_millis(500));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(2500)),
+            AuthAdmission::Allowed
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(2499)),
+            AuthAdmission::RateLimited(_)
+        ));
+    }
+
+    #[test]
+    fn zero_initial_delay_keeps_the_normal_first_failure_delay() {
+        let now = Instant::now();
+        let mut state = AuthState::with_initial_backoff(AuthPolicy::default(), now, Duration::ZERO);
+        assert!(matches!(state.admit(now), AuthAdmission::Allowed));
+        state.start_attempt();
+        state.finish_failure(now);
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(1)),
+            AuthAdmission::Allowed
         ));
     }
 }

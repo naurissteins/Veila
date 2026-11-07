@@ -4,7 +4,7 @@ use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surfac
 use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey, WidgetKind};
 
 use crate::{
-    ipc::auth::{ChallengeReply, request_power_action, submit_password},
+    ipc::auth::{ChallengeReply, request_power_action},
     keyboard_cache::start_keyboard_layout_writer,
 };
 
@@ -59,24 +59,7 @@ impl CurtainApp {
                 return;
             }
 
-            let Some(socket_path) = self.daemon_socket.clone() else {
-                tracing::warn!("password submitted without a daemon auth socket");
-                self.ui_shell.authentication_rejected(None, None);
-                self.render_all_surfaces(queue_handle);
-                return;
-            };
-
-            let attempt_id = self.next_auth_attempt_id;
-            self.next_auth_attempt_id = self.next_auth_attempt_id.saturating_add(1);
-            tracing::info!(attempt_id, "submitting password attempt");
-            self.auth_in_flight = true;
-            self.auth_attempt_id = Some(attempt_id);
-            self.auth_reply_sender = Some(submit_password(
-                socket_path,
-                attempt_id,
-                secret,
-                self.auth_sender.clone(),
-            ));
+            self.submit_auth_attempt(secret, queue_handle);
         }
         self.render_auth_change(revision_before, queue_handle);
     }

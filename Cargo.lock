@@ -2013,6 +2013,7 @@ dependencies = [
  "smithay-client-toolkit",
  "time",
  "tracing",
+ "veila-auth",
  "veila-common",
  "veila-renderer",
  "veila-ui",

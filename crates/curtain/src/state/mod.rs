@@ -229,6 +229,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
     auth_sender: Sender<AuthEvent>,
+    authentication: crate::auth::Backend,
     pub(crate) background_sender: Sender<BackgroundEvent>,
     pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
@@ -452,6 +453,7 @@ impl CurtainApp {
                 .context("failed to start curtain control listener")?;
         }
 
+        let authentication = crate::auth::Backend::new(&options, &config.lock);
         let app = Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
@@ -485,6 +487,7 @@ impl CurtainApp {
             },
             slideshow,
             auth_sender,
+            authentication,
             background_sender,
             fonts: crate::fonts::DeferredFonts::default(),
             keyboard_label_sender: None,
@@ -672,17 +675,12 @@ impl CurtainApp {
         self.exit_requested = true;
     }
 
-    /// Records that daemon authorized this unlock
+    // Only a current PAM verdict or the authenticated control channel may authorize unlock.
     pub(crate) fn authorize_unlock(&mut self) {
         self.unlock_authorized = true;
     }
 
     pub(crate) fn request_exit_from_signal(&mut self) {
-        // Standalone --lock sessions have no daemon to authenticate against, so a signal is the
-        // only way out. Daemon-managed locks must still wait for an authorized unlock
-        if self.control_socket.is_none() {
-            self.authorize_unlock();
-        }
         self.exit_requested = true;
     }
 
@@ -777,7 +775,7 @@ impl CurtainApp {
         if !self.unlock_authorized {
             tracing::error!(
                 failure_reason = self.failure_reason.as_deref(),
-                "curtain is exiting without a daemon-authorized unlock; leaving the session locked"
+                "curtain is exiting without an authorized unlock; leaving the session locked"
             );
             // Leaked on purpose: dropping would send destroy() and can raise invalid_destroy.
             std::mem::forget(session_lock);

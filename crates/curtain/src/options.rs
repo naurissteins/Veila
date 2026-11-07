@@ -9,6 +9,7 @@ use veila_common::{
 pub struct CurtainOptions {
     pub help: bool,
     pub lock: bool,
+    pub initial_backoff_ms: u64,
     pub force_emergency_ui: bool,
     pub latency_report: LatencyReportMode,
     pub notify_socket: Option<PathBuf>,

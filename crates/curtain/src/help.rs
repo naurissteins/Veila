@@ -11,7 +11,8 @@ and `veila preview` for screenshots.
 
 Options:
   -h, --help                         Show this help text
-      --lock                         Start a real lock session without the daemon (testing only)
+      --lock                         Start a real lock with curtain-owned PAM (internal)
+      --initial-backoff-ms=<ms>      Preserve a retry delay for a direct curtain respawn
       --force-emergency-ui           Use the built-in emergency unlock prompt
       --latency-report[=verbose]     Send startup timing details to the daemon
       --config=<path>                Use a specific config file
@@ -23,6 +24,7 @@ Options:
 
 Notes:
   Without daemon sockets and without --lock it exits to avoid accidental locks.
+  Direct locks require PAM authentication to unlock; termination signals leave the lock held.
   Options accept both --flag=value and --flag value forms.
 "
     );

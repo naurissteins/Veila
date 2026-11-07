@@ -29,6 +29,12 @@ commands to request locks, inspect state, validate configuration, view logs, and
 For every lock the daemon starts a separate secure curtain process from the same binary. That process owns the session-lock surfaces and appears as
 .B veila-curtain
 in process listings.
+.PP
+The internal
+.B __curtain --lock
+mode authenticates through its own isolated PAM helper. It is intended for development;
+.B veila lock
+remains the normal entry point. Termination signals never authorize an unlock.
 .SH COMMANDS
 .TP
 .B daemon

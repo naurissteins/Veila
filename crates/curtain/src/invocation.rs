@@ -3,6 +3,9 @@ use anyhow::{Result, bail};
 use crate::{CurtainOptions, help};
 
 pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
+    if options.initial_backoff_ms > 0 && options.uses_daemon_lock_flow() {
+        bail!("initial backoff requires curtain-owned authentication");
+    }
     // A partial ownership handshake must never reach Wayland startup.
     if options.owner_gate != options.owner_record.is_some() {
         bail!("daemon-managed curtain ownership requires both the startup gate and record");
@@ -25,7 +28,7 @@ pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
 }
 
 pub(super) fn validate_preview_mode(options: &CurtainOptions) -> Result<()> {
-    if options.lock || options.uses_daemon_lock_flow() {
+    if options.lock || options.uses_daemon_lock_flow() || options.initial_backoff_ms > 0 {
         bail!(
             "`veila preview` never locks the session; remove --lock and the daemon socket options"
         );

@@ -42,7 +42,7 @@ pub(crate) enum AuthEvent {
     Busy {
         attempt_id: u64,
     },
-    /// The attempt produced no verdict; the daemon was unreachable, silent, or too slow.
+    /// The attempt produced no verdict; the helper or daemon failed, closed, or exceeded its deadline.
     Failed {
         attempt_id: u64,
     },

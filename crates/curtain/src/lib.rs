@@ -3,6 +3,7 @@
 //! Secure session-lock curtain for Veila.
 
 mod app;
+mod auth;
 mod background;
 mod cli;
 mod fonts;

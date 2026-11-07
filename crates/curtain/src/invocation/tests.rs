@@ -111,3 +111,28 @@ fn help_returns_before_ownership_validation_or_startup() {
     assert!(crate::run(options.clone()).is_ok());
     assert!(crate::run_preview(options).is_ok());
 }
+
+#[test]
+fn initial_backoff_belongs_only_to_direct_authentication() {
+    let direct = CurtainOptions {
+        lock: true,
+        initial_backoff_ms: 500,
+        ..Default::default()
+    };
+    assert!(validate_invocation_mode(&direct).is_ok());
+    assert!(
+        validate_invocation_mode(&CurtainOptions {
+            daemon_socket: Some("/tmp/auth.sock".into()),
+            ..direct.clone()
+        })
+        .is_err()
+    );
+    assert!(
+        validate_preview_mode(&CurtainOptions {
+            preview_png: Some("/tmp/a.png".into()),
+            lock: false,
+            ..direct
+        })
+        .is_err()
+    );
+}

@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+veila-auth = { path = "../auth" }
 veila-common = { path = "../common" }
 veila-renderer = { path = "../renderer" }
 veila-ui = { path = "../ui" }

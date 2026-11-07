@@ -43,6 +43,17 @@ impl CurtainOptions {
                 continue;
             }
 
+            if let Some(value) = parse_option_value(&arg, "--initial-backoff-ms", &mut args)? {
+                options.initial_backoff_ms = value.parse().context("invalid initial backoff")?;
+                if std::time::Instant::now()
+                    .checked_add(std::time::Duration::from_millis(options.initial_backoff_ms))
+                    .is_none()
+                {
+                    bail!("initial backoff is too large");
+                }
+                continue;
+            }
+
             if let Some(mode) = parse_latency_report_arg(&arg)? {
                 options.latency_report = mode;
                 continue;
