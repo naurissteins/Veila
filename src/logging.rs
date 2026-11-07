@@ -1,16 +1,11 @@
-use std::{
-    fmt,
-    fs::{self, File, OpenOptions},
-    os::unix::fs::{OpenOptionsExt, PermissionsExt},
-    path::Path,
-};
+use std::{fmt, path::Path};
 
 use anyhow::{Context, Result};
 use time::{OffsetDateTime, UtcOffset};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, fmt::format::Writer, fmt::time::FormatTime};
 
-mod rotation;
+use veila_session::logging::{open_private_log, rotation};
 
 struct ShortLocalTime;
 
@@ -30,6 +25,7 @@ impl FormatTime for ShortLocalTime {
 
 pub(crate) fn init_stderr() {
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(env_filter())
         .with_timer(ShortLocalTime)
         .init();
@@ -58,21 +54,6 @@ pub(crate) fn init_daemon(log_file: Option<&Path>) -> Result<Option<WorkerGuard>
         .with_writer(writer)
         .init();
     Ok(Some(guard))
-}
-
-fn open_private_log(path: &Path) -> Result<File> {
-    let file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .open(path)
-        .with_context(|| format!("failed to open daemon log file {}", path.display()))?;
-    if file.metadata()?.is_file() {
-        // Existing logs may have been created with the user's default umask.
-        file.set_permissions(fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("failed to secure daemon log file {}", path.display()))?;
-    }
-    Ok(file)
 }
 
 fn env_filter() -> EnvFilter {

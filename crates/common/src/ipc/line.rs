@@ -31,6 +31,13 @@ impl LineAccumulator {
         }
     }
 
+    pub fn with_limit(max_bytes: usize) -> Self {
+        Self {
+            buffer: Vec::new(),
+            max_bytes,
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }

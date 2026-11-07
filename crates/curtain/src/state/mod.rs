@@ -1,6 +1,7 @@
 mod events;
 pub(crate) use events::CurtainEventSources;
 mod interaction;
+mod lifecycle;
 mod memory;
 mod output;
 mod poll;
@@ -14,10 +15,7 @@ mod shm_trim;
 use std::{
     path::{Path, PathBuf},
     sync::mpsc::{Receiver as ControlReceiver, Sender as KeyboardSender},
-    sync::{
-        Arc,
-        atomic::{AtomicU8, Ordering},
-    },
+    sync::{Arc, atomic::AtomicU8},
     time::{Duration, Instant},
 };
 
@@ -219,6 +217,7 @@ pub(crate) struct CurtainApp {
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
     pub(crate) pointer: Option<ThemedPointer>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
+    pub(crate) supervisor: Option<crate::supervisor::Supervisor>,
     pub(crate) notify_socket: Option<PathBuf>,
     daemon_socket: Option<PathBuf>,
     pub(crate) activity_notifier: crate::ipc::activity::ActivityNotifier,
@@ -229,7 +228,7 @@ pub(crate) struct CurtainApp {
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
     auth_sender: Sender<AuthEvent>,
-    authentication: crate::auth::Backend,
+    pub(crate) authentication: crate::auth::Backend,
     pub(crate) background_sender: Sender<BackgroundEvent>,
     pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
@@ -309,6 +308,7 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
         options: CurtainOptions,
         startup_started_at: Instant,
+        inherited: Option<(std::os::unix::net::UnixStream, std::fs::File)>,
     ) -> Result<(Self, CurtainEventSources)> {
         let (auth_sender, auth_events) = channel();
         let (background_sender, background_events) = channel();
@@ -319,7 +319,12 @@ impl CurtainApp {
         let lock_probe_state = Arc::new(AtomicU8::new(0));
         let force_emergency_ui = options.force_emergency_ui;
         let mut emergency_reason = None;
-        let loaded_config = match AppConfig::load(options.config_path.as_deref()) {
+        let loaded_config = match options
+            .resolved_config
+            .clone()
+            .map(|config| Ok(LoadedConfig { path: None, config }))
+            .unwrap_or_else(|| AppConfig::load(options.config_path.as_deref()))
+        {
             Ok(loaded_config) => loaded_config,
             Err(error) => {
                 let reason = format!("failed to load curtain config: {error:#}");
@@ -449,10 +454,24 @@ impl CurtainApp {
         );
 
         if let Some(control_socket) = options.control_socket.clone() {
-            spawn_listener(control_socket, control_sender, lock_probe_state.clone())
-                .context("failed to start curtain control listener")?;
+            spawn_listener(
+                control_socket,
+                control_sender.clone(),
+                lock_probe_state.clone(),
+            )
+            .context("failed to start curtain control listener")?;
         }
 
+        let supervisor = inherited
+            .map(|(channel, lock)| {
+                crate::supervisor::Supervisor::connect(
+                    channel,
+                    lock,
+                    control_sender,
+                    config.clone(),
+                )
+            })
+            .transpose()?;
         let authentication = crate::auth::Backend::new(&options, &config.lock);
         let app = Self {
             connection,
@@ -471,6 +490,7 @@ impl CurtainApp {
             keyboard: None,
             pointer: None,
             lock_surfaces: Vec::new(),
+            supervisor,
             notify_socket: options.notify_socket,
             activity_notifier: crate::ipc::activity::ActivityNotifier::new(
                 options.daemon_socket.clone(),
@@ -671,28 +691,6 @@ impl CurtainApp {
         Ok(())
     }
 
-    pub(crate) fn request_exit(&mut self) {
-        self.exit_requested = true;
-    }
-
-    // Only a current PAM verdict or the authenticated control channel may authorize unlock.
-    pub(crate) fn authorize_unlock(&mut self) {
-        self.unlock_authorized = true;
-    }
-
-    pub(crate) fn request_exit_from_signal(&mut self) {
-        self.exit_requested = true;
-    }
-
-    pub(crate) fn can_stop(&self) -> bool {
-        self.failure_reason.is_some()
-            || (self.exit_requested && (self.session_locked || self.session_finished))
-    }
-
-    pub(crate) fn failure_reason(&self) -> Option<&str> {
-        self.failure_reason.as_deref()
-    }
-
     pub(crate) fn activate_emergency_ui(&mut self, reason: &str) -> Result<()> {
         if self.ui_shell.emergency_active() {
             return Ok(());
@@ -748,56 +746,6 @@ impl CurtainApp {
         Err(anyhow!(
             "timed out waiting for compositor to confirm the session lock"
         ))
-    }
-
-    pub(crate) fn shutdown(&mut self) -> Result<()> {
-        self.lock_probe_state.store(2, Ordering::Release);
-        self.render_profiler.log_summary();
-
-        if let Some(path) = self.control_socket.take() {
-            let _ = std::fs::remove_file(path);
-        }
-
-        if self.session_finished {
-            self.session_lock.take();
-            return Ok(());
-        }
-
-        if self.outputs_powered_off() || self.secondary_outputs_powered_off {
-            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
-            self.secondary_outputs_powered_off = false;
-        }
-
-        let Some(session_lock) = self.session_lock.take() else {
-            return Ok(());
-        };
-
-        if !self.unlock_authorized {
-            tracing::error!(
-                failure_reason = self.failure_reason.as_deref(),
-                "curtain is exiting without an authorized unlock; leaving the session locked"
-            );
-            // Leaked on purpose: dropping would send destroy() and can raise invalid_destroy.
-            std::mem::forget(session_lock);
-            return Ok(());
-        }
-
-        if session_lock.is_locked() {
-            tracing::info!("releasing session lock");
-            session_lock.unlock();
-            self.connection
-                .roundtrip()
-                .context("failed to roundtrip after unlocking session")?;
-        }
-
-        if let Some(path) = self.owner_record.take()
-            && let Err(error) = std::fs::remove_file(&path)
-            && error.kind() != std::io::ErrorKind::NotFound
-        {
-            tracing::warn!("failed to clear curtain ownership after unlock: {error}");
-        }
-
-        Ok(())
     }
 
     pub(crate) fn surface_has_focus_target(&self, surface: &wl_surface::WlSurface) -> bool {

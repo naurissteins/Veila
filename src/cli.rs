@@ -7,6 +7,7 @@ const LEGACY_DAEMON_NAME: &str = "veilad";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
+    Lock,
     Control,
     Daemon,
     LegacyDaemon,
@@ -34,6 +35,7 @@ impl Invocation {
         }
 
         let mode = match args.get(1).map(String::as_str) {
+            Some("__lock") => Mode::Lock,
             Some("daemon") => Mode::Daemon,
             Some("preview") => Mode::Preview,
             Some(CURTAIN_SUBCOMMAND) => Mode::Curtain,
@@ -74,6 +76,7 @@ mod tests {
     #[test]
     fn subcommands_select_modes_and_are_removed_from_arguments() {
         let cases = [
+            ("__lock", Mode::Lock),
             ("daemon", Mode::Daemon),
             ("preview", Mode::Preview),
             ("__curtain", Mode::Curtain),

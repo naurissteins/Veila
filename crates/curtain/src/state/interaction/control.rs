@@ -10,8 +10,13 @@ impl CurtainApp {
         }
     }
 
-    fn handle_control_event(&mut self, event: ControlEvent, queue_handle: &QueueHandle<Self>) {
+    pub(crate) fn handle_control_event(
+        &mut self,
+        event: ControlEvent,
+        queue_handle: &QueueHandle<Self>,
+    ) {
         match event {
+            ControlEvent::Supervisor(message) => self.supervisor_event(*message, queue_handle),
             ControlEvent::Probe => {}
             ControlEvent::Unlock { attempt_id } => {
                 if let Some(attempt_id) = attempt_id {

@@ -161,6 +161,12 @@ impl CurtainApp {
         }
 
         if let ShellAction::Power(action) = self.ui_shell.take_pointer_action() {
+            if self.supervisor.is_some() {
+                self.notify_supervisor(veila_common::session::CurtainMessage::RequestPowerAction {
+                    action,
+                });
+                return;
+            }
             let Some(socket_path) = self.daemon_socket.clone() else {
                 tracing::warn!(
                     ?action,

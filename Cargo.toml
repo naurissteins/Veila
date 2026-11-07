@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+veila-session = { path = "crates/session" }
 veila-auth = { path = "crates/auth" }
 veila-curtain = { path = "crates/curtain" }
 veila-renderer = { path = "crates/renderer" }
@@ -24,6 +25,7 @@ tracing-subscriber = { workspace = true }
 [workspace]
 resolver = "2"
 members = [
+    "crates/session",
     "crates/auth",
     "crates/common",
     "crates/curtain",

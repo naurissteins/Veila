@@ -30,6 +30,7 @@ impl CurtainApp {
         self.next_auth_attempt_id = self.next_auth_attempt_id.saturating_add(1);
         tracing::info!(attempt_id, "submitting password attempt");
         self.auth_in_flight = true;
+        self.notify_supervisor(veila_common::session::CurtainMessage::AuthInFlight(true));
         self.auth_attempt_id = Some(attempt_id);
         self.authentication.start_attempt();
         if self.authentication.is_local() {
@@ -95,6 +96,7 @@ impl CurtainApp {
                 self.render_all_surfaces(queue_handle);
             }
             AuthEvent::Accepted { attempt_id } => {
+                self.notify_supervisor(veila_common::session::CurtainMessage::AuthInFlight(false));
                 self.auth_reply_sender = None;
                 self.auth_challenge_sequence = None;
                 if self.authentication.is_local() {
@@ -146,6 +148,7 @@ impl CurtainApp {
     }
 
     fn clear_auth_exchange(&mut self) {
+        self.notify_supervisor(veila_common::session::CurtainMessage::AuthInFlight(false));
         self.auth_reply_sender = None;
         self.auth_attempt_id = None;
         self.auth_challenge_sequence = None;

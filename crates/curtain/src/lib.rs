@@ -15,6 +15,7 @@ mod options;
 mod preview;
 mod reload;
 mod state;
+mod supervisor;
 mod wayland;
 
 use anyhow::Result;
@@ -45,3 +46,16 @@ pub fn run_preview(options: CurtainOptions) -> Result<()> {
 
     app::run(options)
 }
+
+#[derive(Debug)]
+pub struct ExitFailure(pub i32);
+impl std::fmt::Display for ExitFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "curtain exited without confirmed unlock (status {})",
+            self.0
+        )
+    }
+}
+impl std::error::Error for ExitFailure {}

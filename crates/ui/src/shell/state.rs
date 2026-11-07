@@ -448,6 +448,26 @@ impl ShellState {
         self.preview_grid_enabled = enabled;
     }
 
+    pub fn set_weather_snapshot(
+        &mut self,
+        location: Option<String>,
+        snapshot: Option<veila_common::WeatherSnapshot>,
+        unit: veila_common::WeatherUnit,
+    ) {
+        let next = super::weather::widget_data(location, snapshot, unit);
+        if self.weather != next {
+            self.weather = next;
+            self.bump_static_scene_revision();
+        }
+    }
+    pub fn set_battery_snapshot(&mut self, snapshot: Option<veila_common::BatterySnapshot>) {
+        let next = super::battery::widget_data(snapshot);
+        if self.battery != next {
+            self.battery = next;
+            self.bump_static_scene_revision();
+        }
+    }
+
     pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {
         let mut next = now_playing_widget_data(snapshot);
         if let (Some(current), Some(next)) = (self.now_playing.as_ref(), next.as_mut())

@@ -43,6 +43,14 @@ impl CurtainOptions {
                 continue;
             }
 
+            if let Some(value) = parse_option_value(&arg, "--ipc-fd", &mut args)? {
+                options.ipc_fd = Some(value.parse().context("invalid supervisor descriptor")?);
+                continue;
+            }
+            if let Some(value) = parse_option_value(&arg, "--lock-fd", &mut args)? {
+                options.lock_fd = Some(value.parse().context("invalid lock descriptor")?);
+                continue;
+            }
             if let Some(value) = parse_option_value(&arg, "--initial-backoff-ms", &mut args)? {
                 options.initial_backoff_ms = value.parse().context("invalid initial backoff")?;
                 if std::time::Instant::now()

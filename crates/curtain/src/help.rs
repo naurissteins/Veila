@@ -12,6 +12,8 @@ and `veila preview` for screenshots.
 Options:
   -h, --help                         Show this help text
       --lock                         Start a real lock with curtain-owned PAM (internal)
+      --ipc-fd=<fd>                 Inherited supervisor channel (requires --lock-fd)
+      --lock-fd=<fd>                Inherited per-display ownership lock
       --initial-backoff-ms=<ms>      Preserve a retry delay for a direct curtain respawn
       --force-emergency-ui           Use the built-in emergency unlock prompt
       --latency-report[=verbose]     Send startup timing details to the daemon

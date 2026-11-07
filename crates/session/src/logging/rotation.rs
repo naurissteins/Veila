@@ -11,7 +11,7 @@ const MAX_LOG_BYTES: u64 = 8 * 1024 * 1024;
 const BACKUP_COUNT: usize = 3;
 static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
-pub(super) struct RotatingLog {
+pub struct RotatingLog {
     file: File,
     path: PathBuf,
     size: Option<u64>,
@@ -19,7 +19,7 @@ pub(super) struct RotatingLog {
 }
 
 impl RotatingLog {
-    pub(super) fn new(file: File, path: &Path) -> io::Result<Self> {
+    pub fn new(file: File, path: &Path) -> io::Result<Self> {
         let metadata = file.metadata()?;
         Ok(Self {
             file,

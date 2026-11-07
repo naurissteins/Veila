@@ -81,6 +81,10 @@ impl AuthState {
 }
 
 impl AuthState {
+    pub fn update_policy(&mut self, policy: AuthPolicy) {
+        self.policy = policy;
+    }
+
     pub fn failed_attempts(&self) -> u8 {
         self.failed_attempts
     }
@@ -244,6 +248,27 @@ mod tests {
         state.finish_failure(now);
         assert!(matches!(
             state.admit(now + Duration::from_secs(1)),
+            AuthAdmission::Allowed
+        ));
+    }
+    #[test]
+    fn policy_reload_preserves_active_attempt_and_current_retry_deadline() {
+        let now = Instant::now();
+        let mut state = AuthState::default();
+        state.start_attempt();
+        state.update_policy(AuthPolicy::new(
+            Duration::from_secs(2),
+            Duration::from_secs(3),
+        ));
+        assert!(matches!(state.admit(now), AuthAdmission::Busy));
+        state.finish_failure(now);
+        state.update_policy(AuthPolicy::default());
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(1999)),
+            AuthAdmission::RateLimited(_)
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(2)),
             AuthAdmission::Allowed
         ));
     }

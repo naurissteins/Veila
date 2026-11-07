@@ -18,6 +18,7 @@ pub fn run(mut options: CurtainOptions) -> Result<()> {
         return preview::render_preview(options);
     }
 
+    let inherited = crate::supervisor::inherited(&mut options)?;
     if options.owner_gate {
         let snapshots = read_initial_snapshots(&mut BufReader::new(std::io::stdin()))?;
         options.weather_snapshot = snapshots.weather;
@@ -54,12 +55,18 @@ pub fn run(mut options: CurtainOptions) -> Result<()> {
         &queue_handle,
         options,
         startup_started_at,
+        inherited,
     )?;
     let app_init_elapsed_ms = elapsed_ms(app_init_started_at);
     let app_init_elapsed_us = elapsed_us(app_init_started_at);
 
     let acquire_lock_started_at = Instant::now();
-    app.acquire_lock(&queue_handle)?;
+    if let Err(error) = app.acquire_lock(&queue_handle) {
+        if app.session_lock.is_none() {
+            return Err(crate::ExitFailure(veila_common::session::EXIT_REFUSED).into());
+        }
+        return Err(error);
+    }
     let acquire_lock_elapsed_ms = elapsed_ms(acquire_lock_started_at);
     let acquire_lock_elapsed_us = elapsed_us(acquire_lock_started_at);
 
@@ -156,6 +163,12 @@ pub fn run(mut options: CurtainOptions) -> Result<()> {
     }
 
     app.shutdown()?;
+    if !app.unlocked() && app.session_finished && !app.session_locked {
+        return Err(crate::ExitFailure(veila_common::session::EXIT_REFUSED).into());
+    }
+    if !app.unlocked() {
+        return Err(crate::ExitFailure(veila_common::session::EXIT_ABNORMAL).into());
+    }
 
     if let Some(reason) = app.failure_reason() {
         bail!(reason.to_string());

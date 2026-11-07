@@ -126,6 +126,19 @@ impl CurtainApp {
     }
 
     pub(crate) fn maybe_notify_startup(&mut self) {
+        if self.supervisor.is_some() {
+            if self.session_locked && !self.session_lock_notified {
+                self.notify_supervisor(veila_common::session::CurtainMessage::SessionLocked);
+                self.session_lock_notified = true;
+            }
+            if self.ready_notified && !self.ready_notification_sent {
+                self.notify_supervisor(veila_common::session::CurtainMessage::Ready {
+                    latency_report: Some(Box::new(self.latency_timings.clone())),
+                });
+                self.ready_notification_sent = true;
+            }
+            return;
+        }
         let now = std::time::Instant::now();
         if now < self.startup_notify_retry_at {
             return;

@@ -1973,6 +1973,7 @@ dependencies = [
  "veila-curtain",
  "veila-daemon",
  "veila-renderer",
+ "veila-session",
 ]
 
 [[package]]
@@ -1993,6 +1994,7 @@ dependencies = [
 name = "veila-common"
 version = "0.4.4"
 dependencies = [
+ "nix",
  "serde",
  "serde_json",
  "thiserror",
@@ -2058,6 +2060,18 @@ dependencies = [
  "tiny-skia",
  "tracing",
  "zeroize",
+]
+
+[[package]]
+name = "veila-session"
+version = "0.4.4"
+dependencies = [
+ "anyhow",
+ "nix",
+ "serde",
+ "serde_json",
+ "tracing",
+ "veila-common",
 ]
 
 [[package]]

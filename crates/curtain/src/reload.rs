@@ -25,7 +25,9 @@ impl CurtainApp {
                 return;
             }
         };
-        let config = loaded_config.config;
+        self.apply_config(loaded_config.config, queue_handle);
+    }
+    pub(crate) fn apply_config(&mut self, config: AppConfig, queue_handle: &QueueHandle<Self>) {
         let theme = ShellTheme::from_config(&config);
         let background_asset = match BackgroundAsset::load(
             None,
@@ -48,6 +50,10 @@ impl CurtainApp {
             .map(|slideshow| slideshow.current_path().to_path_buf())
             .or_else(|| config.background.resolved_path());
 
+        if let Some(supervisor) = &mut self.supervisor {
+            supervisor.config = config.clone();
+        }
+        self.authentication.update_policy(&config.lock);
         self.background_color = theme.background;
         self.background_asset = background_asset;
         self.background_generated = background_generated;
@@ -126,21 +132,7 @@ impl CurtainApp {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
 
-        tracing::info!(
-            config = loaded_config
-                .path
-                .as_deref()
-                .map(|path| path.display().to_string())
-                .unwrap_or_else(|| "defaults".to_string()),
-            background_mode = config.background.effective_mode().as_str(),
-            background_image = background_path
-                .as_deref()
-                .map(|path| path.display().to_string()),
-            background_output_overrides = config.background.outputs.len(),
-            background_slideshow_images = self.slideshow.as_ref().map(BackgroundSlideshow::len),
-            "reloaded curtain config"
-        );
-
+        tracing::info!("applied curtain config");
         self.reload_fonts();
         self.render_all_surfaces(queue_handle);
         self.maybe_power_off_secondary_outputs();

@@ -137,6 +137,7 @@ impl KeyboardHandler for CurtainApp {
         }
         if self.has_keyboard_focus {
             self.activity_notifier.notify();
+            self.notify_supervisor(veila_common::session::CurtainMessage::Activity);
         }
         if self.handle_lock_activity(queue_handle) {
             self.wake_key_release_pending = true;
@@ -284,6 +285,7 @@ impl PointerHandler for CurtainApp {
                         continue;
                     }
                     self.activity_notifier.notify();
+                    self.notify_supervisor(veila_common::session::CurtainMessage::Activity);
                     if self.handle_lock_activity(queue_handle) {
                         self.wake_pointer_release_pending = true;
                         self.resume_input.clear_swallow_input();

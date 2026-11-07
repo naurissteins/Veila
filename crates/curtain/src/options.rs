@@ -7,6 +7,9 @@ use veila_common::{
 /// Command-line options for the curtain process.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CurtainOptions {
+    pub ipc_fd: Option<i32>,
+    pub lock_fd: Option<i32>,
+    pub resolved_config: Option<veila_common::AppConfig>,
     pub help: bool,
     pub lock: bool,
     pub initial_backoff_ms: u64,

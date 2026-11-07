@@ -19,6 +19,13 @@ fn main() -> Result<()> {
     let Invocation { mode, args } = Invocation::parse(std::env::args().collect());
 
     match mode {
+        Mode::Lock => {
+            harden_process("veila-lock")?;
+            let options = veila_session::LockOptions::parse(args.clone())?;
+            logging::init_stderr();
+            let code = veila_session::run(options, args)?;
+            std::process::exit(code);
+        }
         Mode::Control => block_on(veila_daemon::run_control(ControlOptions::parse_args(args)?)),
         Mode::Daemon | Mode::LegacyDaemon => run_daemon(args, mode == Mode::LegacyDaemon),
         Mode::Prewarm => {
@@ -42,7 +49,16 @@ fn main() -> Result<()> {
             if !options.help {
                 tracing::info!(component = CURTAIN_PROCESS_NAME, "starting curtain");
             }
-            veila_curtain::run(options)
+            match veila_curtain::run(options) {
+                Err(error) if error.downcast_ref::<veila_curtain::ExitFailure>().is_some() => {
+                    let code = error
+                        .downcast_ref::<veila_curtain::ExitFailure>()
+                        .map_or(1, |exit| exit.0);
+                    tracing::error!(%error,"curtain stopped");
+                    std::process::exit(code);
+                }
+                result => result,
+            }
         }
         Mode::Preview => {
             let options = CurtainOptions::parse_args(args)?;

@@ -35,6 +35,13 @@ The internal
 mode authenticates through its own isolated PAM helper. It is intended for development;
 .B veila lock
 remains the normal entry point. Termination signals never authorize an unlock.
+.PP
+The internal
+.B __lock
+supervisor is available for daemonless development tests. It owns one lock lifetime;
+.B --daemonize --wait-ready
+returns after secure startup. Normal lock and service commands continue using the daemon.
+The internal supervisor does not yet provide automatic curtain respawn or system integrations.
 .SH COMMANDS
 .TP
 .B daemon

@@ -3,6 +3,19 @@ use anyhow::{Result, bail};
 use crate::{CurtainOptions, help};
 
 pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
+    if options.ipc_fd.is_some() != options.lock_fd.is_some() {
+        bail!("supervised curtain requires both inherited descriptors");
+    }
+    if let (Some(ipc), Some(lock)) = (options.ipc_fd, options.lock_fd)
+        && (ipc < 3
+            || lock < 3
+            || ipc == lock
+            || options.uses_daemon_lock_flow()
+            || !options.lock
+            || options.config_path.is_some())
+    {
+        bail!("invalid supervised curtain invocation");
+    }
     if options.initial_backoff_ms > 0 && options.uses_daemon_lock_flow() {
         bail!("initial backoff requires curtain-owned authentication");
     }
@@ -28,7 +41,12 @@ pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
 }
 
 pub(super) fn validate_preview_mode(options: &CurtainOptions) -> Result<()> {
-    if options.lock || options.uses_daemon_lock_flow() || options.initial_backoff_ms > 0 {
+    if options.lock
+        || options.uses_daemon_lock_flow()
+        || options.initial_backoff_ms > 0
+        || options.ipc_fd.is_some()
+        || options.lock_fd.is_some()
+    {
         bail!(
             "`veila preview` never locks the session; remove --lock and the daemon socket options"
         );

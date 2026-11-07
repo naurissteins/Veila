@@ -1,5 +1,5 @@
 use super::*;
-use veila_common::WeatherCondition;
+use crate::WeatherCondition;
 
 #[test]
 fn prefers_cached_weather_snapshot_for_preview_when_available() {
@@ -41,8 +41,8 @@ fn prefers_cached_weather_snapshot_for_preview_when_available() {
     )
     .expect("write snapshot cache");
 
-    let snapshot = load_cached_preview_weather_snapshot_from(&config, &weather_root, None)
-        .expect("load cached preview snapshot");
+    let snapshot =
+        load_snapshot_from(&config, &weather_root, None).expect("load cached preview snapshot");
 
     assert_eq!(
         snapshot,

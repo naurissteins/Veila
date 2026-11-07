@@ -136,3 +136,50 @@ fn initial_backoff_belongs_only_to_direct_authentication() {
         .is_err()
     );
 }
+
+#[test]
+fn inherited_session_requires_complete_distinct_descriptors_and_local_pam() {
+    let base = CurtainOptions {
+        lock: true,
+        ipc_fd: Some(3),
+        lock_fd: Some(4),
+        ..Default::default()
+    };
+    assert!(validate_invocation_mode(&base).is_ok());
+    for options in [
+        CurtainOptions {
+            ipc_fd: None,
+            ..base.clone()
+        },
+        CurtainOptions {
+            lock_fd: None,
+            ..base.clone()
+        },
+        CurtainOptions {
+            lock_fd: Some(3),
+            ..base.clone()
+        },
+        CurtainOptions {
+            lock_fd: Some(0),
+            ..base.clone()
+        },
+        CurtainOptions {
+            daemon_socket: Some("/tmp/auth".into()),
+            ..base.clone()
+        },
+        CurtainOptions {
+            config_path: Some("/tmp/config".into()),
+            ..base.clone()
+        },
+    ] {
+        assert!(validate_invocation_mode(&options).is_err());
+    }
+    assert!(
+        validate_preview_mode(&CurtainOptions {
+            lock: false,
+            preview_png: Some("/tmp/preview".into()),
+            ..base
+        })
+        .is_err()
+    );
+}

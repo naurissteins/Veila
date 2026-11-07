@@ -30,6 +30,14 @@ impl Backend {
         ))
     }
 
+    pub(crate) fn update_policy(&mut self, config: &LockConfig) {
+        if let Self::Local(state) = self {
+            state.update_policy(AuthPolicy::new(
+                Duration::from_millis(config.auth_backoff_base_ms),
+                Duration::from_secs(config.auth_backoff_max_seconds),
+            ));
+        }
+    }
     pub(crate) fn is_local(&self) -> bool {
         matches!(self, Self::Local(_))
     }

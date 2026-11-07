@@ -27,6 +27,7 @@ use veila_common::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ControlEvent {
+    Supervisor(Box<veila_common::session::SupervisorMessage>),
     Probe,
     Unlock {
         attempt_id: Option<u64>,
@@ -50,6 +51,7 @@ const ACCEPT_BACKOFF_MIN: Duration = Duration::from_millis(50);
 const ACCEPT_BACKOFF_MAX: Duration = Duration::from_secs(1);
 const CONTROL_READ_TIMEOUT: Duration = Duration::from_secs(5);
 
+#[derive(Clone)]
 pub(crate) struct ControlSender {
     sender: Sender<ControlEvent>,
     ping: Ping,
@@ -60,7 +62,7 @@ impl ControlSender {
         Self { sender, ping }
     }
 
-    fn send(
+    pub(crate) fn send(
         &self,
         event: ControlEvent,
     ) -> std::result::Result<(), std::sync::mpsc::SendError<ControlEvent>> {
@@ -214,7 +216,7 @@ fn read_control_message(
         .context("invalid curtain control message")
 }
 
-fn control_event(message: CurtainControlMessage) -> ControlEvent {
+pub(crate) fn control_event(message: CurtainControlMessage) -> ControlEvent {
     match message {
         CurtainControlMessage::Probe => ControlEvent::Probe,
         CurtainControlMessage::Unlock { attempt_id } => ControlEvent::Unlock { attempt_id },
