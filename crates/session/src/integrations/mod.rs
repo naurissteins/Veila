@@ -1,4 +1,5 @@
 mod actions;
+mod fingerprint;
 mod logind;
 mod providers;
 mod worker;
@@ -18,6 +19,12 @@ pub(crate) struct State {
 }
 
 pub(crate) enum Event {
+    FingerprintMatch {
+        generation: u64,
+        revision: u64,
+        attempt_id: u64,
+        authorization: crate::services::fingerprint::Authorization,
+    },
     Message {
         generation: u64,
         revision: Option<u64>,

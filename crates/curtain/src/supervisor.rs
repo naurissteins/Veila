@@ -35,10 +35,13 @@ impl Supervisor {
             loop {
                 match frame::read::<SupervisorMessage>(&mut reader) {
                     Ok(Some(message))=>{if control.send(ControlEvent::Supervisor(Box::new(message))).is_err(){break;}},
-                    Ok(None)=>{tracing::warn!("supervisor disconnected; local PAM remains available");break;},
+                    Ok(None)=>{
+                        tracing::warn!("supervisor disconnected; local PAM remains available");break;
+                    },
                     Err(error)=>{tracing::warn!(%error,"invalid supervisor channel; local PAM remains available");break;},
                 }
             }
+            let _ = control.send(ControlEvent::UpdateFingerprintStatus { status: None });
         })?;
         thread::Builder::new()
             .name("veila-supervisor-write".into())

@@ -110,6 +110,10 @@ impl Harness {
 }
 impl Drop for Harness {
     fn drop(&mut self) {
+        if let Some(mut child) = self.running.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
         let _ = std::fs::remove_file(&self.path);
     }
 }
@@ -210,3 +214,5 @@ fn old_config_revision_cannot_overwrite_current_widget_data() {
         frame::read::<SupervisorMessage>(&mut std::io::BufReader::new(&mut h.curtain)).is_err()
     );
 }
+
+mod fingerprint;

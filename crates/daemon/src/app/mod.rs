@@ -462,7 +462,7 @@ pub async fn run(
                             false,
                             runtime.loaded_config.config.fingerprint.max_failed_attempts,
                             &username,
-                            None,
+                            None::<tokio::sync::mpsc::UnboundedSender<runtime::AuthResult>>,
                         )
                         .await;
                     runtime.last_power_status_snapshot = None;

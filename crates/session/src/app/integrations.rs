@@ -72,6 +72,32 @@ impl Running {
                 .as_mut()
                 .and_then(|h| h.events.try_recv().ok());
             match event {
+                Some(Event::FingerprintMatch {
+                    generation,
+                    revision,
+                    attempt_id,
+                    authorization,
+                }) if self.locked
+                    && self.config.fingerprint.enabled
+                    && generation == self.generation
+                    && revision == self.revision
+                    && authorization.is_current()
+                    && self
+                        .child
+                        .as_mut()
+                        .is_some_and(|child| matches!(child.try_wait(), Ok(None))) =>
+                {
+                    tracing::info!(
+                        generation,
+                        attempt_id,
+                        "fingerprint authorized current curtain unlock"
+                    );
+                    self.queue(SupervisorMessage::Control(
+                        veila_common::ipc::CurtainControlMessage::Unlock {
+                            attempt_id: Some(attempt_id),
+                        },
+                    ));
+                }
                 Some(Event::Message {
                     generation,
                     revision,

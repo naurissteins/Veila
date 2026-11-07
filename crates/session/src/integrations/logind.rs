@@ -12,9 +12,11 @@ pub(super) async fn run(
     mut changes: watch::Receiver<State>,
     mut requests: mpsc::Receiver<Request>,
     mut output: Output,
+    fingerprint: super::fingerprint::Fingerprint,
 ) {
     loop {
-        if let Err(error) = serve(&mut changes, &mut requests, &mut output).await {
+        if let Err(error) = serve(&mut changes, &mut requests, &mut output, &fingerprint).await {
+            fingerprint.pause().await;
             tracing::warn!(error=%format!("{error:#}"), "logind integration unavailable; retaining local PAM and retrying");
         } else {
             return;
@@ -23,9 +25,9 @@ pub(super) async fn run(
         loop {
             tokio::select! {
                 _ = tokio::time::sleep_until(deadline) => break,
-                changed = changes.changed() => { if changed.is_err() { return; } }
+                changed = changes.changed() => { if changed.is_err() { fingerprint.stop().await; return; } }
                 request = requests.recv() => {
-                    if let Some(Request::Finish(ack)) = request { let _ = ack.send(()); return; }
+                    if let Some(Request::Finish(ack)) = request { fingerprint.stop().await; let _ = ack.send(()); return; }
                 }
             }
         }
@@ -36,6 +38,7 @@ async fn serve(
     changes: &mut watch::Receiver<State>,
     requests: &mut mpsc::Receiver<Request>,
     output: &mut Output,
+    fingerprint: &super::fingerprint::Fingerprint,
 ) -> anyhow::Result<()> {
     let connection = tokio::time::timeout(DBUS_TIMEOUT, logind::connect_system()).await??;
     let path =
@@ -44,6 +47,15 @@ async fn serve(
     let manager = logind::ManagerProxy::new(&connection).await?;
     let mut unlock = session.receive_unlock().await?;
     let mut sleep = manager.receive_prepare_for_sleep().await?;
+    // A newly spawned supervisor may have missed the beginning of sleep preparation.
+    match tokio::time::timeout(DBUS_TIMEOUT, manager.preparing_for_sleep()).await {
+        Ok(Ok(false)) => fingerprint.resume().await,
+        Ok(Ok(true)) => {}
+        result => tracing::warn!(
+            ?result,
+            "sleep state unavailable; fingerprint remains paused"
+        ),
+    }
     let mut inhibitor = inhibit(&manager).await;
     let mut marked = changes.borrow().confirmed;
     if marked {
@@ -62,6 +74,7 @@ async fn serve(
                 let state = changes.borrow().clone();
                 if state.confirmed {
                     tracing::info!(generation=state.generation, "logind authorized session unlock");
+                    fingerprint.pause().await;
                     output.message(state.generation, SupervisorMessage::Control(CurtainControlMessage::Unlock { attempt_id: None })).await;
                 }
             }
@@ -70,18 +83,20 @@ async fn serve(
                 let start = *signal.args()?.start();
                 let state = changes.borrow().clone();
                 if start {
+                    fingerprint.pause().await;
                     if state.confirmed && !arm(output, state.generation).await {
                         tracing::error!("resume guard acknowledgement unavailable before sleep; lock remains held");
                     }
                     inhibitor = None;
                 } else {
+                    fingerprint.resume().await;
                     output.message(state.generation, SupervisorMessage::Control(CurtainControlMessage::MarkResumed)).await;
                     inhibitor = inhibit(&manager).await;
                 }
             }
             request = requests.recv() => {
                 match request {
-                    Some(Request::Finish(ack)) => { hint(&session, false).await; let _ = ack.send(()); return Ok(()); }
+                    Some(Request::Finish(ack)) => { fingerprint.stop().await; hint(&session, false).await; let _ = ack.send(()); return Ok(()); }
                     Some(Request::Power { generation, action }) => {
                         let state = changes.borrow().clone();
                         if state.generation == generation && state.confirmed && state.config.visuals.power_button_enabled(action) {

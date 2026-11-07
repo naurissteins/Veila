@@ -15,6 +15,8 @@ pub trait Manager {
     fn power_off(&self, interactive: bool) -> zbus::Result<()>;
     fn reboot(&self, interactive: bool) -> zbus::Result<()>;
     fn suspend(&self, interactive: bool) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn preparing_for_sleep(&self) -> zbus::Result<bool>;
 
     #[zbus(signal)]
     fn prepare_for_sleep(&self, start: bool) -> zbus::Result<()>;

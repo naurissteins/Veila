@@ -47,7 +47,9 @@ After secure confirmation, recovery retries indefinitely
 with delays capped at five seconds.
 After secure confirmation the internal supervisor runs logind, sleep/resume,
 configured power actions and locked suspend, live widgets and automatic reload.
-Fingerprint verification is not yet provided in this development mode.
+Opt-in fprintd verification also runs after secure confirmation.
+The non-match limit persists across retries, sleep and curtain recovery.
+Password authentication remains available if fingerprint verification stops.
 .SH COMMANDS
 .TP
 .B daemon

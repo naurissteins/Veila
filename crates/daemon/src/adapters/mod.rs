@@ -1,4 +1,3 @@
-pub mod fprint;
 pub mod idle;
 pub mod ipc;
 pub use veila_session::adapters::logind;

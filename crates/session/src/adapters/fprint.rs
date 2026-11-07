@@ -5,7 +5,7 @@ use veila_common::FingerprintStatus;
 use zbus::{OwnedObjectPath, proxy};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum VerifyOutcome {
+pub enum VerifyOutcome {
     Matched,
     NotMatched,
     NoEnrolledFingers,
@@ -37,7 +37,7 @@ trait FprintDevice {
     fn verify_status(&self, result: &str, done: bool) -> zbus::Result<()>;
 }
 
-pub(crate) async fn verify_once(
+pub async fn verify_once(
     username: &str,
     status_sender: &UnboundedSender<Option<FingerprintStatus>>,
     cancel: &mut watch::Receiver<bool>,
@@ -174,7 +174,7 @@ async fn wait_for_cancellation(cancel: &mut watch::Receiver<bool>) {
     }
 }
 
-pub(crate) fn verify_status(result: &str, done: bool) -> FingerprintStatus {
+pub fn verify_status(result: &str, done: bool) -> FingerprintStatus {
     match (result, done) {
         ("verify-match", true) => FingerprintStatus::Accepted,
         ("verify-no-match", true) => FingerprintStatus::NotRecognized,

@@ -17,6 +17,17 @@ pub(super) async fn run(
     let Ok(wake) = output.wake.try_clone() else {
         return;
     };
+    let Ok(fingerprint_wake) = output.wake.try_clone() else {
+        return;
+    };
+    let fingerprint = super::fingerprint::Fingerprint::start(
+        changes.clone(),
+        Output {
+            tx: output.tx.clone(),
+            wake: fingerprint_wake,
+        },
+    )
+    .await;
     tokio::spawn(super::logind::run(
         changes.clone(),
         requests,
@@ -24,6 +35,7 @@ pub(super) async fn run(
             tx: output.tx.clone(),
             wake,
         },
+        fingerprint,
     ));
     let mut state = changes.borrow_and_update().clone();
     let mut providers = Providers::new(&state, path.as_deref());
