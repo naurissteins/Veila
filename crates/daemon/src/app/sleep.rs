@@ -2,7 +2,7 @@ use super::runtime::control_socket_path;
 
 use std::path::Path;
 
-use zbus::zvariant::OwnedFd;
+use zbus::OwnedFd;
 
 use crate::adapters::{logind, process};
 
@@ -55,7 +55,7 @@ pub(super) async fn handle_prepare_for_sleep(
     runtime: &mut AppRuntime,
     startup: &mut PendingStartup,
     connection: &zbus::Connection,
-    session_path: &zbus::zvariant::OwnedObjectPath,
+    session_path: &zbus::OwnedObjectPath,
     manager: &logind::ManagerProxy<'_>,
     config_path: Option<&Path>,
 ) {

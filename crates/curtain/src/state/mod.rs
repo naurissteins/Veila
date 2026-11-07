@@ -1,3 +1,5 @@
+mod events;
+pub(crate) use events::CurtainEventSources;
 mod interaction;
 mod memory;
 mod output;
@@ -21,8 +23,8 @@ use std::{
 
 use anyhow::{Context, Result, anyhow, bail};
 use calloop::{
-    channel::{Channel, Sender, channel},
-    ping::{PingSource, make_ping},
+    channel::{Sender, channel},
+    ping::make_ping,
 };
 use smithay_client_toolkit::{
     compositor::CompositorState,
@@ -228,6 +230,7 @@ pub(crate) struct CurtainApp {
     pub(crate) slideshow: Option<BackgroundSlideshow>,
     auth_sender: Sender<AuthEvent>,
     pub(crate) background_sender: Sender<BackgroundEvent>,
+    pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
     control_events: ControlReceiver<ControlEvent>,
     pub(crate) lock_probe_state: Arc<AtomicU8>,
@@ -298,12 +301,6 @@ pub(crate) struct CurtainApp {
     pub(crate) first_frame_committed_at: Option<Instant>,
 }
 
-pub(crate) struct CurtainEventSources {
-    pub(crate) auth: Channel<AuthEvent>,
-    pub(crate) background: Channel<BackgroundEvent>,
-    pub(crate) control: PingSource,
-}
-
 impl CurtainApp {
     pub(crate) fn new(
         connection: Connection,
@@ -336,7 +333,6 @@ impl CurtainApp {
         let config = loaded_config.config;
         let emergency_active = force_emergency_ui || emergency_reason.is_some();
         let theme = ShellTheme::from_config(&config);
-        veila_renderer::text::configure_font_warmup(theme.font_warmup_families());
         let background_color = if emergency_active {
             EMERGENCY_BACKGROUND
         } else {
@@ -490,6 +486,7 @@ impl CurtainApp {
             slideshow,
             auth_sender,
             background_sender,
+            fonts: crate::fonts::DeferredFonts::default(),
             keyboard_label_sender: None,
             control_events,
             lock_probe_state,

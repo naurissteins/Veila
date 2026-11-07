@@ -310,6 +310,10 @@ impl ScenePrewarmConfig {
     }
 
     fn into_shell(self) -> ShellState {
+        veila_renderer::text::install_fonts(veila_renderer::text::prepare_fonts(
+            &self.theme.font_requests(),
+            Some(std::path::Path::new("/proc/self/exe")),
+        ));
         ShellState::new_with_username_and_widgets(
             self.theme,
             self.input_placeholder,

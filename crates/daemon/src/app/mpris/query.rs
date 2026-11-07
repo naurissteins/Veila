@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use time::OffsetDateTime;
 use veila_common::{NowPlayingConfig, NowPlayingSnapshot};
-use zbus::{Connection, Proxy, fdo::DBusProxy, zvariant::OwnedValue};
+use zbus::{Connection, OwnedVariant, Proxy, fdo::DBusProxy};
 
 use super::{
     LOG_TARGET, NowPlayingRefresh,
@@ -117,7 +117,7 @@ async fn player_snapshot(
     let Some(rank) = playback_rank(&playback_status) else {
         return Ok(None);
     };
-    let metadata: HashMap<String, OwnedValue> = player_proxy.get_property("Metadata").await?;
+    let metadata: HashMap<String, OwnedVariant> = player_proxy.get_property("Metadata").await?;
     let Some(title) = metadata_string(&metadata, "xesam:title") else {
         return Ok(None);
     };

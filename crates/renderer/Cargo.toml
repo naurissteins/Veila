@@ -15,6 +15,7 @@ memmap2 = { workspace = true }
 nix = { workspace = true }
 resvg = { workspace = true }
 smithay-client-toolkit = { workspace = true }
+sys-locale = { workspace = true }
 thiserror = { workspace = true }
 tiny-skia = { workspace = true }
 tracing = { workspace = true }

@@ -1122,8 +1122,8 @@ fn caps_lock_toggle_does_not_change_static_scene_revision() {
 fn setting_same_avatar_does_not_invalidate_static_scene() {
     let mut shell = ShellState::default();
     let revision = shell.static_scene_revision();
-
-    assert!(!shell.set_avatar(veila_renderer::avatar::AvatarAsset::placeholder()));
+    let avatar = shell.avatar.clone();
+    assert!(!shell.set_avatar(avatar));
     assert_eq!(shell.static_scene_revision(), revision);
 }
 

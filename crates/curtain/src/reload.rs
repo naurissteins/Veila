@@ -141,6 +141,7 @@ impl CurtainApp {
             "reloaded curtain config"
         );
 
+        self.reload_fonts();
         self.render_all_surfaces(queue_handle);
         self.maybe_power_off_secondary_outputs();
         self.maybe_start_background_render();

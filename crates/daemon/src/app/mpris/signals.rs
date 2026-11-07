@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Result, bail};
 use futures_util::StreamExt;
 use veila_common::NowPlayingConfig;
-use zbus::{Connection, MatchRule, MessageStream, message::Type, zvariant::OwnedValue};
+use zbus::{Connection, MatchRule, MessageStream, OwnedVariant, message::Type};
 
 use super::{
     NowPlayingRefresh,
@@ -78,7 +78,7 @@ fn properties_changed_affects_snapshot(message: &zbus::Message) -> bool {
     let Ok((interface, changed, invalidated)) =
         message
             .body()
-            .deserialize::<(String, HashMap<String, OwnedValue>, Vec<String>)>()
+            .deserialize::<(String, HashMap<String, OwnedVariant>, Vec<String>)>()
     else {
         return true;
     };
@@ -94,7 +94,7 @@ fn properties_changed_affects_snapshot(message: &zbus::Message) -> bool {
 async fn mpris_name_owner_changed_stream(connection: &Connection) -> Result<MessageStream> {
     let rule = mpris_name_owner_changed_rule()?;
 
-    MessageStream::for_match_rule(rule, connection, Some(16))
+    MessageStream::for_match_rule(rule, connection, std::num::NonZeroUsize::new(16))
         .await
         .map_err(Into::into)
 }
@@ -102,16 +102,16 @@ async fn mpris_name_owner_changed_stream(connection: &Connection) -> Result<Mess
 fn mpris_name_owner_changed_rule() -> Result<MatchRule<'static>> {
     Ok(MatchRule::builder()
         .msg_type(Type::Signal)
-        .sender(DBUS_INTERFACE)?
-        .interface(DBUS_INTERFACE)?
-        .member("NameOwnerChanged")?
-        .arg0ns(MPRIS_NAMESPACE)?
-        .build())
+        .sender(DBUS_INTERFACE)
+        .interface(DBUS_INTERFACE)
+        .member("NameOwnerChanged")
+        .arg0ns(MPRIS_NAMESPACE)
+        .build()?)
 }
 
 async fn mpris_properties_changed_stream(connection: &Connection) -> Result<MessageStream> {
     let rule = mpris_properties_changed_rule()?;
-    MessageStream::for_match_rule(rule, connection, Some(32))
+    MessageStream::for_match_rule(rule, connection, std::num::NonZeroUsize::new(32))
         .await
         .map_err(Into::into)
 }
@@ -119,11 +119,11 @@ async fn mpris_properties_changed_stream(connection: &Connection) -> Result<Mess
 fn mpris_properties_changed_rule() -> Result<MatchRule<'static>> {
     Ok(MatchRule::builder()
         .msg_type(Type::Signal)
-        .interface(DBUS_PROPERTIES_INTERFACE)?
-        .member("PropertiesChanged")?
-        .path(MPRIS_PATH)?
-        .add_arg(MPRIS_INTERFACE)?
-        .build())
+        .interface(DBUS_PROPERTIES_INTERFACE)
+        .member("PropertiesChanged")
+        .path(MPRIS_PATH)
+        .add_arg(MPRIS_INTERFACE)
+        .build()?)
 }
 
 #[cfg(test)]
@@ -134,7 +134,7 @@ mod tests {
         mpris_name_owner_changed_rule, mpris_properties_changed_rule,
         properties_changed_affects_snapshot,
     };
-    use zbus::{Message, zvariant::Value};
+    use zbus::{Message, Variant};
 
     #[test]
     fn mpris_name_owner_rule_tracks_player_namespace() {
@@ -158,14 +158,14 @@ mod tests {
 
     #[test]
     fn properties_changed_filter_accepts_snapshot_fields() {
-        let message = properties_changed_message(&[("Metadata", Value::from("track"))], &[]);
+        let message = properties_changed_message(&[("Metadata", Variant::from("track"))], &[]);
 
         assert!(properties_changed_affects_snapshot(&message));
     }
 
     #[test]
     fn properties_changed_filter_ignores_unrelated_fields() {
-        let message = properties_changed_message(&[("Position", Value::from(42_i64))], &[]);
+        let message = properties_changed_message(&[("Position", Variant::from(42_i64))], &[]);
 
         assert!(!properties_changed_affects_snapshot(&message));
     }
@@ -184,13 +184,12 @@ mod tests {
 
     #[test]
     fn unrelated_interface_does_not_trigger_refresh() {
-        let changed = HashMap::from([("Metadata", Value::from("track"))]);
+        let changed = HashMap::from([("Metadata", Variant::from("track"))]);
         let message = Message::signal(
             super::MPRIS_PATH,
             super::DBUS_PROPERTIES_INTERFACE,
             "PropertiesChanged",
         )
-        .expect("signal")
         .build(&("org.example.Unrelated", changed, Vec::<String>::new()))
         .expect("message");
 
@@ -204,21 +203,22 @@ mod tests {
             super::DBUS_PROPERTIES_INTERFACE,
             "PropertiesChanged",
         )
-        .expect("signal")
         .build(&42_i64)
         .expect("message");
 
         assert!(properties_changed_affects_snapshot(&message));
     }
 
-    fn properties_changed_message(changed: &[(&str, Value<'_>)], invalidated: &[&str]) -> Message {
+    fn properties_changed_message(
+        changed: &[(&str, Variant<'_>)],
+        invalidated: &[&str],
+    ) -> Message {
         let changed = changed.iter().cloned().collect::<HashMap<_, _>>();
         Message::signal(
             super::MPRIS_PATH,
             super::DBUS_PROPERTIES_INTERFACE,
             "PropertiesChanged",
         )
-        .expect("signal")
         .build(&(super::MPRIS_INTERFACE, changed, invalidated))
         .expect("message")
     }

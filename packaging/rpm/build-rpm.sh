@@ -63,6 +63,7 @@ URL:            https://github.com/naurissteins/Veila
 Source0:        ${source_basename}
 Source1:        veila.pam
 BuildArch:      ${architecture}
+Recommends:     fontconfig
 
 %description
 Veila is a native Wayland screen locker focused on a modern look,

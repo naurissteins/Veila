@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use tokio::time::{Duration, sleep_until};
-use zbus::zvariant::OwnedObjectPath;
+use zbus::OwnedObjectPath;
 
 use super::{
     runtime::{

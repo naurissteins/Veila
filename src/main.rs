@@ -27,6 +27,10 @@ fn main() -> Result<()> {
             logging::init_stderr();
             block_on(veila_daemon::run_prewarm(options))
         }
+        Mode::FontQuery => {
+            harden_process("veila-fonts")?;
+            Ok(veila_renderer::text::run_font_query(args)?)
+        }
         Mode::PamHelper => {
             harden_process(PAM_HELPER_PROCESS_NAME)?;
             Ok(veila_auth::run_helper()?)

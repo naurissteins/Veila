@@ -141,6 +141,7 @@ impl CurtainApp {
             return;
         }
 
+        self.maybe_start_fonts();
         for (surface, size) in surfaces {
             if let Err(error) =
                 self.render_surface_with_emergency_fallback(&surface, size, queue_handle)

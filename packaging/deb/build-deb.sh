@@ -81,7 +81,7 @@ Architecture: $architecture
 Maintainer: Nauris Steins <me@naurissteins.com>
 Installed-Size: $installed_size
 Depends: libc6, libpam0g, libwayland-client0, libxkbcommon0
-Recommends: systemd
+Recommends: systemd, fontconfig
 Homepage: https://github.com/naurissteins/Veila
 Description: Secure, elegant, and fast Wayland screen locker
  Veila is a native Wayland screen locker focused on a modern look,

@@ -1,8 +1,5 @@
 use anyhow::Context;
-use zbus::{
-    proxy,
-    zvariant::{OwnedFd, OwnedObjectPath},
-};
+use zbus::{OwnedFd, OwnedObjectPath, proxy};
 
 #[proxy(
     interface = "org.freedesktop.login1.Manager",
@@ -70,7 +67,6 @@ pub(crate) async fn session_proxy<'a>(
 ) -> anyhow::Result<SessionProxy<'a>> {
     SessionProxy::builder(conn)
         .path(session_path.as_str())
-        .context("invalid logind session object path")?
         .build()
         .await
         .context("failed to create logind session proxy")

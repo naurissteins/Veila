@@ -16,8 +16,12 @@ use veila_renderer::{
     cover::CoverArtAsset,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) enum BackgroundEvent {
+    FontsReady {
+        generation: u64,
+        fonts: Box<veila_renderer::text::PreparedFonts>,
+    },
     BuffersReady {
         path: PathBuf,
         buffers: Vec<(FrameSize, SoftwareBuffer)>,

@@ -1,6 +1,6 @@
 use std::path::Path;
 use veila_common::ipc::{DaemonControlResponse, LatencyReportMode};
-use zbus::zvariant::OwnedObjectPath;
+use zbus::OwnedObjectPath;
 
 use super::{
     PendingStartup,

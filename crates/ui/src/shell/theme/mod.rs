@@ -2,6 +2,8 @@ mod auth;
 #[cfg(test)]
 mod auth_tests;
 mod color;
+#[cfg(test)]
+mod font_tests;
 mod font_warmup;
 mod header;
 #[cfg(test)]

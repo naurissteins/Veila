@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use zbus::{proxy, zvariant::OwnedObjectPath};
+use zbus::{OwnedObjectPath, proxy};
 
 use veila_common::BatterySnapshot;
 
@@ -43,7 +43,6 @@ pub async fn fetch_battery_snapshot() -> Result<Option<BatterySnapshot>> {
         .context("failed to resolve UPower display device")?;
     let device = PowerDeviceProxy::builder(&connection)
         .path(device_path.as_str())
-        .context("invalid UPower display device object path")?
         .build()
         .await
         .context("failed to create UPower display device proxy")?;

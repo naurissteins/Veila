@@ -24,6 +24,9 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
     ) {
         match event {
+            BackgroundEvent::FontsReady { generation, fonts } => {
+                self.accept_fonts(generation, *fonts, queue_handle)
+            }
             BackgroundEvent::BuffersReady {
                 path,
                 buffers,

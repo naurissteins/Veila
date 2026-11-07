@@ -1,6 +1,6 @@
 use anyhow::{Context, anyhow};
 use nix::unistd::getuid;
-use zbus::zvariant::OwnedObjectPath;
+use zbus::OwnedObjectPath;
 
 use super::proxy::ManagerProxy;
 use selection::{SessionCandidate, read_snapshot, select_session, validate_session};

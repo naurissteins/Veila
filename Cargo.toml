@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 veila-auth = { path = "crates/auth" }
 veila-curtain = { path = "crates/curtain" }
+veila-renderer = { path = "crates/renderer" }
 veila-daemon = { path = "crates/daemon" }
 anyhow = { workspace = true }
 nix = { workspace = true }
@@ -52,10 +53,11 @@ resvg = { version = "0.47", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop", "xkbcommon"] }
+sys-locale = "0.3"
 thiserror = "2"
 time = { version = "0.3", features = ["local-offset"] }
 tiny-skia = "0.12"
-tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt", "signal", "sync", "time"] }
+tokio = { version = "1.54.1", features = ["io-util", "macros", "net", "process", "rt", "signal", "sync", "time"] }
 toml = "1"
 toml_edit = "0.25"
 tracing = "0.1"
@@ -65,7 +67,7 @@ ureq = { version = "3", default-features = true, features = ["json"] }
 wayland-protocols-wlr = "0.3"
 xkbcommon = "0.8"
 zeroize = "1"
-zbus = { version = "5", default-features = false, features = ["tokio"] }
+zbus = { version = "6.1", default-features = false, features = ["tokio", "proxy", "tracing"] }
 
 [profile.release]
 lto = "fat"

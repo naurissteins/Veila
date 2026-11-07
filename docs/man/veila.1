@@ -173,6 +173,15 @@ and
 .B lock_before_sleep
 (default true) locks the session before suspend while holding a logind delay inhibitor. Both apply live after
 .BR "veila reload" .
+.SH FONTS
+Bundled fonts provide the initial password UI. After compositor confirmation,
+Veila uses Fontconfig's fc-match to select a bounded set of configured and script
+fallback faces. Optional fonts load off the Wayland thread and a completed load
+redraws the scene without interrupting password entry.
+Install fontconfig and fonts covering the scripts you use. Missing, malformed,
+oversized or slow optional fonts retain the bundled fallback; characters outside
+its coverage can appear as missing glyphs until a suitable face is loaded.
+Previews and prewarm use the same font selection rules.
 .SH FILES
 .TP
 .I ~/.config/veila/config.toml

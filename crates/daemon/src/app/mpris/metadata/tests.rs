@@ -18,14 +18,8 @@ fn rejects_oversized_artwork_url_without_truncating_path() {
 #[test]
 fn missing_and_mistyped_metadata_is_absent() {
     let metadata = std::collections::HashMap::from([
-        (
-            "xesam:title".into(),
-            zbus::zvariant::OwnedValue::from(42_i64),
-        ),
-        (
-            "mpris:artUrl".into(),
-            zbus::zvariant::OwnedValue::from(true),
-        ),
+        ("xesam:title".into(), zbus::OwnedVariant::from(42_i64)),
+        ("mpris:artUrl".into(), zbus::OwnedVariant::from(true)),
     ]);
 
     assert_eq!(super::metadata_string(&metadata, "xesam:title"), None);
@@ -35,10 +29,10 @@ fn missing_and_mistyped_metadata_is_absent() {
 
 #[test]
 fn artist_list_uses_first_nonempty_normalized_entry() {
-    let artists = zbus::zvariant::Value::from(vec![" ", "  Artist 🎵  ", "Other"]);
+    let artists = zbus::Variant::from(vec![" ", "  Artist 🎵  ", "Other"]);
     let metadata = std::collections::HashMap::from([(
         "xesam:artist".into(),
-        zbus::zvariant::OwnedValue::try_from(artists).expect("owned artists"),
+        zbus::OwnedVariant::try_from(artists).expect("owned artists"),
     )]);
 
     assert_eq!(
@@ -51,8 +45,7 @@ fn artist_list_uses_first_nonempty_normalized_entry() {
 fn scalar_artist_metadata_is_rejected() {
     let metadata = std::collections::HashMap::from([(
         "xesam:artist".into(),
-        zbus::zvariant::OwnedValue::try_from(zbus::zvariant::Value::from("Artist"))
-            .expect("owned string"),
+        zbus::OwnedVariant::try_from(zbus::Variant::from("Artist")).expect("owned string"),
     )]);
 
     assert_eq!(

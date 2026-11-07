@@ -3,7 +3,7 @@ use tokio::{
     time::{Duration, timeout},
 };
 use veila_common::ipc::{DaemonControlMessage, DaemonControlResponse};
-use zbus::zvariant::OwnedObjectPath;
+use zbus::OwnedObjectPath;
 
 use super::{
     super::{connections::ControlConnection, state::AppRuntime},

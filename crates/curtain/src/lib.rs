@@ -5,6 +5,7 @@
 mod app;
 mod background;
 mod cli;
+mod fonts;
 mod help;
 mod invocation;
 mod ipc;

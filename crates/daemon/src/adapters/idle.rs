@@ -1,8 +1,4 @@
-use std::{
-    io::ErrorKind,
-    os::fd::{AsFd, AsRawFd, RawFd},
-    time::Duration,
-};
+use std::{io::ErrorKind, os::fd::AsFd, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
 use smithay_client_toolkit::reexports::{
@@ -15,7 +11,8 @@ use smithay_client_toolkit::reexports::{
     protocols::ext::idle_notify::v1::client::{ext_idle_notification_v1, ext_idle_notifier_v1},
 };
 use tokio::{
-    io::{Interest, unix::AsyncFd},
+    io::Interest,
+    net::UnixStream,
     sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
     task::JoinHandle,
 };
@@ -49,14 +46,6 @@ impl Drop for IdleNotifier {
     }
 }
 
-struct ConnectionFd(Connection);
-
-impl AsRawFd for ConnectionFd {
-    fn as_raw_fd(&self) -> RawFd {
-        self.0.as_fd().as_raw_fd()
-    }
-}
-
 struct IdleSession {
     connection: Connection,
     queue: EventQueue<IdleApp>,
@@ -73,8 +62,17 @@ async fn run(timeout: Duration, sender: UnboundedSender<()>) -> Result<()> {
         mut queue,
         _notification,
     } = session;
-    let fd = AsyncFd::with_interest(ConnectionFd(connection.clone()), Interest::READABLE)
-        .context("failed to watch the Wayland connection")?;
+    // own the readiness descriptor while Wayland retains responsibility for reading it
+    let socket = std::os::unix::net::UnixStream::from(
+        connection
+            .as_fd()
+            .try_clone_to_owned()
+            .context("failed to duplicate Wayland descriptor")?,
+    );
+    socket
+        .set_nonblocking(true)
+        .context("failed to make the Wayland descriptor nonblocking")?;
+    let fd = UnixStream::from_std(socket).context("failed to watch the Wayland connection")?;
     let mut app = IdleApp { sender };
     tracing::info!(timeout_seconds = timeout.as_secs(), "idle locking armed");
 
@@ -87,18 +85,19 @@ async fn run(timeout: Duration, sender: UnboundedSender<()>) -> Result<()> {
         }
         flush(&connection)?;
 
-        let mut ready = fd
-            .readable()
+        fd.readable()
             .await
             .context("failed to wait for Wayland events")?;
         let Some(guard) = queue.prepare_read() else {
             continue;
         };
-        match guard.read() {
+        match fd.try_io(Interest::READABLE, || match guard.read() {
+            Ok(_) => Ok(()),
+            Err(WaylandError::Io(error)) => Err(error),
+            Err(error) => Err(std::io::Error::other(error)),
+        }) {
             Ok(_) => {}
-            Err(WaylandError::Io(error)) if error.kind() == ErrorKind::WouldBlock => {
-                ready.clear_ready();
-            }
+            Err(error) if error.kind() == ErrorKind::WouldBlock => {}
             Err(error) => return Err(anyhow!(error).context("failed to read Wayland events")),
         }
     }

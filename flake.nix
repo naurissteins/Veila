@@ -69,7 +69,7 @@
 
             wrapProgram "$out/bin/veila" \
               --set VEILA_ASSET_DIR "$out/share/veila" \
-              --prefix PATH : "${pkgs.lib.makeBinPath [pkgs.systemd pkgs.coreutils]}"
+              --prefix PATH : "${pkgs.lib.makeBinPath [pkgs.systemd pkgs.coreutils pkgs.fontconfig]}"
 
             runHook postInstall
           '';
@@ -272,6 +272,7 @@
           packages = with pkgs; [
             rustup
             cargo-deny
+            fontconfig
             libxkbcommon
             pam
             pkg-config

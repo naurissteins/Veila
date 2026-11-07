@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use futures_util::StreamExt;
 use tokio::sync::{mpsc::UnboundedSender, watch};
 use veila_common::FingerprintStatus;
-use zbus::{proxy, zvariant::OwnedObjectPath};
+use zbus::{OwnedObjectPath, proxy};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum VerifyOutcome {
@@ -62,7 +62,6 @@ pub(crate) async fn verify_once(
     };
     let device = FprintDeviceProxy::builder(&connection)
         .path(device_path.as_str())
-        .context("invalid fprintd device object path")?
         .build()
         .await
         .context("failed to create fprintd device proxy")?;

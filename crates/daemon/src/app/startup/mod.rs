@@ -7,7 +7,7 @@ use std::{
     pin::Pin,
 };
 use veila_common::ipc::{DaemonControlResponse, LatencyReportMode, LockLatencyReport};
-use zbus::zvariant::OwnedObjectPath;
+use zbus::OwnedObjectPath;
 
 use super::{
     connections::ControlConnection,

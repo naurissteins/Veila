@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use zbus::zvariant::OwnedValue;
+use zbus::OwnedVariant;
 
 #[cfg(test)]
 mod tests;
@@ -8,12 +8,15 @@ mod tests;
 const MAX_METADATA_CHARS: usize = 256;
 const MAX_ARTWORK_URL_BYTES: usize = 4096;
 
-pub(super) fn metadata_string(metadata: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
+pub(super) fn metadata_string(
+    metadata: &HashMap<String, OwnedVariant>,
+    key: &str,
+) -> Option<String> {
     let value = metadata.get(key)?.clone();
     normalize_string(String::try_from(value).ok()?)
 }
 
-pub(super) fn metadata_artwork_url(metadata: &HashMap<String, OwnedValue>) -> Option<String> {
+pub(super) fn metadata_artwork_url(metadata: &HashMap<String, OwnedVariant>) -> Option<String> {
     let value = metadata.get("mpris:artUrl")?.clone();
     // artwork paths use a byte bound and must never be truncated into a different path
     normalize_artwork_url(String::try_from(value).ok()?)
@@ -25,7 +28,7 @@ fn normalize_artwork_url(value: String) -> Option<String> {
 }
 
 pub(super) fn metadata_string_list_first(
-    metadata: &HashMap<String, OwnedValue>,
+    metadata: &HashMap<String, OwnedVariant>,
     key: &str,
 ) -> Option<String> {
     let value = metadata.get(key)?.clone();

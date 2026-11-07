@@ -1,7 +1,7 @@
 use std::{error::Error, fmt};
 
 use anyhow::{Context, anyhow};
-use zbus::zvariant::OwnedObjectPath;
+use zbus::OwnedObjectPath;
 
 use super::super::proxy::session_proxy;
 

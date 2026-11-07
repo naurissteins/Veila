@@ -17,6 +17,11 @@ pub(super) fn render(
     config: &AppConfig,
     size: FrameSize,
 ) -> Result<SoftwareBuffer> {
+    let theme = ShellTheme::from_config(config);
+    veila_renderer::text::install_fonts(veila_renderer::text::prepare_fonts(
+        &theme.font_requests(),
+        Some(Path::new("/proc/self/exe")),
+    ));
     let samples = PreviewSamples::resolve(options, config);
     let background = BackgroundAsset::load(
         config.background.resolved_path().as_deref(),
@@ -29,7 +34,7 @@ pub(super) fn render(
         .render(size)
         .context("failed to render preview background")?;
     let mut shell = ShellState::new_with_username_and_widgets(
-        ShellTheme::from_config(config),
+        theme,
         Some(config.visuals.input_placeholder()),
         samples.username,
         config.avatar_image_path().map(Path::to_path_buf),

@@ -113,7 +113,8 @@ impl ShellState {
             return Some(variant.clone());
         }
         let variant = format!(
-            "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+            "static-scene:v3:fonts:{}:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+            veila_renderer::text::font_cache_key(),
             if scale.is_integer() {
                 format!("{}", scale.units() / 120)
             } else {
