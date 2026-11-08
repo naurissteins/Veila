@@ -21,7 +21,7 @@ pub(super) fn render_image(
         BackgroundScaling::Tile => render_image_tile(image, size, fallback),
         BackgroundScaling::Stretch => render_image_stretch(image, size),
     };
-    let composed = blur_rgba(&composed, treatment.blur_radius, 12);
+    let composed = blur_rgba(&composed, treatment.blur_radius, u8::MAX);
     let mut buffer = SoftwareBuffer::new(size)?;
 
     for (target, pixel) in buffer

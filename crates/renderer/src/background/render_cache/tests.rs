@@ -11,6 +11,7 @@ use super::{
 };
 use crate::background::BackgroundGradient;
 
+mod blur;
 mod identity;
 
 #[test]

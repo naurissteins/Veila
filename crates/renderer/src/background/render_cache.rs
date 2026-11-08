@@ -171,6 +171,12 @@ fn cache_path(
         env!("CARGO_PKG_VERSION"),
         cache_source_key(source, size)?
     ));
+    // Old high-strength file entries contain capped blur, including backdrop/scene variants.
+    let key = if matches!(source, CacheSource::Path { .. }) && treatment.blur_radius > 12 {
+        stable_hash(&format!("wallpaper-blur:v2:{key}"))
+    } else {
+        key
+    };
     let key = stable_hash(&format!(
         "{key}:{:?}:{:?}:{:?}:{:?}",
         treatment.blur_radius, treatment.dim_strength, treatment.tint, treatment.scaling

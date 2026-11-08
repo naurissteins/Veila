@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+mod blur;
 mod layered;
 
 use image::{Rgba, RgbaImage};

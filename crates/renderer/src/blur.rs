@@ -29,6 +29,11 @@ pub(crate) fn blur_rgba(image: &RgbaImage, radius: u8, max_radius: u8) -> RgbaIm
 }
 
 fn blur_downsample_factor(width: u32, height: u32, radius: u8) -> u32 {
+    // Preserve existing wallpaper and backdrop pixels; bound stronger blur's working sigma.
+    if radius > 24 {
+        return u32::from(radius).div_ceil(8);
+    }
+
     if radius < DOWNSAMPLE_THRESHOLD_RADIUS {
         return 1;
     }
@@ -53,13 +58,13 @@ mod tests {
 
     #[test]
     fn preserves_dimensions_for_downsampled_blur() {
-        let mut image = RgbaImage::new(17, 11);
-        image.put_pixel(3, 4, Rgba([255, 255, 255, 255]));
-
-        let blurred = blur_rgba(&image, 12, 24);
-
-        assert_eq!(blurred.width(), 17);
-        assert_eq!(blurred.height(), 11);
+        for (width, height) in [(17, 11), (1, 65), (65, 1), (1, 1)] {
+            let image = RgbaImage::from_pixel(width, height, Rgba([40, 80, 120, 255]));
+            for radius in [12, 24, 25, 64, 128, u8::MAX] {
+                let blurred = blur_rgba(&image, radius, u8::MAX);
+                assert_eq!(blurred.dimensions(), image.dimensions());
+            }
+        }
     }
 
     #[test]
@@ -70,5 +75,13 @@ mod tests {
         let blurred = blur_rgba(&image, 8, 24);
 
         assert_ne!(blurred.get_pixel(4, 4).0, image.get_pixel(4, 4).0);
+    }
+
+    #[test]
+    fn strong_blur_bounds_working_sigma() {
+        for radius in 25..=u8::MAX {
+            let factor = super::blur_downsample_factor(3840, 2160, radius);
+            assert!(f32::from(radius) / factor as f32 <= 8.0);
+        }
     }
 }
