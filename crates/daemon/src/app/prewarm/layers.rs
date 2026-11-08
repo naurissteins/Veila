@@ -31,6 +31,7 @@ pub(super) fn prewarm_layered_backgrounds(
     let path = asset.path();
     let fallback = asset.fallback();
     let treatment = asset.treatment();
+    let backdrops = shell.static_backdrops();
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
@@ -47,16 +48,9 @@ pub(super) fn prewarm_layered_backgrounds(
                 cache_hits += 1;
             } else {
                 let mut buffer = asset.render(size.buffer).ok()?;
-                shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
-                store_cached_render_variant(
-                    path,
-                    fallback,
-                    size.buffer,
-                    treatment,
-                    &buffer,
-                    variant,
-                )
-                .ok()?;
+                backdrops
+                    .store_file(path, fallback, treatment, size.scale, &mut buffer)
+                    .ok()?;
                 warmed_sizes += 1;
                 base_buffer = Some(buffer);
             }
@@ -159,6 +153,7 @@ fn prewarm_generated_layered_backgrounds(
         treatment,
     )
     .ok()?;
+    let backdrops = shell.static_backdrops();
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
 
@@ -175,15 +170,9 @@ fn prewarm_generated_layered_backgrounds(
                 cache_hits += 1;
             } else {
                 let mut buffer = asset.render(size.buffer).ok()?;
-                shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
-                store_cached_generated_render_variant(
-                    generated,
-                    size.buffer,
-                    treatment,
-                    &buffer,
-                    variant,
-                )
-                .ok()?;
+                backdrops
+                    .store_generated(generated, treatment, size.scale, &mut buffer)
+                    .ok()?;
                 warmed_sizes += 1;
                 base_buffer = Some(buffer);
             }

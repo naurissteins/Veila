@@ -1,3 +1,4 @@
+use super::cache::BackdropJob;
 use std::{
     path::{Path, PathBuf},
     thread,
@@ -56,19 +57,24 @@ pub(crate) fn spawn_loader(
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
+    backdrops: BackdropJob,
     sender: Sender<BackgroundEvent>,
 ) {
     thread::spawn(move || {
         let unique_sizes = unique_sizes(&sizes);
         drop(sizes);
         let cached_started_at = Instant::now();
-        let cached_buffers = load_cached_buffers(&path, fallback, treatment, &unique_sizes);
+        let mut cached_buffers = load_cached_buffers(&path, fallback, treatment, &unique_sizes);
         let cached_sizes: Vec<_> = cached_buffers.iter().map(|(size, _)| *size).collect();
 
         if !cached_buffers.is_empty() {
             let _ = sender.send(BackgroundEvent::BuffersReady {
                 path: path.clone(),
-                buffers: cached_buffers,
+                buffers: if backdrops.needed() {
+                    cached_buffers.clone()
+                } else {
+                    std::mem::take(&mut cached_buffers)
+                },
                 elapsed_ms: cached_started_at.elapsed().as_millis(),
                 cache_hit: true,
             });
@@ -79,6 +85,7 @@ pub(crate) fn spawn_loader(
             Ok(rendered_buffers) => {
                 let asset_elapsed_ms = render_started_at.elapsed().as_millis();
                 if rendered_buffers.is_empty() {
+                    backdrops.store_file(&path, fallback, treatment, cached_buffers);
                     return;
                 }
 
@@ -89,6 +96,12 @@ pub(crate) fn spawn_loader(
                     cache_hit: false,
                 });
                 store_cached_buffers(&path, fallback, treatment, &rendered_buffers);
+                backdrops.store_file(
+                    &path,
+                    fallback,
+                    treatment,
+                    rendered_buffers.into_iter().chain(cached_buffers).collect(),
+                );
             }
             Err(error) => {
                 let _ = sender.send(BackgroundEvent::Failed {
@@ -105,6 +118,7 @@ pub(crate) fn spawn_generated_loader(
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
+    backdrops: BackdropJob,
     sender: Sender<BackgroundEvent>,
 ) {
     thread::spawn(move || {
@@ -147,10 +161,15 @@ pub(crate) fn spawn_generated_loader(
             let _ = sender.send(BackgroundEvent::GeneratedBuffersReady {
                 generated,
                 treatment,
-                buffers,
+                buffers: if backdrops.needed() {
+                    buffers.clone()
+                } else {
+                    std::mem::take(&mut buffers)
+                },
                 elapsed_ms: started_at.elapsed().as_millis(),
             });
         }
+        backdrops.store_generated(generated, treatment, buffers);
     });
 }
 
@@ -195,6 +214,7 @@ pub(crate) fn spawn_preloader(
     fallback: ClearColor,
     treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
+    backdrops: BackdropJob,
 ) {
     thread::spawn(move || {
         let unique_sizes = unique_sizes(&sizes);
@@ -212,6 +232,7 @@ pub(crate) fn spawn_preloader(
             Ok(rendered_buffers) => {
                 if !rendered_buffers.is_empty() {
                     store_cached_buffers(&path, fallback, treatment, &rendered_buffers);
+                    backdrops.store_file(&path, fallback, treatment, rendered_buffers);
                 }
             }
             Err(error) => {

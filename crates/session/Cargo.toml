@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 veila-common = { path = "../common" }
+veila-renderer = { path = "../renderer" }
 anyhow.workspace = true
 nix.workspace = true
 serde.workspace = true

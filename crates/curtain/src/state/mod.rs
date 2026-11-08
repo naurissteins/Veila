@@ -91,6 +91,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_scale: veila_renderer::RenderScale,
     pub(crate) scene_base_has_layers: bool,
+    pub(crate) backdrop_cache_hit: bool,
     pub(crate) widget_frame: Option<CommittedWidgetFrame>,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
@@ -660,6 +661,7 @@ impl CurtainApp {
             scene_base_revision: 0,
             scene_base_scale: veila_renderer::RenderScale::ONE,
             scene_base_has_layers: false,
+            backdrop_cache_hit: false,
             widget_frame: None,
             shm_pool: None,
             placeholder_pool: None,
@@ -727,6 +729,7 @@ impl CurtainApp {
             surface.scene_base = None;
             surface.scene_base_revision = 0;
             surface.scene_base_has_layers = false;
+            surface.backdrop_cache_hit = false;
         }
 
         Ok(())

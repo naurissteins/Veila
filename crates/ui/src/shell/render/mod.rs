@@ -3,7 +3,7 @@ mod cache;
 mod context;
 mod floating;
 mod indicators;
-mod layout;
+pub(super) mod layout;
 mod model;
 mod now_playing;
 mod overlay;
@@ -16,11 +16,10 @@ mod widgets;
 pub(super) use cache::TextLayoutCache;
 pub use widget_damage::{WidgetDamage, WidgetKind, WidgetRegions};
 
-use veila_common::{BackdropMode, LayerKind};
+use veila_common::LayerKind;
 use veila_common::{BackdropShowWhen, StatusDisplayMode};
 use veila_renderer::{
     PixelBuffer,
-    layer::{BackdropLayerMode, BackdropLayerShape, BackdropLayerStyle, draw_backdrop_layer},
     shape::{PillStyle, Rect, draw_pill},
 };
 
@@ -252,26 +251,7 @@ impl RenderContext<'_> {
             if !matches_show_when(backdrop.show_when) || !self.shell.backdrop_visible(backdrop) {
                 continue;
             }
-            let rect = self.backdrop_rect(buffer.size(), backdrop.clone());
-            let mode = match backdrop.mode {
-                BackdropMode::Solid => BackdropLayerMode::Solid,
-                BackdropMode::Blur => BackdropLayerMode::Blur,
-            };
-
-            draw_backdrop_layer(
-                buffer,
-                rect,
-                BackdropLayerStyle::new(
-                    mode,
-                    BackdropLayerShape::Panel,
-                    backdrop.color,
-                    backdrop.blur_strength,
-                    backdrop.radius,
-                    backdrop.border_color,
-                    backdrop.border_width,
-                )
-                .with_rotation(backdrop.rotate),
-            );
+            super::backdrops::draw(buffer, backdrop);
         }
     }
 
@@ -337,40 +317,7 @@ impl RenderContext<'_> {
         size: veila_renderer::FrameSize,
         backdrop: crate::shell::theme::Backdrop,
     ) -> Rect {
-        let screen_width = size.width as i32;
-        let screen_height = size.height as i32;
-        let x = if backdrop.full_width {
-            backdrop.inset_left.min(screen_width)
-        } else {
-            anchored_block_x(
-                screen_width,
-                backdrop.width,
-                backdrop.position.halign,
-                backdrop.position.x,
-            )
-        };
-        let y = if backdrop.full_height {
-            backdrop.inset_top.min(screen_height)
-        } else {
-            anchored_block_y(
-                screen_height,
-                backdrop.height,
-                backdrop.position.valign,
-                backdrop.position.y,
-            )
-        };
-        let width = if backdrop.full_width {
-            (screen_width - backdrop.inset_left - backdrop.inset_right).max(0)
-        } else {
-            backdrop.width
-        };
-        let height = if backdrop.full_height {
-            (screen_height - backdrop.inset_top - backdrop.inset_bottom).max(0)
-        } else {
-            backdrop.height
-        };
-
-        Rect::new(x, y, width, height)
+        super::backdrops::rect(size, &backdrop)
     }
 
     pub(super) fn first_backdrop_center_x(&self, size: veila_renderer::FrameSize) -> Option<i32> {

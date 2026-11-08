@@ -220,7 +220,9 @@ impl CurtainApp {
             return Ok(Some(false));
         }
 
-        if let Some((buffer, has_layers)) = self
+        self.lock_surfaces[index].backdrop_cache_hit = false;
+
+        if let Some((buffer, has_layers, cache_hit)) = self
             .lock_surfaces
             .iter()
             .enumerate()
@@ -235,16 +237,20 @@ impl CurtainApp {
                         .is_some_and(|buffer| buffer.size() == frame_size)
             })
             .and_then(|(_, surface)| {
-                surface
-                    .scene_base
-                    .clone()
-                    .map(|buffer| (buffer, surface.scene_base_has_layers))
+                surface.scene_base.clone().map(|buffer| {
+                    (
+                        buffer,
+                        surface.scene_base_has_layers,
+                        surface.backdrop_cache_hit,
+                    )
+                })
             })
         {
             self.lock_surfaces[index].scene_base = Some(buffer);
             self.lock_surfaces[index].scene_base_revision = revision;
             self.lock_surfaces[index].scene_base_scale = scale;
             self.lock_surfaces[index].scene_base_has_layers = has_layers;
+            self.lock_surfaces[index].backdrop_cache_hit = cache_hit;
             self.lock_surfaces[index].background = None;
             self.lock_surfaces[index].background_path = selected_path;
             return Ok(Some(true));
@@ -274,6 +280,7 @@ impl CurtainApp {
                 self.lock_surfaces[index].scene_base_revision = revision;
                 self.lock_surfaces[index].scene_base_scale = scale;
                 self.lock_surfaces[index].scene_base_has_layers = true;
+                self.lock_surfaces[index].backdrop_cache_hit = true;
                 self.lock_surfaces[index].background = None;
                 self.lock_surfaces[index].background_path = selected_path;
                 return Ok(Some(true));
@@ -294,6 +301,7 @@ impl CurtainApp {
                     self.lock_surfaces[index].scene_base_revision = revision;
                     self.lock_surfaces[index].scene_base_scale = scale;
                     self.lock_surfaces[index].scene_base_has_layers = has_layers;
+                    self.lock_surfaces[index].backdrop_cache_hit = true;
                     self.lock_surfaces[index].background = None;
                     self.lock_surfaces[index].background_path = selected_path;
                     return Ok(Some(true));
@@ -311,10 +319,19 @@ impl CurtainApp {
                 self.lock_surfaces[index].scene_base_revision = revision;
                 self.lock_surfaces[index].scene_base_scale = scale;
                 self.lock_surfaces[index].scene_base_has_layers = has_layers;
+                self.lock_surfaces[index].backdrop_cache_hit = true;
                 self.lock_surfaces[index].background = None;
                 self.lock_surfaces[index].background_path = None;
                 return Ok(Some(true));
             }
+        }
+
+        if selected_path.is_none()
+            && self.ui_shell.backdrop_cache_variant().is_some()
+            && self.background_generated.is_some()
+            && !self.generated_pending_sizes.contains(&frame_size)
+        {
+            self.generated_pending_sizes.push(frame_size);
         }
 
         Ok(None)

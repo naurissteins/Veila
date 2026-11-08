@@ -2077,6 +2077,7 @@ dependencies = [
  "tracing",
  "ureq",
  "veila-common",
+ "veila-renderer",
  "zbus",
 ]
 

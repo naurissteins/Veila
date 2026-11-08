@@ -45,6 +45,7 @@ impl Running {
                 if !self.notified {
                     self.notify(0, false)?;
                 }
+                veila_renderer::cache::spawn_cache_maintenance(std::time::Duration::ZERO);
             }
             CurtainMessage::Activity => {
                 self.activity = std::time::Instant::now();
