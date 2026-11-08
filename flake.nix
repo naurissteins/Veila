@@ -22,7 +22,7 @@
       in rec {
         veila = pkgs.rustPlatform.buildRustPackage {
           pname = "veila";
-          version = "0.4.4";
+          version = "0.5.0";
 
           src = pkgs.lib.cleanSourceWith {
             src = pkgs.lib.cleanSource self;
