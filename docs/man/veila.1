@@ -1,4 +1,4 @@
-.TH VEILA 1 "November 7, 2026" "Veila 0.4.0" "User Commands"
+.TH VEILA 1 "November 8, 2026" "Veila 0.4.0" "User Commands"
 .SH NAME
 veila \- secure Wayland screen locker
 .SH SYNOPSIS
@@ -50,7 +50,19 @@ configured power actions and locked suspend, live widgets and automatic reload.
 Opt-in fprintd verification also runs after secure confirmation.
 The non-match limit persists across retries, sleep and curtain recovery.
 Password authentication remains available if fingerprint verification stops.
+.PP
+.B veila idle
+runs the optional daemonless idle/sleep watcher and starts the internal supervisor
+for each lock. Use it instead of the daemon when testing this transition;
+the installed service and public lock command still use the daemon.
+It watches the same TOML config, themes and includes; SIGHUP forces a reload.
+Invalid reloads keep the last valid settings. Stopping the watcher leaves
+an acquired lock running. Logind's finite sleep delay can expire before locking.
 .SH COMMANDS
+.TP
+.B idle [--config=PATH] [--session-id=ID]
+Watch compositor idle, logind Lock and sleep events. Do not run alongside
+the legacy daemon. Does not need to run for direct supervisor locking.
 .TP
 .B daemon
 Start the Veila daemon. See

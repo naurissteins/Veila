@@ -264,9 +264,9 @@ fn rejects_control_daemon_only_option() {
 }
 
 #[test]
-fn removed_idle_command_points_to_config() {
+fn idle_command_requires_root_mode_dispatch() {
     let error = ControlOptions::parse_args(["veila".to_string(), "idle".to_string()])
-        .expect_err("idle command was removed");
+        .expect_err("idle mode is dispatched before the control parser");
 
-    assert!(error.to_string().contains("[idle] section of config.toml"));
+    assert!(error.to_string().contains("must be the first argument"));
 }

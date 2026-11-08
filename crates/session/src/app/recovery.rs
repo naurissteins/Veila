@@ -65,6 +65,10 @@ impl Running {
             Ok((child, channel)) => {
                 self.child = Some(child);
                 self.channel = Some(channel);
+                // Sleep-triggered locks can start after logind's prepare signal was emitted.
+                self.queue(session::SupervisorMessage::Control(
+                    veila_common::ipc::CurtainControlMessage::ArmResumeInputGuard,
+                ));
                 self.report.curtain_spawn_ms = elapsed_ms(started);
                 self.report.curtain_spawn_us = elapsed_us(started);
                 Ok(())

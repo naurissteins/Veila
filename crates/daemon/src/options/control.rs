@@ -100,12 +100,9 @@ fn parse_control_positionals(
         "init" => parse_init(&positional[1..]),
         "reload" => expect_no_extra_args(command, &positional[1..], ControlCommand::Reload),
         "stop" => expect_no_extra_args(command, &positional[1..], ControlCommand::Stop),
-        "idle" => bail!(
-            "`veila idle` was removed; set `enabled = true` in the [idle] section of config.toml and run `veila reload`"
-        ),
         "logs" => parse_logs(&positional[1..]).map(ControlCommand::Logs),
         "theme" => parse_theme(&positional[1..]),
-        "daemon" | "preview" => {
+        "daemon" | "preview" | "idle" => {
             bail!(
                 "`{command}` must be the first argument, for example `veila {command} --config=<path>`"
             )

@@ -1,7 +1,9 @@
 #![forbid(unsafe_code)]
 pub mod adapters;
 mod app;
+mod idle;
 mod integrations;
+pub use idle::{IdleOptions, run as run_idle};
 mod latency;
 pub mod logging;
 mod options;

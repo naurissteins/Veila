@@ -15,6 +15,7 @@ General:
                              Combine with `lock --wait-ready` to print startup timings
 
 Commands:
+  idle [options]             Start the optional daemonless idle watcher
   daemon [options]           Start the daemon (see `veila daemon --help`)
   preview --preview-png=PATH Render the lockscreen to a PNG without locking
   lock [--wait-ready]        Ask the running daemon to lock now

@@ -2071,6 +2071,7 @@ dependencies = [
  "nix",
  "serde",
  "serde_json",
+ "smithay-client-toolkit",
  "time",
  "tokio",
  "tracing",

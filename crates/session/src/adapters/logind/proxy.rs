@@ -15,6 +15,9 @@ pub trait Manager {
     fn power_off(&self, interactive: bool) -> zbus::Result<()>;
     fn reboot(&self, interactive: bool) -> zbus::Result<()>;
     fn suspend(&self, interactive: bool) -> zbus::Result<()>;
+    #[zbus(property, name = "InhibitDelayMaxUSec")]
+    fn inhibit_delay_max_usec(&self) -> zbus::Result<u64>;
+
     #[zbus(property)]
     fn preparing_for_sleep(&self) -> zbus::Result<bool>;
 

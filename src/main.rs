@@ -26,6 +26,12 @@ fn main() -> Result<()> {
             let code = veila_session::run(options, args)?;
             std::process::exit(code);
         }
+        Mode::Idle => {
+            harden_process("veila-idle")?;
+            let options = veila_session::IdleOptions::parse(args)?;
+            logging::init_stderr();
+            block_on(veila_session::run_idle(options))
+        }
         Mode::Control => block_on(veila_daemon::run_control(ControlOptions::parse_args(args)?)),
         Mode::Daemon | Mode::LegacyDaemon => run_daemon(args, mode == Mode::LegacyDaemon),
         Mode::Prewarm => {
