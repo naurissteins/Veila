@@ -139,10 +139,5 @@ pub(crate) fn inherited(options: &mut crate::CurtainOptions) -> Result<Option<(U
     let mut reader = BufReader::new(std::io::stdin());
     options.resolved_config =
         Some(frame::read(&mut reader)?.context("missing resolved startup config")?);
-    let snapshots: veila_common::ipc::CurtainInitialSnapshots =
-        frame::read(&mut reader)?.context("missing startup snapshots")?;
-    options.weather_snapshot = snapshots.weather;
-    options.battery_snapshot = snapshots.battery;
-    options.now_playing_snapshot = snapshots.now_playing;
     Ok(Some((stream, lock)))
 }

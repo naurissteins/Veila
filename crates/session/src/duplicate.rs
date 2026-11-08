@@ -13,6 +13,13 @@ pub(crate) enum Acquisition {
     Duplicate { locked: bool },
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Readiness {
+    Accepted,
+    Confirmed,
+    Rich,
+}
+
 enum Inspection {
     Vacant,
     Pending,
@@ -25,7 +32,13 @@ pub(crate) fn acquire(options: &LockOptions) -> Result<Acquisition> {
         runtime,
         display,
         options.config.clone(),
-        options.wait_ready || options.background_fd.is_some(),
+        if options.wait_ready {
+            Readiness::Rich
+        } else if options.background_fd.is_some() {
+            Readiness::Confirmed
+        } else {
+            Readiness::Accepted
+        },
         Duration::from_secs(120),
     )
 }
@@ -34,10 +47,11 @@ fn acquire_at(
     runtime: PathBuf,
     display: PathBuf,
     config: Option<PathBuf>,
-    wait_ready: bool,
+    readiness: Readiness,
     timeout: Duration,
 ) -> Result<Acquisition> {
     let deadline = Instant::now() + timeout;
+    let wait_ready = readiness != Readiness::Accepted;
     let mut following = false;
     loop {
         if !following
@@ -63,17 +77,25 @@ fn acquire_at(
                 // Closing owners finish their bounded cleanup before a new lock takes over.
             }
             Inspection::Known(record) => {
-                if wait_ready && record.ready.is_none() {
+                if readiness == Readiness::Rich && record.ready.is_none() {
                     bail!(
                         "active supervisor predates readiness records; unlock normally before retrying"
                     );
                 }
                 let locked = record.state == State::Locked && curtain_alive(&record);
-                if locked && (!wait_ready || record.ready == Some(true)) {
+                if locked && (readiness != Readiness::Rich || record.ready == Some(true)) {
                     return Ok(Acquisition::Duplicate { locked: true });
                 }
                 if !wait_ready {
                     return Ok(Acquisition::Duplicate { locked: false });
+                }
+                // A dead publisher cannot certify a later readiness event from its curtain.
+                if !record::start_ticks(record.supervisor_pid)
+                    .is_ok_and(|ticks| ticks == record.supervisor_start_ticks)
+                {
+                    bail!(
+                        "supervisor exited before the requested readiness was published; use the surviving password prompt"
+                    );
                 }
                 following = true;
             }

@@ -1,14 +1,20 @@
 pub(crate) fn print_latency_report(report: &veila_common::ipc::LockLatencyReport, verbose: bool) {
     println!("latency_report=true");
-    println!("daemon_config_load_ms={}", report.daemon_config_load_ms);
-    println!("daemon_socket_setup_ms={}", report.socket_setup_ms);
+    println!("config_load_ms={}", report.config_load_ms);
+    println!(
+        "control_channel_setup_ms={}",
+        report.control_channel_setup_ms
+    );
     println!("curtain_spawn_ms={}", report.curtain_spawn_ms);
     println!("curtain_ready_wait_ms={}", report.curtain_ready_wait_ms);
     println!("activation_total_ms={}", report.activation_total_ms);
     if verbose {
         println!("latency_report_mode=verbose");
-        println!("daemon_config_load_us={}", report.daemon_config_load_us);
-        println!("daemon_socket_setup_us={}", report.socket_setup_us);
+        println!("config_load_us={}", report.config_load_us);
+        println!(
+            "control_channel_setup_us={}",
+            report.control_channel_setup_us
+        );
         println!("curtain_spawn_us={}", report.curtain_spawn_us);
         println!("curtain_ready_wait_us={}", report.curtain_ready_wait_us);
         println!("activation_total_us={}", report.activation_total_us);
@@ -52,66 +58,58 @@ pub(crate) fn print_latency_report(report: &veila_common::ipc::LockLatencyReport
     }
     println!(
         "first_surface_configured_ms={}",
-        optional_ms(curtain.first_surface_configured_ms)
+        optional_time(curtain.first_surface_configured_ms)
     );
     if verbose {
         println!(
             "first_surface_configured_us={}",
-            optional_us(curtain.first_surface_configured_us)
+            optional_time(curtain.first_surface_configured_us)
         );
     }
     println!(
         "all_surfaces_configured_ms={}",
-        optional_ms(curtain.all_surfaces_configured_ms)
+        optional_time(curtain.all_surfaces_configured_ms)
     );
     if verbose {
         println!(
             "all_surfaces_configured_us={}",
-            optional_us(curtain.all_surfaces_configured_us)
+            optional_time(curtain.all_surfaces_configured_us)
         );
         println!(
             "placeholder_committed_us={}",
-            optional_us(curtain.placeholder_committed_us)
+            optional_time(curtain.placeholder_committed_us)
         );
     }
     println!(
         "session_locked_ms={}",
-        optional_ms(curtain.session_locked_ms)
+        optional_time(curtain.session_locked_ms)
     );
     if verbose {
         println!(
             "session_locked_us={}",
-            optional_us(curtain.session_locked_us)
+            optional_time(curtain.session_locked_us)
         );
     }
-    println!("first_frame_ms={}", optional_ms(curtain.first_frame_ms));
+    println!("first_frame_ms={}", optional_time(curtain.first_frame_ms));
     if verbose {
-        println!("first_frame_us={}", optional_us(curtain.first_frame_us));
+        println!("first_frame_us={}", optional_time(curtain.first_frame_us));
     }
     println!(
         "ready_notified_ms={}",
-        optional_ms(curtain.ready_notified_ms)
+        optional_time(curtain.ready_notified_ms)
     );
     if verbose {
         println!(
             "ready_notified_us={}",
-            optional_us(curtain.ready_notified_us)
+            optional_time(curtain.ready_notified_us)
         );
         print_verbose_latency_summary(report);
     }
     println!("surface_count={}", curtain.surface_count);
 }
 
-fn optional_ms(value: Option<u64>) -> String {
-    value
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| String::from("none"))
-}
-
-fn optional_us(value: Option<u64>) -> String {
-    value
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| String::from("none"))
+fn optional_time(value: Option<u64>) -> String {
+    value.map_or_else(|| String::from("none"), |value| value.to_string())
 }
 
 fn print_verbose_latency_summary(report: &veila_common::ipc::LockLatencyReport) {

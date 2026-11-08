@@ -14,7 +14,6 @@ use std::{
 };
 use veila_common::{
     AppConfig,
-    ipc::CurtainInitialSnapshots,
     session::{fd, frame},
 };
 
@@ -25,10 +24,10 @@ pub(crate) fn curtain(
     log: Option<std::fs::File>,
     report: &mut veila_common::ipc::LockLatencyReport,
 ) -> Result<(Child, UnixStream)> {
-    let socket_started = Instant::now();
+    let channel_started = Instant::now();
     let (channel, inherited) = UnixStream::pair()?;
-    report.socket_setup_ms = veila_common::elapsed_ms(socket_started);
-    report.socket_setup_us = veila_common::elapsed_us(socket_started);
+    report.control_channel_setup_ms = veila_common::elapsed_ms(channel_started);
+    report.control_channel_setup_us = veila_common::elapsed_us(channel_started);
     let mut command = Command::new("/proc/self/exe");
     command
         .process_group(0)
@@ -58,7 +57,6 @@ pub(crate) fn curtain(
         command.stderr(Stdio::from(log));
     }
     let config_frame = frame::encode(config)?;
-    let snapshot_frame = frame::encode(&CurtainInitialSnapshots::default())?;
     fd::inheritable(&inherited, true)?;
     fd::inheritable(&record.file, true)?;
     let child = command.spawn();
@@ -74,7 +72,6 @@ pub(crate) fn curtain(
         record.save()?;
         let mut input = child.stdin.take().context("missing curtain startup pipe")?;
         input.write_all(&config_frame)?;
-        input.write_all(&snapshot_frame)?;
         Ok(())
     })();
     if let Err(error) = startup {

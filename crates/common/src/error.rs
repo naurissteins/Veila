@@ -13,8 +13,6 @@ pub enum VeilaError {
     ThemeNotFound(String),
     #[error("invalid theme preset name '{0}'")]
     InvalidThemeName(String),
-    #[error("failed to encode or decode ipc message: {0}")]
-    IpcCodec(#[from] serde_json::Error),
     #[error("invalid ipc message framing: {0}")]
     IpcFraming(String),
 }

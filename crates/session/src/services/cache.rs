@@ -92,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    fn existing_cache_tree_becomes_private_on_daemon_start() {
+    fn existing_cache_tree_becomes_private_on_service_start() {
         let root = std::env::temp_dir().join(format!("veila-private-root-{}", std::process::id()));
         let child = root.join("source-images");
         fs::create_dir_all(&child).expect("cache directory");

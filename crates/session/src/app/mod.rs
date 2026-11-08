@@ -118,8 +118,8 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
         config = AppConfig::default();
     }
     let report = LockLatencyReport {
-        daemon_config_load_ms: elapsed_ms(config_started),
-        daemon_config_load_us: elapsed_us(config_started),
+        config_load_ms: elapsed_ms(config_started),
+        config_load_us: elapsed_us(config_started),
         ..Default::default()
     };
     let log = match crate::logging::open(&config) {

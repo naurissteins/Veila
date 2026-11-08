@@ -2,17 +2,8 @@ pub mod line;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Result;
-use crate::{BatterySnapshot, NowPlayingSnapshot, WeatherSnapshot};
-
+use crate::NowPlayingSnapshot;
 pub use line::{IPC_MAX_LINE_BYTES, LineAccumulator, LineProgress};
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CurtainInitialSnapshots {
-    pub weather: Option<WeatherSnapshot>,
-    pub battery: Option<BatterySnapshot>,
-    pub now_playing: Option<NowPlayingSnapshot>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockPowerStatusSnapshot {
@@ -79,10 +70,10 @@ pub struct CurtainLatencyReport {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockLatencyReport {
-    pub daemon_config_load_ms: u64,
-    pub daemon_config_load_us: u64,
-    pub socket_setup_ms: u64,
-    pub socket_setup_us: u64,
+    pub config_load_ms: u64,
+    pub config_load_us: u64,
+    pub control_channel_setup_ms: u64,
+    pub control_channel_setup_us: u64,
     pub curtain_spawn_ms: u64,
     pub curtain_spawn_us: u64,
     pub curtain_ready_wait_ms: u64,
@@ -118,20 +109,4 @@ pub enum CurtainControlMessage {
     UpdateFingerprintStatus {
         status: Option<FingerprintStatus>,
     },
-}
-
-/// Encodes an IPC message as JSON for the initial control channel
-pub fn encode_message<T>(message: &T) -> Result<String>
-where
-    T: Serialize,
-{
-    serde_json::to_string(message).map_err(Into::into)
-}
-
-/// Decodes an IPC message from JSON for the initial control channel
-pub fn decode_message<T>(input: &str) -> Result<T>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    serde_json::from_str(input).map_err(Into::into)
 }

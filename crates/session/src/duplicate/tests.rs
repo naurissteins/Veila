@@ -26,7 +26,17 @@ fn owner(root: &std::path::Path) -> LockRecord {
     record
 }
 fn request(root: &std::path::Path, wait: bool, timeout: Duration) -> Result<Acquisition> {
-    acquire_at(root.into(), "display".into(), None, wait, timeout)
+    acquire_at(
+        root.into(),
+        "display".into(),
+        None,
+        if wait {
+            Readiness::Rich
+        } else {
+            Readiness::Accepted
+        },
+        timeout,
+    )
 }
 #[test]
 fn duplicate_waits_for_confirmation_and_rich_readiness() {
@@ -129,5 +139,61 @@ fn nonwaiting_duplicate_does_not_claim_confirmation_during_startup() {
         Acquisition::Duplicate { locked: false }
     ));
     drop(owner);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn detached_confirmation_does_not_require_a_lost_rich_readiness_publisher() {
+    let root = root();
+    let mut owner = owner(&root);
+    owner.value.state = State::Locked;
+    owner.value.ready = Some(false);
+    owner.value.supervisor_pid = i32::MAX as u32;
+    owner.value.supervisor_start_ticks = 0;
+    owner.save().expect("save");
+    assert!(matches!(
+        acquire_at(
+            root.clone(),
+            "display".into(),
+            None,
+            Readiness::Confirmed,
+            Duration::ZERO
+        )
+        .expect("confirmed"),
+        Acquisition::Duplicate { locked: true }
+    ));
+    let error = request(&root, true, Duration::from_secs(1))
+        .err()
+        .expect("cannot prove rich readiness");
+    assert!(error.to_string().contains("supervisor exited"));
+    drop(owner);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn detached_confirmation_waits_for_a_live_curtain_instead_of_reporting_startup_acceptance() {
+    let root = root();
+    let mut owner = owner(&root);
+    std::thread::scope(|scope| {
+        let worker = scope.spawn(move || {
+            std::thread::sleep(Duration::from_millis(40));
+            owner.value.state = State::Locked;
+            owner.save().expect("confirm");
+            owner
+        });
+        assert!(matches!(
+            acquire_at(
+                root.clone(),
+                "display".into(),
+                None,
+                Readiness::Confirmed,
+                Duration::from_secs(2)
+            )
+            .expect("confirmed"),
+            Acquisition::Duplicate { locked: true }
+        ));
+        let owner = worker.join().expect("owner");
+        assert_eq!(owner.value.ready, Some(false));
+    });
     fs::remove_dir_all(root).expect("cleanup");
 }
