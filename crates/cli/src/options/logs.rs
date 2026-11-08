@@ -3,15 +3,23 @@ use anyhow::{Result, bail};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) enum LogTarget {
     #[default]
-    LockService,
-    Daemon,
+    All,
+    Idle,
     Curtain,
     Ui,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum LogSource {
+    #[default]
+    Auto,
+    File,
+    Journal,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct LogOptions {
-    pub(crate) file: bool,
+    pub(crate) source: LogSource,
     pub(crate) follow: bool,
     pub(crate) since: Option<String>,
     pub(crate) lines: Option<u32>,
@@ -30,8 +38,16 @@ pub(super) fn parse_logs(args: &[String]) -> Result<LogOptions> {
             continue;
         }
 
-        if arg == "--file" {
-            options.file = true;
+        if matches!(arg.as_str(), "--file" | "--journal") {
+            let source = if arg == "--file" {
+                LogSource::File
+            } else {
+                LogSource::Journal
+            };
+            if options.source != LogSource::Auto && options.source != source {
+                bail!("use only one logs source: --file or --journal");
+            }
+            options.source = source;
             index += 1;
             continue;
         }
@@ -79,6 +95,12 @@ pub(super) fn parse_logs(args: &[String]) -> Result<LogOptions> {
         bail!("unexpected extra argument for logs: {arg}");
     }
 
+    if options.source == LogSource::File && options.since.is_some() {
+        bail!("--since is only supported for journal logs");
+    }
+    if options.source == LogSource::File && options.target == LogTarget::Idle {
+        bail!("the idle watcher writes to the journal; use --journal --idle");
+    }
     Ok(options)
 }
 
@@ -90,8 +112,8 @@ fn parse_log_lines(value: &str) -> Result<u32> {
 
 fn parse_log_target_flag(arg: &str) -> Option<LogTarget> {
     match arg {
-        "--all" => Some(LogTarget::LockService),
-        "--daemon" => Some(LogTarget::Daemon),
+        "--all" => Some(LogTarget::All),
+        "--idle" | "--daemon" => Some(LogTarget::Idle),
         "--curtain" => Some(LogTarget::Curtain),
         "--ui" => Some(LogTarget::Ui),
         _ => None,

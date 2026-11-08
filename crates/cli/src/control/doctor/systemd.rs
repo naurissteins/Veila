@@ -1,11 +1,13 @@
 use std::{collections::HashMap, process::Command};
 
-const UNIT_PROPERTIES: [&str; 5] = [
+const UNIT_PROPERTIES: [&str; 7] = [
     "LoadState",
     "ActiveState",
     "SubState",
     "UnitFileState",
     "FragmentPath",
+    "ExecStart",
+    "KillMode",
 ];
 
 pub(super) enum ShowError {
@@ -17,6 +19,8 @@ pub(super) struct UnitState {
     pub(super) load: Option<String>,
     pub(super) active: Option<String>,
     pub(super) unit_file: Option<String>,
+    pub(super) command: Option<String>,
+    pub(super) kill_mode: Option<String>,
 }
 
 pub(super) fn show_user_unit(unit: &str) -> Result<HashMap<String, String>, ShowError> {
@@ -50,10 +54,14 @@ pub(super) fn print_unit_state(properties: &HashMap<String, String>, prefix: &st
     let unit_file = print_property(properties, "UnitFileState", prefix, "unit_file_state");
     print_property(properties, "FragmentPath", prefix, "fragment_path");
 
+    let command = print_property(properties, "ExecStart", prefix, "exec_start");
+    let kill_mode = print_property(properties, "KillMode", prefix, "kill_mode");
     UnitState {
         load,
         active,
         unit_file,
+        command,
+        kill_mode,
     }
 }
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Package payloads must be readable regardless of the developer shell umask.
+umask 022
+
 version="${1:?usage: build-rpm.sh <version> [output-dir] [source-tarball]}"
 output_dir="${2:-dist}"
 source_tarball="${3:-$output_dir/veila-${version}-x86_64-linux.tar.gz}"
@@ -63,6 +66,7 @@ URL:            https://github.com/naurissteins/Veila
 Source0:        ${source_basename}
 Source1:        veila.pam
 BuildArch:      ${architecture}
+Requires:       libwayland-client.so.0()(64bit)
 Recommends:     fontconfig
 
 %description

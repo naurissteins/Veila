@@ -25,11 +25,11 @@ Commands:
   init [--theme NAME]        Create config.toml with a starting theme
        [--force]             Replace an existing config.toml
   reload                     Request lock and idle watcher config reload
-  logs [--follow]            Show recent systemd user journal logs
-       [--file]
+  logs [--follow]            Show lock file and optional watcher journal
+       [--file|--journal]
        [--since WHEN]
        [--lines N]
-       [--daemon|--curtain|--ui|--all]
+       [--idle|--curtain|--ui|--all]
 
 Themes:
   theme list                 List bundled themes

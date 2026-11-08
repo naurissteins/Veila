@@ -18,7 +18,7 @@ use theme::{
     unset_theme_and_reload,
 };
 
-const DAEMON_SERVICE: &str = "veila.service";
+const IDLE_SERVICE: &str = "veila.service";
 
 pub async fn run_control(options: ControlOptions) -> Result<()> {
     if options.help {
@@ -38,7 +38,7 @@ pub async fn run_control(options: ControlOptions) -> Result<()> {
         Some(ControlCommand::ThemePrint(theme)) => print_theme_source(&theme, config_path),
         Some(ControlCommand::ThemeList) => print_available_themes(),
         Some(ControlCommand::CheckConfig) => print_config_validation(config_path),
-        Some(ControlCommand::Logs(logs)) => print_logs(config_path, &logs),
+        Some(ControlCommand::Logs(logs)) => print_logs(config_path, &logs).await,
         Some(ControlCommand::ThemeSet(theme)) => set_theme_and_reload(&theme, config_path),
         Some(ControlCommand::ThemeUnset) => unset_theme_and_reload(config_path),
         Some(ControlCommand::Status) => runtime::print_status(),

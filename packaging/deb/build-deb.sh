@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Package payloads must be readable regardless of the developer shell umask.
+umask 022
+
 version="${1:?usage: build-deb.sh <version> [output-dir]}"
 output_dir="${2:-dist}"
 revision="${DEB_REVISION:-1}"
 architecture="${DEB_ARCHITECTURE:-amd64}"
 package_version="${version}-${revision}"
+binary="${CARGO_TARGET_DIR:-target}/release/veila"
 
 if [[ ! "$package_version" =~ ^[0-9] ]]; then
   echo "invalid Debian package version: $package_version" >&2
@@ -30,7 +34,7 @@ require_file() {
   fi
 }
 
-require_file target/release/veila
+require_file "$binary"
 require_file LICENSE
 require_file README.md
 require_file docs/man/veila.1
@@ -47,7 +51,7 @@ mkdir -p \
   "$staging/usr/share/veila" \
   "$output_dir"
 
-install -m755 target/release/veila "$staging/usr/bin/veila"
+install -m755 "$binary" "$staging/usr/bin/veila"
 ln -s veila "$staging/usr/bin/veilad"
 
 install -m644 assets/systemd/veila.service "$staging/usr/lib/systemd/user/veila.service"
@@ -88,5 +92,7 @@ Description: Secure, elegant, and fast Wayland screen locker
  low lock latency, and a small runtime footprint.
 CONTROL
 
+find "$staging" -type d -exec chmod 755 {} +
+find "$staging/usr/share" -type f -exec chmod 644 {} +
 dpkg-deb --build --root-owner-group "$staging" "$deb_path"
 echo "$deb_path"

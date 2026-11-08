@@ -1,4 +1,4 @@
-use super::{ControlCommand, ControlOptions, LogTarget};
+use super::{ControlCommand, ControlOptions, LogSource, LogTarget};
 
 #[test]
 fn parses_control_version_argument() {
@@ -27,8 +27,8 @@ fn parses_control_logs_command_defaults() {
     let Some(ControlCommand::Logs(options)) = options.command else {
         panic!("expected logs command");
     };
-    assert!(!options.file);
-    assert_eq!(options.target, LogTarget::LockService);
+    assert_eq!(options.source, LogSource::Auto);
+    assert_eq!(options.target, LogTarget::All);
     assert!(!options.follow);
     assert_eq!(options.since.as_deref(), None);
     assert_eq!(options.lines, None);
@@ -70,7 +70,7 @@ fn parses_control_file_command() {
     let Some(ControlCommand::Logs(options)) = options.command else {
         panic!("expected logs command");
     };
-    assert!(options.file);
+    assert_eq!(options.source, LogSource::File);
     assert!(options.follow);
     assert_eq!(options.lines, Some(100));
 }

@@ -1,7 +1,7 @@
 use crate::adapters::user_units;
 
 use super::{
-    super::DAEMON_SERVICE,
+    super::IDLE_SERVICE,
     CheckStatus, DoctorSummary,
     systemd::{ShowError, UnitState, print_unit_state, show_user_unit},
 };
@@ -11,10 +11,28 @@ const LEGACY_DAEMON_SERVICE: &str = "veilad.service";
 pub(super) fn check_idle_service(summary: &mut DoctorSummary) {
     check_legacy_daemon_enablement(summary);
 
-    let Some(state) = show_unit(DAEMON_SERVICE, "idle_service", summary) else {
+    let Some(state) = show_unit(IDLE_SERVICE, "idle_service", summary) else {
         return;
     };
 
+    if state
+        .command
+        .as_deref()
+        .is_some_and(|command| command.contains("veila daemon"))
+    {
+        summary.record(
+            "idle_service_command",
+            CheckStatus::Warning,
+            "unit uses deprecated `veila daemon`; update the package/unit to run `veila idle`",
+        );
+    }
+    if state.load.as_deref() == Some("loaded") && state.kill_mode.as_deref() != Some("process") {
+        summary.record(
+            "idle_service_kill_mode",
+            CheckStatus::Warning,
+            "watcher unit must use KillMode=process so restart preserves active locks",
+        );
+    }
     match (
         state.load.as_deref(),
         state.active.as_deref(),
@@ -33,12 +51,12 @@ pub(super) fn check_idle_service(summary: &mut DoctorSummary) {
         (Some("loaded"), _, _) => summary.record(
             "idle_service",
             CheckStatus::Ok,
-            "veila.service is installed but not running; fine when your compositor starts `veila idle`",
+            "veila.service is installed but not running; manual locking and external idle tools do not require it",
         ),
         (Some("not-found"), _, _) => summary.record(
             "idle_service",
-            CheckStatus::Warning,
-            "veila.service is not installed in the user service manager",
+            CheckStatus::Ok,
+            "optional watcher service is not installed; manual locking and external idle tools remain available",
         ),
         _ => summary.record(
             "idle_service",
@@ -62,7 +80,7 @@ fn check_legacy_daemon_enablement(summary: &mut DoctorSummary) {
         "idle_service_legacy",
         CheckStatus::Warning,
         format!(
-            "{LEGACY_DAEMON_SERVICE} is still enabled under its old name; it keeps working for now, but migrate with `rm {}` and `systemctl --user enable {DAEMON_SERVICE}`",
+            "{LEGACY_DAEMON_SERVICE} is still enabled under its old name; it keeps working for now, but migrate with `rm {}` and `systemctl --user enable {IDLE_SERVICE}`",
             links
                 .iter()
                 .map(|link| link.display().to_string())

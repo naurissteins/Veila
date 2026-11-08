@@ -126,3 +126,23 @@ fn version_conflicts_precede_misplaced_lock_flags() {
         assert_eq!(error.to_string(), "use only one veila command at a time");
     }
 }
+
+#[test]
+fn logs_sources_and_watcher_filter_are_validated_before_starting_helpers() {
+    for flags in [
+        vec!["--file", "--journal"],
+        vec!["--journal", "--file"],
+        vec!["--file", "--since=1h"],
+        vec!["--file", "--idle"],
+    ] {
+        assert!(parse(&[vec!["logs"], flags].concat()).is_err());
+    }
+    for flag in ["--idle", "--daemon"] {
+        let options = parse(&["logs", "--journal", flag]).expect("watcher filter");
+        let Some(ControlCommand::Logs(logs)) = options.command else {
+            panic!("logs");
+        };
+        assert_eq!(logs.target, super::LogTarget::Idle);
+        assert_eq!(logs.source, super::LogSource::Journal);
+    }
+}

@@ -10,6 +10,7 @@ pub(super) fn check_idle(
     summary: &mut DoctorSummary,
     config_path: Option<&Path>,
     idle_protocol: Option<bool>,
+    watcher_running: bool,
 ) {
     let idle = AppConfig::load(config_path)
         .map(|loaded| loaded.config.idle)
@@ -40,6 +41,11 @@ pub(super) fn check_idle(
 
     let (status, detail) = idle_verdict(&idle, idle_protocol, &legacy_links);
     summary.record("idle", status, detail);
+    if idle.enabled && !watcher_running {
+        summary.record("idle_watcher", CheckStatus::Warning, "[idle].enabled requires `veila idle` or veila.service; external idle tools configure their own timeout");
+    } else if !watcher_running {
+        summary.record("idle_watcher", CheckStatus::Ok, "watcher is optional; [idle] sleep settings apply only when it runs, or configure an external idle tool");
+    }
 }
 
 fn idle_verdict(
@@ -59,7 +65,7 @@ fn idle_verdict(
             )
         } else {
             format!(
-                "{LEGACY_IDLE_SERVICE} no longer exists, so it no longer locks on idle; set `enabled = true` under [idle] in config.toml, run `veila reload`, then `rm {links}`"
+                "{LEGACY_IDLE_SERVICE} no longer exists, so it no longer locks on idle; start `veila idle`, set `enabled = true` under [idle] in config.toml, run `veila reload`, then `rm {links}`"
             )
         };
         return (CheckStatus::Warning, detail);

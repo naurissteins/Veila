@@ -19,12 +19,12 @@ pub(super) async fn print_doctor_report(config_path: Option<&Path>, session_id: 
     check_config(&mut summary, config_path);
     check_themes(&mut summary);
     check_pam(&mut summary);
-    runtime::check_processes(&mut summary);
+    let watcher_running = runtime::check_processes(&mut summary);
     services::check_idle_service(&mut summary);
     runtime::check_logind(&mut summary, session_id).await;
     let idle_protocol = wayland::check_wayland(&mut summary);
     relock::check_relock(&mut summary).await;
-    idle::check_idle(&mut summary, config_path, idle_protocol);
+    idle::check_idle(&mut summary, config_path, idle_protocol, watcher_running);
     renderer::check_renderer(&mut summary, config_path);
 
     println!("doctor={}", summary.overall());

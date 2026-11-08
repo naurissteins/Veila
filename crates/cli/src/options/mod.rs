@@ -9,7 +9,7 @@ mod tests;
 mod validation_tests;
 
 pub(crate) use commands::ControlCommand;
-pub(crate) use logs::{LogOptions, LogTarget};
+pub(crate) use logs::{LogOptions, LogSource, LogTarget};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ControlOptions {

@@ -118,10 +118,10 @@
           '';
         };
 
-        service.enable = lib.mkEnableOption "the Veila daemon (`veila daemon`) as a systemd user service";
+        service.enable = lib.mkEnableOption "the optional Veila idle watcher (`veila idle`) as a systemd user service";
 
         idle = {
-          enable = lib.mkEnableOption "idle auto-lock inside the Veila daemon (writes `[idle]` to config.toml and enables the daemon service)";
+          enable = lib.mkEnableOption "idle auto-lock in the optional watcher (writes `[idle]` to config.toml and enables its service)";
 
           lockAfter = lib.mkOption {
             type = lib.types.ints.positive;
@@ -132,7 +132,7 @@
           lockBeforeSleep = lib.mkOption {
             type = lib.types.bool;
             default = true;
-            description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the daemon runs.";
+            description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the idle watcher runs.";
           };
         };
       };
@@ -146,18 +146,16 @@
         };
 
         systemd.user.services.veila = lib.mkIf (cfg.service.enable || cfg.idle.enable) {
-          description = "Veila screen locker daemon";
+          description = "Veila optional idle and sleep watcher";
           after = ["graphical-session.target"];
           partOf = ["graphical-session.target"];
           wantedBy = ["graphical-session.target"];
           serviceConfig = {
             Type = "simple";
-            ExecStart = "${cfg.package}/bin/veila daemon";
+            ExecStart = "${cfg.package}/bin/veila idle";
             Restart = "on-failure";
             RestartSec = 2;
             KillMode = "process";
-            SendSIGKILL = false;
-            TimeoutStopSec = "infinity";
             LimitCORE = 0;
             PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
           };
@@ -197,10 +195,10 @@
           description = "Written verbatim as TOML to ~/.config/veila/config.toml.";
         };
 
-        service.enable = lib.mkEnableOption "the Veila daemon (`veila daemon`) as a systemd user service";
+        service.enable = lib.mkEnableOption "the optional Veila idle watcher (`veila idle`) as a systemd user service";
 
         idle = {
-          enable = lib.mkEnableOption "idle auto-lock inside the Veila daemon (writes `[idle]` to config.toml and enables the daemon service)";
+          enable = lib.mkEnableOption "idle auto-lock in the optional watcher (writes `[idle]` to config.toml and enables its service)";
 
           lockAfter = lib.mkOption {
             type = lib.types.ints.positive;
@@ -211,7 +209,7 @@
           lockBeforeSleep = lib.mkOption {
             type = lib.types.bool;
             default = true;
-            description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the daemon runs.";
+            description = "Lock before the system goes to sleep. Works independently of idle.enable whenever the idle watcher runs.";
           };
         };
       };
@@ -225,18 +223,16 @@
 
         systemd.user.services.veila = lib.mkIf (cfg.service.enable || cfg.idle.enable) {
           Unit = {
-            Description = "Veila screen locker daemon";
+            Description = "Veila optional idle and sleep watcher";
             After = ["graphical-session.target"];
             PartOf = ["graphical-session.target"];
           };
           Service = {
             Type = "simple";
-            ExecStart = "${cfg.package}/bin/veila daemon";
+            ExecStart = "${cfg.package}/bin/veila idle";
             Restart = "on-failure";
             RestartSec = 2;
             KillMode = "process";
-            SendSIGKILL = false;
-            TimeoutStopSec = "infinity";
             LimitCORE = 0;
             PassEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
           };
