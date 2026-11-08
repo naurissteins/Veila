@@ -7,30 +7,11 @@ pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
         bail!("supervised curtain requires both inherited descriptors");
     }
     if let (Some(ipc), Some(lock)) = (options.ipc_fd, options.lock_fd)
-        && (ipc < 3
-            || lock < 3
-            || ipc == lock
-            || options.uses_daemon_lock_flow()
-            || !options.lock
-            || options.config_path.is_some())
+        && (ipc < 3 || lock < 3 || ipc == lock || !options.lock || options.config_path.is_some())
     {
         bail!("invalid supervised curtain invocation");
     }
-    if options.initial_backoff_ms > 0 && options.uses_daemon_lock_flow() {
-        bail!("initial backoff requires curtain-owned authentication");
-    }
-    // A partial ownership handshake must never reach Wayland startup.
-    if options.owner_gate != options.owner_record.is_some() {
-        bail!("daemon-managed curtain ownership requires both the startup gate and record");
-    }
-    if options.owner_gate
-        && (options.notify_socket.is_none()
-            || options.daemon_socket.is_none()
-            || options.control_socket.is_none())
-    {
-        bail!("daemon-managed curtain ownership requires all daemon sockets");
-    }
-    if options.preview_png.is_some() || options.lock || options.uses_daemon_lock_flow() {
+    if options.preview_png.is_some() || options.lock {
         return Ok(());
     }
 
@@ -42,13 +23,12 @@ pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
 
 pub(super) fn validate_preview_mode(options: &CurtainOptions) -> Result<()> {
     if options.lock
-        || options.uses_daemon_lock_flow()
         || options.initial_backoff_ms > 0
         || options.ipc_fd.is_some()
         || options.lock_fd.is_some()
     {
         bail!(
-            "`veila preview` never locks the session; remove --lock and the daemon socket options"
+            "`veila preview` never locks the session; remove --lock and the inherited supervisor options"
         );
     }
 

@@ -94,7 +94,7 @@ impl Write for RotatingLog {
             if let Err(error) = self.rotate() {
                 if !self.warned {
                     self.warned = true;
-                    tracing::warn!(path = %self.path.display(), %error, "could not rotate daemon log");
+                    tracing::warn!(path = %self.path.display(), %error, "could not rotate lock log");
                 }
             } else {
                 self.warned = false;

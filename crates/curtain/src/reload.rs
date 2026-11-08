@@ -17,16 +17,6 @@ use crate::{
 };
 
 impl CurtainApp {
-    pub(crate) fn reload_config(&mut self, queue_handle: &QueueHandle<Self>) {
-        let loaded_config = match AppConfig::load(self.config_path.as_deref()) {
-            Ok(config) => config,
-            Err(error) => {
-                tracing::warn!("failed to reload curtain config: {error:#}");
-                return;
-            }
-        };
-        self.apply_config(loaded_config.config, queue_handle);
-    }
     pub(crate) fn apply_config(&mut self, config: AppConfig, queue_handle: &QueueHandle<Self>) {
         let theme = ShellTheme::from_config(&config);
         let background_asset = match BackgroundAsset::load(

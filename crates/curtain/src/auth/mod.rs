@@ -9,21 +9,15 @@ use crate::{CurtainOptions, ipc::auth::AuthEvent};
 
 pub(crate) use worker::submit_password;
 
-pub(crate) enum Backend {
-    Daemon,
-    Local(AuthState),
-}
+pub(crate) struct Backend(AuthState);
 
 impl Backend {
     pub(crate) fn new(options: &CurtainOptions, config: &LockConfig) -> Self {
-        if options.uses_daemon_lock_flow() {
-            return Self::Daemon;
-        }
         let policy = AuthPolicy::new(
             Duration::from_millis(config.auth_backoff_base_ms),
             Duration::from_secs(config.auth_backoff_max_seconds),
         );
-        Self::Local(AuthState::with_initial_backoff(
+        Self(AuthState::with_initial_backoff(
             policy,
             Instant::now(),
             Duration::from_millis(options.initial_backoff_ms),
@@ -31,39 +25,23 @@ impl Backend {
     }
 
     pub(crate) fn update_policy(&mut self, config: &LockConfig) {
-        if let Self::Local(state) = self {
-            state.update_policy(AuthPolicy::new(
-                Duration::from_millis(config.auth_backoff_base_ms),
-                Duration::from_secs(config.auth_backoff_max_seconds),
-            ));
-        }
+        self.0.update_policy(AuthPolicy::new(
+            Duration::from_millis(config.auth_backoff_base_ms),
+            Duration::from_secs(config.auth_backoff_max_seconds),
+        ));
     }
-    pub(crate) fn is_local(&self) -> bool {
-        matches!(self, Self::Local(_))
-    }
-
     pub(crate) fn admit(&self, now: Instant) -> AuthAdmission {
-        match self {
-            Self::Local(state) => state.admit(now),
-            Self::Daemon => AuthAdmission::Allowed,
-        }
+        self.0.admit(now)
     }
-
     pub(crate) fn failed_attempts(&self) -> Option<u8> {
-        match self {
-            Self::Local(state) => Some(state.failed_attempts()),
-            Self::Daemon => None,
-        }
+        Some(self.0.failed_attempts())
     }
-
     pub(crate) fn start_attempt(&mut self) {
-        if let Self::Local(state) = self {
-            state.start_attempt();
-        }
+        self.0.start_attempt();
     }
 
     pub(crate) fn complete(&mut self, event: &mut AuthEvent, now: Instant) {
-        let Self::Local(state) = self else { return };
+        let state = &mut self.0;
         match event {
             AuthEvent::Accepted { .. } => state.finish_success(),
             AuthEvent::Rejected { attempt_id, .. } | AuthEvent::Failed { attempt_id } => {

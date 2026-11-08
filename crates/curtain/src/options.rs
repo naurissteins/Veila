@@ -15,11 +15,6 @@ pub struct CurtainOptions {
     pub initial_backoff_ms: u64,
     pub force_emergency_ui: bool,
     pub latency_report: LatencyReportMode,
-    pub notify_socket: Option<PathBuf>,
-    pub daemon_socket: Option<PathBuf>,
-    pub control_socket: Option<PathBuf>,
-    pub owner_gate: bool,
-    pub owner_record: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
     pub initial_background_path: Option<PathBuf>,
     pub preview_png: Option<PathBuf>,
@@ -48,14 +43,4 @@ pub struct CurtainOptions {
 pub struct PreviewClockTime {
     pub hour: u8,
     pub minute: u8,
-}
-
-impl CurtainOptions {
-    pub(super) fn uses_daemon_lock_flow(&self) -> bool {
-        self.notify_socket.is_some()
-            || self.daemon_socket.is_some()
-            || self.control_socket.is_some()
-            || self.owner_record.is_some()
-            || self.owner_gate
-    }
 }

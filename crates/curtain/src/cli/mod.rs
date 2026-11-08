@@ -33,16 +33,6 @@ impl CurtainOptions {
                 continue;
             }
 
-            if arg == "--owner-gate" {
-                options.owner_gate = true;
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--owner-record", &mut args)? {
-                options.owner_record = Some(PathBuf::from(path));
-                continue;
-            }
-
             if let Some(value) = parse_option_value(&arg, "--ipc-fd", &mut args)? {
                 options.ipc_fd = Some(value.parse().context("invalid supervisor descriptor")?);
                 continue;
@@ -64,21 +54,6 @@ impl CurtainOptions {
 
             if let Some(mode) = parse_latency_report_arg(&arg)? {
                 options.latency_report = mode;
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--notify-socket", &mut args)? {
-                options.notify_socket = Some(PathBuf::from(path));
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--daemon-socket", &mut args)? {
-                options.daemon_socket = Some(PathBuf::from(path));
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--control-socket", &mut args)? {
-                options.control_socket = Some(PathBuf::from(path));
                 continue;
             }
 

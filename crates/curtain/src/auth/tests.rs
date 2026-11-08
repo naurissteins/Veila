@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use veila_auth::policy::{AuthAdmission, AuthPolicy, AuthState};
 
 fn local() -> Backend {
-    Backend::Local(AuthState::new(AuthPolicy::new(
+    Backend(AuthState::new(AuthPolicy::new(
         Duration::from_millis(100),
         Duration::from_millis(400),
     )))
@@ -86,17 +86,6 @@ fn challenge_and_notice_leave_attempt_busy() {
 }
 
 #[test]
-fn daemon_events_and_policy_are_not_changed_by_local_backend() {
-    let mut backend = Backend::Daemon;
-    let mut event = AuthEvent::Failed { attempt_id: 1 };
-    backend.start_attempt();
-    backend.complete(&mut event, Instant::now());
-    assert_eq!(event, AuthEvent::Failed { attempt_id: 1 });
-    assert!(!backend.is_local());
-    assert_eq!(backend.failed_attempts(), None);
-}
-
-#[test]
 fn direct_mode_retains_initial_delay_without_requiring_a_daemon() {
     let options = CurtainOptions {
         lock: true,
@@ -104,7 +93,6 @@ fn direct_mode_retains_initial_delay_without_requiring_a_daemon() {
         ..Default::default()
     };
     let backend = Backend::new(&options, &Default::default());
-    assert!(backend.is_local());
     assert!(
         matches!(backend.admit(Instant::now()), AuthAdmission::RateLimited(delay) if delay > Duration::from_secs(2))
     );

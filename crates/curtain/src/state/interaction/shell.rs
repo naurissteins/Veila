@@ -3,10 +3,7 @@ use std::time::{Duration, Instant};
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surface};
 use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey, WidgetKind};
 
-use crate::{
-    ipc::auth::{ChallengeReply, request_power_action},
-    keyboard_cache::start_keyboard_layout_writer,
-};
+use crate::{ipc::auth::ChallengeReply, keyboard_cache::start_keyboard_layout_writer};
 
 use super::super::CurtainApp;
 
@@ -167,15 +164,7 @@ impl CurtainApp {
                 });
                 return;
             }
-            let Some(socket_path) = self.daemon_socket.clone() else {
-                tracing::warn!(
-                    ?action,
-                    "power action requested without a daemon auth socket"
-                );
-                return;
-            };
-            tracing::info!(?action, "requesting daemon-mediated power action");
-            request_power_action(socket_path, action);
+            tracing::warn!(?action, "power action requires a running supervisor");
         }
     }
 

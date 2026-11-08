@@ -82,7 +82,8 @@ impl Conversation for Relay {
                 sequence: answer,
                 secret,
             } if answer == sequence => Some(secret),
-            // cancellation, stale replies and a disconnected UI all fail this attempt closed
+            ChallengeReply::Cancel { sequence: answer } if answer == sequence => None,
+            // stale replies and a disconnected UI fail this attempt closed
             _ => None,
         }
     }

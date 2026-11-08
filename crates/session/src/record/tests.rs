@@ -85,9 +85,17 @@ fn torn_non_utf8_record_retains_recovery_backoff_instead_of_preventing_lock() {
         .expect("torn record");
     record.file.set_len(12).expect("truncate");
     drop(record);
-    let recovered = LockRecord::at(root.clone(), display, None)
-        .expect("read malformed bytes")
-        .expect("lock");
+    // Concurrent test subprocesses can briefly inherit close-on-exec descriptors before exec.
+    let recovered = (0..100)
+        .find_map(|_| {
+            let record =
+                LockRecord::at(root.clone(), display.clone(), None).expect("read malformed bytes");
+            if record.is_none() {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            record
+        })
+        .expect("lock after inherited test descriptors close");
     assert!(recovered.recovered);
     drop(recovered);
     fs::remove_dir_all(root).expect("cleanup");
@@ -140,6 +148,24 @@ fn torn_held_record_does_not_confirm_a_lock() {
         LockRecord::active_at(root.clone(), display).expect("probe"),
         Some(State::Starting)
     );
+    drop(record);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn status_readers_never_masquerade_as_a_running_supervisor() {
+    let root = root();
+    let display = PathBuf::from("shared-reader");
+    let reader = LockRecord::open_at(root.clone(), display.clone()).expect("reader");
+    reader.try_lock_shared().expect("query lock");
+    assert_eq!(
+        LockRecord::active_at(root.clone(), display.clone()).expect("probe"),
+        None
+    );
+    assert!(LockRecord::at(root.clone(), display.clone(), None).is_err());
+    drop(reader);
+    let record = LockRecord::at(root.clone(), display, None).expect("acquire");
+    assert!(record.is_some());
     drop(record);
     fs::remove_dir_all(root).expect("cleanup");
 }

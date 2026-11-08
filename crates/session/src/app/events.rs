@@ -40,6 +40,10 @@ impl Running {
                     );
                 }
                 self.ready = true;
+                self.record.value.ready = Some(true);
+                if let Err(error) = self.record.save() {
+                    tracing::error!(%error, "failed to publish rich readiness; duplicate waits cannot confirm it");
+                }
                 self.report.curtain = latency_report.map(|report| *report);
                 self.update_report();
                 if !self.notified {

@@ -1,0 +1,22 @@
+[package]
+name = "veila-cli"
+description = "User commands for Veila"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+veila-session = { path = "../session" }
+veila-auth = { path = "../auth" }
+veila-common = { path = "../common" }
+veila-renderer = { path = "../renderer" }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+
+smithay-client-toolkit.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+

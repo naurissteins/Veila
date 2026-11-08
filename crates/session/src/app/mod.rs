@@ -68,18 +68,42 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
         let flags = OFlag::from_bits_truncate(fcntl(file, FcntlArg::F_GETFL)?);
         fcntl(file, FcntlArg::F_SETFL(flags | OFlag::O_NONBLOCK))?;
     }
-    let Some(record) = LockRecord::acquire(options.config.clone())? else {
-        let reply = Notification {
-            code: 0,
-            locked: false,
-            already_active: true,
-            report: None,
-        };
-        for file in &mut notifications {
-            let _ = frame::write(file, &reply);
+    // Publish reloadable ownership only after hangup is safely blocked.
+    let mut mask = SigSet::empty();
+    for signal in [
+        Signal::SIGINT,
+        Signal::SIGHUP,
+        Signal::SIGTERM,
+        Signal::SIGCHLD,
+    ] {
+        mask.add(signal);
+    }
+    mask.thread_block()?;
+    let signals = SignalFd::with_flags(&mask, SfdFlags::SFD_CLOEXEC | SfdFlags::SFD_NONBLOCK)?;
+    let record = match crate::duplicate::acquire(&options)? {
+        crate::duplicate::Acquisition::Owner(record) => record,
+        crate::duplicate::Acquisition::Duplicate { locked } => {
+            let reply = Notification {
+                code: 0,
+                locked,
+                already_active: true,
+                report: None,
+            };
+            for file in &mut notifications {
+                let _ = frame::write(file, &reply);
+            }
+            if locked && let Some(mut file) = idle_notify {
+                let _ = frame::write(
+                    &mut file,
+                    &veila_common::ipc::CurtainStartupMessage::SessionLocked,
+                );
+            }
+            if options.wait_ready {
+                println!("lock_ready={locked}");
+            }
+            println!("already_active=true");
+            return Ok(0);
         }
-        println!("already_active=true");
-        return Ok(0);
     };
     let config_started = Instant::now();
     let mut config = match AppConfig::load(options.config.as_deref()) {
@@ -108,17 +132,6 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
     if let Some(file) = &log {
         nix::unistd::dup2_stderr(&file.file)?;
     }
-    let mut mask = SigSet::empty();
-    for signal in [
-        Signal::SIGINT,
-        Signal::SIGHUP,
-        Signal::SIGTERM,
-        Signal::SIGCHLD,
-    ] {
-        mask.add(signal);
-    }
-    mask.thread_block()?;
-    let signals = SignalFd::with_flags(&mask, SfdFlags::SFD_CLOEXEC | SfdFlags::SFD_NONBLOCK)?;
     let mut running = Running {
         log,
         options,

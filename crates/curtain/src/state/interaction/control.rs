@@ -17,19 +17,17 @@ impl CurtainApp {
     ) {
         match event {
             ControlEvent::Supervisor(message) => self.supervisor_event(*message, queue_handle),
-            ControlEvent::Probe => {}
             ControlEvent::Unlock { attempt_id } => {
                 if let Some(attempt_id) = attempt_id {
-                    tracing::info!(attempt_id, "received curtain unlock request from daemon");
+                    tracing::info!(
+                        attempt_id,
+                        "received curtain unlock request from supervisor"
+                    );
                 } else {
-                    tracing::info!("received curtain unlock request from daemon");
+                    tracing::info!("received curtain unlock request from supervisor");
                 }
                 self.authorize_unlock();
                 self.request_exit();
-            }
-            ControlEvent::Reload => {
-                tracing::info!("received curtain reload request from daemon");
-                self.reload_config(queue_handle);
             }
             ControlEvent::ArmResumeInputGuard => {
                 self.resume_input.arm();
@@ -40,7 +38,7 @@ impl CurtainApp {
             ControlEvent::UpdateNowPlaying { snapshot } => {
                 tracing::debug!(
                     has_snapshot = snapshot.is_some(),
-                    "received live now playing update from daemon"
+                    "received live now playing update from supervisor"
                 );
                 self.now_playing_snapshot = snapshot.clone();
                 self.ui_shell.set_now_playing_snapshot(snapshot);

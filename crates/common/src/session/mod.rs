@@ -1,5 +1,6 @@
 pub mod fd;
 pub mod frame;
+pub mod process;
 
 use crate::{
     AppConfig, BatterySnapshot, PowerAction, WeatherSnapshot,

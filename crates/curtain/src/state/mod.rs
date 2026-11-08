@@ -14,8 +14,8 @@ mod shm_trim;
 
 use std::{
     path::{Path, PathBuf},
+    sync::Arc,
     sync::mpsc::{Receiver as ControlReceiver, Sender as KeyboardSender},
-    sync::{Arc, atomic::AtomicU8},
     time::{Duration, Instant},
 };
 
@@ -48,7 +48,7 @@ use smithay_client_toolkit::{
 use veila_common::{
     AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot, OutputUiMode, WeatherSnapshot,
     config::BackgroundOutputConfig,
-    ipc::{CurtainLatencyReport, LatencyReportMode, LockPowerStatusSnapshot},
+    ipc::{CurtainLatencyReport, LockPowerStatusSnapshot},
 };
 use veila_renderer::{
     ClearColor,
@@ -67,7 +67,7 @@ use crate::{
     CurtainOptions,
     background::{BackgroundEvent, BackgroundSlideshow},
     ipc::auth::AuthEvent,
-    ipc::control::{ControlEvent, ControlSender, spawn_listener},
+    ipc::control::{ControlEvent, ControlSender},
     keyboard_cache::load_keyboard_layout_label,
 };
 
@@ -219,12 +219,6 @@ pub(crate) struct CurtainApp {
     pub(crate) pointer: Option<ThemedPointer>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
     pub(crate) supervisor: Option<crate::supervisor::Supervisor>,
-    pub(crate) notify_socket: Option<PathBuf>,
-    daemon_socket: Option<PathBuf>,
-    pub(crate) activity_notifier: crate::ipc::activity::ActivityNotifier,
-    control_socket: Option<PathBuf>,
-    owner_record: Option<PathBuf>,
-    pub(crate) config_path: Option<PathBuf>,
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
@@ -234,7 +228,6 @@ pub(crate) struct CurtainApp {
     pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
     control_events: ControlReceiver<ControlEvent>,
-    pub(crate) lock_probe_state: Arc<AtomicU8>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_generated: Option<GeneratedBackground>,
     pub(crate) generated_pending_sizes: Vec<veila_renderer::FrameSize>,
@@ -269,8 +262,6 @@ pub(crate) struct CurtainApp {
     pub(crate) session_lock_notified: bool,
     pub(crate) ready_notified: bool,
     pub(crate) ready_notification_sent: bool,
-    pub(crate) startup_notify_retry_at: Instant,
-    pub(crate) latency_report: LatencyReportMode,
     pub(crate) latency_timings: CurtainLatencyReport,
     pub(crate) first_surface_configured_logged: bool,
     pub(crate) first_surface_configured_at: Option<Instant>,
@@ -281,7 +272,6 @@ pub(crate) struct CurtainApp {
     auth_reply_sender: Option<std::sync::mpsc::Sender<crate::ipc::auth::ChallengeReply>>,
     auth_attempt_id: Option<u64>,
     auth_challenge_sequence: Option<u32>,
-    auth_accepted_at: Option<Instant>,
     next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
     pub(crate) focused_surface_index: Option<usize>,
@@ -317,7 +307,6 @@ impl CurtainApp {
         let (control_ping, control_source) =
             make_ping().context("failed to create control wake source")?;
         let control_sender = ControlSender::new(control_sender, control_ping);
-        let lock_probe_state = Arc::new(AtomicU8::new(0));
         let force_emergency_ui = options.force_emergency_ui;
         let mut emergency_reason = None;
         let loaded_config = match options
@@ -454,15 +443,6 @@ impl CurtainApp {
             "loaded curtain config"
         );
 
-        if let Some(control_socket) = options.control_socket.clone() {
-            spawn_listener(
-                control_socket,
-                control_sender.clone(),
-                lock_probe_state.clone(),
-            )
-            .context("failed to start curtain control listener")?;
-        }
-
         let supervisor = inherited
             .map(|(channel, lock)| {
                 crate::supervisor::Supervisor::connect(
@@ -492,14 +472,7 @@ impl CurtainApp {
             pointer: None,
             lock_surfaces: Vec::new(),
             supervisor,
-            notify_socket: options.notify_socket,
-            activity_notifier: crate::ipc::activity::ActivityNotifier::new(
-                options.daemon_socket.clone(),
-            ),
-            daemon_socket: options.daemon_socket,
-            control_socket: options.control_socket,
-            owner_record: options.owner_record,
-            config_path: options.config_path,
+
             background_path,
             background_outputs: if emergency_active {
                 Vec::new()
@@ -513,7 +486,6 @@ impl CurtainApp {
             fonts: crate::fonts::DeferredFonts::default(),
             keyboard_label_sender: None,
             control_events,
-            lock_probe_state,
             background_asset,
             background_generated,
             generated_pending_sizes: Vec::new(),
@@ -555,8 +527,6 @@ impl CurtainApp {
             session_lock_notified: false,
             ready_notified: false,
             ready_notification_sent: false,
-            startup_notify_retry_at: Instant::now(),
-            latency_report: options.latency_report,
             latency_timings: CurtainLatencyReport::default(),
             first_surface_configured_logged: false,
             first_surface_configured_at: None,
@@ -567,7 +537,6 @@ impl CurtainApp {
             auth_reply_sender: None,
             auth_attempt_id: None,
             auth_challenge_sequence: None,
-            auth_accepted_at: None,
             next_auth_attempt_id: 1,
             has_keyboard_focus: false,
             focused_surface_index: None,

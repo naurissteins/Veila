@@ -10,10 +10,7 @@ use std::{
     sync::mpsc::{self, SyncSender},
     thread,
 };
-use veila_common::{
-    ipc::CurtainControlMessage,
-    session::{self, CurtainMessage, SupervisorMessage, frame},
-};
+use veila_common::session::{self, CurtainMessage, SupervisorMessage, frame};
 
 pub(crate) struct Supervisor {
     pub config: veila_common::AppConfig,
@@ -87,9 +84,6 @@ impl CurtainApp {
                 self.notify_supervisor(CurtainMessage::ResumeGuardArmed { request });
             }
             SupervisorMessage::ReloadConfig { config } => self.apply_config(*config, queue),
-            SupervisorMessage::Control(CurtainControlMessage::ReloadConfig) => {
-                tracing::warn!("ignoring disk reload on resolved supervisor channel");
-            }
             SupervisorMessage::Control(message) => {
                 self.handle_control_event(crate::ipc::control::control_event(message), queue)
             }

@@ -53,6 +53,7 @@ impl Running {
                     None
                 }
             });
+        self.record.value.ready = Some(false);
         let result = crate::spawn::curtain(
             &self.options,
             &self.config,

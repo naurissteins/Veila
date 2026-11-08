@@ -53,6 +53,7 @@ impl Harness {
                 curtain_pid: None,
                 curtain_start_ticks: None,
                 state: RecordState::Locked,
+                ready: Some(true),
                 config: None,
             },
         };

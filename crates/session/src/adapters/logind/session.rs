@@ -130,7 +130,7 @@ fn build_resolution_error(
     format!(
         "failed to resolve a local user logind session. attempts: {attempts}. context: \
 pid={pid}, cli_session_id={}, xdg_session_id={}, xdg_session_type={}, wayland_display={}. \
-Run `veila daemon` from your desktop session terminal or pass --session-id=<id> for the intended local user session.",
+Run `veila idle` from your desktop session terminal or pass --session-id=<id> for the intended local user session.",
         display_option(session_id_override),
         display_option(xdg_session_id.as_deref()),
         display_option(xdg_session_type.as_deref()),

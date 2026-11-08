@@ -1,6 +1,5 @@
 use super::CurtainApp;
 use anyhow::{Context, Result};
-use std::sync::atomic::Ordering;
 use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 impl CurtainApp {
     pub(crate) fn unlocked(&self) -> bool {
@@ -30,12 +29,7 @@ impl CurtainApp {
     }
 
     pub(crate) fn shutdown(&mut self) -> Result<()> {
-        self.lock_probe_state.store(2, Ordering::Release);
         self.render_profiler.log_summary();
-
-        if let Some(path) = self.control_socket.take() {
-            let _ = std::fs::remove_file(path);
-        }
 
         if self.session_finished {
             self.session_lock.take();
@@ -67,13 +61,6 @@ impl CurtainApp {
             self.connection
                 .roundtrip()
                 .context("failed to roundtrip after unlocking session")?;
-        }
-
-        if let Some(path) = self.owner_record.take()
-            && let Err(error) = std::fs::remove_file(&path)
-            && error.kind() != std::io::ErrorKind::NotFound
-        {
-            tracing::warn!("failed to clear curtain ownership after unlock: {error}");
         }
 
         Ok(())

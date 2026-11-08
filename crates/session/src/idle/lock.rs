@@ -22,7 +22,7 @@ pub(super) fn spawn(path: Option<&Path>, events: mpsc::Sender<Event>) -> Result<
     let notify = tokio::net::UnixStream::from_std(notify)?;
     let mut command = tokio::process::Command::new("/proc/self/exe");
     command
-        .arg("__lock")
+        .arg("lock")
         .arg(format!("--notify-fd={}", inherited.as_raw_fd()))
         .stdin(Stdio::null())
         .stdout(Stdio::null());

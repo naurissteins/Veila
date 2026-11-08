@@ -17,7 +17,7 @@ else
   exit 1
 fi
 
-output="$("$veila_bin" __lock --daemonize --wait-ready --latency-report=verbose "$@" 2>&1)" || {
+output="$("$veila_bin" lock --daemonize --wait-ready --latency-report=verbose "$@" 2>&1)" || {
   printf '%s\n' "$output" >&2
   exit 1
 }

@@ -31,6 +31,7 @@ pub async fn run(options: IdleOptions) -> Result<()> {
     let mut hangup = signal(SignalKind::hangup())?;
     let mut terminate = signal(SignalKind::terminate())?;
     let mut interrupt = signal(SignalKind::interrupt())?;
+    let _record = crate::process_status::WatcherRecord::acquire(options.config.clone())?;
     let (settings_tx, mut settings) = watch::channel(IdleConfig::default());
     let (reload, reload_rx) = mpsc::channel(1);
     let (triggers, mut requests) = mpsc::channel(8);
@@ -97,7 +98,8 @@ fn request_lock(
         return;
     }
     match LockRecord::active() {
-        Ok(Some(_)) => return,
+        Ok(Some(State::Starting | State::Locked)) => return,
+        Ok(Some(_)) => {}
         Ok(None) => {}
         Err(error) => {
             tracing::warn!(%error, "could not inspect lock record; supervisor will validate ownership")

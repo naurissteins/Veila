@@ -6,7 +6,7 @@ Veila secure curtain (internal)
 Usage:
   veila __curtain [options]
 
-`veila daemon` starts this process for every lock. Use `veila lock` for normal locking
+`veila lock` starts this process for every lock. Use `veila lock` for normal locking
 and `veila preview` for screenshots.
 
 Options:
@@ -16,16 +16,13 @@ Options:
       --lock-fd=<fd>                Inherited per-display ownership lock
       --initial-backoff-ms=<ms>      Preserve a retry delay for a direct curtain respawn
       --force-emergency-ui           Use the built-in emergency unlock prompt
-      --latency-report[=verbose]     Send startup timing details to the daemon
+      --latency-report[=verbose]     Send startup timing details to the supervisor
       --config=<path>                Use a specific config file
-      --notify-socket=<path>         Notify socket for curtain readiness
-      --daemon-socket=<path>         Daemon auth IPC socket
-      --control-socket=<path>        Curtain live-control IPC socket
       --initial-background-path=<path>
                                      Background image to try first
 
 Notes:
-  Without daemon sockets and without --lock it exits to avoid accidental locks.
+  Without --lock it exits to avoid accidental locks.
   Direct locks require PAM authentication to unlock; termination signals leave the lock held.
   Options accept both --flag=value and --flag value forms.
 "

@@ -117,7 +117,7 @@ pub(crate) fn background(options: LockOptions, mut args: Vec<String>) -> Result<
     });
     let mut command = Command::new("/proc/self/exe");
     command
-        .arg("__lock")
+        .arg("lock")
         .args(args.into_iter().skip(1))
         .arg(format!("--background-fd={}", inherited.as_raw_fd()))
         .stdin(Stdio::null())

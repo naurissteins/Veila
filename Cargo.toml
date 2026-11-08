@@ -13,13 +13,12 @@ veila-session = { path = "crates/session" }
 veila-auth = { path = "crates/auth" }
 veila-curtain = { path = "crates/curtain" }
 veila-renderer = { path = "crates/renderer" }
-veila-daemon = { path = "crates/daemon" }
+veila-cli = { path = "crates/cli" }
 anyhow = { workspace = true }
 nix = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [workspace]
@@ -29,7 +28,7 @@ members = [
     "crates/auth",
     "crates/common",
     "crates/curtain",
-    "crates/daemon",
+    "crates/cli",
     "crates/renderer",
     "crates/ui",
 ]
@@ -63,7 +62,6 @@ tokio = { version = "1.54.1", features = ["io-util", "macros", "net", "process",
 toml = "1"
 toml_edit = "0.25"
 tracing = "0.1"
-tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = { version = "3", default-features = true, features = ["json"] }
 wayland-protocols-wlr = "0.3"

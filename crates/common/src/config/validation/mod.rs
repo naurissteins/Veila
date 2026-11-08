@@ -91,7 +91,7 @@ fn validate_idle_range(report: &mut ConfigValidationReport, config: &AppConfig, 
         path: path.to_path_buf(),
         key_path: "idle.lock_after_seconds".to_string(),
         message: format!(
-            "`lock_after_seconds = {}` is outside {MIN_IDLE_LOCK_AFTER_SECONDS}..={MAX_IDLE_LOCK_AFTER_SECONDS}; the daemon clamps it to the nearest limit",
+            "`lock_after_seconds = {}` is outside {MIN_IDLE_LOCK_AFTER_SECONDS}..={MAX_IDLE_LOCK_AFTER_SECONDS}; the idle watcher clamps it to the nearest limit",
             config.idle.lock_after_seconds
         ),
     });
