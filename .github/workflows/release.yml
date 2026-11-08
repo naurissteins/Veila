@@ -78,25 +78,7 @@ jobs:
           else
             version="${GITHUB_REF_NAME#v}"
           fi
-          dist_dir="dist/veila-${version}-${{ matrix.artifact_arch }}"
-
-          rm -rf "$dist_dir"
-          mkdir -p \
-            "$dist_dir/bin" \
-            "$dist_dir/share/man/man1" \
-            "$dist_dir/share/veila"
-
-          install -m755 target/release/veila "$dist_dir/bin/veila"
-          ln -s veila "$dist_dir/bin/veilad"
-          install -m644 docs/man/veila.1 "$dist_dir/share/man/man1/veila.1"
-          cp -R assets/fonts "$dist_dir/share/veila/"
-          cp -R assets/icons "$dist_dir/share/veila/"
-          cp -R assets/systemd "$dist_dir/share/veila/"
-          cp -R assets/themes "$dist_dir/share/veila/"
-          install -m644 README.md "$dist_dir/README.md"
-          install -m644 LICENSE "$dist_dir/LICENSE"
-
-          tar -C dist -czf "dist/veila-${version}-${{ matrix.artifact_arch }}.tar.gz" "veila-${version}-${{ matrix.artifact_arch }}"
+          bash packaging/build-tarball.sh "$version" "${{ matrix.artifact_arch }}" dist
 
       - name: Package Debian package
         shell: bash

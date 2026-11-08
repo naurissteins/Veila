@@ -1,14 +1,16 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 //! Shared types used by the Veila workspace.
 
 pub mod battery;
+pub mod cache;
 pub mod config;
 pub mod error;
 pub mod ipc;
 pub mod now_playing;
 pub mod power;
 pub mod secret;
+pub mod session;
 pub mod time;
 pub mod weather;
 

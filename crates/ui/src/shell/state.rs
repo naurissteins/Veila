@@ -6,7 +6,7 @@ use std::{
 use veila_common::{
     BatterySnapshot, InputRevealMode, NowPlayingSnapshot, Secret, WeatherSnapshot, WeatherUnit,
 };
-use veila_renderer::{ClearColor, RenderScale, avatar::AvatarAsset, cover::CoverArtAsset};
+use veila_renderer::{RenderScale, avatar::AvatarAsset, cover::CoverArtAsset};
 
 use super::{
     ClockState, NowPlayingTransition, ShellMode, ShellState, ShellStatus, ShellTheme,
@@ -18,54 +18,16 @@ use super::{
 };
 
 impl ShellState {
+    pub fn static_backdrops(&self) -> super::StaticBackdrops {
+        super::StaticBackdrops::new(if self.emergency_active() {
+            Vec::new()
+        } else {
+            self.theme.backdrops.clone()
+        })
+    }
+
     pub fn backdrop_cache_variant(&self) -> Option<String> {
-        if self.emergency_active() {
-            return None;
-        }
-
-        if self.theme.backdrops.is_empty() {
-            return None;
-        }
-
-        let mut variant = String::from("backdrop:v2");
-        for backdrop in &self.theme.backdrops {
-            let visible = backdrop.show_when == veila_common::BackdropShowWhen::Always;
-            let border = backdrop
-                .border_color
-                .unwrap_or(ClearColor::rgba(0, 0, 0, 0));
-            variant.push_str(&format!(
-                ":{:?}:{}:{}:{:?}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
-                backdrop.mode,
-                backdrop.show_when as u8,
-                visible as u8,
-                backdrop.position.halign,
-                backdrop.position.valign as u8,
-                backdrop.position.x,
-                backdrop.position.y,
-                backdrop.full_width as u8,
-                backdrop.full_height as u8,
-                backdrop.inset_top,
-                backdrop.inset_bottom,
-                backdrop.inset_left,
-                backdrop.inset_right,
-                backdrop.width,
-                backdrop.height,
-                backdrop.rotate,
-                backdrop.z,
-                backdrop.color.red,
-                backdrop.color.green,
-                backdrop.color.blue,
-                backdrop.color.alpha,
-                backdrop.blur_strength,
-                backdrop.radius,
-                backdrop.border_width,
-            ));
-            variant.push_str(&format!(
-                ":{}:{}:{}:{}",
-                border.red, border.green, border.blue, border.alpha
-            ));
-        }
-        Some(variant)
+        self.static_backdrops().variant()
     }
 
     pub fn backdrop_cache_variant_scaled(&self, scale: u32) -> Option<String> {
@@ -73,12 +35,7 @@ impl ShellState {
     }
 
     pub fn backdrop_cache_variant_at_scale(&self, scale: RenderScale) -> Option<String> {
-        let variant = self.backdrop_cache_variant()?;
-        match scale.units() {
-            120 => Some(variant),
-            units if scale.is_integer() => Some(format!("{variant}:render-scale:{}", units / 120)),
-            units => Some(format!("{variant}:render-scale-120:{units}")),
-        }
+        self.static_backdrops().variant_at_scale(scale)
     }
 
     pub fn has_visual_layers(&self) -> bool {
@@ -113,7 +70,8 @@ impl ShellState {
             return Some(variant.clone());
         }
         let variant = format!(
-            "static-scene:v2:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+            "static-scene:v3:fonts:{}:scale:{}:theme:{:?}:hint:{:?}:reveal-hint:{:?}:username:{:?}:auth-revealed:{}:focused:{}:avatar:{}",
+            veila_renderer::text::font_cache_key(),
             if scale.is_integer() {
                 format!("{}", scale.units() / 120)
             } else {
@@ -445,6 +403,26 @@ impl ShellState {
 
     pub fn set_preview_grid_enabled(&mut self, enabled: bool) {
         self.preview_grid_enabled = enabled;
+    }
+
+    pub fn set_weather_snapshot(
+        &mut self,
+        location: Option<String>,
+        snapshot: Option<veila_common::WeatherSnapshot>,
+        unit: veila_common::WeatherUnit,
+    ) {
+        let next = super::weather::widget_data(location, snapshot, unit);
+        if self.weather != next {
+            self.weather = next;
+            self.bump_static_scene_revision();
+        }
+    }
+    pub fn set_battery_snapshot(&mut self, snapshot: Option<veila_common::BatterySnapshot>) {
+        let next = super::battery::widget_data(snapshot);
+        if self.battery != next {
+            self.battery = next;
+            self.bump_static_scene_revision();
+        }
     }
 
     pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {

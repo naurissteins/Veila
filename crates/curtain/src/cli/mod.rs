@@ -33,33 +33,27 @@ impl CurtainOptions {
                 continue;
             }
 
-            if arg == "--owner-gate" {
-                options.owner_gate = true;
+            if let Some(value) = parse_option_value(&arg, "--ipc-fd", &mut args)? {
+                options.ipc_fd = Some(value.parse().context("invalid supervisor descriptor")?);
                 continue;
             }
-
-            if let Some(path) = parse_option_value(&arg, "--owner-record", &mut args)? {
-                options.owner_record = Some(PathBuf::from(path));
+            if let Some(value) = parse_option_value(&arg, "--lock-fd", &mut args)? {
+                options.lock_fd = Some(value.parse().context("invalid lock descriptor")?);
+                continue;
+            }
+            if let Some(value) = parse_option_value(&arg, "--initial-backoff-ms", &mut args)? {
+                options.initial_backoff_ms = value.parse().context("invalid initial backoff")?;
+                if std::time::Instant::now()
+                    .checked_add(std::time::Duration::from_millis(options.initial_backoff_ms))
+                    .is_none()
+                {
+                    bail!("initial backoff is too large");
+                }
                 continue;
             }
 
             if let Some(mode) = parse_latency_report_arg(&arg)? {
                 options.latency_report = mode;
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--notify-socket", &mut args)? {
-                options.notify_socket = Some(PathBuf::from(path));
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--daemon-socket", &mut args)? {
-                options.daemon_socket = Some(PathBuf::from(path));
-                continue;
-            }
-
-            if let Some(path) = parse_option_value(&arg, "--control-socket", &mut args)? {
-                options.control_socket = Some(PathBuf::from(path));
                 continue;
             }
 

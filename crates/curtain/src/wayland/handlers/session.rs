@@ -17,7 +17,6 @@ use smithay_client_toolkit::{
 use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_power_v1;
 
 use crate::state::{CurtainApp, duration_ms_between, elapsed_ms, elapsed_us};
-use std::sync::atomic::Ordering;
 
 impl SessionLockHandler for CurtainApp {
     fn locked(&mut self, _conn: &Connection, qh: &QueueHandle<Self>, _session_lock: SessionLock) {
@@ -35,7 +34,6 @@ impl SessionLockHandler for CurtainApp {
             "session lock confirmed by compositor"
         );
         self.session_locked = true;
-        self.lock_probe_state.store(1, Ordering::Release);
         self.screen_off.arm(session_locked_at);
         self.maybe_notify_startup();
         self.render_initial_scene(qh);
@@ -49,7 +47,6 @@ impl SessionLockHandler for CurtainApp {
     ) {
         tracing::warn!("compositor denied or revoked the session lock");
         self.session_finished = true;
-        self.lock_probe_state.store(2, Ordering::Release);
         self.failure_reason = Some("compositor denied or revoked the session lock".to_string());
     }
 

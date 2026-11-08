@@ -1,232 +1,208 @@
-.TH VEILA 1 "May 2026" "Veila 0.4.0" "User Commands"
+.TH VEILA 1 "November 8, 2026" "Veila 0.4.4" "User Commands"
 .SH NAME
 veila \- secure Wayland screen locker
 .SH SYNOPSIS
+.B veila lock
+.RI [ options ]
+.br
+.B veila idle
+.RI [ options ]
+.br
 .B veila
-.RI [ command ]
-.RI [ options ]
-.br
-.B veila daemon
-.RI [ options ]
-.br
-.B veila preview
-.BI --preview-png= PATH
-.RI [ options ]
+.RI command " [options]"
 .SH DESCRIPTION
-.B Veila
-is a native Wayland screen locker built around the secure
-.B ext-session-lock-v1
-protocol. It ships as a single
-.B veila
-binary.
+Veila uses ext-session-lock-v1 and ships one binary. Manual locking needs no
+resident daemon or service. Each lock starts a per-lock supervisor and a separate
+secure curtain process, which owns the surfaces, input and isolated PAM helper.
+.B veila lock
+stays in the foreground until unlock. For keybinds and sleep hooks use
+.BR "veila lock --daemonize --wait-ready" .
 .PP
-Start the daemon with
-.B veila daemon
-from a user service or compositor startup command, then use the other
-.B veila
-commands to request locks, inspect state, validate configuration, view logs, and manage theme selection. Control commands talk to the running daemon and never start it by themselves.
+After secure confirmation the supervisor handles logind, fingerprint verification,
+power actions, locked suspend, live widgets and configuration reload.
+If it dies, the curtain retains the lock and password authentication.
+A crashed curtain is replaced with the emergency prompt and maximum password
+backoff; confirmed locks retry with delays capped at five seconds.
 .PP
-For every lock the daemon starts a separate secure curtain process from the same binary. That process owns the session-lock surfaces and appears as
-.B veila-curtain
-in process listings.
+.B veila idle
+is an optional watcher for compositor idle, logind Lock and sleep events.
+It starts a supervisor for each lock and reads the same TOML configuration.
+Stopping or restarting the watcher does not unlock or kill an active curtain.
+External idle tools can invoke the public lock command instead.
 .SH COMMANDS
 .TP
+.B lock [--daemonize] [--wait-ready]
+Lock the current display. --daemonize detaches the supervisor and returns after
+compositor confirmation. --wait-ready additionally waits for the rich UI on every
+output. Duplicate readiness requests wait for the existing curtain and fail if
+that lock ends before readiness; they do not start a second lock.
+.TP
+.B idle [--config=PATH] [--session-id=ID]
+Run the optional idle/sleep watcher. Run one watcher per display, directly or
+through veila.service. SIGHUP forces reload; invalid settings retain the last
+valid configuration. Lock-before-sleep releases its inhibitor after confirmation
+or logind's finite delay, so a failed lock can let suspend proceed unlocked.
+.TP
 .B daemon
-Start the Veila daemon. See
-.BR DAEMON .
-.TP
-.B preview --preview-png=PATH
-Render the lockscreen to a PNG without locking the session. Run
-.B veila preview --help
-for the preview options such as
-.BR --preview-size .
-.TP
-.B lock
-Ask the running daemon to lock the current logind session. Returns when the request is accepted, before compositor lock confirmation.
-.TP
-.B lock --wait-ready
-Wait for compositor lock confirmation and rich startup readiness. If rich readiness times out after confirmation, the secure curtain and authentication remain active. Release or curtain exit before readiness returns an error.
+Deprecated alias for veila idle. The legacy veilad command also warns and runs
+the watcher. Both accept watcher options; --log-file is removed.
 .TP
 .B status
-Print daemon runtime status.
-.TP
-.B health
-Print build and platform information.
-.TP
-.B doctor
-Run read-only local diagnostics for the Wayland session, PAM service, daemon socket, user services, config, and session-lock protocol support.
-.TP
-.B check-config
-Validate the active configuration and selected theme without starting the daemon or locking the session.
-.TP
-.B init [--theme NAME] [--force]
-Create a starter configuration at the default config path, or replace an existing one when
-.B --force
-is supplied.
+Report per-display lock state and verified supervisor, curtain and watcher
+process identities. Use the desktop's WAYLAND_DISPLAY and XDG_RUNTIME_DIR.
 .TP
 .B reload
-Ask the running daemon to reload configuration from disk.
+Request configuration reload from the live supervisor and watcher after checking
+their process identities. Delivery does not imply successful configuration load.
+Invalid reloads retain the running last-known-good configuration.
 .TP
-.B stop
-Stop the running daemon when the session is unlocked. Returns an error while a lock is active.
+.B doctor
+Read-only diagnostics for process records, optional watcher service, legacy
+units, logind, PAM, configuration, renderer and session-lock/idle protocols.
+In Hyprland it checks whether the compositor permits replacement lockers.
+.TP
+.B check-config
+Validate configuration and theme without locking.
+.TP
+.B init [--theme NAME] [--force]
+Create a starter configuration. --force replaces an existing file.
+.TP
+.B preview --preview-png=PATH
+Render a PNG without locking. See veila preview --help for sizes and options.
 .TP
 .B logs
-Show recent logs from the packaged
-.B veila.service
-user service.
+Show the configured lock file, when logging is enabled, and veila.service's
+watcher journal. Manual locking does not require that service to be installed.
 .TP
 .B theme list
-List bundled theme presets.
+List bundled themes.
 .TP
 .B theme current
-Print the active theme selection and resolved theme source.
+Print the active theme and resolved source.
 .TP
 .B theme print NAME
-Print the raw source for a bundled or user theme.
+Print a bundled or user theme.
 .TP
 .B theme set NAME
-Set the top-level theme key in the active configuration and best-effort reload a running daemon.
+Set the top-level theme key and best-effort reload running processes.
 .TP
 .B theme unset
-Remove the top-level theme key from the active configuration and best-effort reload a running daemon.
+Remove the top-level theme key and best-effort reload running processes.
+.PP
+The old stop and health commands are removed. Use systemctl to stop the watcher,
+and status or doctor to inspect the session.
 .SH OPTIONS
 .TP
 .B -h, --help
-Show command help.
+Show help.
 .TP
 .B -v, --version
-Print the local Veila version.
+Print the local version.
 .TP
 .BI --config= PATH
-Use a specific configuration file for commands that read or mutate config.
+Select a TOML configuration file.
 .TP
 .B --force-emergency-ui
-Combine with
-.B lock
-to test the built-in emergency unlock prompt.
+Combine with lock to test the minimal secure password prompt.
 .TP
 .B --latency-report[=verbose]
-Combine with
-.B lock --wait-ready
-to print startup timing details.
+Combine with lock --wait-ready to print startup timings. Duplicate locks do not
+replay old latency measurements.
 .SH LOGS OPTIONS
 .TP
-.B --follow
-Follow log output.
+.B --follow, -f
+Follow both selected sources until interrupted. File following tracks rotation
+and retries a configured file that has not been created yet.
 .TP
 .B --file
-Read the configured file log instead of the systemd user journal.
+Read only the configured lock log. Enable [lock].log_to_file to write future
+locks; log_file_path selects its path. File logging remains opt-in.
+.TP
+.B --journal
+Read only the systemd user journal.
 .TP
 .BI --since= WHEN
-Show logs since a journalctl-compatible time or a short duration such as
-.B 10m
-or
-.BR 2h .
+Read journal entries since a journalctl time or duration such as 10m or 2h.
+This selects only journal entries in the default combined view; explicit --file
+cannot be combined with --since.
 .TP
 .BI --lines= N
-Limit the number of log lines.
+Limit recent lines per source (default 200, or 50 while following).
 .TP
-.B --daemon, --curtain, --ui, --all
-Select which process logs to show.
-.SH DAEMON
-.B veila daemon
-accepts only startup options. Use the other
-.B veila
-commands to control a running daemon.
-.PP
-The former
-.B veilad
-command name still starts the daemon for one release when it points at the
-.B veila
-binary, and logs a deprecation warning.
-.PP
-Daemon options:
-.TP
-.BI --config= PATH
-Load a specific config file.
-.TP
-.BI --log-file= PATH
-Append daemon logs to a file for this launch.
-.TP
-.BI --session-id= ID
-Select a local interactive logind session belonging to the current user.
-An invalid or ineligible explicit id fails startup instead of falling back.
+.B --idle, --curtain, --ui, --all
+Select watcher, curtain, UI or all logs. --idle reads the journal only;
+--daemon remains an alias for that filter. Curtain/UI filters also apply to
+configured file logs. --file and --journal are mutually exclusive.
 .SH CONFIGURATION
-The default config file is
-.BR $XDG_CONFIG_HOME/veila/config.toml ,
-falling back to
-.BR $HOME/.config/veila/config.toml .
-.PP
-If no config file exists, Veila uses the bundled default theme and hardcoded safety defaults. Run
+Configuration is TOML. Veila reads an explicit --config path first, then the user
+config at $XDG_CONFIG_HOME/veila/config.toml (normally ~/.config/veila/config.toml),
+then /etc/veila/config.toml. Missing initial settings use safe defaults;
 .B veila init
-to create a starter config explicitly.
+creates a starter file. Existing themes and visual keys remain supported.
 .PP
-The
-.B [idle]
-section controls locking that the daemon triggers by itself:
-.B enabled
-(default false) locks after
-.B lock_after_seconds
-(default 300, clamped to 5..86400) of compositor-reported inactivity through
-.BR ext-idle-notify-v1 ,
-and
-.B lock_before_sleep
-(default true) locks the session before suspend while holding a logind delay inhibitor. Both apply live after
-.BR "veila reload" .
+[idle].enabled defaults to false. When the watcher runs, it locks after
+lock_after_seconds (default 300, clamped to 5..86400) through the inhibitor-aware
+ext-idle-notify-v1 protocol. lock_before_sleep defaults to true independently
+of idle timeout. External idle tools configure their own timeout and sleep hooks.
+.PP
+[lock].log_to_file defaults to false. The default log_file_path is
+~/.local/state/veila/veila.log. Foreground diagnostics also go to stderr;
+detached lock diagnostics require file logging.
+.SH FONTS
+Bundled fonts provide initial password text. After confirmation, a bounded
+Fontconfig query selects configured and script fallback faces off the Wayland
+thread. Missing, oversized or slow optional fonts retain the bundled fallback.
+Install fontconfig and fonts covering the scripts you use.
 .SH FILES
 .TP
 .I ~/.config/veila/config.toml
-Default user configuration file.
+User configuration.
 .TP
 .I ~/.config/veila/themes/
-User theme directory.
+User themes.
 .TP
 .I /usr/share/veila/
-Packaged assets, including bundled themes, fonts, icons, and systemd unit files.
+Bundled themes, fonts, icons and example units (prefix varies by installation).
 .TP
 .I /etc/pam.d/veila
-PAM service used for password authentication.
+Password authentication service.
 .TP
 .I /usr/lib/systemd/user/veila.service
-Packaged daemon user service. It runs
-.BR "veila daemon" .
+Optional watcher unit running veila idle. KillMode=process preserves independent
+locks across watcher restarts.
 .TP
 .I /usr/lib/systemd/user/veilad.service
-Compatibility alias for
-.B veila.service
-so existing enablements keep working. It will be removed in a future release.
+Temporary compatibility alias where packaged. Migrate old enablement links
+as reported by veila doctor. Nix exposes the current veila name only.
 .SH ENVIRONMENT
 .TP
 .B VEILA_ASSET_DIR
-Overrides the packaged asset directory.
+Override the packaged assets directory.
 .TP
 .B RUST_LOG
-Controls tracing verbosity for development and troubleshooting.
-.SH SECURITY NOTES
-Veila uses secure Wayland session-lock surfaces. A compositor must advertise
-.B ext_session_lock_manager_v1
-for the real lock path to work. Regular fullscreen windows are not treated as a secure lock screen.
-.PP
-Unlock authority stays with the daemon and logind state. The UI forwards authentication attempts but does not self-authorize unlock.
+Control tracing verbosity.
+.SH SECURITY
+Only ext-session-lock-v1 provides secure coverage. A regular fullscreen window is
+not a lock. The curtain unlocks only for its current accepted PAM attempt or a
+supervisor command from verified fingerprint/session logind Unlock. Signals,
+render failures, configuration errors and process disconnections never authorize
+unlock. Direct internal __curtain development mode has no recovery supervisor.
 .SH EXAMPLES
 .TP
-Start the daemon manually:
-.B veila daemon
+Lock manually:
+.B veila lock
 .TP
-Render a preview screenshot:
-.B veila preview --preview-png=/tmp/veila.png --preview-size=1920x1080
+Sleep hook or compositor keybind:
+.B veila lock --daemonize --wait-ready
 .TP
-Lock and wait for readiness:
-.B veila lock --wait-ready
-.TP
-Validate config:
-.B veila check-config
-.TP
-Create a starter config:
-.B veila init --theme default
-.TP
-Enable packaged user services:
+Optional automatic locking:
 .B systemctl --user enable --now veila.service
+.TP
+Inspect watcher logs only:
+.B veila logs --journal --idle
+.TP
+Follow configured lock logs:
+.B veila logs --file --follow
 .SH SEE ALSO
 .BR systemctl (1),
 .BR journalctl (1),

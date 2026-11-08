@@ -1,6 +1,8 @@
 mod atomic;
 pub(crate) mod image;
+mod maintenance;
 mod prune;
+pub use maintenance::spawn_cache_maintenance;
 pub use prune::{CacheKind, CachePrunePolicy, CachePruneReport, prune_cache};
 
 use std::{

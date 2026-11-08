@@ -3,12 +3,9 @@ use veila_common::{WeatherCondition, ipc::LatencyReportMode};
 use crate::{CurtainOptions, PreviewClockTime};
 
 #[test]
-fn parses_notify_socket_argument() {
+fn parses_config_and_preview_arguments() {
     let options = CurtainOptions::parse_args([
         "veila-curtain".to_string(),
-        "--notify-socket=/tmp/veila.sock".to_string(),
-        "--daemon-socket=/tmp/veila-auth.sock".to_string(),
-        "--control-socket=/tmp/veila-control.sock".to_string(),
         "--config=/tmp/veila.toml".to_string(),
         "--force-emergency-ui".to_string(),
         "--latency-report".to_string(),
@@ -32,18 +29,6 @@ fn parses_notify_socket_argument() {
     ])
     .expect("arguments should parse");
 
-    assert_eq!(
-        options.notify_socket.as_deref(),
-        Some(std::path::Path::new("/tmp/veila.sock"))
-    );
-    assert_eq!(
-        options.daemon_socket.as_deref(),
-        Some(std::path::Path::new("/tmp/veila-auth.sock"))
-    );
-    assert_eq!(
-        options.control_socket.as_deref(),
-        Some(std::path::Path::new("/tmp/veila-control.sock"))
-    );
     assert_eq!(
         options.config_path.as_deref(),
         Some(std::path::Path::new("/tmp/veila.toml"))
@@ -173,4 +158,31 @@ fn parses_direct_lock_argument() {
 
     assert!(options.lock);
     assert!(options.force_emergency_ui);
+}
+
+#[test]
+fn initial_backoff_parses_both_forms_and_rejects_invalid_values() {
+    for args in [
+        vec!["--initial-backoff-ms=500"],
+        vec!["--initial-backoff-ms", "500"],
+    ] {
+        let options = crate::CurtainOptions::parse_args(
+            std::iter::once("veila").chain(args).map(str::to_owned),
+        )
+        .expect("initial delay");
+        assert_eq!(options.initial_backoff_ms, 500);
+    }
+    for args in [
+        vec!["--initial-backoff-ms"],
+        vec!["--initial-backoff-ms=-1"],
+        vec!["--initial-backoff-ms=bad"],
+        vec!["--initial-backoff-ms", "--lock"],
+    ] {
+        assert!(
+            crate::CurtainOptions::parse_args(
+                std::iter::once("veila").chain(args).map(str::to_owned)
+            )
+            .is_err()
+        );
+    }
 }

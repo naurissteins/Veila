@@ -3,10 +3,7 @@ use std::time::{Duration, Instant};
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_surface};
 use veila_ui::{ShellAction, ShellAnimationUpdate, ShellKey, WidgetKind};
 
-use crate::{
-    ipc::auth::{ChallengeReply, request_power_action, submit_password},
-    keyboard_cache::start_keyboard_layout_writer,
-};
+use crate::{ipc::auth::ChallengeReply, keyboard_cache::start_keyboard_layout_writer};
 
 use super::super::CurtainApp;
 
@@ -59,24 +56,7 @@ impl CurtainApp {
                 return;
             }
 
-            let Some(socket_path) = self.daemon_socket.clone() else {
-                tracing::warn!("password submitted without a daemon auth socket");
-                self.ui_shell.authentication_rejected(None, None);
-                self.render_all_surfaces(queue_handle);
-                return;
-            };
-
-            let attempt_id = self.next_auth_attempt_id;
-            self.next_auth_attempt_id = self.next_auth_attempt_id.saturating_add(1);
-            tracing::info!(attempt_id, "submitting password attempt");
-            self.auth_in_flight = true;
-            self.auth_attempt_id = Some(attempt_id);
-            self.auth_reply_sender = Some(submit_password(
-                socket_path,
-                attempt_id,
-                secret,
-                self.auth_sender.clone(),
-            ));
+            self.submit_auth_attempt(secret, queue_handle);
         }
         self.render_auth_change(revision_before, queue_handle);
     }
@@ -178,15 +158,13 @@ impl CurtainApp {
         }
 
         if let ShellAction::Power(action) = self.ui_shell.take_pointer_action() {
-            let Some(socket_path) = self.daemon_socket.clone() else {
-                tracing::warn!(
-                    ?action,
-                    "power action requested without a daemon auth socket"
-                );
+            if self.supervisor.is_some() {
+                self.notify_supervisor(veila_common::session::CurtainMessage::RequestPowerAction {
+                    action,
+                });
                 return;
-            };
-            tracing::info!(?action, "requesting daemon-mediated power action");
-            request_power_action(socket_path, action);
+            }
+            tracing::warn!(?action, "power action requires a running supervisor");
         }
     }
 

@@ -1,11 +1,15 @@
 use std::path::Path;
 
-use veila_daemon::{CURTAIN_SUBCOMMAND, PAM_HELPER_SUBCOMMAND, PREWARM_SUBCOMMAND};
+use veila_auth::PAM_HELPER_SUBCOMMAND;
+const CURTAIN_SUBCOMMAND: &str = "__curtain";
+const PREWARM_SUBCOMMAND: &str = "__prewarm";
 
 const LEGACY_DAEMON_NAME: &str = "veilad";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
+    Lock,
+    Idle,
     Control,
     Daemon,
     LegacyDaemon,
@@ -13,6 +17,7 @@ pub(crate) enum Mode {
     Preview,
     Prewarm,
     PamHelper,
+    FontQuery,
 }
 
 // `args` keeps `argv[0]` and drops the subcommand so the mode parsers can skip one argument as before.
@@ -31,12 +36,33 @@ impl Invocation {
             };
         }
 
+        let mut index = 1;
+        while let Some(arg) = args.get(index) {
+            if arg == "--config" {
+                index += 2;
+                continue;
+            }
+            if arg == "lock" {
+                args.remove(index);
+                return Self {
+                    mode: Mode::Lock,
+                    args,
+                };
+            }
+            if !arg.starts_with('-') {
+                break;
+            }
+            index += 1;
+        }
         let mode = match args.get(1).map(String::as_str) {
+            Some("lock") => Mode::Lock,
+            Some("idle") => Mode::Idle,
             Some("daemon") => Mode::Daemon,
             Some("preview") => Mode::Preview,
             Some(CURTAIN_SUBCOMMAND) => Mode::Curtain,
             Some(PREWARM_SUBCOMMAND) => Mode::Prewarm,
             Some(PAM_HELPER_SUBCOMMAND) => Mode::PamHelper,
+            Some(veila_renderer::text::FONT_QUERY_SUBCOMMAND) => Mode::FontQuery,
             _ => {
                 return Self {
                     mode: Mode::Control,
@@ -71,11 +97,14 @@ mod tests {
     #[test]
     fn subcommands_select_modes_and_are_removed_from_arguments() {
         let cases = [
+            ("lock", Mode::Lock),
+            ("idle", Mode::Idle),
             ("daemon", Mode::Daemon),
             ("preview", Mode::Preview),
             ("__curtain", Mode::Curtain),
             ("__prewarm", Mode::Prewarm),
             ("__pam-helper", Mode::PamHelper),
+            ("__font-query", Mode::FontQuery),
         ];
 
         for (subcommand, mode) in cases {
@@ -93,7 +122,6 @@ mod tests {
     fn other_arguments_are_control_commands() {
         for input in [
             &["veila"][..],
-            &["veila", "lock", "--wait-ready"],
             &["veila", "--config=/tmp/c.toml", "daemon"],
             &["veila", "--help"],
         ] {
@@ -105,7 +133,7 @@ mod tests {
     }
 
     #[test]
-    fn veilad_name_runs_the_daemon_with_all_arguments() {
+    fn veilad_name_selects_the_deprecated_idle_alias() {
         let invocation = parse(&["/usr/bin/veilad", "--config=/tmp/c.toml"]);
 
         assert_eq!(invocation.mode, Mode::LegacyDaemon);
@@ -126,5 +154,33 @@ mod tests {
     #[test]
     fn empty_arguments_fall_back_to_control() {
         assert_eq!(parse(&[]).mode, Mode::Control);
+    }
+}
+
+#[cfg(test)]
+mod routing_tests {
+    use super::*;
+    #[test]
+    fn lock_preserves_global_config_and_never_routes_nested_command_values() {
+        for flags in [
+            vec!["--config=/tmp/config"],
+            vec!["--config", "/tmp/config"],
+            vec!["--wait-ready"],
+        ] {
+            let input = [vec!["veila"], flags.clone(), vec!["lock"]].concat();
+            let parsed = Invocation::parse(input.into_iter().map(String::from).collect());
+            assert_eq!(parsed.mode, Mode::Lock);
+            assert_eq!(parsed.args, [vec!["veila"], flags].concat());
+        }
+        for input in [
+            vec!["veila", "theme", "set", "lock"],
+            vec!["veila", "__lock"],
+            vec!["veila", "logs", "lock"],
+        ] {
+            assert_eq!(
+                Invocation::parse(input.into_iter().map(String::from).collect()).mode,
+                Mode::Control
+            );
+        }
     }
 }

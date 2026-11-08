@@ -1122,8 +1122,8 @@ fn caps_lock_toggle_does_not_change_static_scene_revision() {
 fn setting_same_avatar_does_not_invalidate_static_scene() {
     let mut shell = ShellState::default();
     let revision = shell.static_scene_revision();
-
-    assert!(!shell.set_avatar(veila_renderer::avatar::AvatarAsset::placeholder()));
+    let avatar = shell.avatar.clone();
+    assert!(!shell.set_avatar(avatar));
     assert_eq!(shell.static_scene_revision(), revision);
 }
 
@@ -1703,4 +1703,38 @@ fn disabled_clock_and_date_leave_idle_shell_without_deadline() {
     shell.theme.date.enabled = false;
 
     assert_eq!(shell.next_animation_in(Instant::now()), None);
+}
+
+#[test]
+fn live_battery_and_weather_snapshots_invalidate_only_when_data_changes() {
+    let mut shell = ShellState::default();
+    let battery = Some(veila_common::BatterySnapshot {
+        percent: 90,
+        charging: false,
+    });
+    let before = shell.static_scene_revision();
+    shell.set_battery_snapshot(battery.clone());
+    assert!(shell.static_scene_revision() > before);
+    let before = shell.static_scene_revision();
+    shell.set_battery_snapshot(battery);
+    assert_eq!(before, shell.static_scene_revision());
+    let weather = Some(veila_common::WeatherSnapshot {
+        temperature_celsius: 10,
+        condition: veila_common::WeatherCondition::ClearDay,
+        fetched_at_unix: 0,
+    });
+    shell.set_weather_snapshot(
+        Some("Riga".into()),
+        weather.clone(),
+        veila_common::WeatherUnit::Celsius,
+    );
+    let before = shell.static_scene_revision();
+    shell.set_weather_snapshot(
+        Some("Riga".into()),
+        weather,
+        veila_common::WeatherUnit::Celsius,
+    );
+    assert_eq!(before, shell.static_scene_revision());
+    shell.set_weather_snapshot(None, None, veila_common::WeatherUnit::Celsius);
+    assert!(shell.static_scene_revision() > before);
 }

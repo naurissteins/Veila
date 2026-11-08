@@ -21,7 +21,7 @@ Architecture: linux-any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends}
-Recommends: systemd
+Recommends: systemd, fontconfig
 Description: Secure, elegant, and fast Wayland screen locker
  Veila is a native Wayland screen locker focused on a modern look,
  low lock latency, and a small runtime footprint.

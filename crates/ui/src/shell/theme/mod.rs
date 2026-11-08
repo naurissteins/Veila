@@ -2,6 +2,8 @@ mod auth;
 #[cfg(test)]
 mod auth_tests;
 mod color;
+#[cfg(test)]
+mod font_tests;
 mod font_warmup;
 mod header;
 #[cfg(test)]
@@ -227,7 +229,7 @@ fn scale_position(position: WidgetPosition, scale: RenderScale) -> WidgetPositio
     }
 }
 
-fn scale_backdrop(mut backdrop: Backdrop, scale: RenderScale) -> Backdrop {
+pub(super) fn scale_backdrop(mut backdrop: Backdrop, scale: RenderScale) -> Backdrop {
     backdrop.radius = scale_i32(backdrop.radius, scale);
     backdrop.border_width = scale_i32(backdrop.border_width, scale);
     backdrop.inset_top = scale_i32(backdrop.inset_top, scale);

@@ -1,0 +1,275 @@
+use std::time::{Duration, Instant};
+
+#[derive(Debug)]
+pub enum AuthAdmission {
+    Allowed,
+    Busy,
+    RateLimited(Duration),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuthPolicy {
+    base_delay: Duration,
+    max_delay: Duration,
+}
+
+impl Default for AuthPolicy {
+    fn default() -> Self {
+        Self::new(Duration::from_secs(1), Duration::from_secs(16))
+    }
+}
+
+impl AuthPolicy {
+    pub fn new(base_delay: Duration, max_delay: Duration) -> Self {
+        let base_delay = base_delay.max(Duration::from_millis(1));
+        let max_delay = max_delay.max(base_delay);
+
+        Self {
+            base_delay,
+            max_delay,
+        }
+    }
+
+    fn failure_delay(self, failed_attempts: u8) -> Duration {
+        let exponent = u32::from(failed_attempts.saturating_sub(1).min(16));
+        let multiplier = 1u32.checked_shl(exponent).unwrap_or(u32::MAX);
+        let scaled = self.base_delay.saturating_mul(multiplier);
+        scaled.min(self.max_delay)
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AuthState {
+    failed_attempts: u8,
+    backoff_level: u8,
+    retry_after: Option<Instant>,
+    in_flight: bool,
+    policy: AuthPolicy,
+}
+
+impl AuthState {
+    pub fn new(policy: AuthPolicy) -> Self {
+        Self {
+            failed_attempts: 0,
+            backoff_level: 0,
+            retry_after: None,
+            in_flight: false,
+            policy,
+        }
+    }
+
+    pub fn after_recovery(policy: AuthPolicy, now: Instant) -> Self {
+        Self::with_initial_backoff(policy, now, policy.max_delay)
+    }
+
+    /// Preserves a respawn delay and resumes failures at the policy ceiling.
+    pub fn with_initial_backoff(policy: AuthPolicy, now: Instant, delay: Duration) -> Self {
+        if delay.is_zero() {
+            return Self::new(policy);
+        }
+        Self {
+            failed_attempts: 0,
+            backoff_level: u8::MAX,
+            retry_after: Some(
+                now.checked_add(delay)
+                    .unwrap_or(now + Duration::from_secs(30)),
+            ),
+            in_flight: false,
+            policy,
+        }
+    }
+}
+
+impl AuthState {
+    pub fn update_policy(&mut self, policy: AuthPolicy) {
+        self.policy = policy;
+    }
+
+    pub fn failed_attempts(&self) -> u8 {
+        self.failed_attempts
+    }
+
+    pub fn in_flight(&self) -> bool {
+        self.in_flight
+    }
+
+    pub fn next_failed_attempts(&self) -> u8 {
+        self.failed_attempts.saturating_add(1)
+    }
+
+    pub fn admit(&self, now: Instant) -> AuthAdmission {
+        if self.in_flight {
+            return AuthAdmission::Busy;
+        }
+
+        if let Some(retry_after) = self.retry_after
+            && retry_after > now
+        {
+            return AuthAdmission::RateLimited(retry_after.saturating_duration_since(now));
+        }
+
+        AuthAdmission::Allowed
+    }
+
+    pub fn start_attempt(&mut self) {
+        self.in_flight = true;
+    }
+
+    pub fn finish_success(&mut self) {
+        self.in_flight = false;
+        self.failed_attempts = 0;
+        self.backoff_level = 0;
+        self.retry_after = None;
+    }
+
+    pub fn finish_failure(&mut self, now: Instant) {
+        self.in_flight = false;
+        self.failed_attempts = self.failed_attempts.saturating_add(1);
+        self.backoff_level = self.backoff_level.saturating_add(1);
+        self.retry_after = Some(now + self.policy.failure_delay(self.backoff_level));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, Instant};
+
+    use super::{AuthAdmission, AuthPolicy, AuthState};
+
+    #[test]
+    fn rejects_parallel_attempts() {
+        let mut state = AuthState::default();
+        state.start_attempt();
+
+        assert!(matches!(state.admit(Instant::now()), AuthAdmission::Busy));
+    }
+
+    #[test]
+    fn backs_off_after_failures() {
+        let mut state = AuthState::default();
+        let now = Instant::now();
+
+        state.start_attempt();
+        state.finish_failure(now);
+
+        match state.admit(now + Duration::from_millis(500)) {
+            AuthAdmission::RateLimited(delay) => assert!(delay <= Duration::from_secs(1)),
+            AuthAdmission::Allowed | AuthAdmission::Busy => panic!("attempt should be throttled"),
+        }
+    }
+
+    #[test]
+    fn resets_after_success() {
+        let mut state = AuthState::default();
+        let now = Instant::now();
+
+        state.start_attempt();
+        state.finish_failure(now);
+        state.start_attempt();
+        state.finish_success();
+
+        assert!(matches!(state.admit(now), AuthAdmission::Allowed));
+    }
+
+    #[test]
+    fn clamps_delay_to_policy_maximum() {
+        let mut state = AuthState::new(AuthPolicy::new(
+            Duration::from_millis(500),
+            Duration::from_secs(2),
+        ));
+        let now = Instant::now();
+
+        for _ in 0..5 {
+            state.start_attempt();
+            state.finish_failure(now);
+        }
+
+        match state.admit(now) {
+            AuthAdmission::RateLimited(delay) => assert!(delay <= Duration::from_secs(2)),
+            AuthAdmission::Allowed | AuthAdmission::Busy => panic!("attempt should be throttled"),
+        }
+    }
+
+    #[test]
+    fn recovery_does_not_reset_password_backoff() {
+        let policy = AuthPolicy::new(Duration::from_secs(1), Duration::from_secs(12));
+        let now = Instant::now();
+        let mut state = AuthState::after_recovery(policy, now);
+
+        assert_eq!(state.failed_attempts(), 0);
+        assert_eq!(state.next_failed_attempts(), 1);
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(11)),
+            AuthAdmission::RateLimited(_)
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(12)),
+            AuthAdmission::Allowed
+        ));
+        state.start_attempt();
+        state.finish_failure(now + Duration::from_secs(12));
+        assert_eq!(state.failed_attempts(), 1);
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(13)),
+            AuthAdmission::RateLimited(_)
+        ));
+    }
+    #[test]
+    fn respawn_preserves_the_supplied_delay_and_future_failure_ceiling() {
+        let policy = AuthPolicy::new(Duration::from_millis(100), Duration::from_secs(2));
+        let now = Instant::now();
+        let mut state = AuthState::with_initial_backoff(policy, now, Duration::from_millis(500));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(499)),
+            AuthAdmission::RateLimited(_)
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(500)),
+            AuthAdmission::Allowed
+        ));
+        state.start_attempt();
+        state.finish_failure(now + Duration::from_millis(500));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(2500)),
+            AuthAdmission::Allowed
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(2499)),
+            AuthAdmission::RateLimited(_)
+        ));
+    }
+
+    #[test]
+    fn zero_initial_delay_keeps_the_normal_first_failure_delay() {
+        let now = Instant::now();
+        let mut state = AuthState::with_initial_backoff(AuthPolicy::default(), now, Duration::ZERO);
+        assert!(matches!(state.admit(now), AuthAdmission::Allowed));
+        state.start_attempt();
+        state.finish_failure(now);
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(1)),
+            AuthAdmission::Allowed
+        ));
+    }
+    #[test]
+    fn policy_reload_preserves_active_attempt_and_current_retry_deadline() {
+        let now = Instant::now();
+        let mut state = AuthState::default();
+        state.start_attempt();
+        state.update_policy(AuthPolicy::new(
+            Duration::from_secs(2),
+            Duration::from_secs(3),
+        ));
+        assert!(matches!(state.admit(now), AuthAdmission::Busy));
+        state.finish_failure(now);
+        state.update_policy(AuthPolicy::default());
+        assert!(matches!(
+            state.admit(now + Duration::from_millis(1999)),
+            AuthAdmission::RateLimited(_)
+        ));
+        assert!(matches!(
+            state.admit(now + Duration::from_secs(2)),
+            AuthAdmission::Allowed
+        ));
+    }
+}

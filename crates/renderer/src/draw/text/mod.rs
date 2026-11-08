@@ -1,4 +1,5 @@
 mod context;
+mod fonts;
 mod layout;
 mod raster;
 mod sensitive;
@@ -10,8 +11,11 @@ use crate::{ClearColor, PixelBuffer, ShadowStyle};
 use cosmic_text::{FamilyOwned, Style as CosmicFontStyle};
 
 pub use context::{
-    bundled_clock_font_family, bundled_clock_font_postscript_name, configure_font_warmup,
-    resolve_font_family, start_font_warmup,
+    bundled_clock_font_family, bundled_clock_font_postscript_name, resolve_font_family,
+};
+pub use fonts::{
+    FONT_QUERY_SUBCOMMAND, FontLoader, FontRequest, MAX_CONFIGURED_FONT_REQUESTS, PreparedFonts,
+    font_cache_key, install_fonts, prepare_fonts, run_font_query,
 };
 use layout::{font_size, layout_text_block, line_height, scale_component};
 use raster::{draw_text_lines, visible_text_bounds};

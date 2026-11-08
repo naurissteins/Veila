@@ -18,6 +18,10 @@ thread_local! {
     static TEXT_RASTER_CACHE: RefCell<TextRasterCache> = const { RefCell::new(TextRasterCache { entries: Vec::new() }) };
 }
 
+pub(super) fn clear_text_raster_cache() {
+    TEXT_RASTER_CACHE.with(|cache| cache.borrow_mut().entries.clear());
+}
+
 struct TextRasterCache {
     entries: Vec<(TextRasterKey, Option<Rc<TextRaster>>)>,
 }

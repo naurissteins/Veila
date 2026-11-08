@@ -2,6 +2,8 @@ mod animation;
 mod avatar;
 #[cfg(test)]
 mod backdrop_cache_tests;
+mod backdrops;
+pub use backdrops::StaticBackdrops;
 mod battery;
 mod clock;
 mod emergency;

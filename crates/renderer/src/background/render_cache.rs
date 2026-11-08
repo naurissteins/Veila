@@ -2,7 +2,7 @@ use crate::cache::{file_cache_key, stable_hash};
 
 use std::path::{Path, PathBuf};
 
-use crate::{FrameSize, RendererError, Result, SoftwareBuffer};
+use crate::{ClearColor, FrameSize, RendererError, Result, SoftwareBuffer};
 
 use super::{BackgroundTreatment, GeneratedBackground};
 
@@ -10,16 +10,20 @@ const CACHE_MAGIC: &[u8; 8] = b"KWYBG001";
 
 #[derive(Debug, Clone, Copy)]
 enum CacheSource<'a> {
-    Path(&'a Path),
+    Path {
+        path: &'a Path,
+        fallback: ClearColor,
+    },
     Generated(GeneratedBackground),
 }
 
 pub(crate) fn load_cached_buffer(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_for_source(CacheSource::Path(path), size, treatment, None)
+    load_cached_buffer_for_source(CacheSource::Path { path, fallback }, size, treatment, None)
 }
 
 pub(crate) fn load_cached_buffer_for_generated(
@@ -32,11 +36,17 @@ pub(crate) fn load_cached_buffer_for_generated(
 
 pub(crate) fn load_cached_buffer_with_variant(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
     variant: Option<&str>,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_for_source(CacheSource::Path(path), size, treatment, variant)
+    load_cached_buffer_for_source(
+        CacheSource::Path { path, fallback },
+        size,
+        treatment,
+        variant,
+    )
 }
 
 pub(crate) fn load_cached_buffer_for_generated_with_variant(
@@ -67,11 +77,18 @@ fn read_buffer(path: &Path, size: FrameSize) -> Option<SoftwareBuffer> {
 
 pub(crate) fn store_cached_buffer(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
-    store_cached_buffer_for_source(CacheSource::Path(path), size, treatment, buffer, None)
+    store_cached_buffer_for_source(
+        CacheSource::Path { path, fallback },
+        size,
+        treatment,
+        buffer,
+        None,
+    )
 }
 
 pub(crate) fn store_cached_buffer_for_generated(
@@ -91,12 +108,19 @@ pub(crate) fn store_cached_buffer_for_generated(
 
 pub(crate) fn store_cached_buffer_with_variant(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
     variant: Option<&str>,
 ) -> Result<()> {
-    store_cached_buffer_for_source(CacheSource::Path(path), size, treatment, buffer, variant)
+    store_cached_buffer_for_source(
+        CacheSource::Path { path, fallback },
+        size,
+        treatment,
+        buffer,
+        variant,
+    )
 }
 
 pub(crate) fn store_cached_buffer_for_generated_with_variant(
@@ -158,13 +182,19 @@ fn cache_path(
 
 fn cache_source_key(source: CacheSource<'_>, size: FrameSize) -> Result<String> {
     match source {
-        CacheSource::Path(path) => {
+        CacheSource::Path { path, fallback } => {
             let identity = file_cache_key(path)
                 .map_err(image::ImageError::from)
                 .map_err(RendererError::from)?;
+            // Fallback pixels survive transparency and fit bars; old keys cannot distinguish them.
             Ok(format!(
-                "image:v2:{identity}:{}x{}",
-                size.width, size.height
+                "image:v3:{identity}:{}x{}:{}:{}:{}:{}",
+                size.width,
+                size.height,
+                fallback.red,
+                fallback.green,
+                fallback.blue,
+                fallback.alpha
             ))
         }
         CacheSource::Generated(generated) => Ok(match generated {

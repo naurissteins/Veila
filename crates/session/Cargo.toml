@@ -1,0 +1,29 @@
+[package]
+name = "veila-session"
+description = "Per-lock supervision for Veila"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+veila-common = { path = "../common" }
+veila-ui = { path = "../ui" }
+veila-renderer = { path = "../renderer" }
+anyhow.workspace = true
+nix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+smithay-client-toolkit.workspace = true
+
+futures-util.workspace = true
+tokio.workspace = true
+time.workspace = true
+ureq.workspace = true
+zbus.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

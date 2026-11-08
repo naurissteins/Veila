@@ -1,4 +1,7 @@
+mod events;
+pub(crate) use events::CurtainEventSources;
 mod interaction;
+mod lifecycle;
 mod memory;
 mod output;
 mod poll;
@@ -11,18 +14,15 @@ mod shm_trim;
 
 use std::{
     path::{Path, PathBuf},
+    sync::Arc,
     sync::mpsc::{Receiver as ControlReceiver, Sender as KeyboardSender},
-    sync::{
-        Arc,
-        atomic::{AtomicU8, Ordering},
-    },
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, anyhow, bail};
 use calloop::{
-    channel::{Channel, Sender, channel},
-    ping::{PingSource, make_ping},
+    channel::{Sender, channel},
+    ping::make_ping,
 };
 use smithay_client_toolkit::{
     compositor::CompositorState,
@@ -48,7 +48,7 @@ use smithay_client_toolkit::{
 use veila_common::{
     AppConfig, BatterySnapshot, LoadedConfig, NowPlayingSnapshot, OutputUiMode, WeatherSnapshot,
     config::BackgroundOutputConfig,
-    ipc::{CurtainLatencyReport, LatencyReportMode, LockPowerStatusSnapshot},
+    ipc::{CurtainLatencyReport, LockPowerStatusSnapshot},
 };
 use veila_renderer::{
     ClearColor,
@@ -67,7 +67,7 @@ use crate::{
     CurtainOptions,
     background::{BackgroundEvent, BackgroundSlideshow},
     ipc::auth::AuthEvent,
-    ipc::control::{ControlEvent, ControlSender, spawn_listener},
+    ipc::control::{ControlEvent, ControlSender},
     keyboard_cache::load_keyboard_layout_label,
 };
 
@@ -91,6 +91,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_scale: veila_renderer::RenderScale,
     pub(crate) scene_base_has_layers: bool,
+    pub(crate) backdrop_cache_hit: bool,
     pub(crate) widget_frame: Option<CommittedWidgetFrame>,
     pub(crate) shm_pool: Option<SurfaceBufferPool>,
     pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
@@ -217,20 +218,16 @@ pub(crate) struct CurtainApp {
     pub(crate) keyboard: Option<wl_keyboard::WlKeyboard>,
     pub(crate) pointer: Option<ThemedPointer>,
     pub(crate) lock_surfaces: Vec<ManagedLockSurface>,
-    pub(crate) notify_socket: Option<PathBuf>,
-    daemon_socket: Option<PathBuf>,
-    pub(crate) activity_notifier: crate::ipc::activity::ActivityNotifier,
-    control_socket: Option<PathBuf>,
-    owner_record: Option<PathBuf>,
-    pub(crate) config_path: Option<PathBuf>,
+    pub(crate) supervisor: Option<crate::supervisor::Supervisor>,
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background_outputs: Vec<BackgroundOutputConfig>,
     pub(crate) slideshow: Option<BackgroundSlideshow>,
     auth_sender: Sender<AuthEvent>,
+    pub(crate) authentication: crate::auth::Backend,
     pub(crate) background_sender: Sender<BackgroundEvent>,
+    pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
     control_events: ControlReceiver<ControlEvent>,
-    pub(crate) lock_probe_state: Arc<AtomicU8>,
     pub(crate) background_asset: BackgroundAsset,
     pub(crate) background_generated: Option<GeneratedBackground>,
     pub(crate) generated_pending_sizes: Vec<veila_renderer::FrameSize>,
@@ -265,8 +262,6 @@ pub(crate) struct CurtainApp {
     pub(crate) session_lock_notified: bool,
     pub(crate) ready_notified: bool,
     pub(crate) ready_notification_sent: bool,
-    pub(crate) startup_notify_retry_at: Instant,
-    pub(crate) latency_report: LatencyReportMode,
     pub(crate) latency_timings: CurtainLatencyReport,
     pub(crate) first_surface_configured_logged: bool,
     pub(crate) first_surface_configured_at: Option<Instant>,
@@ -277,7 +272,6 @@ pub(crate) struct CurtainApp {
     auth_reply_sender: Option<std::sync::mpsc::Sender<crate::ipc::auth::ChallengeReply>>,
     auth_attempt_id: Option<u64>,
     auth_challenge_sequence: Option<u32>,
-    auth_accepted_at: Option<Instant>,
     next_auth_attempt_id: u64,
     pub(crate) has_keyboard_focus: bool,
     pub(crate) focused_surface_index: Option<usize>,
@@ -298,12 +292,6 @@ pub(crate) struct CurtainApp {
     pub(crate) first_frame_committed_at: Option<Instant>,
 }
 
-pub(crate) struct CurtainEventSources {
-    pub(crate) auth: Channel<AuthEvent>,
-    pub(crate) background: Channel<BackgroundEvent>,
-    pub(crate) control: PingSource,
-}
-
 impl CurtainApp {
     pub(crate) fn new(
         connection: Connection,
@@ -311,6 +299,7 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
         options: CurtainOptions,
         startup_started_at: Instant,
+        inherited: Option<(std::os::unix::net::UnixStream, std::fs::File)>,
     ) -> Result<(Self, CurtainEventSources)> {
         let (auth_sender, auth_events) = channel();
         let (background_sender, background_events) = channel();
@@ -318,10 +307,14 @@ impl CurtainApp {
         let (control_ping, control_source) =
             make_ping().context("failed to create control wake source")?;
         let control_sender = ControlSender::new(control_sender, control_ping);
-        let lock_probe_state = Arc::new(AtomicU8::new(0));
         let force_emergency_ui = options.force_emergency_ui;
         let mut emergency_reason = None;
-        let loaded_config = match AppConfig::load(options.config_path.as_deref()) {
+        let loaded_config = match options
+            .resolved_config
+            .clone()
+            .map(|config| Ok(LoadedConfig { path: None, config }))
+            .unwrap_or_else(|| AppConfig::load(options.config_path.as_deref()))
+        {
             Ok(loaded_config) => loaded_config,
             Err(error) => {
                 let reason = format!("failed to load curtain config: {error:#}");
@@ -336,7 +329,6 @@ impl CurtainApp {
         let config = loaded_config.config;
         let emergency_active = force_emergency_ui || emergency_reason.is_some();
         let theme = ShellTheme::from_config(&config);
-        veila_renderer::text::configure_font_warmup(theme.font_warmup_families());
         let background_color = if emergency_active {
             EMERGENCY_BACKGROUND
         } else {
@@ -451,11 +443,17 @@ impl CurtainApp {
             "loaded curtain config"
         );
 
-        if let Some(control_socket) = options.control_socket.clone() {
-            spawn_listener(control_socket, control_sender, lock_probe_state.clone())
-                .context("failed to start curtain control listener")?;
-        }
-
+        let supervisor = inherited
+            .map(|(channel, lock)| {
+                crate::supervisor::Supervisor::connect(
+                    channel,
+                    lock,
+                    control_sender,
+                    config.clone(),
+                )
+            })
+            .transpose()?;
+        let authentication = crate::auth::Backend::new(&options, &config.lock);
         let app = Self {
             connection,
             compositor_state: CompositorState::bind(globals, queue_handle)
@@ -473,14 +471,8 @@ impl CurtainApp {
             keyboard: None,
             pointer: None,
             lock_surfaces: Vec::new(),
-            notify_socket: options.notify_socket,
-            activity_notifier: crate::ipc::activity::ActivityNotifier::new(
-                options.daemon_socket.clone(),
-            ),
-            daemon_socket: options.daemon_socket,
-            control_socket: options.control_socket,
-            owner_record: options.owner_record,
-            config_path: options.config_path,
+            supervisor,
+
             background_path,
             background_outputs: if emergency_active {
                 Vec::new()
@@ -489,10 +481,11 @@ impl CurtainApp {
             },
             slideshow,
             auth_sender,
+            authentication,
             background_sender,
+            fonts: crate::fonts::DeferredFonts::default(),
             keyboard_label_sender: None,
             control_events,
-            lock_probe_state,
             background_asset,
             background_generated,
             generated_pending_sizes: Vec::new(),
@@ -534,8 +527,6 @@ impl CurtainApp {
             session_lock_notified: false,
             ready_notified: false,
             ready_notification_sent: false,
-            startup_notify_retry_at: Instant::now(),
-            latency_report: options.latency_report,
             latency_timings: CurtainLatencyReport::default(),
             first_surface_configured_logged: false,
             first_surface_configured_at: None,
@@ -546,7 +537,6 @@ impl CurtainApp {
             auth_reply_sender: None,
             auth_attempt_id: None,
             auth_challenge_sequence: None,
-            auth_accepted_at: None,
             next_auth_attempt_id: 1,
             has_keyboard_focus: false,
             focused_surface_index: None,
@@ -640,6 +630,7 @@ impl CurtainApp {
             scene_base_revision: 0,
             scene_base_scale: veila_renderer::RenderScale::ONE,
             scene_base_has_layers: false,
+            backdrop_cache_hit: false,
             widget_frame: None,
             shm_pool: None,
             placeholder_pool: None,
@@ -669,33 +660,6 @@ impl CurtainApp {
         }
 
         Ok(())
-    }
-
-    pub(crate) fn request_exit(&mut self) {
-        self.exit_requested = true;
-    }
-
-    /// Records that daemon authorized this unlock
-    pub(crate) fn authorize_unlock(&mut self) {
-        self.unlock_authorized = true;
-    }
-
-    pub(crate) fn request_exit_from_signal(&mut self) {
-        // Standalone --lock sessions have no daemon to authenticate against, so a signal is the
-        // only way out. Daemon-managed locks must still wait for an authorized unlock
-        if self.control_socket.is_none() {
-            self.authorize_unlock();
-        }
-        self.exit_requested = true;
-    }
-
-    pub(crate) fn can_stop(&self) -> bool {
-        self.failure_reason.is_some()
-            || (self.exit_requested && (self.session_locked || self.session_finished))
-    }
-
-    pub(crate) fn failure_reason(&self) -> Option<&str> {
-        self.failure_reason.as_deref()
     }
 
     pub(crate) fn activate_emergency_ui(&mut self, reason: &str) -> Result<()> {
@@ -734,6 +698,7 @@ impl CurtainApp {
             surface.scene_base = None;
             surface.scene_base_revision = 0;
             surface.scene_base_has_layers = false;
+            surface.backdrop_cache_hit = false;
         }
 
         Ok(())
@@ -753,56 +718,6 @@ impl CurtainApp {
         Err(anyhow!(
             "timed out waiting for compositor to confirm the session lock"
         ))
-    }
-
-    pub(crate) fn shutdown(&mut self) -> Result<()> {
-        self.lock_probe_state.store(2, Ordering::Release);
-        self.render_profiler.log_summary();
-
-        if let Some(path) = self.control_socket.take() {
-            let _ = std::fs::remove_file(path);
-        }
-
-        if self.session_finished {
-            self.session_lock.take();
-            return Ok(());
-        }
-
-        if self.outputs_powered_off() || self.secondary_outputs_powered_off {
-            let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
-            self.secondary_outputs_powered_off = false;
-        }
-
-        let Some(session_lock) = self.session_lock.take() else {
-            return Ok(());
-        };
-
-        if !self.unlock_authorized {
-            tracing::error!(
-                failure_reason = self.failure_reason.as_deref(),
-                "curtain is exiting without a daemon-authorized unlock; leaving the session locked"
-            );
-            // Leaked on purpose: dropping would send destroy() and can raise invalid_destroy.
-            std::mem::forget(session_lock);
-            return Ok(());
-        }
-
-        if session_lock.is_locked() {
-            tracing::info!("releasing session lock");
-            session_lock.unlock();
-            self.connection
-                .roundtrip()
-                .context("failed to roundtrip after unlocking session")?;
-        }
-
-        if let Some(path) = self.owner_record.take()
-            && let Err(error) = std::fs::remove_file(&path)
-            && error.kind() != std::io::ErrorKind::NotFound
-        {
-            tracing::warn!("failed to clear curtain ownership after unlock: {error}");
-        }
-
-        Ok(())
     }
 
     pub(crate) fn surface_has_focus_target(&self, surface: &wl_surface::WlSurface) -> bool {

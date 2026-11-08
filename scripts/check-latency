@@ -17,18 +17,7 @@ else
   exit 1
 fi
 
-status_output="$("$veila_bin" "$@" status 2>&1)" || {
-  printf '%s\n' "$status_output" >&2
-  echo "error: veila daemon must be running before latency check" >&2
-  exit 1
-}
-
-if printf '%s\n' "$status_output" | awk -F= '$1 == "active_lock" && $2 == "true" { found = 1 } END { exit found ? 0 : 1 }'; then
-  echo "error: Veila is already locked; unlock before running latency check" >&2
-  exit 1
-fi
-
-output="$("$veila_bin" --wait-ready --latency-report=verbose "$@" lock 2>&1)" || {
+output="$("$veila_bin" lock --daemonize --wait-ready --latency-report=verbose "$@" 2>&1)" || {
   printf '%s\n' "$output" >&2
   exit 1
 }

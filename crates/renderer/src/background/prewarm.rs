@@ -32,6 +32,10 @@ impl<'a> FileBackgroundPrewarm<'a> {
         self.path
     }
 
+    pub fn fallback(&self) -> ClearColor {
+        self.fallback
+    }
+
     pub fn treatment(&self) -> BackgroundTreatment {
         self.treatment
     }
@@ -76,13 +80,13 @@ impl<'a> FileBackgroundPrewarm<'a> {
         let mut cache_hits = 0;
         let mut warmed_sizes = 0;
         for size in unique_sizes(sizes) {
-            if load_cached_render(self.path, size, self.treatment)?.is_some() {
+            if load_cached_render(self.path, self.fallback, size, self.treatment)?.is_some() {
                 cache_hits += 1;
                 continue;
             }
 
             let buffer = self.render(size)?;
-            store_cached_render(self.path, size, self.treatment, &buffer)?;
+            store_cached_render(self.path, self.fallback, size, self.treatment, &buffer)?;
             warmed_sizes += 1;
         }
         Ok(RenderCacheSummary {

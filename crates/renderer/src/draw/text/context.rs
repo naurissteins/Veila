@@ -1,123 +1,28 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    sync::{Mutex, OnceLock, mpsc},
-    thread::{self, JoinHandle},
-    thread_local,
-    time::Duration,
-};
-
-use cosmic_text::{
-    FontSystem, SwashCache,
-    fontdb::{Database, Source},
-};
-
-const BUNDLED_CLOCK_FONT: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/fonts/Geom-SemiBold.ttf"
-));
-const BUNDLED_GOOGLE_SANS_FLEX_FONT: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/fonts/GoogleSansFlex_72pt-Regular.ttf"
-));
-const BUNDLED_NUNITO_EXTRABOLD_ITALIC_FONT: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/fonts/Nunito-ExtraBoldItalic.ttf"
-));
-const BUNDLED_FONTS: [&[u8]; 3] = [
-    BUNDLED_CLOCK_FONT,
-    BUNDLED_GOOGLE_SANS_FLEX_FONT,
-    BUNDLED_NUNITO_EXTRABOLD_ITALIC_FONT,
-];
-
-struct FontWarmupTask {
-    handle: JoinHandle<FontContext>,
-    families: mpsc::Sender<Vec<String>>,
-}
-
-static FONT_WARMUP: OnceLock<Mutex<Option<FontWarmupTask>>> = OnceLock::new();
+use cosmic_text::{FontSystem, SwashCache, fontdb::Database};
+use std::{cell::RefCell, collections::HashMap, thread_local};
 
 #[derive(Debug)]
 pub(super) struct FontContext {
     pub(super) font_system: FontSystem,
     pub(super) swash_cache: SwashCache,
-    resolved_families: HashMap<String, Option<String>>,
+    pub(super) resolved_families: HashMap<String, Option<String>>,
+    pub(super) cache_key: u64,
 }
 
 thread_local! {
-    pub(super) static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(take_warmed_context());
-}
-
-pub fn start_font_warmup() {
-    let warmup = FONT_WARMUP.get_or_init(|| Mutex::new(None));
-    let Ok(mut warmup) = warmup.lock() else {
-        return;
-    };
-    if warmup.is_some() {
-        return;
-    }
-
-    let (sender, receiver) = mpsc::channel::<Vec<String>>();
-    if let Ok(handle) = thread::Builder::new()
-        .name(String::from("veila-font-warmup"))
-        .spawn(move || {
-            let mut context = FontContext::new();
-            let families = receiver
-                .recv_timeout(Duration::from_millis(20))
-                .unwrap_or_default();
-            context.resolve_families(&families);
-            context
-        })
-    {
-        *warmup = Some(FontWarmupTask {
-            handle,
-            families: sender,
-        });
-    }
-}
-
-pub fn configure_font_warmup(families: Vec<String>) {
-    if let Some(warmup) = FONT_WARMUP.get()
-        && let Ok(warmup) = warmup.lock()
-        && let Some(task) = warmup.as_ref()
-    {
-        let _ = task.families.send(families);
-    }
-}
-
-fn take_warmed_context() -> FontContext {
-    let task = FONT_WARMUP
-        .get()
-        .and_then(|warmup| warmup.lock().ok()?.take());
-    task.and_then(|task| task.handle.join().ok())
-        .unwrap_or_else(FontContext::new)
+    pub(super) static FONT_CONTEXT: RefCell<FontContext> = RefCell::new(super::fonts::bundled_fonts().0);
 }
 
 impl FontContext {
-    fn new() -> Self {
+    pub(super) fn from_database(db: Database, cache_key: u64) -> Self {
+        let locale = sys_locale::get_locale().unwrap_or_else(|| String::from("en-US"));
         Self {
-            font_system: font_system_with_system_and_bundled_fonts(),
+            font_system: FontSystem::new_with_locale_and_db(locale, db),
             swash_cache: SwashCache::new(),
             resolved_families: HashMap::new(),
+            cache_key,
         }
     }
-
-    fn resolve_families(&mut self, configured_families: &[String]) {
-        for requested in configured_families {
-            let resolved = resolve_font_family_in_db(self.font_system.db(), requested);
-            self.resolved_families.insert(requested.clone(), resolved);
-        }
-    }
-}
-
-fn font_system_with_system_and_bundled_fonts() -> FontSystem {
-    let mut font_system = FontSystem::new();
-    for font in BUNDLED_FONTS {
-        font_system
-            .db_mut()
-            .load_font_source(Source::Binary(std::sync::Arc::new(font)));
-    }
-    font_system
 }
 
 pub fn bundled_clock_font_family() -> Option<String> {
@@ -163,8 +68,11 @@ pub fn resolve_font_family(requested: &str) -> Option<String> {
     })
 }
 
-fn resolve_font_family_in_db(db: &Database, requested: &str) -> Option<String> {
+pub(super) fn resolve_font_family_in_db(db: &Database, requested: &str) -> Option<String> {
     let requested = normalize_font_name(requested);
+    if requested.is_empty() {
+        return None;
+    }
     let mut partial_match = None;
 
     for face in db.faces() {
@@ -192,7 +100,7 @@ fn resolve_font_family_in_db(db: &Database, requested: &str) -> Option<String> {
     partial_match
 }
 
-fn normalize_font_name(value: &str) -> String {
+pub(super) fn normalize_font_name(value: &str) -> String {
     value
         .chars()
         .filter(|char| char.is_ascii_alphanumeric())

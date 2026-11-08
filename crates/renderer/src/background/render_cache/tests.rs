@@ -11,6 +11,8 @@ use super::{
 };
 use crate::background::BackgroundGradient;
 
+mod identity;
+
 #[test]
 fn round_trips_rendered_background_buffers() {
     let unique = SystemTime::now()
@@ -26,7 +28,10 @@ fn round_trips_rendered_background_buffers() {
     let size = FrameSize::new(2, 1);
     let buffer = SoftwareBuffer::solid(size, ClearColor::opaque(12, 16, 24)).expect("buffer");
     store_cached_buffer_at(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment::default(),
         &buffer,
@@ -36,7 +41,10 @@ fn round_trips_rendered_background_buffers() {
     .expect("store");
 
     let loaded = load_cached_buffer_at(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment::default(),
         None,
@@ -65,7 +73,10 @@ fn separates_variant_cache_entries() {
     let base = SoftwareBuffer::solid(size, ClearColor::opaque(12, 16, 24)).expect("buffer");
     let layered = SoftwareBuffer::solid(size, ClearColor::opaque(40, 50, 60)).expect("buffer");
     store_cached_buffer_at(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment::default(),
         &base,
@@ -74,7 +85,10 @@ fn separates_variant_cache_entries() {
     )
     .expect("store base");
     store_cached_buffer_at(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment::default(),
         &layered,
@@ -84,7 +98,10 @@ fn separates_variant_cache_entries() {
     .expect("store layered");
 
     let loaded_base = load_cached_buffer_at(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment::default(),
         None,
@@ -93,7 +110,10 @@ fn separates_variant_cache_entries() {
     .expect("load")
     .expect("cached buffer");
     let loaded_layered = load_cached_buffer_at(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment::default(),
         Some("layer:v1"),
@@ -182,7 +202,10 @@ fn separates_cache_entries_by_background_scaling() {
     let size = FrameSize::new(1920, 1080);
 
     let fill = cache_path(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment {
             scaling: BackgroundScaling::Fill,
@@ -193,7 +216,10 @@ fn separates_cache_entries_by_background_scaling() {
     )
     .expect("fill key");
     let fit = cache_path(
-        CacheSource::Path(&wallpaper),
+        CacheSource::Path {
+            path: &wallpaper,
+            fallback: ClearColor::opaque(0, 0, 0),
+        },
         size,
         BackgroundTreatment {
             scaling: BackgroundScaling::Fit,
