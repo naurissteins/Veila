@@ -3,6 +3,8 @@ use std::{fs, path::Path, path::PathBuf, process::Command};
 use super::FileBackgroundPrewarm;
 use crate::{ClearColor, FrameSize, SoftwareBuffer, background::SourceCacheStatus};
 
+mod fallback;
+
 const COLOR: ClearColor = ClearColor::opaque(37, 59, 83);
 const SIZE: FrameSize = FrameSize::new(16, 8);
 

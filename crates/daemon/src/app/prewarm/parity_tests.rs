@@ -70,6 +70,17 @@ fn check_theme_caches() {
         }
         check_config_caches(&config, &wallpaper);
     }
+    SoftwareBuffer::solid(FrameSize::new(8, 8), ClearColor::rgba(0, 0, 0, 0))
+        .expect("transparent wallpaper")
+        .save_png(&wallpaper)
+        .expect("save transparent wallpaper");
+    for color in ["#000000", "#FF0000", "#12345680"] {
+        let config = AppConfig::from_toml_str(&format!(
+            "[background]\ncolor = '{color}'\nscaling = 'fit'\n{STATIC_LAYER}"
+        ))
+        .expect("fallback fixture");
+        check_config_caches(&config, &wallpaper);
+    }
 }
 
 fn check_config_caches(config: &AppConfig, wallpaper: &Path) {
@@ -100,7 +111,7 @@ fn check_config_caches(config: &AppConfig, wallpaper: &Path) {
         }
     });
     let treatment = background_treatment(&config.background);
-    let fallback = ClearColor::opaque(0, 0, 0);
+    let fallback = ShellTheme::from_config(config).background;
     let mut asset = FileBackgroundPrewarm::new(wallpaper, fallback, treatment);
     asset.prewarm_source().expect("source prewarm");
     asset
@@ -146,7 +157,13 @@ fn check_cached_pixels(
         let Some(variant) = variant else { continue };
         for file_mode in [true, false] {
             let cached = if file_mode {
-                load_cached_render_variant(wallpaper, size.buffer, treatment, &variant)
+                load_cached_render_variant(
+                    wallpaper,
+                    ShellTheme::from_config(config).background,
+                    size.buffer,
+                    treatment,
+                    &variant,
+                )
             } else {
                 load_cached_generated_render_variant(generated, size.buffer, treatment, &variant)
             }
@@ -154,7 +171,7 @@ fn check_cached_pixels(
             .expect("curtain key must hit prewarm cache");
             let asset = BackgroundAsset::load(
                 file_mode.then_some(wallpaper),
-                ClearColor::opaque(0, 0, 0),
+                ShellTheme::from_config(config).background,
                 (!file_mode).then_some(generated),
                 treatment,
             )

@@ -45,7 +45,12 @@ impl CurtainApp {
         }
 
         if let Some(path) = selected_path.as_deref() {
-            match load_cached_render(path, frame_size, self.background_treatment) {
+            match load_cached_render(
+                path,
+                self.background_color,
+                frame_size,
+                self.background_treatment,
+            ) {
                 Ok(Some(buffer)) => {
                     tracing::debug!(
                         path = %path.display(),
@@ -247,7 +252,13 @@ impl CurtainApp {
 
         if let Some(variant) = self.static_scene_cache_variant_for_surface(scale) {
             let cached = if let Some(path) = selected_path.as_deref() {
-                load_cached_render_variant(path, frame_size, self.background_treatment, &variant)
+                load_cached_render_variant(
+                    path,
+                    self.background_color,
+                    frame_size,
+                    self.background_treatment,
+                    &variant,
+                )
             } else if let Some(generated) = self.background_generated {
                 load_cached_generated_render_variant(
                     generated,
@@ -273,6 +284,7 @@ impl CurtainApp {
             if let Some(path) = selected_path.as_deref() {
                 if let Ok(Some(mut buffer)) = load_cached_render_variant(
                     path,
+                    self.background_color,
                     frame_size,
                     self.background_treatment,
                     &variant,

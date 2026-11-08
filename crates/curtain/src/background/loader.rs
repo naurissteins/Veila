@@ -62,7 +62,7 @@ pub(crate) fn spawn_loader(
         let unique_sizes = unique_sizes(&sizes);
         drop(sizes);
         let cached_started_at = Instant::now();
-        let cached_buffers = load_cached_buffers(&path, treatment, &unique_sizes);
+        let cached_buffers = load_cached_buffers(&path, fallback, treatment, &unique_sizes);
         let cached_sizes: Vec<_> = cached_buffers.iter().map(|(size, _)| *size).collect();
 
         if !cached_buffers.is_empty() {
@@ -88,7 +88,7 @@ pub(crate) fn spawn_loader(
                     elapsed_ms: asset_elapsed_ms,
                     cache_hit: false,
                 });
-                store_cached_buffers(&path, treatment, &rendered_buffers);
+                store_cached_buffers(&path, fallback, treatment, &rendered_buffers);
             }
             Err(error) => {
                 let _ = sender.send(BackgroundEvent::Failed {
@@ -199,7 +199,7 @@ pub(crate) fn spawn_preloader(
     thread::spawn(move || {
         let unique_sizes = unique_sizes(&sizes);
         drop(sizes);
-        let cached_sizes: Vec<_> = load_cached_buffers(&path, treatment, &unique_sizes)
+        let cached_sizes: Vec<_> = load_cached_buffers(&path, fallback, treatment, &unique_sizes)
             .iter()
             .map(|(size, _)| *size)
             .collect();
@@ -211,7 +211,7 @@ pub(crate) fn spawn_preloader(
         match load_buffers(&path, fallback, treatment, unique_sizes, &cached_sizes) {
             Ok(rendered_buffers) => {
                 if !rendered_buffers.is_empty() {
-                    store_cached_buffers(&path, treatment, &rendered_buffers);
+                    store_cached_buffers(&path, fallback, treatment, &rendered_buffers);
                 }
             }
             Err(error) => {
@@ -250,13 +250,14 @@ fn load_buffers(
 
 fn load_cached_buffers(
     path: &Path,
+    fallback: ClearColor,
     treatment: BackgroundTreatment,
     sizes: &[FrameSize],
 ) -> Vec<(FrameSize, SoftwareBuffer)> {
     let mut buffers = Vec::with_capacity(sizes.len());
 
     for size in sizes {
-        match load_cached_render(path, *size, treatment) {
+        match load_cached_render(path, fallback, *size, treatment) {
             Ok(Some(buffer)) => buffers.push((*size, buffer)),
             Ok(None) => {}
             Err(error) => {
@@ -270,11 +271,12 @@ fn load_cached_buffers(
 
 fn store_cached_buffers(
     path: &Path,
+    fallback: ClearColor,
     treatment: BackgroundTreatment,
     buffers: &[(FrameSize, SoftwareBuffer)],
 ) {
     for (size, buffer) in buffers {
-        if let Err(error) = store_cached_render(path, *size, treatment, buffer) {
+        if let Err(error) = store_cached_render(path, fallback, *size, treatment, buffer) {
             tracing::debug!("failed to store cached wallpaper buffer: {error:#}");
         }
     }

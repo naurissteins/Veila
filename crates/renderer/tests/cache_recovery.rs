@@ -99,7 +99,9 @@ fn check_recovery(root: &Path) {
             1
         );
         assert_eq!(
-            load_cached_render(&path, size, treatment).unwrap().unwrap(),
+            load_cached_render(&path, fallback, size, treatment)
+                .unwrap()
+                .unwrap(),
             expected
         );
         assert_eq!(AvatarAsset::load(&path).unwrap().cache_key(), avatar_key);
@@ -127,7 +129,7 @@ fn check_recovery(root: &Path) {
             }
         }
         assert!(
-            load_cached_render(&path, size, treatment)
+            load_cached_render(&path, fallback, size, treatment)
                 .unwrap()
                 .is_none()
         );

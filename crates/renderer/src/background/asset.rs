@@ -61,10 +61,11 @@ impl BackgroundAsset {
 
 pub fn load_cached_render(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer(path, size, treatment)
+    load_cached_buffer(path, fallback, size, treatment)
 }
 
 pub fn load_cached_generated_render(
@@ -77,11 +78,12 @@ pub fn load_cached_generated_render(
 
 pub fn load_cached_render_variant(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
     variant: &str,
 ) -> Result<Option<SoftwareBuffer>> {
-    load_cached_buffer_with_variant(path, size, treatment, Some(variant))
+    load_cached_buffer_with_variant(path, fallback, size, treatment, Some(variant))
 }
 
 pub fn load_cached_generated_render_variant(
@@ -95,11 +97,12 @@ pub fn load_cached_generated_render_variant(
 
 pub fn store_cached_render(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
 ) -> Result<()> {
-    store_cached_buffer(path, size, treatment, buffer)
+    store_cached_buffer(path, fallback, size, treatment, buffer)
 }
 
 pub fn store_cached_generated_render(
@@ -113,12 +116,13 @@ pub fn store_cached_generated_render(
 
 pub fn store_cached_render_variant(
     path: &Path,
+    fallback: ClearColor,
     size: FrameSize,
     treatment: BackgroundTreatment,
     buffer: &SoftwareBuffer,
     variant: &str,
 ) -> Result<()> {
-    store_cached_buffer_with_variant(path, size, treatment, buffer, Some(variant))
+    store_cached_buffer_with_variant(path, fallback, size, treatment, buffer, Some(variant))
 }
 
 pub fn store_cached_generated_render_variant(

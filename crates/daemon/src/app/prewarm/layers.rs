@@ -29,6 +29,7 @@ pub(super) fn prewarm_layered_backgrounds(
 
     let started_at = Instant::now();
     let path = asset.path();
+    let fallback = asset.fallback();
     let treatment = asset.treatment();
     let mut cache_hits = 0usize;
     let mut warmed_sizes = 0usize;
@@ -38,7 +39,7 @@ pub(super) fn prewarm_layered_backgrounds(
         let mut base_buffer = None;
 
         if let Some(variant) = &variant {
-            if load_cached_render_variant(path, size.buffer, treatment, variant)
+            if load_cached_render_variant(path, fallback, size.buffer, treatment, variant)
                 .ok()
                 .flatten()
                 .is_some()
@@ -47,14 +48,22 @@ pub(super) fn prewarm_layered_backgrounds(
             } else {
                 let mut buffer = asset.render(size.buffer).ok()?;
                 shell.render_static_backdrops_at_scale(&mut buffer, size.scale);
-                store_cached_render_variant(path, size.buffer, treatment, &buffer, variant).ok()?;
+                store_cached_render_variant(
+                    path,
+                    fallback,
+                    size.buffer,
+                    treatment,
+                    &buffer,
+                    variant,
+                )
+                .ok()?;
                 warmed_sizes += 1;
                 base_buffer = Some(buffer);
             }
         }
 
         if let Some(scene_variant) = shell.static_scene_cache_variant_at_scale(size.scale) {
-            if load_cached_render_variant(path, size.buffer, treatment, &scene_variant)
+            if load_cached_render_variant(path, fallback, size.buffer, treatment, &scene_variant)
                 .ok()
                 .flatten()
                 .is_some()
@@ -67,7 +76,7 @@ pub(super) fn prewarm_layered_backgrounds(
                 (Some(buffer), _) => buffer,
                 (None, Some(variant)) => {
                     if let Some(buffer) =
-                        load_cached_render_variant(path, size.buffer, treatment, variant)
+                        load_cached_render_variant(path, fallback, size.buffer, treatment, variant)
                             .ok()
                             .flatten()
                     {
@@ -81,8 +90,15 @@ pub(super) fn prewarm_layered_backgrounds(
                 (None, None) => asset.render(size.buffer).ok()?,
             };
             shell.render_static_overlay_at_scale(&mut buffer, size.scale);
-            store_cached_render_variant(path, size.buffer, treatment, &buffer, &scene_variant)
-                .ok()?;
+            store_cached_render_variant(
+                path,
+                fallback,
+                size.buffer,
+                treatment,
+                &buffer,
+                &scene_variant,
+            )
+            .ok()?;
             warmed_sizes += 1;
         }
     }
