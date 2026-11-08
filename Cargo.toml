@@ -34,7 +34,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.4"
+version = "0.5.0"
 edition = "2024"
 rust-version = "1.89"
 authors = ["Nauris Steins"]
@@ -46,19 +46,42 @@ anyhow = "1"
 calloop = { version = "0.14", features = ["signals"] }
 cosmic-text = "0.19"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
-image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+image = { version = "0.25", default-features = false, features = [
+    "jpeg",
+    "png",
+    "webp",
+] }
 memmap2 = "0.9"
-nix = { version = "0.31", features = ["fs", "poll", "process", "signal", "socket", "user"] }
+nix = { version = "0.31", features = [
+    "fs",
+    "poll",
+    "process",
+    "signal",
+    "socket",
+    "user",
+] }
 nonstick = "0.1"
 resvg = { version = "0.47", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop", "xkbcommon"] }
+smithay-client-toolkit = { version = "0.20", default-features = false, features = [
+    "calloop",
+    "xkbcommon",
+] }
 sys-locale = "0.3"
 thiserror = "2"
 time = { version = "0.3", features = ["local-offset"] }
 tiny-skia = "0.12"
-tokio = { version = "1.54.1", features = ["io-util", "macros", "net", "process", "rt", "signal", "sync", "time"] }
+tokio = { version = "1.54.1", features = [
+    "io-util",
+    "macros",
+    "net",
+    "process",
+    "rt",
+    "signal",
+    "sync",
+    "time",
+] }
 toml = "1"
 toml_edit = "0.25"
 tracing = "0.1"
@@ -67,7 +90,11 @@ ureq = { version = "3", default-features = true, features = ["json"] }
 wayland-protocols-wlr = "0.3"
 xkbcommon = "0.8"
 zeroize = "1"
-zbus = { version = "6.1", default-features = false, features = ["tokio", "proxy", "tracing"] }
+zbus = { version = "6.1", default-features = false, features = [
+    "tokio",
+    "proxy",
+    "tracing",
+] }
 
 [profile.release]
 lto = "fat"
