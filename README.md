@@ -7,7 +7,7 @@
 ![AUR Version](https://img.shields.io/aur/version/veila-bin?style=for-the-badge&labelColor=181825&color=b4befe)
 ![GitHub Repo stars](https://img.shields.io/github/stars/naurissteins/veila?style=for-the-badge&labelColor=181825&color=f9e2af)
 
-Veila is built for wlroots-style compositors like labwc, Niri, Hyprland, Sway, MangoWC and others that support the Wayland ext-session-lock-v1 protocol. Its main goal is to provide a secure, fast and elegant lock screen without relying on heavyweight UI stacks.
+Secure, elegant and fast screen locker for Wayland compositors
 
 </div>
 
@@ -56,18 +56,6 @@ yay -S veila-git
 
 ### First launch
 
-Start the daemon:
-
-```bash
-veila daemon
-```
-
-Or better run it as a user service with systemd:
-
-```bash
-systemctl --user enable --now veila.service
-```
-
 Lock the screen:
 
 ```bash
@@ -76,7 +64,7 @@ veila lock
 
 ### NixOS
 
-**Nixpkgs (recommended):**
+**Nixpkgs (v0.4.0):**
 
 Veila is available in the official [Nixpkgs unstable repository](https://search.nixos.org/packages?channel=unstable&query=veila#show=veila). Add it and the required PAM service to your NixOS configuration:
 
@@ -87,7 +75,7 @@ Veila is available in the official [Nixpkgs unstable repository](https://search.
 }
 ```
 
-**Flake installation:**
+**Flake installation (v0.5.0):**
 
 ```nix
 {
