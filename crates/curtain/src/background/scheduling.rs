@@ -130,10 +130,12 @@ impl CurtainApp {
 
     pub(crate) fn reset_background_source_state(&mut self) {
         self.background_render_started = false;
+        self.startup_wallpaper_cache = None;
         self.generated_pending_sizes.clear();
         for surface in &mut self.lock_surfaces {
             surface.background_path = None;
             surface.background = None;
+            surface.wallpaper_fallback = false;
             surface.scene_base = None;
             surface.scene_base_revision = 0;
             surface.scene_base_has_layers = false;
