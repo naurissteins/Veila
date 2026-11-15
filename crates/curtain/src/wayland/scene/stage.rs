@@ -83,6 +83,8 @@ impl CurtainApp {
             return;
         }
 
+        self.maybe_read_startup_wallpapers();
+
         if self.session_locked {
             if self.rich_scene_ready {
                 if let Err(error) =
@@ -171,6 +173,7 @@ impl CurtainApp {
             return;
         }
         self.maybe_notify_ready();
+        self.startup_wallpaper_cache = None;
         self.flush_pending_pre_ready_redraw(queue_handle);
         self.maybe_start_background_render();
         self.maybe_start_artwork_load();

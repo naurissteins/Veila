@@ -3,10 +3,7 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use veila_renderer::{
     ClearColor, FrameSize, PixelBuffer, RenderScale, SoftwareBuffer,
-    background::{
-        load_cached_generated_render, load_cached_generated_render_variant, load_cached_render,
-        load_cached_render_variant,
-    },
+    background::{load_cached_generated_render, load_cached_generated_render_variant},
 };
 
 use crate::state::{CurtainApp, SurfaceSize};
@@ -45,12 +42,7 @@ impl CurtainApp {
         }
 
         if let Some(path) = selected_path.as_deref() {
-            match load_cached_render(
-                path,
-                self.background_color,
-                frame_size,
-                self.background_treatment,
-            ) {
+            match self.read_file_wallpaper_cache(index, path, frame_size, None) {
                 Ok(Some(buffer)) => {
                     tracing::debug!(
                         path = %path.display(),
@@ -58,6 +50,7 @@ impl CurtainApp {
                         height = frame_size.height,
                         "using cached rendered background for initial lock frame"
                     );
+                    self.lock_surfaces[index].wallpaper_fallback = false;
                     self.lock_surfaces[index].background = Some(buffer);
                     self.lock_surfaces[index].background_path = selected_path;
                     return Ok(true);
@@ -80,6 +73,7 @@ impl CurtainApp {
                         height = frame_size.height,
                         "using cached rendered generated background for initial lock frame"
                     );
+                    self.lock_surfaces[index].wallpaper_fallback = false;
                     self.lock_surfaces[index].background = Some(buffer);
                     self.lock_surfaces[index].background_path = None;
                     return Ok(true);
@@ -98,6 +92,7 @@ impl CurtainApp {
             }
         }
 
+        self.lock_surfaces[index].wallpaper_fallback = selected_path.is_some();
         self.lock_surfaces[index].background = Some(
             if self.background_generated.is_some() && selected_path.is_none() {
                 SoftwareBuffer::solid(frame_size, self.generated_fallback_color())?
@@ -222,7 +217,7 @@ impl CurtainApp {
 
         self.lock_surfaces[index].backdrop_cache_hit = false;
 
-        if let Some((buffer, has_layers, cache_hit)) = self
+        if let Some((buffer, has_layers, cache_hit, wallpaper_fallback)) = self
             .lock_surfaces
             .iter()
             .enumerate()
@@ -242,6 +237,7 @@ impl CurtainApp {
                         buffer,
                         surface.scene_base_has_layers,
                         surface.backdrop_cache_hit,
+                        surface.wallpaper_fallback,
                     )
                 })
             })
@@ -251,6 +247,7 @@ impl CurtainApp {
             self.lock_surfaces[index].scene_base_scale = scale;
             self.lock_surfaces[index].scene_base_has_layers = has_layers;
             self.lock_surfaces[index].backdrop_cache_hit = cache_hit;
+            self.lock_surfaces[index].wallpaper_fallback = wallpaper_fallback;
             self.lock_surfaces[index].background = None;
             self.lock_surfaces[index].background_path = selected_path;
             return Ok(Some(true));
@@ -258,13 +255,7 @@ impl CurtainApp {
 
         if let Some(variant) = self.static_scene_cache_variant_for_surface(scale) {
             let cached = if let Some(path) = selected_path.as_deref() {
-                load_cached_render_variant(
-                    path,
-                    self.background_color,
-                    frame_size,
-                    self.background_treatment,
-                    &variant,
-                )
+                self.read_file_wallpaper_cache(index, path, frame_size, Some(&variant))
             } else if let Some(generated) = self.background_generated {
                 load_cached_generated_render_variant(
                     generated,
@@ -281,6 +272,7 @@ impl CurtainApp {
                 self.lock_surfaces[index].scene_base_scale = scale;
                 self.lock_surfaces[index].scene_base_has_layers = true;
                 self.lock_surfaces[index].backdrop_cache_hit = true;
+                self.lock_surfaces[index].wallpaper_fallback = false;
                 self.lock_surfaces[index].background = None;
                 self.lock_surfaces[index].background_path = selected_path;
                 return Ok(Some(true));
@@ -289,19 +281,16 @@ impl CurtainApp {
 
         if let Some(variant) = self.ui_shell.backdrop_cache_variant_at_scale(scale) {
             if let Some(path) = selected_path.as_deref() {
-                if let Ok(Some(mut buffer)) = load_cached_render_variant(
-                    path,
-                    self.background_color,
-                    frame_size,
-                    self.background_treatment,
-                    &variant,
-                ) {
+                if let Ok(Some(mut buffer)) =
+                    self.read_file_wallpaper_cache(index, path, frame_size, Some(&variant))
+                {
                     let has_layers = self.render_static_scene_overlay(&mut buffer, scale);
                     self.lock_surfaces[index].scene_base = Some(Arc::new(buffer));
                     self.lock_surfaces[index].scene_base_revision = revision;
                     self.lock_surfaces[index].scene_base_scale = scale;
                     self.lock_surfaces[index].scene_base_has_layers = has_layers;
                     self.lock_surfaces[index].backdrop_cache_hit = true;
+                    self.lock_surfaces[index].wallpaper_fallback = false;
                     self.lock_surfaces[index].background = None;
                     self.lock_surfaces[index].background_path = selected_path;
                     return Ok(Some(true));
@@ -320,6 +309,7 @@ impl CurtainApp {
                 self.lock_surfaces[index].scene_base_scale = scale;
                 self.lock_surfaces[index].scene_base_has_layers = has_layers;
                 self.lock_surfaces[index].backdrop_cache_hit = true;
+                self.lock_surfaces[index].wallpaper_fallback = false;
                 self.lock_surfaces[index].background = None;
                 self.lock_surfaces[index].background_path = None;
                 return Ok(Some(true));

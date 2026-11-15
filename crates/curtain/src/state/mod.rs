@@ -87,6 +87,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) size: Option<SurfaceSize>,
     pub(crate) background_path: Option<PathBuf>,
     pub(crate) background: Option<veila_renderer::SoftwareBuffer>,
+    pub(crate) wallpaper_fallback: bool,
     pub(crate) scene_base: Option<Arc<veila_renderer::SoftwareBuffer>>,
     pub(crate) scene_base_revision: u64,
     pub(crate) scene_base_scale: veila_renderer::RenderScale,
@@ -225,6 +226,7 @@ pub(crate) struct CurtainApp {
     auth_sender: Sender<AuthEvent>,
     pub(crate) authentication: crate::auth::Backend,
     pub(crate) background_sender: Sender<BackgroundEvent>,
+    pub(crate) startup_wallpaper_cache: Option<crate::background::StartupWallpaperCache>,
     pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
     control_events: ControlReceiver<ControlEvent>,
@@ -483,6 +485,7 @@ impl CurtainApp {
             auth_sender,
             authentication,
             background_sender,
+            startup_wallpaper_cache: None,
             fonts: crate::fonts::DeferredFonts::default(),
             keyboard_label_sender: None,
             control_events,
@@ -626,6 +629,7 @@ impl CurtainApp {
             size: None,
             background_path: None,
             background: None,
+            wallpaper_fallback: false,
             scene_base: None,
             scene_base_revision: 0,
             scene_base_scale: veila_renderer::RenderScale::ONE,
@@ -670,6 +674,7 @@ impl CurtainApp {
         tracing::warn!(reason, "switching to emergency fallback UI");
         self.ui_shell.activate_emergency();
         self.background_path = None;
+        self.startup_wallpaper_cache = None;
         self.background_outputs.clear();
         self.slideshow = None;
         self.background_generated = None;
@@ -695,6 +700,7 @@ impl CurtainApp {
         for surface in &mut self.lock_surfaces {
             surface.background_path = None;
             surface.background = None;
+            surface.wallpaper_fallback = false;
             surface.scene_base = None;
             surface.scene_base_revision = 0;
             surface.scene_base_has_layers = false;

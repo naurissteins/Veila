@@ -299,6 +299,8 @@ impl CurtainApp {
                 fractional_scale = size.fractional_scale,
                 output_role,
                 first_frame = sample.first_frame,
+                startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
+                wallpaper_fallback = self.lock_surfaces[index].wallpaper_fallback,
                 background_refreshed,
                 scene_base_refreshed,
                 background_prepare_ms = sample.background_prepare_ms,

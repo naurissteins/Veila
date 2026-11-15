@@ -2,9 +2,11 @@ mod cache;
 mod loader;
 mod scheduling;
 mod slideshow;
+mod startup;
 
 pub(crate) use loader::BackgroundEvent;
 pub(crate) use slideshow::BackgroundSlideshow;
+pub(crate) use startup::StartupWallpaperCache;
 
 use loader::{spawn_artwork_loader, spawn_avatar_loader};
 use smithay_client_toolkit::reexports::client::QueueHandle;
@@ -63,6 +65,7 @@ impl CurtainApp {
                     };
 
                     if cache_hit
+                        && !surface.wallpaper_fallback
                         && surface.background_path.as_deref() == Some(path.as_path())
                         && surface.scene_base_revision == revision
                         && surface
@@ -82,6 +85,7 @@ impl CurtainApp {
 
                     surface.background = Some(buffer);
                     surface.background_path = Some(path.clone());
+                    surface.wallpaper_fallback = false;
                     surface.scene_base = None;
                     surface.scene_base_revision = 0;
                     surface.scene_base_has_layers = false;
