@@ -3,20 +3,20 @@ use std::time::Duration;
 use tokio::sync::watch;
 use veila_common::{BatteryConfig, BatterySnapshot};
 
-use crate::adapters::power;
+use crate::adapters::power::{BatteryReading, fetch_battery_reading};
 
 #[derive(Clone)]
 pub struct BatteryHandle {
     config_tx: watch::Sender<BatteryServiceConfig>,
-    snapshot_rx: watch::Receiver<Option<BatterySnapshot>>,
+    snapshot_rx: watch::Receiver<Option<BatteryReading>>,
 }
 
 impl BatteryHandle {
-    pub fn spawn(config: &BatteryConfig, force_refresh: bool) -> Self {
-        let initial_snapshot = config.mock_snapshot();
+    pub fn spawn(config: &BatteryConfig, read_power_source: bool) -> Self {
+        let initial_snapshot = mock_reading(config);
         let (config_tx, config_rx) = watch::channel(BatteryServiceConfig {
             battery: config.clone(),
-            force_refresh,
+            read_power_source,
         });
         let (snapshot_tx, snapshot_rx) = watch::channel(initial_snapshot);
 
@@ -31,13 +31,23 @@ impl BatteryHandle {
     }
 
     pub fn current_snapshot(&self) -> Option<BatterySnapshot> {
-        self.snapshot_rx.borrow().clone()
+        self.snapshot_rx
+            .borrow()
+            .as_ref()
+            .map(|reading| reading.snapshot.clone())
     }
 
-    pub fn update_config(&self, config: &BatteryConfig, force_refresh: bool) {
+    pub fn on_battery(&self) -> Option<bool> {
+        self.snapshot_rx
+            .borrow()
+            .as_ref()
+            .and_then(|reading| reading.on_battery)
+    }
+
+    pub fn update_config(&self, config: &BatteryConfig, read_power_source: bool) {
         let _ = self.config_tx.send(BatteryServiceConfig {
             battery: config.clone(),
-            force_refresh,
+            read_power_source,
         });
     }
 }
@@ -45,20 +55,20 @@ impl BatteryHandle {
 #[derive(Clone)]
 struct BatteryServiceConfig {
     battery: BatteryConfig,
-    force_refresh: bool,
+    read_power_source: bool,
 }
 
 async fn run_battery_service(
     mut config_rx: watch::Receiver<BatteryServiceConfig>,
-    snapshot_tx: watch::Sender<Option<BatterySnapshot>>,
+    snapshot_tx: watch::Sender<Option<BatteryReading>>,
 ) {
     let mut config = config_rx.borrow().clone();
     let mut needs_refresh = true;
 
     loop {
-        if config.battery.enabled || config.force_refresh {
+        if config.battery.enabled || config.read_power_source {
             if needs_refresh {
-                snapshot_tx.send_replace(fetch_snapshot_async(config.battery.clone()).await);
+                snapshot_tx.send_replace(fetch_snapshot_async(&config).await);
             }
 
             let refresh = tokio::time::sleep(refresh_interval(&config.battery));
@@ -73,7 +83,7 @@ async fn run_battery_service(
                         break;
                     }
                     config = config_rx.borrow().clone();
-                    snapshot_tx.send_replace(config.battery.mock_snapshot());
+                    snapshot_tx.send_replace(mock_reading(&config.battery));
                     needs_refresh = true;
                 }
             }
@@ -88,34 +98,43 @@ async fn run_battery_service(
     }
 }
 
-async fn fetch_snapshot_async(config: BatteryConfig) -> Option<BatterySnapshot> {
-    if let Some(snapshot) = config.mock_snapshot() {
+async fn fetch_snapshot_async(config: &BatteryServiceConfig) -> Option<BatteryReading> {
+    if let Some(reading) = mock_reading(&config.battery) {
         tracing::debug!(
-            percent = snapshot.percent,
-            charging = snapshot.charging,
+            percent = reading.snapshot.percent,
+            charging = reading.snapshot.charging,
             "using mock battery snapshot from config"
         );
-        return Some(snapshot);
+        return Some(reading);
     }
 
-    match power::fetch_battery_snapshot().await {
-        Ok(snapshot) => {
-            if let Some(snapshot) = snapshot.as_ref() {
-                tracing::debug!(
-                    percent = snapshot.percent,
-                    charging = snapshot.charging,
-                    "battery refresh succeeded"
-                );
-            } else {
-                tracing::debug!("no battery device detected; battery widget stays hidden");
-            }
-            snapshot
+    match fetch_battery_reading(config.read_power_source).await {
+        Ok(Some(reading)) => {
+            tracing::debug!(
+                percent = reading.snapshot.percent,
+                charging = reading.snapshot.charging,
+                on_battery = ?reading.on_battery,
+                "battery refresh succeeded"
+            );
+            Some(reading)
+        }
+        Ok(None) => {
+            tracing::debug!("no battery device detected; battery widget stays hidden");
+            None
         }
         Err(error) => {
             tracing::warn!("battery refresh failed: {error:#}");
             None
         }
     }
+}
+
+fn mock_reading(config: &BatteryConfig) -> Option<BatteryReading> {
+    let snapshot = config.mock_snapshot()?;
+    Some(BatteryReading {
+        on_battery: Some(!snapshot.charging),
+        snapshot,
+    })
 }
 
 fn refresh_interval(config: &BatteryConfig) -> Duration {

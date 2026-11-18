@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use veila_common::BatterySnapshot;
 use veila_common::ipc::LockPowerStatusSnapshot;
 
 use crate::adapters::logind;
@@ -109,7 +108,7 @@ impl LockedSuspendState {
         now: Instant,
         active_lock: bool,
         auth_in_flight: bool,
-        battery_snapshot: Option<&BatterySnapshot>,
+        on_battery: Option<bool>,
         media_playing: bool,
     ) -> SuspendDecision {
         if !active_lock || self.suspend_requested {
@@ -135,12 +134,12 @@ impl LockedSuspendState {
         }
 
         if self.battery_only {
-            match battery_power_state(battery_snapshot) {
-                BatteryPowerState::OnBattery => {}
-                BatteryPowerState::Charging => {
+            match on_battery {
+                Some(true) => {}
+                Some(false) => {
                     return SuspendDecision::Skipped(SuspendSkipReason::OnAcPower);
                 }
-                BatteryPowerState::Unavailable => {
+                None => {
                     return SuspendDecision::Skipped(SuspendSkipReason::NoBatteryDetected);
                 }
             }
@@ -199,21 +198,6 @@ pub fn suspend_delay_seconds(config: &veila_common::AppConfig) -> Option<u64> {
     config.lock.suspend_seconds.filter(|seconds| *seconds > 0)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BatteryPowerState {
-    OnBattery,
-    Charging,
-    Unavailable,
-}
-
-fn battery_power_state(snapshot: Option<&BatterySnapshot>) -> BatteryPowerState {
-    match snapshot {
-        Some(snapshot) if !snapshot.charging => BatteryPowerState::OnBattery,
-        Some(_) => BatteryPowerState::Charging,
-        None => BatteryPowerState::Unavailable,
-    }
-}
-
 fn remaining_seconds(duration: Duration) -> u64 {
     let seconds = duration.as_secs();
     if duration.subsec_nanos() == 0 {
@@ -236,8 +220,6 @@ pub async fn request_system_suspend(connection: &zbus::Connection) -> Result<()>
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, Instant};
-
-    use veila_common::BatterySnapshot;
 
     use super::{LockedSuspendState, SuspendDecision, SuspendSkipReason};
 
@@ -272,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn battery_only_policy_requires_discharging_snapshot() {
+    fn battery_only_policy_requires_system_battery_power() {
         let now = Instant::now();
         let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), true, false);
         state.arm(now);
@@ -286,25 +268,13 @@ mod tests {
                 now + Duration::from_secs(6),
                 true,
                 false,
-                Some(&BatterySnapshot {
-                    percent: 80,
-                    charging: true,
-                }),
-                false,
+                Some(false),
+                false
             ),
             SuspendDecision::Skipped(SuspendSkipReason::OnAcPower)
         );
         assert_eq!(
-            state.evaluate(
-                now + Duration::from_secs(6),
-                true,
-                false,
-                Some(&BatterySnapshot {
-                    percent: 80,
-                    charging: false,
-                }),
-                false,
-            ),
+            state.evaluate(now + Duration::from_secs(6), true, false, Some(true), false),
             SuspendDecision::Ready
         );
     }

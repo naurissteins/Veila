@@ -3,6 +3,11 @@ use zbus::{OwnedObjectPath, proxy};
 
 use veila_common::BatterySnapshot;
 
+pub(crate) struct BatteryReading {
+    pub snapshot: BatterySnapshot,
+    pub on_battery: Option<bool>,
+}
+
 #[proxy(
     interface = "org.freedesktop.UPower",
     default_service = "org.freedesktop.UPower",
@@ -10,6 +15,9 @@ use veila_common::BatterySnapshot;
 )]
 trait PowerManager {
     fn get_display_device(&self) -> zbus::Result<OwnedObjectPath>;
+
+    #[zbus(property)]
+    fn on_battery(&self) -> zbus::Result<bool>;
 }
 
 #[proxy(
@@ -30,7 +38,9 @@ trait PowerDevice {
     fn kind(&self) -> zbus::Result<u32>;
 }
 
-pub async fn fetch_battery_snapshot() -> Result<Option<BatterySnapshot>> {
+pub(crate) async fn fetch_battery_reading(
+    read_power_source: bool,
+) -> Result<Option<BatteryReading>> {
     let connection = zbus::Connection::system()
         .await
         .context("failed to connect to the system D-Bus for battery state")?;
@@ -70,8 +80,24 @@ pub async fn fetch_battery_snapshot() -> Result<Option<BatterySnapshot>> {
         .await
         .context("failed to read UPower battery state")?;
 
-    Ok(Some(BatterySnapshot {
+    let snapshot = BatterySnapshot {
         percent,
         charging: matches!(state, 1 | 5),
+    };
+    let on_battery = if read_power_source {
+        match manager.on_battery().await {
+            Ok(on_battery) => Some(on_battery),
+            Err(error) => {
+                tracing::warn!(%error, "failed to read UPower system power source");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    Ok(Some(BatteryReading {
+        snapshot,
+        on_battery,
     }))
 }
