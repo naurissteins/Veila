@@ -22,6 +22,8 @@ impl FormatTime for ShortLocalTime {
 pub(crate) fn init_stderr() {
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
+        // reporting a full or closed log pipe through eprintln! would panic on the same pipe
+        .log_internal_errors(false)
         .with_env_filter(env_filter())
         .with_timer(ShortLocalTime)
         .init();

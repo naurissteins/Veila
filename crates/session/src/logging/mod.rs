@@ -1,12 +1,23 @@
 pub mod rotation;
 
+use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use std::{
     fs::{self, File, OpenOptions},
-    io,
-    os::unix::fs::{OpenOptionsExt, PermissionsExt},
-    path::Path,
+    io::{self, BufRead, PipeReader, Read, Write},
+    os::{
+        fd::{AsFd, OwnedFd},
+        unix::{
+            fs::{OpenOptionsExt, PermissionsExt},
+            process::CommandExt,
+        },
+    },
+    path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
 };
 use veila_common::AppConfig;
+
+pub const LOG_SUBCOMMAND: &str = "__lock-log";
+const LOG_PATH_ENV: &str = "VEILA_LOCK_LOG_PATH";
 
 pub fn open_private_log(path: &Path) -> io::Result<File> {
     let file = OpenOptions::new()
@@ -21,7 +32,7 @@ pub fn open_private_log(path: &Path) -> io::Result<File> {
     Ok(file)
 }
 
-pub(crate) fn open(config: &AppConfig) -> io::Result<Option<SessionLog>> {
+pub(crate) fn prepare(config: &AppConfig) -> io::Result<Option<(File, LogReader)>> {
     if !config.lock.log_to_file {
         return Ok(None);
     }
@@ -29,43 +40,107 @@ pub(crate) fn open(config: &AppConfig) -> io::Result<Option<SessionLog>> {
         config.lock.log_file_path.strip_prefix("~"),
         std::env::var_os("HOME"),
     ) {
-        std::path::PathBuf::from(home).join(rest)
+        PathBuf::from(home).join(rest)
     } else {
         config.lock.log_file_path.clone()
     };
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let file = open_private_log(&path)?;
-    // rotate before sharing this inode; curtain writes remain ordinary stderr writes
-    use std::io::Write;
-    let mut writer = rotation::RotatingLog::new(file.try_clone()?, &path)?;
-    writer.write_all(b"starting per-lock supervisor\n")?;
-    Ok(Some(SessionLog {
-        file,
-        path,
-        checked: std::time::Instant::now(),
-    }))
+    let (reader, writer) = io::pipe()?;
+    let flags = OFlag::from_bits_truncate(fcntl(&writer, FcntlArg::F_GETFL)?);
+    fcntl(&writer, FcntlArg::F_SETFL(flags | OFlag::O_NONBLOCK))?;
+    let _ = fcntl(&writer, FcntlArg::F_SETPIPE_SZ(256 * 1024));
+    let writer = File::from(OwnedFd::from(writer));
+    let mut marker = &writer;
+    marker.write_all(b"starting per-lock supervisor\n")?;
+    Ok(Some((writer, LogReader { reader, path })))
 }
 
-pub(crate) struct SessionLog {
-    pub file: File,
-    path: std::path::PathBuf,
-    checked: std::time::Instant,
+pub(crate) struct LogReader {
+    reader: PipeReader,
+    path: PathBuf,
 }
-impl SessionLog {
-    pub fn maintain(&mut self) {
-        if self.checked.elapsed() < std::time::Duration::from_secs(15) {
-            return;
+impl LogReader {
+    pub fn spawn(self, writer: File) -> io::Result<LogChild> {
+        let stderr = io::stderr().as_fd().try_clone_to_owned()?;
+        // Follow pipe EOF so an orphaned curtain can still log and exit independently.
+        let child = Command::new("/proc/self/exe")
+            .arg(LOG_SUBCOMMAND)
+            .env(LOG_PATH_ENV, self.path)
+            .stdin(self.reader)
+            .stdout(Stdio::null())
+            .process_group(0)
+            .spawn()?;
+        if let Err(error) = nix::unistd::dup2_stderr(writer) {
+            tracing::warn!(%error, "could not redirect supervisor logging");
         }
-        self.checked = std::time::Instant::now();
-        let result = (|| -> io::Result<()> {
-            use std::io::Write;
-            let mut writer = rotation::RotatingLog::new(self.file.try_clone()?, &self.path)?;
-            writer.write_all(b"")
-        })();
-        if let Err(error) = result {
-            tracing::warn!(%error,"could not maintain lock log");
+        Ok(LogChild { child, stderr })
+    }
+}
+
+pub(crate) struct LogChild {
+    child: Child,
+    stderr: OwnedFd,
+}
+
+impl LogChild {
+    pub fn reap(&mut self) -> bool {
+        match self.child.try_wait() {
+            Ok(Some(status)) => {
+                let _ = nix::unistd::dup2_stderr(&self.stderr);
+                tracing::warn!(%status, "lock log writer exited; using stderr");
+                true
+            }
+            Ok(None) => false,
+            Err(error) => {
+                tracing::warn!(%error, "could not check lock log writer");
+                false
+            }
         }
     }
+}
+
+#[doc(hidden)]
+pub fn run() -> io::Result<()> {
+    let path = std::env::var_os(LOG_PATH_ENV)
+        .map(PathBuf::from)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "missing lock log path"))?;
+    let mut target = match open_target(&path) {
+        Ok(log) => Some(log),
+        Err(error) => {
+            tracing::warn!(%error, "optional log unavailable; using stderr");
+            None
+        }
+    };
+    let mut input = io::stdin().lock();
+    let mut entry = Vec::new();
+    let mut warned = false;
+    loop {
+        entry.clear();
+        if (&mut input).take(64 * 1024).read_until(b'\n', &mut entry)? == 0 {
+            return Ok(());
+        }
+        if let Some(log) = &mut target {
+            match log.write_all(&entry) {
+                Ok(()) => {
+                    warned = false;
+                    continue;
+                }
+                Err(error) if !warned => {
+                    warned = true;
+                    tracing::warn!(%error, "could not append to lock log; using stderr");
+                }
+                Err(_) => {}
+            }
+        }
+        let _ = io::stderr().write_all(&entry);
+    }
+}
+
+fn open_target(path: &Path) -> io::Result<rotation::RotatingLog> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        fs::create_dir_all(parent)?;
+    }
+    rotation::RotatingLog::new(open_private_log(path)?, path)
 }

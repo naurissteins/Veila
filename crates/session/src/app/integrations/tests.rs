@@ -59,7 +59,7 @@ impl Harness {
         };
         Self {
             running: Running {
-                log: None,
+                logger: None,
                 options: LockOptions::default(),
                 record,
                 child: None,

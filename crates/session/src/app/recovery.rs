@@ -2,6 +2,7 @@ use super::Running;
 use crate::record::State;
 use anyhow::Result;
 use std::{
+    fs::File,
     process::ExitStatus,
     time::{Duration, Instant},
 };
@@ -39,20 +40,10 @@ impl Recovery {
 }
 
 impl Running {
-    pub(super) fn launch(&mut self) -> Result<()> {
+    pub(super) fn launch(&mut self, log: Option<File>) -> Result<()> {
         self.recovery.retry_at = None;
         self.generation = self.generation.saturating_add(1);
         let started = Instant::now();
-        let log = self
-            .log
-            .as_ref()
-            .and_then(|log| match log.file.try_clone() {
-                Ok(file) => Some(file),
-                Err(error) => {
-                    tracing::warn!(%error, "optional curtain log unavailable");
-                    None
-                }
-            });
         self.record.value.ready = Some(false);
         let result = crate::spawn::curtain(
             &self.options,

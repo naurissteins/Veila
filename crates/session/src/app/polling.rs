@@ -13,7 +13,7 @@ impl Running {
         let mut connected = self.channel.is_some();
         loop {
             if self.recovery.due() {
-                self.launch()?;
+                self.launch(None)?;
                 line = LineAccumulator::with_limit(session::MAX_FRAME_BYTES);
                 connected = self.channel.is_some();
             }
@@ -89,11 +89,17 @@ impl Running {
             if socket_ready {
                 self.read_events(&mut line, &mut connected)?;
             }
-            if let Some(log) = &mut self.log {
-                log.maintain();
-            }
             while let Some(signal) = signals.read_signal()? {
                 match Signal::try_from(signal.ssi_signo as i32) {
+                    Ok(Signal::SIGCHLD) => {
+                        if self
+                            .logger
+                            .as_mut()
+                            .is_some_and(crate::logging::LogChild::reap)
+                        {
+                            self.logger = None;
+                        }
+                    }
                     Ok(Signal::SIGHUP) => self.reload(),
                     Ok(Signal::SIGTERM) => tracing::info!(
                         "termination requested; waiting for authenticated curtain exit"
@@ -109,11 +115,6 @@ impl Running {
         if !self.notified {
             let remaining = startup.saturating_sub(self.spawned.elapsed());
             wait = Some(wait.map_or(remaining, |delay| delay.min(remaining)));
-        }
-        if self.log.is_some() {
-            wait = Some(wait.map_or(Duration::from_secs(15), |delay| {
-                delay.min(Duration::from_secs(15))
-            }));
         }
         wait.map_or(PollTimeout::NONE, |delay| {
             PollTimeout::try_from(delay).unwrap_or(PollTimeout::MAX)
