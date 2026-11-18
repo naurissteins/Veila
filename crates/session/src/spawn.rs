@@ -21,6 +21,7 @@ pub(crate) fn curtain(
     options: &LockOptions,
     config: &AppConfig,
     record: &mut LockRecord,
+    confirmed_recovery: bool,
     log: Option<std::fs::File>,
     report: &mut veila_common::ipc::LockLatencyReport,
 ) -> Result<(Child, UnixStream)> {
@@ -39,6 +40,9 @@ pub(crate) fn curtain(
         .stdout(Stdio::null());
     if options.emergency {
         command.arg("--force-emergency-ui");
+    }
+    if confirmed_recovery {
+        command.arg("--confirmed-recovery");
     }
     if options.latency.is_enabled() {
         command.arg(if options.latency.is_verbose() {

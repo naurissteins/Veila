@@ -58,6 +58,7 @@ impl Running {
             &self.options,
             &self.config,
             &mut self.record,
+            self.recovery.confirmed,
             log,
             &mut self.report,
         );

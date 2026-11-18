@@ -32,6 +32,10 @@ impl CurtainOptions {
                 options.force_emergency_ui = true;
                 continue;
             }
+            if arg == "--confirmed-recovery" {
+                options.confirmed_recovery = true;
+                continue;
+            }
 
             if let Some(value) = parse_option_value(&arg, "--ipc-fd", &mut args)? {
                 options.ipc_fd = Some(value.parse().context("invalid supervisor descriptor")?);

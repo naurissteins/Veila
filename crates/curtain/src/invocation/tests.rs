@@ -93,6 +93,31 @@ fn inherited_session_requires_complete_distinct_descriptors_and_local_pam() {
 }
 
 #[test]
+fn confirmed_recovery_requires_a_supervised_lock() {
+    let options =
+        CurtainOptions::parse_args(["veila", "--lock", "--confirmed-recovery"].map(String::from))
+            .expect("arguments should parse");
+    assert!(options.confirmed_recovery);
+    assert!(validate_invocation_mode(&options).is_err());
+    assert!(
+        validate_invocation_mode(&CurtainOptions {
+            ipc_fd: Some(3),
+            lock_fd: Some(4),
+            ..options.clone()
+        })
+        .is_ok()
+    );
+    assert!(
+        validate_preview_mode(&CurtainOptions {
+            lock: false,
+            preview_png: Some("/tmp/preview.png".into()),
+            ..options
+        })
+        .is_err()
+    );
+}
+
+#[test]
 fn removed_daemon_socket_and_ownership_flags_are_rejected() {
     for flag in [
         "--owner-gate",

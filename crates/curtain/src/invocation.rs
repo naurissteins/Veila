@@ -6,6 +6,9 @@ pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
     if options.ipc_fd.is_some() != options.lock_fd.is_some() {
         bail!("supervised curtain requires both inherited descriptors");
     }
+    if options.confirmed_recovery && options.ipc_fd.is_none() {
+        bail!("confirmed recovery requires a supervised curtain");
+    }
     if let (Some(ipc), Some(lock)) = (options.ipc_fd, options.lock_fd)
         && (ipc < 3 || lock < 3 || ipc == lock || !options.lock || options.config_path.is_some())
     {
@@ -24,6 +27,7 @@ pub(super) fn validate_invocation_mode(options: &CurtainOptions) -> Result<()> {
 pub(super) fn validate_preview_mode(options: &CurtainOptions) -> Result<()> {
     if options.lock
         || options.initial_backoff_ms > 0
+        || options.confirmed_recovery
         || options.ipc_fd.is_some()
         || options.lock_fd.is_some()
     {

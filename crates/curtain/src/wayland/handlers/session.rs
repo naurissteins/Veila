@@ -36,6 +36,7 @@ impl SessionLockHandler for CurtainApp {
         self.session_locked = true;
         self.screen_off.arm(session_locked_at);
         self.maybe_notify_startup();
+        self.restore_output_power_after_recovery(qh);
         self.render_initial_scene(qh);
     }
 
