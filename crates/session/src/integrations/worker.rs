@@ -62,7 +62,7 @@ pub(super) async fn run(
             _ = tick.tick() => {
                 providers.refresh(&state, path.as_deref(), &mut output).await;
                 let now = Instant::now();
-                match suspend.evaluate(now, state.confirmed, state.auth, providers.battery.current_snapshot().as_ref(), providers.media.currently_playing()) {
+                match suspend.evaluate(now, state.confirmed, state.auth, providers.battery.on_battery(), providers.media.currently_playing()) {
                     SuspendDecision::Ready => {
                         if commands.try_send(Request::Suspend { generation: state.generation }).is_ok() { suspend.mark_requested(); }
                     }
