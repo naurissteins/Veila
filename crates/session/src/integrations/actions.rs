@@ -1,9 +1,9 @@
-use super::{Event, Output, State};
+use super::{AutomaticSuspend, Event, Output, State};
 use crate::adapters::logind;
 use std::time::Duration;
 use tokio::sync::{oneshot, watch};
 use veila_common::PowerAction;
-const DBUS_TIMEOUT: Duration = Duration::from_secs(2);
+pub(super) const DBUS_TIMEOUT: Duration = Duration::from_secs(2);
 
 pub(super) async fn arm(output: &mut Output, generation: u64) -> bool {
     let (ack, response) = oneshot::channel();
@@ -19,36 +19,78 @@ pub(super) async fn perform(
     generation: u64,
     output: &mut Output,
     changes: &watch::Receiver<State>,
-    automatic: bool,
+    automatic: Option<AutomaticSuspend>,
     inhibitor: &mut Option<zbus::OwnedFd>,
-) {
+) -> bool {
+    let allowed = || {
+        let state = changes.borrow();
+        state.generation == generation
+            && state.confirmed
+            && match automatic {
+                Some(attempt) => {
+                    !state.auth
+                        && state.revision == attempt.revision
+                        && state.activity == attempt.activity
+                        && state
+                            .config
+                            .lock
+                            .suspend_seconds
+                            .is_some_and(|delay| delay > 0)
+                }
+                None => state.config.visuals.power_button_enabled(action),
+            }
+    };
+    if !allowed() {
+        return false;
+    }
     if action == PowerAction::Suspend && !arm(output, generation).await {
         tracing::error!("suspend cancelled: resume guard was not acknowledged");
-        return;
+        return false;
     }
-    let state = changes.borrow().clone();
-    if state.generation != generation
-        || !state.confirmed
-        || if automatic {
-            state.auth || !state.config.lock.suspend_seconds.is_some_and(|s| s > 0)
-        } else {
-            !state.config.visuals.power_button_enabled(action)
-        }
-    {
-        return;
+    if !allowed() {
+        return false;
     }
     if action == PowerAction::Suspend {
         // Our guard is armed; do not make logind wait for our own delay inhibitor.
         *inhibitor = None;
     }
     let request = crate::services::power::request_power_action(manager, action);
-    match tokio::time::timeout(DBUS_TIMEOUT, request).await {
-        Ok(Ok(())) => tracing::info!(?action, "supervisor power request accepted"),
-        result => tracing::warn!(
-            ?action,
-            ?result,
-            "supervisor power request failed or timed out"
-        ),
+    let result = tokio::time::timeout(DBUS_TIMEOUT, request).await;
+    if matches!(result, Ok(Ok(()))) {
+        tracing::info!(?action, "supervisor power request accepted");
+        return action == PowerAction::Suspend;
+    }
+    tracing::warn!(
+        ?action,
+        ?result,
+        "supervisor power request failed or timed out"
+    );
+    if action != PowerAction::Suspend {
+        return false;
+    }
+    // timed-out call may have started sleep before its reply arrived
+    if matches!(
+        tokio::time::timeout(DBUS_TIMEOUT, manager.preparing_for_sleep()).await,
+        Ok(Ok(true))
+    ) {
+        return true;
+    }
+    *inhibitor = inhibit(manager).await;
+    false
+}
+
+pub(super) async fn inhibit(manager: &logind::ManagerProxy<'_>) -> Option<zbus::OwnedFd> {
+    match tokio::time::timeout(
+        DBUS_TIMEOUT,
+        manager.inhibit("sleep", "Veila", "Arm locked resume input guard", "delay"),
+    )
+    .await
+    {
+        Ok(Ok(fd)) => Some(fd),
+        _ => {
+            tracing::warn!("could not acquire resume-guard sleep delay inhibitor");
+            None
+        }
     }
 }
 

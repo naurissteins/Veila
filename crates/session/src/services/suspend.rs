@@ -36,8 +36,7 @@ pub struct LockedSuspendState {
     delay: Option<Duration>,
     battery_only: bool,
     skip_while_media_playing: bool,
-    last_activity_at: Option<Instant>,
-    suspend_requested: bool,
+    countdown_from: Option<Instant>,
     last_reported_skip_reason: Option<SuspendSkipReason>,
 }
 
@@ -51,8 +50,7 @@ impl LockedSuspendState {
             delay,
             battery_only,
             skip_while_media_playing,
-            last_activity_at: None,
-            suspend_requested: false,
+            countdown_from: None,
             last_reported_skip_reason: None,
         }
     }
@@ -68,12 +66,11 @@ impl LockedSuspendState {
         self.delay = delay;
         self.battery_only = battery_only;
         self.skip_while_media_playing = skip_while_media_playing;
-        self.suspend_requested = false;
         self.last_reported_skip_reason = None;
-        self.last_activity_at = if !active_lock || delay.is_none() {
+        self.countdown_from = if !active_lock || delay.is_none() {
             None
         } else {
-            self.last_activity_at.or(Some(now))
+            self.countdown_from.or(Some(now))
         };
     }
 
@@ -82,25 +79,19 @@ impl LockedSuspendState {
             return;
         }
 
-        self.last_activity_at = Some(now);
-        self.suspend_requested = false;
+        self.countdown_from = Some(now);
         self.last_reported_skip_reason = None;
     }
 
     pub fn clear(&mut self) {
-        self.last_activity_at = None;
-        self.suspend_requested = false;
+        self.countdown_from = None;
         self.last_reported_skip_reason = None;
     }
 
     pub fn note_activity(&mut self, now: Instant) {
-        if self.delay.is_none() {
-            return;
+        if self.countdown_from.is_none_or(|start| now >= start) {
+            self.arm(now);
         }
-
-        self.last_activity_at = Some(now);
-        self.suspend_requested = false;
-        self.last_reported_skip_reason = None;
     }
 
     pub fn evaluate(
@@ -111,21 +102,18 @@ impl LockedSuspendState {
         on_battery: Option<bool>,
         media_playing: bool,
     ) -> SuspendDecision {
-        if !active_lock || self.suspend_requested {
+        if !active_lock {
             return SuspendDecision::Pending;
         }
 
         let Some(delay) = self.delay else {
             return SuspendDecision::Pending;
         };
-        let Some(last_activity_at) = self.last_activity_at else {
+        let Some(countdown_from) = self.countdown_from else {
             return SuspendDecision::Pending;
         };
 
-        let deadline = last_activity_at
-            .checked_add(delay)
-            .unwrap_or(last_activity_at);
-        if now < deadline {
+        if now.saturating_duration_since(countdown_from) < delay {
             return SuspendDecision::Pending;
         }
 
@@ -165,31 +153,24 @@ impl LockedSuspendState {
         self.last_reported_skip_reason = None;
     }
 
-    pub fn mark_requested(&mut self) {
-        self.suspend_requested = true;
-        self.last_reported_skip_reason = None;
-    }
-
     pub fn power_status_snapshot(
         &self,
         now: Instant,
         active_lock: bool,
     ) -> Option<LockPowerStatusSnapshot> {
-        if !active_lock || self.suspend_requested {
+        if !active_lock {
             return None;
         }
 
         let delay = self.delay?;
-        let last_activity_at = self.last_activity_at?;
-        let deadline = last_activity_at
-            .checked_add(delay)
-            .unwrap_or(last_activity_at);
-        if now >= deadline {
+        let countdown_from = self.countdown_from?;
+        let remaining = delay.checked_sub(now.saturating_duration_since(countdown_from))?;
+        if remaining.is_zero() {
             return None;
         }
 
         Some(LockPowerStatusSnapshot {
-            suspend_remaining_seconds: remaining_seconds(deadline.saturating_duration_since(now)),
+            suspend_remaining_seconds: remaining_seconds(remaining),
         })
     }
 }
@@ -240,16 +221,27 @@ mod tests {
     }
 
     #[test]
-    fn activity_resets_pending_suspend_request() {
+    fn rearming_starts_a_full_countdown_and_ignores_older_activity() {
         let now = Instant::now();
-        let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, false);
+        let delay = Duration::from_secs(5);
+        let mut state = LockedSuspendState::new(Some(delay), false, false);
         state.arm(now);
-        state.mark_requested();
-        state.note_activity(now + Duration::from_secs(6));
+        assert_eq!(
+            state.evaluate(now + delay, true, false, None, false),
+            SuspendDecision::Ready
+        );
+
+        let rearmed = now + Duration::from_secs(10);
+        state.note_activity(rearmed);
+        state.note_activity(now + delay);
 
         assert_eq!(
-            state.evaluate(now + Duration::from_secs(7), true, false, None, false),
+            state.evaluate(rearmed + Duration::from_secs(4), true, false, None, false),
             SuspendDecision::Pending
+        );
+        assert_eq!(
+            state.evaluate(rearmed + delay, true, false, None, false),
+            SuspendDecision::Ready
         );
     }
 
@@ -333,7 +325,25 @@ mod tests {
     }
 
     #[test]
-    fn power_status_snapshot_clears_after_deadline_or_request() {
+    fn a_delay_beyond_the_instant_range_does_not_become_due_immediately() {
+        let now = Instant::now();
+        let mut state = LockedSuspendState::new(Some(Duration::MAX), false, false);
+        state.arm(now);
+
+        assert_eq!(
+            state.evaluate(now, true, false, None, false),
+            SuspendDecision::Pending
+        );
+        assert_eq!(
+            state
+                .power_status_snapshot(now, true)
+                .map(|status| status.suspend_remaining_seconds),
+            Some(u64::MAX),
+        );
+    }
+
+    #[test]
+    fn power_status_snapshot_clears_at_deadline_and_returns_after_rearm() {
         let now = Instant::now();
         let mut state = LockedSuspendState::new(Some(Duration::from_secs(5)), false, false);
         state.arm(now);
@@ -343,12 +353,13 @@ mod tests {
                 .power_status_snapshot(now + Duration::from_secs(5), true)
                 .is_none()
         );
-        state.arm(now);
-        state.mark_requested();
-        assert!(
+        let rearmed = now + Duration::from_secs(7);
+        state.note_activity(rearmed);
+        assert_eq!(
             state
-                .power_status_snapshot(now + Duration::from_secs(1), true)
-                .is_none()
+                .power_status_snapshot(rearmed, true)
+                .map(|status| status.suspend_remaining_seconds),
+            Some(5),
         );
     }
 }
