@@ -7,6 +7,7 @@ use std::{
     io::{Read, Seek, SeekFrom, Write},
     os::unix::fs::{MetadataExt, OpenOptionsExt},
     path::PathBuf,
+    time::{Duration, Instant},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -164,7 +165,8 @@ pub(super) fn environment() -> Result<(PathBuf, PathBuf)> {
 }
 
 pub(super) fn acquire_exclusive(file: &File) -> Result<bool> {
-    for _ in 0..32 {
+    let mut retry_deadline = None;
+    loop {
         match file.try_lock() {
             Ok(()) => return Ok(true),
             Err(std::fs::TryLockError::WouldBlock) => {}
@@ -172,15 +174,19 @@ pub(super) fn acquire_exclusive(file: &File) -> Result<bool> {
         }
         // A status reader must never be mistaken for an active lock supervisor.
         match file.try_lock_shared() {
-            Ok(()) => {
-                file.unlock()?;
-                std::thread::yield_now();
-            }
+            Ok(()) => file.unlock()?,
             Err(std::fs::TryLockError::WouldBlock) => return Ok(false),
             Err(error) => return Err(error.into()),
         }
+        let now = Instant::now();
+        let remaining = retry_deadline
+            .get_or_insert_with(|| now + Duration::from_millis(100))
+            .saturating_duration_since(now);
+        if remaining.is_zero() {
+            bail!("lock record is busy with status readers; retry locking");
+        }
+        std::thread::sleep(remaining.min(Duration::from_millis(2)));
     }
-    bail!("lock record is busy with status readers; retry locking")
 }
 
 pub(super) fn held_bytes(mut file: File) -> Result<Option<Vec<u8>>> {

@@ -169,3 +169,21 @@ fn status_readers_never_masquerade_as_a_running_supervisor() {
     drop(record);
     fs::remove_dir_all(root).expect("cleanup");
 }
+
+#[test]
+fn lock_acquires_after_a_transient_status_reader_releases() {
+    let root = root();
+    let display = PathBuf::from("transient-reader");
+    let reader = LockRecord::open_at(root.clone(), display.clone()).expect("reader");
+    reader.try_lock_shared().expect("query lock");
+    let release_reader = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(40));
+        reader.unlock().expect("release query lock");
+    });
+
+    let result = LockRecord::at(root.clone(), display, None);
+    release_reader.join().expect("reader completed");
+    let record = result.expect("acquire after reader").expect("owner");
+    drop(record);
+    fs::remove_dir_all(root).expect("cleanup");
+}
