@@ -211,6 +211,7 @@ pub(crate) struct CurtainApp {
     pub(crate) session_lock_state: SessionLockState,
     pub(crate) output_power_manager:
         GlobalProxy<zwlr_output_power_manager_v1::ZwlrOutputPowerManagerV1>,
+    pub(crate) restore_output_power_on_lock: bool,
     pub(crate) fractional_scale_manager:
         GlobalProxy<wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1>,
     pub(crate) viewporter: GlobalProxy<wp_viewporter::WpViewporter>,
@@ -465,6 +466,7 @@ impl CurtainApp {
             seat_state: SeatState::new(globals, queue_handle),
             session_lock_state: SessionLockState::new(globals, queue_handle),
             output_power_manager,
+            restore_output_power_on_lock: options.confirmed_recovery,
             fractional_scale_manager,
             viewporter,
             session_lock: None,

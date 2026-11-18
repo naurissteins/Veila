@@ -5,6 +5,27 @@ use wayland_protocols_wlr::output_power_management::v1::client::zwlr_output_powe
 
 use crate::state::CurtainApp;
 
+impl CurtainApp {
+    pub(crate) fn restore_output_power_after_recovery(&mut self, qh: &QueueHandle<Self>) {
+        if !std::mem::take(&mut self.restore_output_power_on_lock) {
+            return;
+        }
+        let Ok(manager) = self.output_power_manager.get() else {
+            return;
+        };
+        for surface in &self.lock_surfaces {
+            if let Some(control) = &surface.output_power {
+                control.set_mode(zwlr_output_power_v1::Mode::On);
+            } else {
+                let control = manager.get_output_power(&surface.output, qh, surface.output.clone());
+                control.set_mode(zwlr_output_power_v1::Mode::On);
+                // recovery-only controls must release the output to other power managers
+                control.destroy();
+            }
+        }
+    }
+}
+
 impl Dispatch<zwlr_output_power_v1::ZwlrOutputPowerV1, wl_output::WlOutput> for CurtainApp {
     fn event(
         state: &mut Self,

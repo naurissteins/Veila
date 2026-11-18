@@ -14,6 +14,7 @@ pub struct CurtainOptions {
     pub lock: bool,
     pub initial_backoff_ms: u64,
     pub force_emergency_ui: bool,
+    pub confirmed_recovery: bool,
     pub latency_report: LatencyReportMode,
     pub config_path: Option<PathBuf>,
     pub initial_background_path: Option<PathBuf>,
