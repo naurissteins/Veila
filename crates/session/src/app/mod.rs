@@ -26,7 +26,7 @@ pub(crate) struct Notification {
     pub report: Option<LockLatencyReport>,
 }
 pub(crate) struct Running {
-    log: Option<crate::logging::SessionLog>,
+    logger: Option<crate::logging::LogChild>,
     options: LockOptions,
     record: LockRecord,
     child: Option<Child>,
@@ -122,18 +122,15 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
         config_load_us: elapsed_us(config_started),
         ..Default::default()
     };
-    let log = match crate::logging::open(&config) {
+    let log = match crate::logging::prepare(&config) {
         Ok(file) => file,
         Err(error) => {
             tracing::warn!(%error,"optional log unavailable; using stderr");
             None
         }
     };
-    if let Some(file) = &log {
-        nix::unistd::dup2_stderr(&file.file)?;
-    }
     let mut running = Running {
-        log,
+        logger: None,
         options,
         record,
         child: None,
@@ -158,7 +155,23 @@ pub(crate) fn run(options: LockOptions) -> Result<i32> {
         report,
         config,
     };
-    running.launch()?;
+    let curtain_log = log
+        .as_ref()
+        .and_then(|(writer, _)| match writer.try_clone() {
+            Ok(file) => Some(file),
+            Err(error) => {
+                tracing::warn!(%error, "optional curtain log unavailable");
+                None
+            }
+        });
+    let launch = running.launch(curtain_log);
+    if let Some((writer, reader)) = log {
+        match reader.spawn(writer) {
+            Ok(child) => running.logger = Some(child),
+            Err(error) => tracing::warn!(%error, "could not start lock log writer"),
+        }
+    }
+    launch?;
     let result = running.event_loop(signals);
     if matches!(result, Ok(session::EXIT_UNLOCKED))
         && let Some(handle) = &running.integrations

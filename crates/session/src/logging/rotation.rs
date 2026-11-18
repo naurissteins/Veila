@@ -14,7 +14,7 @@ static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 pub struct RotatingLog {
     file: File,
     path: PathBuf,
-    size: Option<u64>,
+    regular: bool,
     warned: bool,
 }
 
@@ -24,7 +24,7 @@ impl RotatingLog {
         Ok(Self {
             file,
             path: path.to_path_buf(),
-            size: metadata.is_file().then_some(metadata.len()),
+            regular: metadata.is_file(),
             warned: false,
         })
     }
@@ -51,7 +51,6 @@ impl RotatingLog {
             fs::rename(&temporary_path, backup_path(&self.path, 1))?;
             // keep the active inode so `tail -f` survives rotation
             self.file.set_len(0)?;
-            self.size = Some(0);
             Ok(())
         })();
         if result.is_err() {
@@ -83,14 +82,10 @@ impl RotatingLog {
             "could not allocate a temporary log backup",
         ))
     }
-}
 
-impl Write for RotatingLog {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if let Some(size) = self.size
-            && size > 0
-            && size.saturating_add(buf.len() as u64) > MAX_LOG_BYTES
-        {
+    fn rotate_if_full(&mut self, incoming: usize) -> io::Result<()> {
+        let size = self.file.metadata()?.len();
+        if size > 0 && size.saturating_add(incoming as u64) > MAX_LOG_BYTES {
             if let Err(error) = self.rotate() {
                 if !self.warned {
                     self.warned = true;
@@ -100,11 +95,22 @@ impl Write for RotatingLog {
                 self.warned = false;
             }
         }
+        Ok(())
+    }
+}
 
-        self.file.write_all(buf)?;
-        if let Some(size) = &mut self.size {
-            *size = size.saturating_add(buf.len() as u64);
+impl Write for RotatingLog {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if !self.regular || buf.is_empty() {
+            return self.file.write(buf);
         }
+        // multiple Wayland sessions can point their log writers at the same file
+        self.file.lock()?;
+        let result = self
+            .rotate_if_full(buf.len())
+            .and_then(|()| self.file.write_all(buf));
+        let unlocked = self.file.unlock();
+        result.and(unlocked)?;
         Ok(buf.len())
     }
 
@@ -133,7 +139,7 @@ fn ignore_missing(error: io::Error) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, io::Write, os::unix::fs::MetadataExt};
+    use std::{fs, io::Write, os::unix::fs::MetadataExt, sync::Barrier, thread};
 
     use super::{RotatingLog, backup_path};
     use crate::logging::open_private_log;
@@ -212,6 +218,50 @@ mod tests {
         );
         assert_eq!(fs::read(&path).expect("active"), b"new entry");
         drop(log);
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn concurrent_log_writers_serialize_rotation_and_keep_appending() {
+        let root = std::env::temp_dir().join(format!("veila-shared-log-{}", std::process::id()));
+        fs::create_dir_all(&root).expect("log directory");
+        let path = root.join("veila.log");
+        let first = open_private_log(&path).expect("first log");
+        let second = open_private_log(&path).expect("second log");
+        let inode = first.metadata().expect("metadata").ino();
+        let start = Barrier::new(2);
+        let chunk = 2 * 1024 * 1024;
+
+        thread::scope(|scope| {
+            for (file, marker) in [(first, b'a'), (second, b'b')] {
+                let (start, path) = (&start, &path);
+                scope.spawn(move || {
+                    let mut writer = RotatingLog::new(file, path).expect("writer");
+                    let data = vec![marker; chunk];
+                    start.wait();
+                    for _ in 0..3 {
+                        writer.write_all(&data).expect("append");
+                    }
+                });
+            }
+        });
+
+        let active = fs::read(&path).expect("active");
+        let backup = fs::read(backup_path(&path, 1)).expect("backup");
+        assert_eq!(active.len(), 2 * chunk);
+        assert_eq!(backup.len(), 4 * chunk);
+        assert!(!backup_path(&path, 2).exists());
+        assert_eq!(fs::metadata(&path).expect("metadata").ino(), inode);
+        for marker in *b"ab" {
+            assert_eq!(
+                backup
+                    .iter()
+                    .chain(&active)
+                    .filter(|&&byte| byte == marker)
+                    .count(),
+                3 * chunk
+            );
+        }
         fs::remove_dir_all(root).expect("cleanup");
     }
 }

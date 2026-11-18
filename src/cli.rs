@@ -18,6 +18,7 @@ pub(crate) enum Mode {
     Prewarm,
     PamHelper,
     FontQuery,
+    LockLog,
 }
 
 // `args` keeps `argv[0]` and drops the subcommand so the mode parsers can skip one argument as before.
@@ -62,6 +63,7 @@ impl Invocation {
             Some(CURTAIN_SUBCOMMAND) => Mode::Curtain,
             Some(PREWARM_SUBCOMMAND) => Mode::Prewarm,
             Some(PAM_HELPER_SUBCOMMAND) => Mode::PamHelper,
+            Some(veila_session::logging::LOG_SUBCOMMAND) => Mode::LockLog,
             Some(veila_renderer::text::FONT_QUERY_SUBCOMMAND) => Mode::FontQuery,
             _ => {
                 return Self {
@@ -105,6 +107,7 @@ mod tests {
             ("__prewarm", Mode::Prewarm),
             ("__pam-helper", Mode::PamHelper),
             ("__font-query", Mode::FontQuery),
+            ("__lock-log", Mode::LockLog),
         ];
 
         for (subcommand, mode) in cases {

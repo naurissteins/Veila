@@ -56,6 +56,10 @@ fn main() -> Result<()> {
             harden_process(PAM_HELPER_PROCESS_NAME)?;
             Ok(veila_auth::run_helper()?)
         }
+        Mode::LockLog => {
+            logging::init_stderr();
+            Ok(veila_session::logging::run()?)
+        }
         Mode::Curtain => {
             harden_process(CURTAIN_PROCESS_NAME)?;
             let options = CurtainOptions::parse_args(args)?;
