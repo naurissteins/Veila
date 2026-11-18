@@ -18,7 +18,7 @@ pub trait Manager {
     #[zbus(property, name = "InhibitDelayMaxUSec")]
     fn inhibit_delay_max_usec(&self) -> zbus::Result<u64>;
 
-    #[zbus(property)]
+    #[zbus(property(emits_changed_signal = "false"))]
     fn preparing_for_sleep(&self) -> zbus::Result<bool>;
 
     #[zbus(signal)]

@@ -47,9 +47,18 @@ pub(crate) enum Request {
         action: PowerAction,
     },
     Suspend {
-        generation: u64,
+        attempt: AutomaticSuspend,
+        done: oneshot::Sender<()>,
     },
     Finish(std::sync::mpsc::Sender<()>),
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct AutomaticSuspend {
+    generation: u64,
+    revision: u64,
+    activity: Instant,
+    awake_since: Instant,
 }
 
 pub(crate) struct Handle {
