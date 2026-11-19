@@ -2,9 +2,6 @@ use zeroize::Zeroize;
 
 use crate::error::{Result, VeilaError};
 
-/// Maximum bytes accepted for a single newline-delimited IPC message
-pub const IPC_MAX_LINE_BYTES: usize = 64 * 1024;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum LineProgress {
     Complete { line: String, consumed: usize },
@@ -19,27 +16,11 @@ pub struct LineAccumulator {
 }
 
 impl LineAccumulator {
-    pub fn new() -> Self {
-        Self::with_capacity(0)
-    }
-
-    /// Pre-sizes the buffer so an expected message never reallocates
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            buffer: Vec::with_capacity(capacity),
-            max_bytes: IPC_MAX_LINE_BYTES,
-        }
-    }
-
     pub fn with_limit(max_bytes: usize) -> Self {
         Self {
             buffer: Vec::new(),
             max_bytes,
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.buffer.is_empty()
     }
 
     pub fn push_chunk(&mut self, chunk: &[u8], label: &str) -> Result<LineProgress> {
@@ -83,12 +64,6 @@ impl LineAccumulator {
     }
 }
 
-impl Default for LineAccumulator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Drop for LineAccumulator {
     fn drop(&mut self) {
         self.buffer.zeroize();
@@ -101,11 +76,13 @@ fn invalid_data(message: String) -> VeilaError {
 
 #[cfg(test)]
 mod tests {
-    use super::{IPC_MAX_LINE_BYTES, LineAccumulator, LineProgress};
+    use super::{LineAccumulator, LineProgress};
+
+    const LINE_LIMIT: usize = 64 * 1024;
 
     #[test]
     fn reports_bytes_consumed_so_buffered_readers_keep_the_remainder() {
-        let mut accumulator = LineAccumulator::new();
+        let mut accumulator = LineAccumulator::with_limit(LINE_LIMIT);
 
         let progress = accumulator
             .push_chunk(b"first\nsecond\n", "test")
@@ -123,7 +100,7 @@ mod tests {
 
     #[test]
     fn accumulates_across_chunk_boundaries() {
-        let mut accumulator = LineAccumulator::new();
+        let mut accumulator = LineAccumulator::with_limit(LINE_LIMIT);
 
         assert_eq!(
             accumulator.push_chunk(b"par", "test").expect("pending"),
@@ -142,8 +119,8 @@ mod tests {
 
     #[test]
     fn rejects_lines_past_the_ceiling_before_allocating_them() {
-        let mut accumulator = LineAccumulator::new();
-        let oversized = vec![b'a'; IPC_MAX_LINE_BYTES + 1];
+        let mut accumulator = LineAccumulator::with_limit(LINE_LIMIT);
+        let oversized = vec![b'a'; LINE_LIMIT + 1];
 
         let error = accumulator
             .push_chunk(&oversized, "test")
@@ -154,7 +131,7 @@ mod tests {
 
     #[test]
     fn rejects_non_utf8_input() {
-        let mut accumulator = LineAccumulator::new();
+        let mut accumulator = LineAccumulator::with_limit(LINE_LIMIT);
 
         let error = accumulator
             .push_chunk(&[0xff, 0xfe, b'\n'], "test")
@@ -165,10 +142,10 @@ mod tests {
 
     #[test]
     fn distinguishes_a_clean_close_from_a_truncated_message() {
-        let mut clean = LineAccumulator::new();
+        let mut clean = LineAccumulator::with_limit(LINE_LIMIT);
         assert_eq!(clean.finish("test").expect("clean close"), None);
 
-        let mut truncated = LineAccumulator::new();
+        let mut truncated = LineAccumulator::with_limit(LINE_LIMIT);
         truncated.push_chunk(b"partial", "test").expect("pending");
         let error = truncated
             .finish("test")
