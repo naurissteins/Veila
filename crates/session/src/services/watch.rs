@@ -6,9 +6,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use veila_common::{
-    LoadedConfig, active_include_source_paths, active_theme_source_path, default_config_path,
-};
+use veila_common::LoadedConfig;
+use veila_common::config::{ConfiguredTheme, config_watch_sources, default_config_path};
 
 const MIN_AUTO_RELOAD_DEBOUNCE_MS: u64 = 250;
 const MAX_AUTO_RELOAD_DEBOUNCE_MS: u64 = 5_000;
@@ -31,21 +30,20 @@ struct FileStamp {
 
 impl FileStamp {
     fn read(path: &Path) -> Self {
-        Self::read_inner(path, false)
+        Self::with_content(path, None)
     }
 
     fn read_with_content_hash(path: &Path) -> Self {
-        Self::read_inner(path, true)
+        Self::with_content(path, fs::read(path).ok().as_deref())
     }
 
-    fn read_inner(path: &Path, hash_content: bool) -> Self {
-        let content_hash = hash_content.then(|| file_content_hash(path)).flatten();
+    fn with_content(path: &Path, content: Option<&[u8]>) -> Self {
         match fs::metadata(path) {
             Ok(metadata) => Self {
                 exists: true,
                 modified: metadata.modified().ok(),
                 len: metadata.len(),
-                content_hash,
+                content_hash: content.map(file_content_hash),
             },
             Err(_) => Self {
                 exists: false,
@@ -57,11 +55,10 @@ impl FileStamp {
     }
 }
 
-fn file_content_hash(path: &Path) -> Option<u64> {
-    let bytes = fs::read(path).ok()?;
+fn file_content_hash(bytes: &[u8]) -> u64 {
     let mut hasher = DefaultHasher::new();
     bytes.hash(&mut hasher);
-    Some(hasher.finish())
+    hasher.finish()
 }
 
 #[derive(Debug)]
@@ -70,6 +67,7 @@ pub struct AutoReloadWatcher {
     config_stamp: Option<FileStamp>,
     wallpaper_path: Option<PathBuf>,
     wallpaper_stamp: Option<FileStamp>,
+    theme: Option<ConfiguredTheme>,
     theme_path: Option<PathBuf>,
     theme_stamp: Option<FileStamp>,
     include_files: Vec<WatchedFile>,
@@ -84,6 +82,7 @@ impl AutoReloadWatcher {
             config_stamp: None,
             wallpaper_path: None,
             wallpaper_stamp: None,
+            theme: None,
             theme_path: None,
             theme_stamp: None,
             include_files: Vec::new(),
@@ -99,16 +98,9 @@ impl AutoReloadWatcher {
         config_path_override: Option<&Path>,
         loaded_config: &LoadedConfig,
     ) -> Option<AutoReloadTrigger> {
-        self.sync_targets(config_path_override, loaded_config);
-
-        let mut changed = None;
-        if let Some(path) = self.config_path.as_deref() {
-            let stamp = FileStamp::read_with_content_hash(path);
-            if self.config_stamp != Some(stamp) {
-                self.config_stamp = Some(stamp);
-                changed = Some(AutoReloadTrigger::Config);
-            }
-        }
+        let mut changed = self
+            .sync_targets(config_path_override, loaded_config)
+            .then_some(AutoReloadTrigger::Config);
 
         if loaded_config.config.lock.auto_reload_config
             && let Some(path) = self.wallpaper_path.as_deref()
@@ -163,18 +155,17 @@ impl AutoReloadWatcher {
         self.pending.is_some()
     }
 
-    fn sync_targets(&mut self, config_path_override: Option<&Path>, loaded_config: &LoadedConfig) {
+    fn sync_targets(
+        &mut self,
+        config_path_override: Option<&Path>,
+        loaded_config: &LoadedConfig,
+    ) -> bool {
         let next_config_path = loaded_config
             .path
             .clone()
             .or_else(|| config_path_override.map(Path::to_path_buf))
             .or_else(default_config_path);
-        sync_path(
-            &mut self.config_path,
-            &mut self.config_stamp,
-            next_config_path.as_deref(),
-            FileStamp::read_with_content_hash,
-        );
+        let config_changed = self.sync_config(next_config_path);
 
         let next_wallpaper_path = loaded_config.config.background.resolved_path();
         sync_path(
@@ -184,7 +175,12 @@ impl AutoReloadWatcher {
             FileStamp::read,
         );
 
-        let next_theme_path = active_theme_source_path(next_config_path.as_deref()).unwrap_or(None);
+        // a local theme can appear or disappear without a config edit
+        let config_dir = self.config_path.as_deref().and_then(Path::parent);
+        let next_theme_path = self
+            .theme
+            .as_ref()
+            .and_then(|theme| theme.source_path(config_dir));
         sync_path(
             &mut self.theme_path,
             &mut self.theme_stamp,
@@ -192,9 +188,31 @@ impl AutoReloadWatcher {
             FileStamp::read_with_content_hash,
         );
 
-        let next_include_paths =
-            active_include_source_paths(next_config_path.as_deref()).unwrap_or_default();
-        sync_paths(&mut self.include_files, next_include_paths);
+        config_changed
+    }
+
+    fn sync_config(&mut self, next_path: Option<PathBuf>) -> bool {
+        let content = next_path.as_deref().and_then(|path| fs::read(path).ok());
+        let stamp = next_path
+            .as_deref()
+            .map(|path| FileStamp::with_content(path, content.as_deref()));
+        let same_path = self.config_path == next_path;
+        if same_path && self.config_stamp == stamp {
+            return false;
+        }
+
+        let config_dir = next_path.as_deref().and_then(Path::parent);
+        let (theme, includes) = content
+            .as_deref()
+            .filter(|_| stamp.is_some_and(|stamp| stamp.exists))
+            .and_then(|bytes| std::str::from_utf8(bytes).ok())
+            .map(|input| config_watch_sources(input, config_dir))
+            .unwrap_or_default();
+        self.theme = theme;
+        sync_paths(&mut self.include_files, includes);
+        self.config_path = next_path;
+        self.config_stamp = stamp;
+        same_path
     }
 }
 

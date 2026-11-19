@@ -118,6 +118,31 @@ fn detects_a_previously_missing_include() {
 }
 
 #[test]
+fn retargets_includes_after_same_length_config_edit_with_restored_mtime() {
+    let mut fixture = Fixture::new("include = ['old.toml']\n");
+    let path = fixture.loaded.path.as_ref().expect("path");
+    let modified = fs::metadata(path)
+        .expect("metadata")
+        .modified()
+        .expect("mtime");
+    fs::write(path, "include = ['new.toml']\n").expect("edit include path");
+    File::open(path)
+        .expect("file")
+        .set_times(FileTimes::new().set_modified(modified))
+        .expect("restore mtime");
+    assert_eq!(fixture.poll(), None);
+    assert_eq!(fixture.finish_debounce(), Some(AutoReloadTrigger::Config));
+
+    fs::write(fixture.root.join("old.toml"), "").expect("old include");
+    assert_eq!(fixture.poll(), None);
+    assert!(!fixture.watcher.is_pending());
+
+    fs::write(fixture.root.join("new.toml"), "").expect("new include");
+    assert_eq!(fixture.poll(), None);
+    assert_eq!(fixture.finish_debounce(), Some(AutoReloadTrigger::Include));
+}
+
+#[test]
 fn disabled_auto_reload_still_detects_config_reenabling() {
     let mut fixture = Fixture::new("[lock]\nauto_reload_config = false\n");
     fs::write(
