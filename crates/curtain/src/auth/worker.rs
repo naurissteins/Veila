@@ -27,21 +27,16 @@ pub(crate) fn submit_password(
                     // The spawning thread must live until authenticate has reaped its helper.
                     match veila_auth::authenticate(&user.name, secret, &mut conversation) {
                         Ok(verdict) if verdict.accepted => AuthEvent::Accepted { attempt_id },
-                        Ok(verdict) => AuthEvent::Rejected {
-                            attempt_id,
-                            retry_after_ms: None,
-                            failed_attempts: None,
-                            message: verdict.message,
-                        },
+                        Ok(verdict) => AuthEvent::rejected(attempt_id, verdict.message),
                         Err(error) => {
                             tracing::warn!(attempt_id, %error, "curtain PAM attempt failed");
-                            AuthEvent::Failed { attempt_id }
+                            AuthEvent::rejected(attempt_id, None)
                         }
                     }
                 }
                 _ => {
                     tracing::warn!(attempt_id, "failed to resolve the current uid for PAM");
-                    AuthEvent::Failed { attempt_id }
+                    AuthEvent::rejected(attempt_id, None)
                 }
             };
             let _ = conversation.sender.send(event);

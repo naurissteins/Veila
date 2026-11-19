@@ -44,25 +44,19 @@ impl Backend {
         let state = &mut self.0;
         match event {
             AuthEvent::Accepted { .. } => state.finish_success(),
-            AuthEvent::Rejected { attempt_id, .. } | AuthEvent::Failed { attempt_id } => {
-                let attempt_id = *attempt_id;
-                let message = match event {
-                    AuthEvent::Rejected { message, .. } => message.take(),
-                    _ => None,
-                };
+            AuthEvent::Rejected {
+                retry_after_ms,
+                failed_attempts,
+                ..
+            } => {
                 state.finish_failure(now);
-                let delay = match state.admit(now) {
+                *retry_after_ms = match state.admit(now) {
                     AuthAdmission::RateLimited(delay) => Some(duration_ms(delay)),
                     _ => None,
                 };
-                *event = AuthEvent::Rejected {
-                    attempt_id,
-                    retry_after_ms: delay,
-                    failed_attempts: Some(state.failed_attempts()),
-                    message,
-                };
+                *failed_attempts = Some(state.failed_attempts());
             }
-            _ => {}
+            AuthEvent::Challenge { .. } | AuthEvent::Notice { .. } => {}
         }
     }
 }

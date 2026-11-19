@@ -21,10 +21,17 @@ pub(crate) enum AuthEvent {
         failed_attempts: Option<u8>,
         message: Option<String>,
     },
-    /// the attempt produced no verdict; the helper failed, closed, or exceeded its deadline
-    Failed {
-        attempt_id: u64,
-    },
+}
+
+impl AuthEvent {
+    pub(crate) fn rejected(attempt_id: u64, message: Option<String>) -> Self {
+        Self::Rejected {
+            attempt_id,
+            retry_after_ms: None,
+            failed_attempts: None,
+            message,
+        }
+    }
 }
 
 pub(crate) enum ChallengeReply {

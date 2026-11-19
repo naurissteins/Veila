@@ -17,12 +17,7 @@ fn local_attempts_are_serial_and_failures_back_off_to_ceiling() {
     for (index, delay) in [100, 200, 400, 400].into_iter().enumerate() {
         backend.start_attempt();
         assert!(matches!(backend.admit(now), AuthAdmission::Busy));
-        let mut event = AuthEvent::Rejected {
-            attempt_id: 7,
-            retry_after_ms: None,
-            failed_attempts: None,
-            message: Some("Rejected".into()),
-        };
+        let mut event = AuthEvent::rejected(7, Some("Rejected".into()));
         backend.complete(&mut event, now);
         assert_eq!(
             event,
@@ -41,20 +36,21 @@ fn local_attempts_are_serial_and_failures_back_off_to_ceiling() {
 }
 
 #[test]
-fn helper_errors_count_as_failures_and_success_clears_backoff() {
+fn rejection_without_a_message_backs_off_and_success_clears_it() {
     let mut backend = local();
     let now = Instant::now();
     backend.start_attempt();
-    let mut event = AuthEvent::Failed { attempt_id: 9 };
+    let mut event = AuthEvent::rejected(9, None);
     backend.complete(&mut event, now);
-    assert!(matches!(
+    assert_eq!(
         event,
         AuthEvent::Rejected {
+            attempt_id: 9,
             retry_after_ms: Some(100),
             failed_attempts: Some(1),
-            ..
+            message: None,
         }
-    ));
+    );
     backend.complete(&mut AuthEvent::Accepted { attempt_id: 10 }, now);
     assert!(matches!(backend.admit(now), AuthAdmission::Allowed));
     assert_eq!(backend.failed_attempts(), Some(0));
