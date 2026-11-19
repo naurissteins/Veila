@@ -1,7 +1,10 @@
-use veila_common::WeatherUnit;
+use std::{fs, process::Command};
+
+use veila_common::{WeatherCondition, WeatherUnit};
 
 use super::{
-    GeocodingResponse, GeocodingResult, WeatherConfig, first_geocoding_result, weather_enabled,
+    GeocodingResponse, GeocodingResult, OpenMeteoCurrent, WeatherConfig, finish_snapshot,
+    first_geocoding_result, weather_enabled,
 };
 
 #[test]
@@ -43,6 +46,45 @@ fn returns_none_when_geocoding_has_no_results() {
             results: Vec::new(),
         }),
         None
+    );
+}
+
+#[test]
+fn fetched_snapshot_survives_an_unwritable_cache() {
+    const CHILD: &str = "VEILA_TEST_UNWRITABLE_WEATHER_CACHE";
+    if std::env::var_os(CHILD).is_some() {
+        let current = OpenMeteoCurrent {
+            temperature_2m: 17.6,
+            weather_code: 61,
+            is_day: 1,
+        };
+        let snapshot = finish_snapshot(current, 56.9496, 24.1052);
+        assert_eq!(
+            (snapshot.temperature_celsius, snapshot.condition),
+            (18, WeatherCondition::Rain)
+        );
+        return;
+    }
+
+    let cache_home =
+        std::env::temp_dir().join(format!("veila-weather-cache-{}", std::process::id()));
+    // A regular file cannot contain cache entries, even when the tests run as root.
+    fs::File::create_new(&cache_home).expect("block cache directory creation");
+    let output = Command::new(std::env::current_exe().expect("test executable"))
+        .args([
+            "--exact",
+            "services::weather::tests::fetched_snapshot_survives_an_unwritable_cache",
+        ])
+        .env(CHILD, "1")
+        .env("XDG_CACHE_HOME", &cache_home)
+        .output();
+    fs::remove_file(cache_home).expect("remove blocked cache path");
+    let output = output.expect("isolated cache test process");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success() && stdout.contains("1 passed"),
+        "{stdout}\n{}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }
 
