@@ -299,6 +299,31 @@ pub fn active_include_source_paths(explicit_config_path: Option<&Path>) -> Resul
     include::extract_paths(&value, path.parent())
 }
 
+#[derive(Debug)]
+pub struct ConfiguredTheme(String);
+
+impl ConfiguredTheme {
+    pub fn source_path(&self, config_dir: Option<&Path>) -> Option<PathBuf> {
+        resolve_theme_path(&self.0, config_dir).ok()
+    }
+}
+
+/// extracts watch targets from one config snapshot, ignoring invalid declarations independently
+pub fn config_watch_sources(
+    input: &str,
+    config_dir: Option<&Path>,
+) -> (Option<ConfiguredTheme>, Vec<PathBuf>) {
+    let Ok(value) = parse_toml_value(input) else {
+        return (None, Vec::new());
+    };
+    let theme = extract_theme_name(&value)
+        .ok()
+        .flatten()
+        .map(ConfiguredTheme);
+    let includes = include::extract_paths(&value, config_dir).unwrap_or_default();
+    (theme, includes)
+}
+
 fn config_dir_for_theme_lookup(explicit_config_path: Option<&Path>) -> Option<PathBuf> {
     explicit_config_path
         .and_then(Path::parent)
