@@ -165,19 +165,25 @@ fn fetch_snapshot(config: &WeatherConfig) -> Result<WeatherSnapshot> {
         .body_mut()
         .read_json()
         .context("failed to decode Open-Meteo response")?;
+    Ok(finish_snapshot(payload.current, latitude, longitude))
+}
+
+fn finish_snapshot(current: OpenMeteoCurrent, latitude: f64, longitude: f64) -> WeatherSnapshot {
     let snapshot = WeatherSnapshot {
-        temperature_celsius: payload.current.temperature_2m.round() as i16,
-        condition: map_weather_code(payload.current.weather_code, payload.current.is_day == 1),
+        temperature_celsius: current.temperature_2m.round() as i16,
+        condition: map_weather_code(current.weather_code, current.is_day == 1),
         fetched_at_unix: OffsetDateTime::now_utc().unix_timestamp(),
     };
 
-    store_cached_snapshot(config, &snapshot).context("failed to store cached weather snapshot")?;
+    if let Err(error) = store_cached_snapshot(latitude, longitude, &snapshot) {
+        tracing::warn!(error = %format_args!("{error:#}"), "failed to store cached weather snapshot");
+    }
     tracing::debug!(
         temperature_celsius = snapshot.temperature_celsius,
         ?snapshot.condition,
         "weather refresh succeeded"
     );
-    Ok(snapshot)
+    snapshot
 }
 
 fn weather_enabled(config: &WeatherConfig) -> bool {
@@ -205,8 +211,7 @@ fn load_cached_snapshot(config: &WeatherConfig) -> Result<Option<WeatherSnapshot
         .context("failed to parse cached weather snapshot")
 }
 
-fn store_cached_snapshot(config: &WeatherConfig, snapshot: &WeatherSnapshot) -> Result<()> {
-    let (latitude, longitude) = resolve_coordinates(config)?;
+fn store_cached_snapshot(latitude: f64, longitude: f64, snapshot: &WeatherSnapshot) -> Result<()> {
     let cache_path = cache_path_for_coordinates(latitude, longitude)?;
     let raw = serde_json::to_vec(snapshot).context("failed to encode cached weather snapshot")?;
     super::cache::write_private_file(&cache_path, &raw)
@@ -236,19 +241,21 @@ fn resolve_coordinates(config: &WeatherConfig) -> Result<(f64, f64)> {
         .normalized_location()
         .context("weather location is not configured")?;
 
-    if let Some((latitude, longitude)) = load_cached_coordinates(&location)? {
-        tracing::debug!(
-            %location,
-            latitude,
-            longitude,
-            "using cached geocoded weather coordinates"
-        );
-        return Ok((latitude, longitude));
+    match load_cached_coordinates(&location) {
+        Ok(Some((latitude, longitude))) => {
+            tracing::debug!(%location, latitude, longitude, "using cached geocoded weather coordinates");
+            return Ok((latitude, longitude));
+        }
+        Ok(None) => {}
+        Err(error) => {
+            tracing::warn!(error = %format_args!("{error:#}"), "failed to read cached geocoded weather coordinates");
+        }
     }
 
     let (latitude, longitude) = geocode_location(&location)?;
-    store_cached_coordinates(&location, latitude, longitude)
-        .context("failed to store cached geocoded weather coordinates")?;
+    if let Err(error) = store_cached_coordinates(&location, latitude, longitude) {
+        tracing::warn!(error = %format_args!("{error:#}"), "failed to store cached geocoded weather coordinates");
+    }
     tracing::debug!(%location, latitude, longitude, "resolved weather location via geocoding");
     Ok((latitude, longitude))
 }
