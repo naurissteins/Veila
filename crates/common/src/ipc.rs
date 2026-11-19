@@ -3,7 +3,7 @@ pub mod line;
 use serde::{Deserialize, Serialize};
 
 use crate::NowPlayingSnapshot;
-pub use line::{IPC_MAX_LINE_BYTES, LineAccumulator, LineProgress};
+pub use line::{LineAccumulator, LineProgress};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LockPowerStatusSnapshot {
