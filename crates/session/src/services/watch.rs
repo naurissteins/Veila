@@ -151,10 +151,6 @@ impl AutoReloadWatcher {
         }
     }
 
-    pub fn is_pending(&self) -> bool {
-        self.pending.is_some()
-    }
-
     fn sync_targets(
         &mut self,
         config_path_override: Option<&Path>,
@@ -268,23 +264,3 @@ struct WatchedFile {
 mod regression_tests;
 #[cfg(test)]
 mod tests;
-
-impl AutoReloadTrigger {
-    pub fn source(self) -> &'static str {
-        match self {
-            Self::Config => "config-change",
-            Self::Include => "include-change",
-            Self::Theme => "theme-change",
-            Self::Wallpaper => "wallpaper-change",
-        }
-    }
-
-    pub fn change_description(self) -> &'static str {
-        match self {
-            Self::Config => "config file change",
-            Self::Include => "include file change",
-            Self::Theme => "theme file change",
-            Self::Wallpaper => "wallpaper change",
-        }
-    }
-}

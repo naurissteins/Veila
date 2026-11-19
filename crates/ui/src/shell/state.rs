@@ -240,32 +240,6 @@ impl ShellState {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn new_with_placeholder_avatar_and_widgets(
-        theme: ShellTheme,
-        input_placeholder: Option<String>,
-        username_override: Option<String>,
-        username_enabled: bool,
-        weather_location: Option<String>,
-        weather_snapshot: Option<WeatherSnapshot>,
-        weather_unit: WeatherUnit,
-        battery_snapshot: Option<BatterySnapshot>,
-        now_playing_snapshot: Option<NowPlayingSnapshot>,
-    ) -> Self {
-        Self::new_with_avatar_and_widgets(
-            theme,
-            input_placeholder,
-            username_override,
-            username_enabled,
-            weather_location,
-            weather_snapshot,
-            weather_unit,
-            battery_snapshot,
-            now_playing_snapshot,
-            AvatarAsset::placeholder(),
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
     fn new_with_weather(
         theme: ShellTheme,
         input_placeholder: Option<String>,

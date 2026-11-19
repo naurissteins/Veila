@@ -1984,8 +1984,6 @@ dependencies = [
  "anyhow",
  "calloop",
  "nix",
- "serde",
- "serde_json",
  "smithay-client-toolkit",
  "time",
  "tracing",
@@ -1994,7 +1992,6 @@ dependencies = [
  "veila-renderer",
  "veila-ui",
  "wayland-protocols-wlr",
- "xkbcommon",
 ]
 
 [[package]]
@@ -2042,7 +2039,6 @@ dependencies = [
  "tracing",
  "veila-common",
  "veila-renderer",
- "zeroize",
 ]
 
 [[package]]

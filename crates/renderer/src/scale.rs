@@ -26,10 +26,6 @@ impl RenderScale {
         self.0.is_multiple_of(120)
     }
 
-    pub fn ceil_integer(self) -> u32 {
-        self.0.saturating_add(119) / 120
-    }
-
     pub fn apply_u32(self, value: u32) -> u32 {
         (u64::from(value) * u64::from(self.0) + 60)
             .saturating_div(120)

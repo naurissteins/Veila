@@ -10,7 +10,6 @@ repository.workspace = true
 
 [dependencies]
 veila-common = { path = "../common" }
-zeroize = { workspace = true }
 veila-renderer = { path = "../renderer" }
 time = { workspace = true }
 tracing = { workspace = true }
