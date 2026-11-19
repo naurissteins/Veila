@@ -15,24 +15,8 @@ impl ShellState {
         self.render_context().render_dynamic_backdrops(buffer);
     }
 
-    pub fn render_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_render_scale(scale, |context| context.render_backdrops(buffer));
-    }
-
-    pub fn render_static_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_render_scale(scale, |context| context.render_static_backdrops(buffer));
-    }
-
-    pub fn render_dynamic_backdrops_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_render_scale(scale, |context| context.render_dynamic_backdrops(buffer));
-    }
-
     pub fn render_layers(&self, buffer: &mut impl PixelBuffer) {
         self.render_context().render_layers(buffer);
-    }
-
-    pub fn render_layers_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_render_scale(scale, |context| context.render_layers(buffer));
     }
 
     pub fn render(&self, buffer: &mut impl PixelBuffer) {
@@ -47,10 +31,6 @@ impl ShellState {
         self.render_context().render_overlay(buffer);
     }
 
-    pub fn render_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_render_scale(scale, |context| context.render_overlay(buffer));
-    }
-
     pub fn render_static_overlay(&self, buffer: &mut impl PixelBuffer) {
         self.render_context().render_static_overlay(buffer);
     }
@@ -58,20 +38,6 @@ impl ShellState {
     pub fn render_static_overlay_without_layers(&self, buffer: &mut impl PixelBuffer) {
         self.render_context()
             .render_static_overlay_without_layers(buffer);
-    }
-
-    pub fn render_static_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.with_render_scale(scale, |context| context.render_static_overlay(buffer));
-    }
-
-    pub fn render_static_overlay_without_layers_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.with_render_scale(scale, |context| {
-            context.render_static_overlay_without_layers(buffer)
-        });
     }
 
     pub fn render_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
@@ -106,40 +72,14 @@ impl ShellState {
         self.render_context().render_emergency_overlay(buffer);
     }
 
-    pub fn render_emergency_overlay_scaled(&self, buffer: &mut impl PixelBuffer, scale: u32) {
-        self.emergency_render_context(scale)
-            .render_emergency_overlay(buffer);
-    }
-
     pub fn render_emergency_static_overlay(&self, buffer: &mut impl PixelBuffer) {
         self.render_context()
-            .render_emergency_static_overlay(buffer);
-    }
-
-    pub fn render_emergency_static_overlay_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.emergency_render_context(scale)
             .render_emergency_static_overlay(buffer);
     }
 
     pub fn render_emergency_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {
         self.render_context()
             .render_emergency_dynamic_overlay(buffer);
-    }
-
-    pub fn render_emergency_dynamic_overlay_scaled(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: u32,
-    ) {
-        self.emergency_render_context(scale)
-            .render_emergency_dynamic_overlay(buffer);
-    }
-    pub fn render_backdrops_at_scale(&self, buffer: &mut impl PixelBuffer, scale: RenderScale) {
-        self.with_pixel_scale(scale, |context| context.render_backdrops(buffer));
     }
 
     pub fn render_static_backdrops_at_scale(
@@ -150,24 +90,8 @@ impl ShellState {
         self.with_pixel_scale(scale, |context| context.render_static_backdrops(buffer));
     }
 
-    pub fn render_dynamic_backdrops_at_scale(
-        &self,
-        buffer: &mut impl PixelBuffer,
-        scale: RenderScale,
-    ) {
-        self.with_pixel_scale(scale, |context| context.render_dynamic_backdrops(buffer));
-    }
-
-    pub fn render_layers_at_scale(&self, buffer: &mut impl PixelBuffer, scale: RenderScale) {
-        self.with_pixel_scale(scale, |context| context.render_layers(buffer));
-    }
-
     pub fn render_at_scale(&self, buffer: &mut impl PixelBuffer, scale: RenderScale) {
         self.with_pixel_scale(scale, |context| context.render(buffer));
-    }
-
-    pub fn render_overlay_at_scale(&self, buffer: &mut impl PixelBuffer, scale: RenderScale) {
-        self.with_pixel_scale(scale, |context| context.render_overlay(buffer));
     }
 
     pub fn render_static_overlay_at_scale(
@@ -222,10 +146,5 @@ impl ShellState {
         widget: WidgetKind,
     ) {
         self.with_pixel_scale(scale, |context| context.render_widget(buffer, widget));
-    }
-
-    pub fn render_emergency_at_scale(&self, buffer: &mut impl PixelBuffer, scale: RenderScale) {
-        self.emergency_render_context_at(scale)
-            .render_emergency(buffer);
     }
 }
