@@ -35,7 +35,7 @@ impl CurtainApp {
             Ok(sender) => self.auth_reply_sender = Some(sender),
             Err(error) => {
                 tracing::warn!(attempt_id, %error, "failed to start curtain PAM worker");
-                self.handle_auth_event(AuthEvent::Failed { attempt_id }, queue);
+                self.handle_auth_event(AuthEvent::rejected(attempt_id, None), queue);
             }
         }
     }
@@ -49,8 +49,7 @@ impl CurtainApp {
             AuthEvent::Challenge { attempt_id, .. }
             | AuthEvent::Notice { attempt_id, .. }
             | AuthEvent::Accepted { attempt_id }
-            | AuthEvent::Rejected { attempt_id, .. }
-            | AuthEvent::Failed { attempt_id } => *attempt_id,
+            | AuthEvent::Rejected { attempt_id, .. } => *attempt_id,
         };
         if self.auth_attempt_id != Some(event_attempt_id) {
             return;
@@ -97,16 +96,6 @@ impl CurtainApp {
                     failed_attempts,
                     message,
                 );
-                self.render_all_surfaces(queue_handle);
-            }
-            AuthEvent::Failed { attempt_id } => {
-                self.auth_in_flight = false;
-                self.clear_auth_exchange();
-                tracing::warn!(
-                    attempt_id,
-                    "authentication attempt produced no verdict; releasing the input guard"
-                );
-                self.ui_shell.authentication_rejected(None, None);
                 self.render_all_surfaces(queue_handle);
             }
         }
