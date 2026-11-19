@@ -58,10 +58,6 @@ impl AuthState {
         }
     }
 
-    pub fn after_recovery(policy: AuthPolicy, now: Instant) -> Self {
-        Self::with_initial_backoff(policy, now, policy.max_delay)
-    }
-
     /// Preserves a respawn delay and resumes failures at the policy ceiling.
     pub fn with_initial_backoff(policy: AuthPolicy, now: Instant, delay: Duration) -> Self {
         if delay.is_zero() {
@@ -87,14 +83,6 @@ impl AuthState {
 
     pub fn failed_attempts(&self) -> u8 {
         self.failed_attempts
-    }
-
-    pub fn in_flight(&self) -> bool {
-        self.in_flight
-    }
-
-    pub fn next_failed_attempts(&self) -> u8 {
-        self.failed_attempts.saturating_add(1)
     }
 
     pub fn admit(&self, now: Instant) -> AuthAdmission {
@@ -191,34 +179,11 @@ mod tests {
     }
 
     #[test]
-    fn recovery_does_not_reset_password_backoff() {
-        let policy = AuthPolicy::new(Duration::from_secs(1), Duration::from_secs(12));
-        let now = Instant::now();
-        let mut state = AuthState::after_recovery(policy, now);
-
-        assert_eq!(state.failed_attempts(), 0);
-        assert_eq!(state.next_failed_attempts(), 1);
-        assert!(matches!(
-            state.admit(now + Duration::from_secs(11)),
-            AuthAdmission::RateLimited(_)
-        ));
-        assert!(matches!(
-            state.admit(now + Duration::from_secs(12)),
-            AuthAdmission::Allowed
-        ));
-        state.start_attempt();
-        state.finish_failure(now + Duration::from_secs(12));
-        assert_eq!(state.failed_attempts(), 1);
-        assert!(matches!(
-            state.admit(now + Duration::from_secs(13)),
-            AuthAdmission::RateLimited(_)
-        ));
-    }
-    #[test]
     fn respawn_preserves_the_supplied_delay_and_future_failure_ceiling() {
         let policy = AuthPolicy::new(Duration::from_millis(100), Duration::from_secs(2));
         let now = Instant::now();
         let mut state = AuthState::with_initial_backoff(policy, now, Duration::from_millis(500));
+        assert_eq!(state.failed_attempts(), 0);
         assert!(matches!(
             state.admit(now + Duration::from_millis(499)),
             AuthAdmission::RateLimited(_)
@@ -229,6 +194,7 @@ mod tests {
         ));
         state.start_attempt();
         state.finish_failure(now + Duration::from_millis(500));
+        assert_eq!(state.failed_attempts(), 1);
         assert!(matches!(
             state.admit(now + Duration::from_millis(2500)),
             AuthAdmission::Allowed

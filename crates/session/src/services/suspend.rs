@@ -1,9 +1,6 @@
 use std::time::{Duration, Instant};
 
-use anyhow::{Context, Result};
 use veila_common::ipc::LockPowerStatusSnapshot;
-
-use crate::adapters::logind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SuspendSkipReason {
@@ -175,10 +172,6 @@ impl LockedSuspendState {
     }
 }
 
-pub fn suspend_delay_seconds(config: &veila_common::AppConfig) -> Option<u64> {
-    config.lock.suspend_seconds.filter(|seconds| *seconds > 0)
-}
-
 fn remaining_seconds(duration: Duration) -> u64 {
     let seconds = duration.as_secs();
     if duration.subsec_nanos() == 0 {
@@ -186,16 +179,6 @@ fn remaining_seconds(duration: Duration) -> u64 {
     } else {
         seconds.saturating_add(1)
     }
-}
-
-pub async fn request_system_suspend(connection: &zbus::Connection) -> Result<()> {
-    let manager = logind::ManagerProxy::new(connection)
-        .await
-        .context("failed to create logind manager proxy for suspend")?;
-    manager
-        .suspend(false)
-        .await
-        .context("failed to request system suspend through logind")
 }
 
 #[cfg(test)]

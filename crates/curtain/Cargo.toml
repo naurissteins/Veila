@@ -17,9 +17,6 @@ anyhow = { workspace = true }
 calloop = { workspace = true }
 nix = { workspace = true }
 smithay-client-toolkit = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 wayland-protocols-wlr = { workspace = true }
-xkbcommon = { workspace = true }

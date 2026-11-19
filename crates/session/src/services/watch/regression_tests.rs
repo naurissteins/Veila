@@ -56,17 +56,17 @@ impl Drop for Fixture {
 }
 
 #[test]
-fn pending_reload_stays_urgent_until_the_edit_settles() {
+fn config_reload_stays_pending_until_debounce_ends() {
     let mut fixture = Fixture::new("[lock]\nauto_reload_config = true\n");
-    assert!(!fixture.watcher.is_pending());
+    assert_eq!(fixture.watcher.pending, None);
     let path = fixture.loaded.path.as_ref().expect("path");
     fs::write(path, "[lock]\nauto_reload_config = false\n").expect("edit");
     assert_eq!(fixture.poll(), None);
-    assert!(fixture.watcher.is_pending());
+    assert_eq!(fixture.watcher.pending, Some(AutoReloadTrigger::Config));
     assert_eq!(fixture.poll(), None);
-    assert!(fixture.watcher.is_pending());
+    assert_eq!(fixture.watcher.pending, Some(AutoReloadTrigger::Config));
     assert_eq!(fixture.finish_debounce(), Some(AutoReloadTrigger::Config));
-    assert!(!fixture.watcher.is_pending());
+    assert_eq!(fixture.watcher.pending, None);
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn retargets_includes_after_same_length_config_edit_with_restored_mtime() {
 
     fs::write(fixture.root.join("old.toml"), "").expect("old include");
     assert_eq!(fixture.poll(), None);
-    assert!(!fixture.watcher.is_pending());
+    assert_eq!(fixture.finish_debounce(), None);
 
     fs::write(fixture.root.join("new.toml"), "").expect("new include");
     assert_eq!(fixture.poll(), None);

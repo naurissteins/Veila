@@ -53,25 +53,6 @@ pub fn helper_command() -> Command {
     command
 }
 
-pub fn report_service_selection() {
-    #[cfg(debug_assertions)]
-    if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
-        tracing::warn!(service, "debug PAM service override is active");
-        return;
-    }
-
-    match service::selected_service() {
-        Some(selected) if selected.fallback => tracing::warn!(
-            service = selected.name,
-            "Veila PAM service is missing; using fallback"
-        ),
-        Some(_) => {}
-        None => tracing::error!(
-            "no Veila PAM service or supported fallback exists in /etc/pam.d; password authentication is unavailable"
-        ),
-    }
-}
-
 fn pam_service() -> Option<String> {
     #[cfg(debug_assertions)]
     if let Ok(service) = std::env::var("VEILA_PAM_SERVICE") {
