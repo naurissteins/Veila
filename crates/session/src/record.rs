@@ -1,12 +1,16 @@
 use anyhow::{Context, Result, bail};
 use nix::unistd::Uid;
 use serde::{Deserialize, Serialize};
+use siphasher::sip::SipHasher13;
 use std::{
     fs::{self, File, OpenOptions},
-    hash::{DefaultHasher, Hash, Hasher},
+    hash::Hasher,
     io::{Read, Seek, SeekFrom, Write},
-    os::unix::fs::{MetadataExt, OpenOptionsExt},
-    path::PathBuf,
+    os::unix::{
+        ffi::OsStrExt,
+        fs::{MetadataExt, OpenOptionsExt},
+    },
+    path::{Component, Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -136,9 +140,7 @@ pub(super) fn open_record(runtime: PathBuf, display: PathBuf, kind: &str) -> Res
         runtime.join(display)
     };
     let display = fs::canonicalize(&display).unwrap_or(display);
-    let mut hash = DefaultHasher::new();
-    display.hash(&mut hash);
-    let path = directory.join(format!("{kind}-{:016x}", hash.finish()));
+    let path = directory.join(format!("{kind}-{:016x}", display_record_id(&display)));
     let file = OpenOptions::new()
         .create(true)
         .read(true)
@@ -155,6 +157,22 @@ pub(super) fn open_record(runtime: PathBuf, display: PathBuf, kind: &str) -> Res
         bail!("invalid lock record file");
     }
     Ok(file)
+}
+
+fn display_record_id(display: &Path) -> u64 {
+    // stop the Unix path encoding and zero-key SipHash-1-3 used by existing records
+    let mut hash = SipHasher13::new();
+    let mut component_sizes = 0_usize;
+    for component in display
+        .components()
+        .filter(|part| *part != Component::RootDir)
+    {
+        let bytes = component.as_os_str().as_bytes();
+        hash.write(bytes);
+        component_sizes = component_sizes.wrapping_add(bytes.len()).rotate_right(2);
+    }
+    hash.write(&component_sizes.to_ne_bytes());
+    hash.finish()
 }
 
 pub(super) fn environment() -> Result<(PathBuf, PathBuf)> {
