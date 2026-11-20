@@ -38,26 +38,29 @@ impl CurtainApp {
         self.background_render_started = true;
         self.generated_pending_sizes.clear();
         for spec in specs {
-            spawn_loader(
+            if let Err(error) = spawn_loader(
                 spec.path,
                 self.background_color,
                 self.background_treatment,
                 spec.sizes,
                 self.backdrop_job(),
                 self.background_sender.clone(),
-            );
+            ) {
+                tracing::warn!(%error, "failed to start deferred wallpaper worker");
+            }
         }
         if let Some(generated) = self.background_generated
             && !generated_sizes.is_empty()
-        {
-            spawn_generated_loader(
+            && let Err(error) = spawn_generated_loader(
                 generated,
                 self.background_color,
                 self.background_treatment,
                 generated_sizes,
                 self.backdrop_job(),
                 self.background_sender.clone(),
-            );
+            )
+        {
+            tracing::warn!(%error, "failed to start generated background worker");
         }
         self.preload_next_slideshow_background();
     }
@@ -108,13 +111,15 @@ impl CurtainApp {
             return;
         }
 
-        spawn_preloader(
+        if let Err(error) = spawn_preloader(
             path,
             self.background_color,
             self.background_treatment,
             sizes,
             self.backdrop_job(),
-        );
+        ) {
+            tracing::debug!(%error, "failed to start slideshow preload worker");
+        }
     }
 
     fn backdrop_job(&self) -> cache::BackdropJob {
