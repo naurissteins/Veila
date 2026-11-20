@@ -191,8 +191,13 @@ impl CurtainApp {
             return;
         }
 
-        self.avatar_load_started = true;
-        spawn_avatar_loader(self.avatar_path.clone(), self.background_sender.clone());
+        match spawn_avatar_loader(self.avatar_path.clone(), self.background_sender.clone()) {
+            Ok(()) => self.avatar_load_started = true,
+            Err(error) => {
+                self.avatar_load_needed = false;
+                tracing::warn!(%error, "failed to start avatar worker");
+            }
+        }
     }
 
     pub(crate) fn maybe_start_artwork_load(&mut self) {
@@ -226,13 +231,17 @@ impl CurtainApp {
             .max()
             .unwrap_or(160);
         let snapshot = self.now_playing_snapshot.clone();
-        self.artwork_in_flight = Some((path.clone(), snapshot.clone()));
         self.artwork_last_attempt = Some((path.clone(), Instant::now()));
-        spawn_artwork_loader(
-            path,
-            snapshot,
+        match spawn_artwork_loader(
+            path.clone(),
+            snapshot.clone(),
             max_dimension,
             self.background_sender.clone(),
-        );
+        ) {
+            Ok(()) => self.artwork_in_flight = Some((path, snapshot)),
+            Err(error) => {
+                tracing::warn!(%error, path = %path.display(), "failed to start artwork worker")
+            }
+        }
     }
 }

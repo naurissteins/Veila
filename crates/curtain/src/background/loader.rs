@@ -1,5 +1,6 @@
 use super::cache::BackdropJob;
 use std::{
+    io,
     path::{Path, PathBuf},
     thread,
     time::Instant,
@@ -59,8 +60,8 @@ pub(crate) fn spawn_loader(
     sizes: Vec<FrameSize>,
     backdrops: BackdropJob,
     sender: Sender<BackgroundEvent>,
-) {
-    thread::spawn(move || {
+) -> io::Result<()> {
+    let load = move || {
         let unique_sizes = unique_sizes(&sizes);
         drop(sizes);
         let cached_started_at = Instant::now();
@@ -110,7 +111,11 @@ pub(crate) fn spawn_loader(
                 });
             }
         }
-    });
+    };
+    thread::Builder::new()
+        .name("veila-wallpaper".into())
+        .spawn(load)
+        .map(drop)
 }
 
 pub(crate) fn spawn_generated_loader(
@@ -120,8 +125,8 @@ pub(crate) fn spawn_generated_loader(
     sizes: Vec<FrameSize>,
     backdrops: BackdropJob,
     sender: Sender<BackgroundEvent>,
-) {
-    thread::spawn(move || {
+) -> io::Result<()> {
+    let load = move || {
         let started_at = Instant::now();
         let asset = match BackgroundAsset::load(None, fallback, Some(generated), treatment) {
             Ok(asset) => asset,
@@ -170,19 +175,29 @@ pub(crate) fn spawn_generated_loader(
             });
         }
         backdrops.store_generated(generated, treatment, buffers);
-    });
+    };
+    thread::Builder::new()
+        .name("veila-generated".into())
+        .spawn(load)
+        .map(drop)
 }
 
-pub(crate) fn spawn_avatar_loader(path: Option<PathBuf>, sender: Sender<BackgroundEvent>) {
-    thread::spawn(move || {
-        let started_at = Instant::now();
-        let asset = veila_ui::load_avatar(path.clone());
-        let _ = sender.send(BackgroundEvent::AvatarReady {
-            path,
-            asset,
-            elapsed_ms: started_at.elapsed().as_millis(),
-        });
-    });
+pub(crate) fn spawn_avatar_loader(
+    path: Option<PathBuf>,
+    sender: Sender<BackgroundEvent>,
+) -> io::Result<()> {
+    thread::Builder::new()
+        .name("veila-avatar".into())
+        .spawn(move || {
+            let started_at = Instant::now();
+            let asset = veila_ui::load_avatar(path.clone());
+            let _ = sender.send(BackgroundEvent::AvatarReady {
+                path,
+                asset,
+                elapsed_ms: started_at.elapsed().as_millis(),
+            });
+        })
+        .map(drop)
 }
 
 pub(crate) fn spawn_artwork_loader(
@@ -190,8 +205,8 @@ pub(crate) fn spawn_artwork_loader(
     snapshot: Option<NowPlayingSnapshot>,
     max_dimension: u32,
     sender: Sender<BackgroundEvent>,
-) {
-    thread::spawn(move || {
+) -> io::Result<()> {
+    let load = move || {
         let started_at = Instant::now();
         let asset = match CoverArtAsset::load(&path, max_dimension) {
             Ok(asset) => Some(asset),
@@ -206,7 +221,11 @@ pub(crate) fn spawn_artwork_loader(
             asset,
             elapsed_ms: started_at.elapsed().as_millis(),
         });
-    });
+    };
+    thread::Builder::new()
+        .name("veila-artwork".into())
+        .spawn(load)
+        .map(drop)
 }
 
 pub(crate) fn spawn_preloader(
@@ -215,8 +234,8 @@ pub(crate) fn spawn_preloader(
     treatment: BackgroundTreatment,
     sizes: Vec<FrameSize>,
     backdrops: BackdropJob,
-) {
-    thread::spawn(move || {
+) -> io::Result<()> {
+    let preload = move || {
         let unique_sizes = unique_sizes(&sizes);
         drop(sizes);
         let cached_sizes: Vec<_> = load_cached_buffers(&path, fallback, treatment, &unique_sizes)
@@ -242,7 +261,11 @@ pub(crate) fn spawn_preloader(
                 );
             }
         }
-    });
+    };
+    thread::Builder::new()
+        .name("veila-preload".into())
+        .spawn(preload)
+        .map(drop)
 }
 
 fn load_buffers(
