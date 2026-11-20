@@ -78,6 +78,7 @@ impl SeatHandler for CurtainApp {
             && let Some(keyboard) = self.keyboard.take()
         {
             tracing::warn!("keyboard capability removed");
+            self.wake_key_release_pending = false;
             keyboard.release();
         }
 
@@ -114,6 +115,8 @@ impl KeyboardHandler for CurtainApp {
         surface: &wl_surface::WlSurface,
         _serial: u32,
     ) {
+        // Wayland clears the pressed keys on leave without sending their releases
+        self.wake_key_release_pending = false;
         if self.surface_has_focus_target(surface) {
             self.stop_backspace_repeat();
             self.set_keyboard_focus(false, queue_handle);
