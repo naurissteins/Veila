@@ -144,6 +144,39 @@ fn submitting_moves_password_out_of_the_shell() {
 }
 
 #[test]
+fn clearing_auth_input_removes_typed_text_without_resetting_backoff() {
+    let mut shell = ShellState::default();
+    shell.authentication_rejected(Some(5_000), Some(1));
+    shell.handle_key(ShellKey::Character('x'));
+    shell.handle_key(ShellKey::SelectAll);
+    shell.reveal_secret = true;
+    shell.reveal_toggle_pressed = true;
+
+    assert!(shell.clear_auth_input());
+    assert!(shell.secret.is_empty());
+    assert!(!shell.secret_selected);
+    assert!(!shell.reveal_secret && !shell.reveal_toggle_pressed);
+    assert!(matches!(shell.status, ShellStatus::Rejected { .. }));
+    assert_eq!(shell.handle_key(ShellKey::Enter), ShellAction::None);
+    assert!(!shell.clear_auth_input());
+}
+
+#[test]
+fn clearing_auth_input_removes_pending_mask_without_ending_authentication() {
+    let mut shell = ShellState::default();
+    shell.handle_key(ShellKey::Character('x'));
+    assert!(matches!(
+        shell.handle_key(ShellKey::Enter),
+        ShellAction::Submit(_)
+    ));
+    assert_eq!(shell.displayed_secret_len(), 1);
+
+    assert!(shell.clear_auth_input());
+    assert_eq!(shell.displayed_secret_len(), 0);
+    assert!(matches!(shell.status, ShellStatus::Pending { .. }));
+}
+
+#[test]
 fn select_all_then_typing_replaces_secret() {
     let mut shell = ShellState::default();
 

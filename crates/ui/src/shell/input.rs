@@ -128,6 +128,27 @@ impl ShellState {
         self.status = ShellStatus::Idle;
     }
 
+    pub fn clear_auth_input(&mut self) -> bool {
+        let was_empty = self.secret.is_empty();
+        if was_empty
+            && self.submitted_secret_len == 0
+            && !self.input_limit_reached
+            && !self.secret_selected
+            && !self.reveal_secret
+            && !self.reveal_toggle_pressed
+        {
+            return false;
+        }
+
+        self.clear_secret();
+        if !self.set_secret_selected(false) {
+            self.refresh_on_secret_empty_transition(was_empty);
+        }
+        self.reveal_secret = false;
+        self.reveal_toggle_pressed = false;
+        true
+    }
+
     pub fn authentication_challenge(&mut self, text: String, echo: bool) {
         self.clear_secret();
         self.set_secret_selected(false);

@@ -31,9 +31,12 @@ impl CurtainApp {
             }
             ControlEvent::ArmResumeInputGuard => {
                 self.resume_input.arm();
+                self.clear_auth_input_for_sleep(queue_handle);
             }
             ControlEvent::MarkResumed => {
                 self.resume_input.mark_resumed();
+                // input can arrive between arming the guard and entering sleep
+                self.clear_auth_input_for_sleep(queue_handle);
             }
             ControlEvent::UpdateNowPlaying { snapshot } => {
                 tracing::debug!(
