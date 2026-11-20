@@ -211,6 +211,14 @@ impl CurtainApp {
         self.backspace_repeat = None;
     }
 
+    pub(super) fn clear_auth_input_for_sleep(&mut self, queue_handle: &QueueHandle<Self>) {
+        self.stop_backspace_repeat();
+        let revision_before = self.ui_shell.static_scene_revision();
+        if self.ui_shell.clear_auth_input() {
+            self.render_auth_change(revision_before, queue_handle);
+        }
+    }
+
     pub(crate) fn advance_input_repeat(&mut self, queue_handle: &QueueHandle<Self>) {
         let Some(backspace_repeat) = self.backspace_repeat.as_mut() else {
             return;
