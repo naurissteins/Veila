@@ -1,7 +1,8 @@
+use anyhow::Context;
 use std::time::Duration;
-
 use tokio::sync::watch;
 use veila_common::{BatteryConfig, BatterySnapshot};
+use zbus::Connection;
 
 use crate::adapters::power::{BatteryReading, fetch_battery_reading};
 
@@ -64,11 +65,12 @@ async fn run_battery_service(
 ) {
     let mut config = config_rx.borrow().clone();
     let mut needs_refresh = true;
+    let mut connection = None;
 
     loop {
         if config.battery.enabled || config.read_power_source {
             if needs_refresh {
-                snapshot_tx.send_replace(fetch_snapshot_async(&config).await);
+                snapshot_tx.send_replace(fetch_snapshot_async(&config, &mut connection).await);
             }
 
             let refresh = tokio::time::sleep(refresh_interval(&config.battery));
@@ -88,6 +90,7 @@ async fn run_battery_service(
                 }
             }
         } else {
+            connection = None;
             snapshot_tx.send_replace(None);
             if config_rx.changed().await.is_err() {
                 break;
@@ -98,8 +101,12 @@ async fn run_battery_service(
     }
 }
 
-async fn fetch_snapshot_async(config: &BatteryServiceConfig) -> Option<BatteryReading> {
+async fn fetch_snapshot_async(
+    config: &BatteryServiceConfig,
+    connection: &mut Option<Connection>,
+) -> Option<BatteryReading> {
     if let Some(reading) = mock_reading(&config.battery) {
+        *connection = None;
         tracing::debug!(
             percent = reading.snapshot.percent,
             charging = reading.snapshot.charging,
@@ -108,7 +115,20 @@ async fn fetch_snapshot_async(config: &BatteryServiceConfig) -> Option<BatteryRe
         return Some(reading);
     }
 
-    match fetch_battery_reading(config.read_power_source).await {
+    let result = async {
+        let connection = match connection {
+            Some(connection) => connection,
+            None => connection.insert(
+                Connection::system()
+                    .await
+                    .context("failed to connect to the system D-Bus for battery state")?,
+            ),
+        };
+        fetch_battery_reading(connection, config.read_power_source).await
+    }
+    .await;
+
+    match result {
         Ok(Some(reading)) => {
             tracing::debug!(
                 percent = reading.snapshot.percent,
@@ -123,6 +143,7 @@ async fn fetch_snapshot_async(config: &BatteryServiceConfig) -> Option<BatteryRe
             None
         }
         Err(error) => {
+            *connection = None;
             tracing::warn!("battery refresh failed: {error:#}");
             None
         }

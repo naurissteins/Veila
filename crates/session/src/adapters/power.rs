@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use zbus::{OwnedObjectPath, proxy};
+use zbus::{Connection, OwnedObjectPath, proxy};
 
 use veila_common::BatterySnapshot;
 
@@ -39,19 +39,17 @@ trait PowerDevice {
 }
 
 pub(crate) async fn fetch_battery_reading(
+    connection: &Connection,
     read_power_source: bool,
 ) -> Result<Option<BatteryReading>> {
-    let connection = zbus::Connection::system()
-        .await
-        .context("failed to connect to the system D-Bus for battery state")?;
-    let manager = PowerManagerProxy::new(&connection)
+    let manager = PowerManagerProxy::new(connection)
         .await
         .context("failed to create UPower manager proxy")?;
     let device_path = manager
         .get_display_device()
         .await
         .context("failed to resolve UPower display device")?;
-    let device = PowerDeviceProxy::builder(&connection)
+    let device = PowerDeviceProxy::builder(connection)
         .path(device_path.as_str())
         .build()
         .await
