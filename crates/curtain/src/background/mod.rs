@@ -187,7 +187,11 @@ impl CurtainApp {
     }
 
     pub(crate) fn maybe_start_avatar_load(&mut self) {
-        if !self.avatar_load_needed || self.avatar_load_started || !self.ready_notified {
+        if self.ui_shell.emergency_active()
+            || !self.avatar_load_needed
+            || self.avatar_load_started
+            || !self.ready_notified
+        {
             return;
         }
 
@@ -201,7 +205,10 @@ impl CurtainApp {
     }
 
     pub(crate) fn maybe_start_artwork_load(&mut self) {
-        if !self.session_locked || self.artwork_in_flight.is_some() {
+        if self.ui_shell.emergency_active()
+            || !self.session_locked
+            || self.artwork_in_flight.is_some()
+        {
             return;
         }
         let Some(path) = self

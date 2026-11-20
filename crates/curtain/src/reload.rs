@@ -1,6 +1,6 @@
 use anyhow::Context;
 use smithay_client_toolkit::reexports::client::QueueHandle;
-use veila_common::AppConfig;
+use veila_common::{AppConfig, config::LockConfig};
 use veila_renderer::background::BackgroundAsset;
 use veila_ui::{
     ShellTheme,
@@ -18,49 +18,84 @@ use crate::{
 
 impl CurtainApp {
     pub(crate) fn apply_config(&mut self, config: AppConfig, queue_handle: &QueueHandle<Self>) {
-        let theme = ShellTheme::from_config(&config);
-        let background_asset = match BackgroundAsset::load(
+        if !self.ui_shell.emergency_active()
+            && let Err(error) = self.reload_visuals(&config)
+        {
+            tracing::warn!("failed to reload curtain fallback background: {error:#}");
+            return;
+        }
+
+        self.authentication.update_policy(&config.lock);
+        self.hide_cursor = config.lock.hide_cursor;
+        self.set_configured_pointer_cursor(&self.connection);
+        self.allow_empty_password = config.lock.allow_empty_password;
+        self.lock_wait_timeout =
+            std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
+        self.reload_output_power(&config.lock, queue_handle);
+        if let Some(supervisor) = &mut self.supervisor {
+            supervisor.config = config;
+        }
+
+        tracing::info!("applied curtain config");
+        if !self.ui_shell.emergency_active() {
+            self.reload_fonts();
+        }
+        self.render_all_surfaces(queue_handle);
+        self.maybe_power_off_secondary_outputs();
+        self.maybe_start_background_render();
+        self.maybe_start_artwork_load();
+    }
+
+    fn reload_visuals(&mut self, config: &AppConfig) -> anyhow::Result<()> {
+        let theme = ShellTheme::from_config(config);
+        let background_generated = background_generated(&config.background);
+        let background_treatment = background_treatment(&config.background);
+        let background_asset = BackgroundAsset::load(
             None,
             theme.background,
-            background_generated(&config.background),
-            background_treatment(&config.background),
+            background_generated,
+            background_treatment,
         )
-        .context("failed to prepare fallback background")
-        {
-            Ok(asset) => asset,
-            Err(error) => {
-                tracing::warn!("failed to reload curtain fallback background: {error:#}");
-                return;
-            }
-        };
-        let background_generated = background_generated(&config.background);
+        .context("failed to prepare fallback background")?;
         let slideshow = BackgroundSlideshow::load(&config.background, None);
         let background_path = slideshow
             .as_ref()
             .map(|slideshow| slideshow.current_path().to_path_buf())
             .or_else(|| config.background.resolved_path());
 
-        if let Some(supervisor) = &mut self.supervisor {
-            supervisor.config = config.clone();
-        }
-        self.authentication.update_policy(&config.lock);
         self.background_color = theme.background;
         self.background_asset = background_asset;
         self.background_generated = background_generated;
-        self.background_treatment = background_treatment(&config.background);
-        self.background_path = background_path.clone();
+        self.background_treatment = background_treatment;
+        self.background_path = background_path;
         self.background_outputs = config.background.outputs.clone();
         self.slideshow = slideshow;
         self.ui_output_mode = config.visuals.output_ui_mode();
         self.ui_output_name = config.visuals.ui_output_name().map(str::to_owned);
-        self.hide_cursor = config.lock.hide_cursor;
-        self.set_configured_pointer_cursor(&self.connection);
-        self.allow_empty_password = config.lock.allow_empty_password;
         self.power_off_secondary_outputs = config.lock.power_off_secondary_outputs;
-        self.lock_wait_timeout =
-            std::time::Duration::from_secs(config.lock.acquire_timeout_seconds.max(1));
+        let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
+        self.avatar_path = avatar_path.clone();
+        self.avatar_load_started = false;
+        self.avatar_load_needed = false;
+        self.artwork_last_attempt = None;
+        self.ui_shell.apply_theme_with_username_and_weather(
+            theme,
+            Some(config.visuals.input_placeholder()),
+            config.visuals.username_text().map(str::to_owned),
+            avatar_path,
+            config.visuals.username_enabled(),
+            effective_weather_location(config),
+            effective_weather_snapshot(config, self.weather_snapshot.clone()),
+            config.weather.unit,
+            effective_battery_snapshot(config, self.battery_snapshot.clone()),
+            self.now_playing_snapshot.clone(),
+        );
+        self.reset_background_source_state();
+        Ok(())
+    }
+
+    fn reload_output_power(&mut self, config: &LockConfig, queue_handle: &QueueHandle<Self>) {
         let screen_off_delay = config
-            .lock
             .screen_off_seconds
             .filter(|seconds| *seconds > 0)
             .map(std::time::Duration::from_secs);
@@ -70,7 +105,7 @@ impl CurtainApp {
             .set_delay(screen_off_delay, std::time::Instant::now());
         if self.output_power_control_enabled() && self.output_power_manager.get().is_err() {
             tracing::warn!(
-                screen_off_seconds = config.lock.screen_off_seconds,
+                screen_off_seconds = config.screen_off_seconds,
                 power_off_secondary_outputs = self.power_off_secondary_outputs,
                 "output power management is unavailable; locked output power features are disabled"
             );
@@ -100,33 +135,8 @@ impl CurtainApp {
         if should_wake_secondary_outputs {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
-        let avatar_path = config.avatar_image_path().map(std::path::Path::to_path_buf);
-        self.avatar_path = avatar_path.clone();
-        self.avatar_load_started = false;
-        self.avatar_load_needed = false;
-        self.artwork_last_attempt = None;
-        self.ui_shell.apply_theme_with_username_and_weather(
-            theme,
-            Some(config.visuals.input_placeholder()),
-            config.visuals.username_text().map(str::to_owned),
-            avatar_path,
-            config.visuals.username_enabled(),
-            effective_weather_location(&config),
-            effective_weather_snapshot(&config, self.weather_snapshot.clone()),
-            config.weather.unit,
-            effective_battery_snapshot(&config, self.battery_snapshot.clone()),
-            self.now_playing_snapshot.clone(),
-        );
-        self.reset_background_source_state();
         if should_wake_outputs {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
-
-        tracing::info!("applied curtain config");
-        self.reload_fonts();
-        self.render_all_surfaces(queue_handle);
-        self.maybe_power_off_secondary_outputs();
-        self.maybe_start_background_render();
-        self.maybe_start_artwork_load();
     }
 }
