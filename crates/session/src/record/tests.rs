@@ -14,6 +14,23 @@ fn root() -> PathBuf {
     fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).expect("mode");
     root
 }
+
+#[cfg(all(target_pointer_width = "64", target_endian = "little"))]
+#[test]
+fn display_ids_match_existing_record_filenames() {
+    for (path, expected) in [
+        ("/run/user/1000/wayland-0", 0xa71c_b712_5156_89f1),
+        ("/run/user/1000/./wayland-0//", 0xa71c_b712_5156_89f1),
+        ("/tmp/one/two", 0x1903_87a9_fe33_dd71),
+        ("/tmp/onetwo", 0xe34d_e21a_2b68_f680),
+        (".", 0xd871_ac6a_1fbb_80e5),
+    ] {
+        assert_eq!(display_record_id(Path::new(path)), expected, "{path}");
+    }
+    let non_utf8 = Path::new(std::ffi::OsStr::from_bytes(b"/tmp/wayland-\xff"));
+    assert_eq!(display_record_id(non_utf8), 0xe5d7_ee2a_328d_9a97);
+}
+
 #[test]
 fn inherited_file_keeps_record_locked_after_supervisor_drop() {
     let root = root();

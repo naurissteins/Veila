@@ -2020,6 +2020,7 @@ dependencies = [
  "nix",
  "serde",
  "serde_json",
+ "siphasher",
  "smithay-client-toolkit",
  "time",
  "tokio",
