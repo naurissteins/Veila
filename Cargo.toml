@@ -55,7 +55,7 @@ image = { version = "0.25", default-features = false, features = [
     "webp",
 ] }
 memmap2 = "0.9"
-nix = { version = "0.31", features = [
+nix = { version = "0.32", features = [
     "fs",
     "poll",
     "process",
