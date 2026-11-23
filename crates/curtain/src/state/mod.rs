@@ -1,5 +1,7 @@
 mod events;
 pub(crate) use events::CurtainEventSources;
+#[cfg(feature = "video-prototype")]
+mod input_timing;
 mod interaction;
 mod lifecycle;
 mod memory;
@@ -83,6 +85,7 @@ const EMERGENCY_BACKGROUND: ClearColor = ClearColor::opaque(12, 14, 18);
 
 pub(crate) struct ManagedLockSurface {
     pub(crate) output: wl_output::WlOutput,
+    pub(crate) video_layer: Option<crate::wayland::VideoLayer>,
     pub(crate) surface: SessionLockSurface,
     pub(crate) size: Option<SurfaceSize>,
     pub(crate) background_path: Option<PathBuf>,
@@ -98,6 +101,7 @@ pub(crate) struct ManagedLockSurface {
     pub(crate) placeholder_pool: Option<SurfaceBufferPool>,
     pub(crate) pending_redraw: PendingRedraw,
     pub(crate) output_power: Option<zwlr_output_power_v1::ZwlrOutputPowerV1>,
+    pub(crate) output_power_off: Option<bool>,
     pub(crate) preferred_scale: i32,
     pub(crate) preferred_fractional_scale: Option<u32>,
     pub(crate) fractional_scale: Option<wp_fractional_scale_v1::WpFractionalScaleV1>,
@@ -227,6 +231,11 @@ pub(crate) struct CurtainApp {
     auth_sender: Sender<AuthEvent>,
     pub(crate) authentication: crate::auth::Backend,
     pub(crate) background_sender: Sender<BackgroundEvent>,
+    pub(crate) video: crate::background::video::Video,
+    pub(crate) video_path: Option<PathBuf>,
+    pub(crate) video_start_pending: bool,
+    #[cfg(feature = "video-prototype")]
+    pub(crate) input_timing: input_timing::InputTiming,
     pub(crate) startup_wallpaper_cache: Option<crate::background::StartupWallpaperCache>,
     pub(crate) fonts: crate::fonts::DeferredFonts,
     keyboard_label_sender: Option<KeyboardSender<String>>,
@@ -487,6 +496,11 @@ impl CurtainApp {
             auth_sender,
             authentication,
             background_sender,
+            video: crate::background::video::Video::default(),
+            video_path: config.background.video_path.clone(),
+            video_start_pending: false,
+            #[cfg(feature = "video-prototype")]
+            input_timing: input_timing::InputTiming::default(),
             startup_wallpaper_cache: None,
             fonts: crate::fonts::DeferredFonts::default(),
             keyboard_label_sender: None,
@@ -627,6 +641,7 @@ impl CurtainApp {
         let surface = session_lock.create_lock_surface(wl_surface, &output, queue_handle);
         self.lock_surfaces.push(ManagedLockSurface {
             output,
+            video_layer: None,
             surface,
             size: None,
             background_path: None,
@@ -642,6 +657,7 @@ impl CurtainApp {
             placeholder_pool: None,
             pending_redraw: PendingRedraw::default(),
             output_power,
+            output_power_off: None,
             preferred_scale: 1,
             preferred_fractional_scale: None,
             fractional_scale,
@@ -675,6 +691,7 @@ impl CurtainApp {
 
         tracing::warn!(reason, "switching to emergency fallback UI");
         self.ui_shell.activate_emergency();
+        self.stop_video_prototype();
         self.background_path = None;
         self.startup_wallpaper_cache = None;
         self.background_outputs.clear();
@@ -762,6 +779,7 @@ impl CurtainApp {
         let previous_primary = self.selected_ui_surface_index();
         self.focused_surface_index = index;
         if self.selected_ui_surface_index() != previous_primary {
+            self.stop_video_without_prompt();
             self.render_all_surfaces(queue_handle);
         }
     }
@@ -799,7 +817,7 @@ impl CurtainApp {
         }
     }
 
-    fn selected_ui_surface_index(&self) -> Option<usize> {
+    pub(crate) fn selected_ui_surface_index(&self) -> Option<usize> {
         if let Some(selected_name) = self.ui_output_name.as_deref()
             && let Some(index) = self
                 .lock_surfaces

@@ -179,7 +179,17 @@ impl AppConfig {
 
         remove_config_metadata(&mut config_value);
 
-        deserialize_toml_value(config_value)
+        let mut config: Self = deserialize_toml_value(config_value)?;
+        if let Some(path) = &mut config.background.video_path {
+            let expanded = paths::expand_home_path(path);
+            *path = match config_dir {
+                Some(directory) if expanded.is_relative() && !expanded.as_os_str().is_empty() => {
+                    directory.join(expanded)
+                }
+                _ => expanded,
+            };
+        }
+        Ok(config)
     }
 }
 

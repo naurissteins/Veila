@@ -24,6 +24,8 @@ impl CurtainApp {
             tracing::warn!("failed to reload curtain fallback background: {error:#}");
             return;
         }
+        self.stop_video_prototype();
+        self.video_path.clone_from(&config.background.video_path);
 
         self.authentication.update_policy(&config.lock);
         self.hide_cursor = config.lock.hide_cursor;
@@ -42,6 +44,9 @@ impl CurtainApp {
         }
         self.render_all_surfaces(queue_handle);
         self.maybe_power_off_secondary_outputs();
+        if self.video_path.is_some() {
+            self.start_video_prototype(queue_handle);
+        }
         self.maybe_start_background_render();
         self.maybe_start_artwork_load();
     }
@@ -115,6 +120,10 @@ impl CurtainApp {
         {
             let _ = self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On);
         }
+        let video_output = self
+            .video_path
+            .as_ref()
+            .and_then(|_| self.configured_video_surface_index());
         for index in 0..self.lock_surfaces.len() {
             if self.output_power_control_enabled() {
                 if self.lock_surfaces[index].output_power.is_none() {
@@ -125,8 +134,13 @@ impl CurtainApp {
                 continue;
             }
 
+            // Reloading a clip on the same output can reuse its last confirmed power mode.
+            if video_output == Some(index) {
+                continue;
+            }
             if let Some(output_power) = self.lock_surfaces[index].output_power.take() {
                 output_power.destroy();
+                self.lock_surfaces[index].output_power_off = None;
             }
         }
         if self.outputs_powered_off() && self.screen_off.enabled() {

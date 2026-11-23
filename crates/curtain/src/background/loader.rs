@@ -20,6 +20,7 @@ use veila_renderer::{
 
 #[derive(Debug)]
 pub(crate) enum BackgroundEvent {
+    Video(super::video::VideoUpdate),
     FontsReady {
         generation: u64,
         fonts: Box<veila_renderer::text::PreparedFonts>,

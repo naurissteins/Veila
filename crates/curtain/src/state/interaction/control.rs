@@ -2,8 +2,17 @@ use smithay_client_toolkit::reexports::client::QueueHandle;
 use veila_ui::WidgetKind;
 
 use super::super::{ControlEvent, CurtainApp};
+use crate::background::video::VideoHold;
 
 impl CurtainApp {
+    pub(crate) fn prepare_for_sleep(&mut self, queue_handle: &QueueHandle<Self>) {
+        let redraw_video = self.update_video_hold(VideoHold::Sleep, true);
+        self.handle_control_event(ControlEvent::ArmResumeInputGuard, queue_handle);
+        if redraw_video {
+            self.render_all_surfaces(queue_handle);
+        }
+    }
+
     pub(crate) fn drain_control_events(&mut self, queue_handle: &QueueHandle<Self>) {
         while let Ok(event) = self.control_events.try_recv() {
             self.handle_control_event(event, queue_handle);
@@ -37,6 +46,9 @@ impl CurtainApp {
                 self.resume_input.mark_resumed();
                 // input can arrive between arming the guard and entering sleep
                 self.clear_auth_input_for_sleep(queue_handle);
+                if self.update_video_hold(VideoHold::Sleep, false) {
+                    self.render_all_surfaces(queue_handle);
+                }
             }
             ControlEvent::UpdateNowPlaying { snapshot } => {
                 tracing::debug!(

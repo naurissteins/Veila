@@ -95,6 +95,12 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        #[cfg(feature = "video-prototype")]
+        self.input_timing.note_commit(
+            false,
+            self.video
+                .is_active_for(&self.lock_surfaces[index].output, size),
+        );
         self.lock_surfaces[index].widget_frame = Some(CommittedWidgetFrame {
             regions: current,
             ..previous

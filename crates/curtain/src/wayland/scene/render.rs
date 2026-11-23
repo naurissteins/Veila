@@ -52,12 +52,7 @@ impl CurtainApp {
         let ui_visible = output_role.renders_shell();
         let background_started_at = timing_enabled.then(Instant::now);
         let scene_base_cache_ready = if ui_visible {
-            self.try_prepare_scene_base_without_background(
-                index,
-                frame_size,
-                revision,
-                size.render_scale,
-            )?
+            self.try_prepare_scene_base_without_background(index, size, revision)?
         } else {
             None
         };
@@ -123,6 +118,14 @@ impl CurtainApp {
         let mut dynamic_overlay_ms = 0;
         let ui_shell = &self.ui_shell;
         self.configure_viewport_for_surface(index, size);
+        let uses_video_layer = self.uses_video_layer(index, size);
+        if !uses_video_layer && let Some(layer) = &self.lock_surfaces[index].video_layer {
+            layer.hide_on_parent_commit();
+        }
+        let (video, is_video_output) = {
+            let is_video_output = self.video.targets(&self.lock_surfaces[index].output);
+            (&mut self.video, is_video_output)
+        };
         let frame_result = {
             let lock_surface = &mut self.lock_surfaces[index];
             lock_surface
@@ -141,6 +144,9 @@ impl CurtainApp {
                         if let Some(started_at) = dynamic_overlay_started_at {
                             dynamic_overlay_ms = elapsed_ms(started_at);
                         }
+                        if is_video_output {
+                            video.request_wake_callback(surface.wl_surface(), queue_handle);
+                        }
                         Ok(())
                     },
                 )
@@ -152,6 +158,19 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        if uses_video_layer {
+            if let Some(layer) = &mut self.lock_surfaces[index].video_layer {
+                layer.parent_committed();
+            }
+        } else {
+            self.lock_surfaces[index].video_layer = None;
+        }
+        #[cfg(feature = "video-prototype")]
+        self.input_timing.note_commit(
+            true,
+            self.video
+                .is_active_for(&self.lock_surfaces[index].output, size),
+        );
         self.lock_surfaces[index].widget_frame = (!first_frame).then(|| CommittedWidgetFrame {
             size: frame_size,
             scale: render_scale,
@@ -218,6 +237,9 @@ impl CurtainApp {
 
         let commit_started_at = timing_enabled.then(Instant::now);
         self.configure_viewport_for_surface(index, size);
+        if let Some(layer) = &self.lock_surfaces[index].video_layer {
+            layer.hide_on_parent_commit();
+        }
         let frame_result = self.lock_surfaces[index]
             .shm_pool
             .as_mut()
@@ -238,6 +260,7 @@ impl CurtainApp {
         {
             return Ok(());
         }
+        self.lock_surfaces[index].video_layer = None;
         self.lock_surfaces[index].widget_frame = None;
         self.note_first_frame_committed(first_frame);
         if first_frame {
@@ -279,6 +302,9 @@ impl CurtainApp {
         sample: RenderTimingSample,
     ) {
         self.render_profiler.record(sample);
+        let video_active = self
+            .video
+            .is_active_for(&self.lock_surfaces[index].output, size);
         self.lock_surfaces[index].with_output_name(|name| {
             let fallback;
             let output = match name {
@@ -303,6 +329,7 @@ impl CurtainApp {
                 wallpaper_fallback = self.lock_surfaces[index].wallpaper_fallback,
                 background_refreshed,
                 scene_base_refreshed,
+                video_active,
                 background_prepare_ms = sample.background_prepare_ms,
                 background_restore_ms = sample.background_restore_ms,
                 dynamic_overlay_ms = sample.dynamic_overlay_ms,

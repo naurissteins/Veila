@@ -80,7 +80,8 @@ impl CurtainApp {
     ) {
         match message {
             SupervisorMessage::ArmResumeInputGuard { request } => {
-                self.handle_control_event(ControlEvent::ArmResumeInputGuard, queue);
+                // The one-way startup arm has no confirmed sleep transition.
+                self.prepare_for_sleep(queue);
                 self.notify_supervisor(CurtainMessage::ResumeGuardArmed { request });
             }
             SupervisorMessage::ReloadConfig { config } => self.apply_config(*config, queue),

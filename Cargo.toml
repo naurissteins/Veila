@@ -8,6 +8,9 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+video-prototype = ["veila-curtain/video-prototype"]
+
 [dependencies]
 veila-session = { path = "crates/session" }
 veila-auth = { path = "crates/auth" }
