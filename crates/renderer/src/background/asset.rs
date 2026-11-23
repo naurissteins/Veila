@@ -12,7 +12,6 @@ use super::{
         store_cached_buffer_for_generated_with_variant, store_cached_buffer_with_variant,
     },
     source_cache::{load_cached_rgba, store_cached_rgba},
-    treatment::apply_treatment,
 };
 use crate::{ClearColor, FrameSize, Result, SoftwareBuffer};
 
@@ -54,7 +53,7 @@ impl BackgroundAsset {
                 render_image(image, size, *fallback, self.treatment)
             }
         }?;
-        apply_treatment(&mut buffer, self.treatment);
+        self.treatment.apply_color(&mut buffer);
         Ok(buffer)
     }
 }

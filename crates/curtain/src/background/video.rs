@@ -7,7 +7,7 @@ mod reader;
 use std::time::{Duration, Instant};
 
 use smithay_client_toolkit::reexports::client::{QueueHandle, protocol::wl_output::WlOutput};
-use veila_renderer::{FrameSize, RenderScale, SoftwareBuffer};
+use veila_renderer::{FrameSize, RenderScale, SoftwareBuffer, background::BackgroundTreatment};
 use veila_ui::StaticBackdrops;
 
 use crate::state::{CurtainApp, RedrawKind, SurfaceSize};
@@ -42,8 +42,10 @@ impl VideoFrame {
     fn prepare(
         mut frame: SoftwareBuffer,
         geometry: VideoGeometry,
+        treatment: BackgroundTreatment,
         backdrops: &StaticBackdrops,
     ) -> Self {
+        treatment.apply_color(&mut frame);
         backdrops.render(&mut frame, geometry.scale);
         Self {
             scene_buffer: (!geometry.scaled).then(|| frame.clone()),
@@ -180,6 +182,7 @@ impl CurtainApp {
         match VideoReader::spawn(
             source,
             geometry,
+            self.background_treatment,
             self.ui_shell.static_backdrops(),
             self.background_sender.clone(),
             !self.video.power.playing(),

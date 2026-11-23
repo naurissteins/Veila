@@ -22,7 +22,7 @@ use nix::poll::{PollFd, PollFlags, poll};
 use nix::{fcntl::OFlag, unistd::geteuid};
 #[cfg(feature = "video-prototype")]
 use veila_renderer::FrameSize;
-use veila_renderer::SoftwareBuffer;
+use veila_renderer::{SoftwareBuffer, background::BackgroundTreatment};
 use veila_ui::StaticBackdrops;
 
 use super::{super::BackgroundEvent, VideoFrame, decoder::Decoder, geometry::VideoGeometry};
@@ -86,6 +86,7 @@ impl VideoReader {
     pub(super) fn spawn(
         source: VideoSource,
         geometry: VideoGeometry,
+        treatment: BackgroundTreatment,
         backdrops: StaticBackdrops,
         events: Sender<BackgroundEvent>,
         paused: bool,
@@ -98,7 +99,9 @@ impl VideoReader {
         let reader = Arc::clone(&control);
         let worker = thread::Builder::new()
             .name("veila-video".into())
-            .spawn(move || video_worker(source, geometry, &backdrops, &reader, &events))?;
+            .spawn(move || {
+                video_worker(source, geometry, treatment, &backdrops, &reader, &events)
+            })?;
         Ok(Self {
             control,
             worker: worker.thread().clone(),
@@ -129,11 +132,12 @@ impl Drop for VideoReader {
 fn video_worker(
     source: VideoSource,
     geometry: VideoGeometry,
+    treatment: BackgroundTreatment,
     backdrops: &StaticBackdrops,
     control: &Arc<ReaderControl>,
     events: &Sender<BackgroundEvent>,
 ) {
-    if let Err(error) = feed_video(source, geometry, backdrops, control, events)
+    if let Err(error) = feed_video(source, geometry, treatment, backdrops, control, events)
         && !control.stopped()
     {
         tracing::warn!(%error, "video prototype input ended");
@@ -150,6 +154,7 @@ fn video_worker(
 fn feed_video(
     source: VideoSource,
     geometry: VideoGeometry,
+    treatment: BackgroundTreatment,
     backdrops: &StaticBackdrops,
     control: &Arc<ReaderControl>,
     events: &Sender<BackgroundEvent>,
@@ -159,12 +164,19 @@ fn feed_video(
             control.wait_if_paused()?;
             let mut decoder = Decoder::spawn(&path, geometry.buffer, control)?;
             tracing::debug!("started sandboxed video decoder");
-            feed_frames(&mut decoder.stdout()?, geometry, backdrops, control, events)
+            feed_frames(
+                &mut decoder.stdout()?,
+                geometry,
+                treatment,
+                backdrops,
+                control,
+                events,
+            )
         }
         #[cfg(feature = "video-prototype")]
         VideoSource::Fifo(path) => {
             let mut pipe = open_fifo(&path, geometry.buffer, control)?;
-            feed_frames(&mut pipe, geometry, backdrops, control, events)
+            feed_frames(&mut pipe, geometry, treatment, backdrops, control, events)
         }
     }
 }
@@ -202,6 +214,7 @@ fn open_fifo(
 fn feed_frames(
     pipe: &mut (impl Read + AsFd),
     geometry: VideoGeometry,
+    treatment: BackgroundTreatment,
     backdrops: &StaticBackdrops,
     control: &Arc<ReaderControl>,
     events: &Sender<BackgroundEvent>,
@@ -219,7 +232,7 @@ fn feed_frames(
         }
         let frame = SoftwareBuffer::from_argb8888_pixels(geometry.buffer, pixels)
             .map_err(io::Error::other)?;
-        let frame = VideoFrame::prepare(frame, geometry, backdrops);
+        let frame = VideoFrame::prepare(frame, geometry, treatment, backdrops);
         control.wait_if_paused()?;
         let (receipt, consumed) = sync_channel(0);
         if events
