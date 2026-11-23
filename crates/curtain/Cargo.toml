@@ -8,6 +8,9 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+video-prototype = ["nix/time"]
+
 [dependencies]
 veila-auth = { path = "../auth" }
 veila-common = { path = "../common" }

@@ -18,6 +18,8 @@ impl CurtainApp {
 
         self.has_keyboard_focus = focused;
         if !focused {
+            #[cfg(feature = "video-prototype")]
+            self.input_timing.note_key(false);
             self.ctrl_active = false;
             self.backspace_repeat = None;
         }
@@ -30,6 +32,12 @@ impl CurtainApp {
             return;
         }
 
+        #[cfg(feature = "video-prototype")]
+        {
+            self.input_timing
+                .note_key(matches!(key, ShellKey::Character(_)));
+        }
+        self.video.prioritize_input(Instant::now());
         let revision_before = self.ui_shell.static_scene_revision();
         let action = self.ui_shell.handle_key(key);
         if let Some(sequence) = self.auth_challenge_sequence.take() {

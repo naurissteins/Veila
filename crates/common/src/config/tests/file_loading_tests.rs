@@ -384,3 +384,23 @@ fn existing_invalid_include_file_fails_config_load() {
     fs::remove_file(include_path).ok();
     fs::remove_dir(dir).ok();
 }
+#[test]
+fn video_path_resolves_relative_to_config_without_changing_the_wallpaper() {
+    let dir = std::env::temp_dir().join(format!("veila-video-config-{}", std::process::id()));
+    fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("config.toml");
+    fs::write(
+        &path,
+        "[background]\nmode = \"solid\"\nvideo_path = \"clips/loop.webm\"\n",
+    )
+    .expect("config file");
+    let config = AppConfig::load_from_file(&path).expect("config");
+    assert_eq!(
+        config.background.video_path,
+        Some(dir.join("clips/loop.webm"))
+    );
+    assert_eq!(config.background.effective_mode(), BackgroundMode::Solid);
+    assert!(AppConfig::default().background.video_path.is_none());
+    fs::remove_file(path).expect("remove config file");
+    fs::remove_dir(dir).expect("remove temp dir");
+}

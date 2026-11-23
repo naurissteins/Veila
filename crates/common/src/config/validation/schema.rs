@@ -110,6 +110,7 @@ const TOP_LEVEL: &[KeyRule] = &[
 const BACKGROUND: &[KeyRule] = &[
     key("mode", Schema::Any),
     key("path", Schema::Any),
+    key("video_path", Schema::Any),
     key("outputs", Schema::ArrayTable(BACKGROUND_OUTPUT)),
     key("slideshow", Schema::Table(BACKGROUND_SLIDESHOW)),
     key("color", Schema::Any),

@@ -3,6 +3,7 @@ mod loader;
 mod scheduling;
 mod slideshow;
 mod startup;
+pub(crate) mod video;
 
 pub(crate) use loader::BackgroundEvent;
 pub(crate) use slideshow::BackgroundSlideshow;
@@ -24,6 +25,7 @@ impl CurtainApp {
         queue_handle: &QueueHandle<Self>,
     ) {
         match event {
+            BackgroundEvent::Video(update) => self.accept_video_frame(update, queue_handle),
             BackgroundEvent::FontsReady { generation, fonts } => {
                 self.accept_fonts(generation, *fonts, queue_handle)
             }

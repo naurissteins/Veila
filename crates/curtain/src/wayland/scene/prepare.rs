@@ -172,12 +172,9 @@ impl CurtainApp {
             return Ok(false);
         }
 
-        if let Some(refreshed) = self.try_prepare_scene_base_without_background(
-            index,
-            frame_size,
-            revision,
-            size.render_scale,
-        )? {
+        if let Some(refreshed) =
+            self.try_prepare_scene_base_without_background(index, size, revision)?
+        {
             return Ok(refreshed);
         }
 
@@ -201,10 +198,11 @@ impl CurtainApp {
     pub(super) fn try_prepare_scene_base_without_background(
         &mut self,
         index: usize,
-        frame_size: FrameSize,
+        size: SurfaceSize,
         revision: u64,
-        scale: RenderScale,
     ) -> Result<Option<bool>> {
+        let frame_size = size.buffer;
+        let scale = size.render_scale;
         let selected_path = self
             .background_path_for_surface(index)
             .map(ToOwned::to_owned);
@@ -215,6 +213,24 @@ impl CurtainApp {
             return Ok(Some(false));
         }
 
+        let video_base = if self.uses_video_layer(index, size) {
+            Some(SoftwareBuffer::new(frame_size)?)
+        } else {
+            self.video
+                .take_scene_buffer(&self.lock_surfaces[index].output, frame_size, scale)
+        };
+        if let Some(mut buffer) = video_base {
+            let has_layers = self.render_static_scene_overlay(&mut buffer, scale);
+            let surface = &mut self.lock_surfaces[index];
+            surface.scene_base = Some(Arc::new(buffer));
+            surface.scene_base_revision = revision;
+            surface.scene_base_scale = scale;
+            surface.scene_base_has_layers = has_layers;
+            surface.background_path = selected_path;
+            surface.backdrop_cache_hit = false;
+            return Ok(Some(true));
+        }
+
         self.lock_surfaces[index].backdrop_cache_hit = false;
 
         if let Some((buffer, has_layers, cache_hit, wallpaper_fallback)) = self
@@ -222,6 +238,9 @@ impl CurtainApp {
             .iter()
             .enumerate()
             .find(|(candidate_index, surface)| {
+                if self.video.targets(&surface.output) {
+                    return false;
+                }
                 *candidate_index != index
                     && surface.scene_base_revision == revision
                     && surface.scene_base_scale == scale

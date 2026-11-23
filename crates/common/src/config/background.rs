@@ -255,6 +255,8 @@ pub struct BackgroundConfig {
     #[serde(default)]
     pub mode: Option<BackgroundMode>,
     pub path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_path: Option<PathBuf>,
     #[serde(default)]
     pub outputs: Vec<BackgroundOutputConfig>,
     #[serde(default)]
@@ -282,6 +284,7 @@ impl Default for BackgroundConfig {
         Self {
             mode: Some(BackgroundMode::Radial),
             path: None,
+            video_path: None,
             outputs: Vec::new(),
             slideshow: None,
             color: default_background_color(),

@@ -150,6 +150,13 @@ impl OutputHandler for CurtainApp {
         queue_handle: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     ) {
+        if self
+            .lock_surfaces
+            .iter()
+            .any(|entry| entry.output == output)
+        {
+            return;
+        }
         if let Err(error) = self.create_surface_for_output(output.clone(), queue_handle) {
             self.failure_reason = Some(format!(
                 "failed to create session-lock surface for new output: {error:#}"
@@ -162,6 +169,12 @@ impl OutputHandler for CurtainApp {
             id = output.id().protocol_id(),
             "registered new output while locked"
         );
+        {
+            self.rebind_video_output(&output, queue_handle);
+            if self.stop_video_without_prompt() {
+                self.render_all_surfaces(queue_handle);
+            }
+        }
     }
 
     fn update_output(
@@ -183,6 +196,8 @@ impl OutputHandler for CurtainApp {
             .iter()
             .position(|entry| entry.output == output);
         if let Some(removed_index) = removed_index {
+            let removed_video_output = self.video.targets(&output);
+            self.video_output_lost(&output);
             // surface creation deduplicates outputs, preserve the remaining focus order
             let surface = &mut self.lock_surfaces[removed_index];
             if let Some(output_power) = surface.output_power.take() {
@@ -204,6 +219,9 @@ impl OutputHandler for CurtainApp {
                     Some(focused)
                 }
             });
+            if self.stop_video_without_prompt() || removed_video_output {
+                self.render_all_surfaces(queue_handle);
+            }
         }
         if self.secondary_outputs_powered_off {
             if self.set_outputs_power_mode(zwlr_output_power_v1::Mode::On) {

@@ -10,5 +10,9 @@ mod render;
 mod render_dirty;
 #[path = "scene/stage.rs"]
 mod stage;
+#[path = "scene/video.rs"]
+mod video;
 #[path = "scene/widget.rs"]
 mod widget;
+
+pub(crate) use video::VideoLayer;

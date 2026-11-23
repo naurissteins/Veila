@@ -20,6 +20,7 @@ impl CurtainApp {
             self.screen_off.due_in(now, self.session_locked),
             self.power_status_poll_interval(now),
             self.shm_trim_due_in(now),
+            self.video.output_rebind_due_in(now),
             lock_deadline,
         ]
         .into_iter()

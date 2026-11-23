@@ -5,6 +5,15 @@ use veila_ui::WidgetKind;
 use crate::state::{CurtainApp, SurfaceSize, elapsed_ms, elapsed_us};
 
 impl CurtainApp {
+    pub(crate) fn render_video_surface(&mut self, queue_handle: &QueueHandle<Self>) {
+        if let Some(index) = self.video_surface_index()
+            && let Some(size) = self.lock_surfaces[index].size
+        {
+            let surface = self.lock_surfaces[index].surface.clone();
+            self.redraw_rich_surface(&surface, size, queue_handle);
+        }
+    }
+
     pub(crate) fn render_all_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
         if !self.ready_notified {
             if !self.pending_pre_ready_redraw {
@@ -22,14 +31,25 @@ impl CurtainApp {
             .collect();
 
         for (surface, size) in surfaces {
-            if let Err(error) =
-                self.render_surface_with_emergency_fallback(&surface, size, queue_handle)
-            {
-                self.failure_reason = Some(format!("failed to rerender UI shell: {error:#}"));
-                self.exit_requested = true;
+            if !self.redraw_rich_surface(&surface, size, queue_handle) {
                 return;
             }
         }
+    }
+
+    fn redraw_rich_surface(
+        &mut self,
+        surface: &smithay_client_toolkit::session_lock::SessionLockSurface,
+        size: SurfaceSize,
+        queue_handle: &QueueHandle<Self>,
+    ) -> bool {
+        if let Err(error) = self.render_surface_with_emergency_fallback(surface, size, queue_handle)
+        {
+            self.failure_reason = Some(format!("failed to rerender UI shell: {error:#}"));
+            self.exit_requested = true;
+            return false;
+        }
+        true
     }
 
     pub(crate) fn render_auth_dirty_surfaces(&mut self, queue_handle: &QueueHandle<Self>) {
@@ -116,6 +136,11 @@ impl CurtainApp {
             self.log_memory_snapshot("ready");
             self.maybe_start_avatar_load();
             self.maybe_power_off_secondary_outputs();
+            #[cfg(feature = "video-prototype")]
+            {
+                self.input_timing.enabled = std::env::var_os("VEILA_VIDEO_PROTOTYPE_INPUT_TIMING")
+                    .is_some_and(|v| v == "1");
+            }
         }
     }
 

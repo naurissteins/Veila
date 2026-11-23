@@ -6,7 +6,7 @@ mod session;
 use smithay_client_toolkit::reexports::{
     client::{
         Connection, Dispatch, QueueHandle,
-        protocol::{wl_buffer, wl_buffer::WlBuffer},
+        protocol::{wl_buffer, wl_buffer::WlBuffer, wl_subcompositor, wl_subsurface},
     },
     protocols::wp::viewporter::client::{wp_viewport, wp_viewporter},
 };
@@ -31,6 +31,12 @@ smithay_client_toolkit::reexports::client::delegate_noop!(
 );
 smithay_client_toolkit::reexports::client::delegate_noop!(
     CurtainApp: ignore wp_viewport::WpViewport
+);
+smithay_client_toolkit::reexports::client::delegate_noop!(
+    CurtainApp: ignore wl_subcompositor::WlSubcompositor
+);
+smithay_client_toolkit::reexports::client::delegate_noop!(
+    CurtainApp: ignore wl_subsurface::WlSubsurface
 );
 
 impl Dispatch<WlBuffer, ShmBufferRelease> for CurtainApp {

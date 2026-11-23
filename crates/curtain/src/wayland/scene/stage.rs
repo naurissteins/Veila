@@ -27,6 +27,7 @@ impl CurtainApp {
         let previous_size = self.lock_surfaces[index].size;
         let was_unconfigured = previous_size.is_none();
         self.lock_surfaces[index].size = Some(size);
+        self.validate_video_surface(index, size);
         if previous_size.is_some_and(|previous| previous.buffer != size.buffer) {
             self.background_render_started = false;
         }
@@ -95,6 +96,9 @@ impl CurtainApp {
                     self.exit_requested = true;
                 }
                 self.maybe_start_background_render();
+                if self.video_start_pending {
+                    self.start_video_prototype(queue_handle);
+                }
             } else {
                 self.render_initial_scene(queue_handle);
             }
@@ -107,6 +111,7 @@ impl CurtainApp {
         size: SurfaceSize,
         queue_handle: &QueueHandle<Self>,
     ) -> Result<()> {
+        self.validate_video_surface(index, size);
         if !self.rich_scene_ready {
             self.commit_placeholder(index, size, queue_handle)?;
             if self.session_locked {
@@ -173,6 +178,7 @@ impl CurtainApp {
             return;
         }
         self.maybe_notify_ready();
+        self.start_video_prototype(queue_handle);
         self.startup_wallpaper_cache = None;
         self.flush_pending_pre_ready_redraw(queue_handle);
         self.maybe_start_background_render();

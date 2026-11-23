@@ -143,6 +143,7 @@ impl CurtainApp {
 
         if self.set_outputs_power_mode(zwlr_output_power_v1::Mode::Off) {
             self.screen_off.mark_outputs_powered_off();
+            self.update_video_hold(crate::background::video::VideoHold::Display, true);
             tracing::info!("powered off locked outputs after inactivity");
         } else {
             self.screen_off.disable();
