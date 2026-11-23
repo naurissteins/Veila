@@ -3,7 +3,7 @@ use super::reader::video_header;
 use super::*;
 use veila_common::AppConfig;
 use veila_renderer::ClearColor;
-use veila_ui::{ShellState, ShellTheme};
+use veila_ui::{ShellState, ShellTheme, background::background_treatment};
 
 #[test]
 fn prepared_video_backdrop_matches_shell_at_fractional_scale_and_can_be_rebuilt() {
@@ -39,6 +39,7 @@ color="#00FF00"
     let mut frame = VideoFrame::prepare(
         background,
         VideoGeometry::for_surface(surface),
+        BackgroundTreatment::default(),
         &shell.static_backdrops(),
     );
     assert!(frame.fits(surface));
@@ -47,6 +48,46 @@ color="#00FF00"
     assert_eq!(first, expected);
     first.clear(ClearColor::opaque(0, 0, 0));
     assert_eq!(frame.take_scene_buffer(), expected);
+}
+
+#[test]
+fn video_dimming_and_tint_apply_before_backdrops_on_both_render_paths() {
+    let config = AppConfig::from_toml_str(
+        r##"
+[background]
+dim_strength = 54
+tint = "#20408080"
+[[visuals.backdrop]]
+mode = "solid"
+color = "#FF0000"
+full_width = true
+height = 4
+valign = "bottom"
+"##,
+    )
+    .unwrap();
+    let shell = ShellState::new(ShellTheme::from_config(&config), None, None, false);
+
+    for surface in [
+        SurfaceSize::new_with_fractional_scale(128, 64, 1, None),
+        SurfaceSize::new_with_fractional_scale(1921, 64, 1, None),
+    ] {
+        let geometry = VideoGeometry::for_surface(surface);
+        let background =
+            SoftwareBuffer::solid(geometry.buffer, ClearColor::opaque(255, 255, 255)).unwrap();
+        let frame = VideoFrame::prepare(
+            background,
+            geometry,
+            background_treatment(&config.background),
+            &shell.static_backdrops(),
+        );
+        let pixels = frame.background.pixels();
+        assert_eq!(&pixels[..4], &[122, 90, 74, 255]);
+        assert_eq!(&pixels[pixels.len() - 4..], &[0, 0, 255, 255]);
+        if let Some(scene) = frame.scene_buffer {
+            assert_eq!(scene, frame.background);
+        }
+    }
 }
 
 #[test]

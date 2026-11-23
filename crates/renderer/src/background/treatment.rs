@@ -1,29 +1,29 @@
-use crate::blend_component;
-
 use super::BackgroundTreatment;
-use crate::SoftwareBuffer;
+use crate::{SoftwareBuffer, blend_component};
 
-pub(super) fn apply_treatment(buffer: &mut SoftwareBuffer, treatment: BackgroundTreatment) {
-    if treatment.dim_strength > 0 {
-        let multiplier = 255u16.saturating_sub(alpha_from_percent(treatment.dim_strength));
-        for pixel in buffer.pixels_mut().as_chunks_mut::<4>().0 {
-            pixel[0] = ((u16::from(pixel[0]) * multiplier + 127) / 255) as u8;
-            pixel[1] = ((u16::from(pixel[1]) * multiplier + 127) / 255) as u8;
-            pixel[2] = ((u16::from(pixel[2]) * multiplier + 127) / 255) as u8;
+impl BackgroundTreatment {
+    pub fn apply_color(self, buffer: &mut SoftwareBuffer) {
+        if self.dim_strength > 0 {
+            let multiplier = 255u16.saturating_sub(alpha_from_percent(self.dim_strength));
+            for pixel in buffer.pixels_mut().as_chunks_mut::<4>().0 {
+                pixel[0] = ((u16::from(pixel[0]) * multiplier + 127) / 255) as u8;
+                pixel[1] = ((u16::from(pixel[1]) * multiplier + 127) / 255) as u8;
+                pixel[2] = ((u16::from(pixel[2]) * multiplier + 127) / 255) as u8;
+            }
         }
-    }
 
-    if let Some(tint) = treatment.tint
-        && tint.alpha > 0
-    {
-        let tint = tint.to_argb8888_bytes();
-        let tint_alpha = u16::from(tint[3]);
-        let inverse_alpha = u16::from(u8::MAX) - tint_alpha;
-        for pixel in buffer.pixels_mut().as_chunks_mut::<4>().0 {
-            pixel[0] = blend_component(pixel[0], tint[0], inverse_alpha);
-            pixel[1] = blend_component(pixel[1], tint[1], inverse_alpha);
-            pixel[2] = blend_component(pixel[2], tint[2], inverse_alpha);
-            pixel[3] = blend_component(pixel[3], tint[3], inverse_alpha);
+        if let Some(tint) = self.tint
+            && tint.alpha > 0
+        {
+            let tint = tint.to_argb8888_bytes();
+            let tint_alpha = u16::from(tint[3]);
+            let inverse_alpha = u16::from(u8::MAX) - tint_alpha;
+            for pixel in buffer.pixels_mut().as_chunks_mut::<4>().0 {
+                pixel[0] = blend_component(pixel[0], tint[0], inverse_alpha);
+                pixel[1] = blend_component(pixel[1], tint[1], inverse_alpha);
+                pixel[2] = blend_component(pixel[2], tint[2], inverse_alpha);
+                pixel[3] = blend_component(pixel[3], tint[3], inverse_alpha);
+            }
         }
     }
 }
