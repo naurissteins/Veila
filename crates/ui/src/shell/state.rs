@@ -400,6 +400,12 @@ impl ShellState {
         }
     }
 
+    pub fn set_initial_now_playing_snapshot(&mut self, snapshot: NowPlayingSnapshot) -> bool {
+        self.now_playing = now_playing_widget_data(Some(snapshot));
+        self.now_playing_transition = None;
+        self.now_playing.is_some() && self.theme.now_playing.enabled
+    }
+
     pub fn set_now_playing_snapshot(&mut self, snapshot: Option<NowPlayingSnapshot>) {
         let mut next = now_playing_widget_data(snapshot);
         if let (Some(current), Some(next)) = (self.now_playing.as_ref(), next.as_mut())

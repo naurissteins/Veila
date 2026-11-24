@@ -190,17 +190,27 @@ fn media_backdrop_appearance_and_removal_match_full_render() {
         None,
         true,
     );
+    let initial = NowPlayingSnapshot {
+        title: String::from("Track"),
+        artist: None,
+        artwork_path: None,
+        fetched_at_unix: 0,
+    };
+    verify_widget_change(&mut shell, RenderScale::ONE, WidgetKind::Media, |shell| {
+        assert!(shell.set_initial_now_playing_snapshot(initial.clone()));
+        assert!(shell.now_playing_transition.is_none());
+    });
     verify_widget_change(&mut shell, RenderScale::ONE, WidgetKind::Media, |shell| {
         shell.set_now_playing_snapshot(Some(NowPlayingSnapshot {
-            title: String::from("Track"),
-            artist: None,
-            artwork_path: None,
-            fetched_at_unix: 0,
+            title: String::from("Next track"),
+            ..initial
         }));
+        assert!(shell.now_playing_transition.is_some());
         shell.now_playing_transition = None;
     });
     verify_widget_change(&mut shell, RenderScale::ONE, WidgetKind::Media, |shell| {
         shell.set_now_playing_snapshot(None);
+        assert!(shell.now_playing_transition.is_some());
         shell.now_playing_transition = None;
     });
 }

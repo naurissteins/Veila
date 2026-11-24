@@ -117,7 +117,7 @@ impl CurtainApp {
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
         let mut dynamic_overlay_ms = 0;
         if first_frame {
-            self.apply_startup_weather();
+            self.apply_startup_widgets();
         }
         let ui_shell = &self.ui_shell;
         self.configure_viewport_for_surface(index, size);
