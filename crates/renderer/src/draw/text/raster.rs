@@ -189,8 +189,7 @@ fn cached_text_raster(text: &str, style: TextStyle, color: ClearColor) -> Option
 }
 
 fn rasterize_text(text: &str, style: TextStyle, color: ClearColor) -> Option<TextRaster> {
-    let mut spans = Vec::new();
-    let mut bounds: Option<TextBounds> = None;
+    let mut spans: Vec<TextSpan> = Vec::new();
 
     FONT_CONTEXT.with(|context| {
         let mut context = context.borrow_mut();
@@ -216,13 +215,16 @@ fn rasterize_text(text: &str, style: TextStyle, color: ClearColor) -> Option<Tex
                     return;
                 }
 
-                let next = TextBounds {
-                    left: pixel_x,
-                    top: pixel_y,
-                    right: pixel_x + width as i32,
-                    bottom: pixel_y + height as i32,
-                };
-                bounds = Some(merge_bounds(bounds, next));
+                // Swash emits glyphs pixel by pixel, so collapse equal coverage along each row.
+                if let Some(last) = spans.last_mut()
+                    && last.y == pixel_y
+                    && last.height == height
+                    && last.color == pixel_color
+                    && last.x + last.width as i32 == pixel_x
+                {
+                    last.width += width;
+                    return;
+                }
                 spans.push(TextSpan {
                     x: pixel_x,
                     y: pixel_y,
@@ -234,18 +236,23 @@ fn rasterize_text(text: &str, style: TextStyle, color: ClearColor) -> Option<Tex
         );
     });
 
-    let bounds = bounds?;
+    let bounds = spans.iter().fold(None, |current, span| {
+        Some(merge_bounds(current, span.bounds()))
+    })?;
     let width = bounds.width().max(1) as u32;
     let height = bounds.height().max(1) as u32;
     let mut pixels = vec![0; width as usize * height as usize * 4];
 
+    let stride = width as usize * 4;
     for span in spans {
-        for offset_y in 0..span.height as i32 {
-            for offset_x in 0..span.width as i32 {
-                let x = span.x + offset_x - bounds.left;
-                let y = span.y + offset_y - bounds.top;
-                let offset = y as usize * width as usize * 4 + x as usize * 4;
-                blend_pixel_bytes(&mut pixels[offset..offset + 4], span.color);
+        let color = span.premultiplied_color();
+        let x = (span.x - bounds.left) as usize * 4;
+        let top = (span.y - bounds.top) as usize;
+        let span_bytes = span.width as usize * 4;
+        for y in top..top + span.height as usize {
+            let start = y * stride + x;
+            for pixel in pixels[start..start + span_bytes].as_chunks_mut::<4>().0 {
+                blend_argb8888_pixel(pixel, &color);
             }
         }
     }
@@ -295,6 +302,27 @@ struct TextSpan {
     color: cosmic_text::Color,
 }
 
+impl TextSpan {
+    fn bounds(self) -> TextBounds {
+        TextBounds {
+            left: self.x,
+            top: self.y,
+            right: self.x + self.width as i32,
+            bottom: self.y + self.height as i32,
+        }
+    }
+
+    fn premultiplied_color(self) -> [u8; 4] {
+        let alpha = self.color.a();
+        [
+            premultiply(self.color.b(), alpha),
+            premultiply(self.color.g(), alpha),
+            premultiply(self.color.r(), alpha),
+            alpha,
+        ]
+    }
+}
+
 fn merge_bounds(current: Option<TextBounds>, next: TextBounds) -> TextBounds {
     match current {
         Some(current) => TextBounds {
@@ -305,21 +333,6 @@ fn merge_bounds(current: Option<TextBounds>, next: TextBounds) -> TextBounds {
         },
         None => next,
     }
-}
-
-fn blend_pixel_bytes(dst: &mut [u8], color: cosmic_text::Color) {
-    let src_alpha = color.a() as u16;
-    if src_alpha == 0 {
-        return;
-    }
-
-    let src = [
-        premultiply(color.b(), color.a()),
-        premultiply(color.g(), color.a()),
-        premultiply(color.r(), color.a()),
-        color.a(),
-    ];
-    blend_argb8888_pixel(dst, &src);
 }
 
 fn blend_argb8888_pixel(dst: &mut [u8], src: &[u8]) {
