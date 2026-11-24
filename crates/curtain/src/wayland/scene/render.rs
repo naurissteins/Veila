@@ -119,7 +119,6 @@ impl CurtainApp {
         if first_frame {
             self.apply_startup_widgets();
         }
-        let ui_shell = &self.ui_shell;
         self.configure_viewport_for_surface(index, size);
         let uses_video_layer = self.uses_video_layer(index, size);
         if !uses_video_layer && let Some(layer) = &self.lock_surfaces[index].video_layer {
@@ -129,7 +128,11 @@ impl CurtainApp {
             let is_video_output = self.video.targets(&self.lock_surfaces[index].output);
             (&mut self.video, is_video_output)
         };
+        let mut startup_artwork = false;
         let frame_result = {
+            let ui_shell = &mut self.ui_shell;
+            let artwork_load = &mut self.artwork_in_flight;
+            let now_playing = self.now_playing_snapshot.as_ref();
             let lock_surface = &mut self.lock_surfaces[index];
             lock_surface
                 .shm_pool
@@ -143,6 +146,9 @@ impl CurtainApp {
                     size.buffer_scale_for_commit(),
                     |buffer| {
                         buffer.pixels_mut().copy_from_slice(scene_base.pixels());
+                        if first_frame && let Some(load) = artwork_load {
+                            startup_artwork = load.apply_for_first_frame(now_playing, ui_shell);
+                        }
                         ui_shell.render_dynamic_overlay_at_scale(buffer, render_scale);
                         if let Some(started_at) = dynamic_overlay_started_at {
                             dynamic_overlay_ms = elapsed_ms(started_at);
@@ -185,6 +191,15 @@ impl CurtainApp {
         self.note_first_frame_committed(first_frame);
         if first_frame {
             self.connection.flush()?;
+        }
+        if startup_artwork {
+            self.lock_surfaces[index].with_output_name(|output| {
+                tracing::debug!(
+                    output,
+                    startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
+                    "committed now playing artwork in the first UI frame"
+                );
+            });
         }
 
         if let Some(started_at) = total_started_at {

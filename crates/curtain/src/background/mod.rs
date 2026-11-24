@@ -1,3 +1,4 @@
+mod artwork;
 mod cache;
 mod loader;
 mod scheduling;
@@ -5,18 +6,15 @@ mod slideshow;
 mod startup;
 pub(crate) mod video;
 
+pub(crate) use artwork::ArtworkLoad;
 pub(crate) use loader::BackgroundEvent;
 pub(crate) use slideshow::BackgroundSlideshow;
 pub(crate) use startup::StartupWallpaperCache;
 
-use loader::{spawn_artwork_loader, spawn_avatar_loader};
+use loader::spawn_avatar_loader;
 use smithay_client_toolkit::reexports::client::QueueHandle;
-use std::time::{Duration, Instant};
-use veila_ui::WidgetKind;
 
 use crate::state::CurtainApp;
-
-const ARTWORK_RETRY_INTERVAL: Duration = Duration::from_secs(2);
 
 impl CurtainApp {
     pub(crate) fn handle_background_event(
@@ -156,33 +154,7 @@ impl CurtainApp {
                     self.render_all_surfaces(queue_handle);
                 }
             }
-            BackgroundEvent::ArtworkReady {
-                path,
-                snapshot,
-                asset,
-                elapsed_ms,
-            } => {
-                if self.artwork_in_flight.as_ref().is_none_or(
-                    |(in_flight_path, in_flight_snapshot)| {
-                        in_flight_path != &path || in_flight_snapshot != &snapshot
-                    },
-                ) {
-                    return;
-                }
-                self.artwork_in_flight = None;
-                if self.now_playing_snapshot == snapshot
-                    && let Some(asset) = asset
-                    && self.ui_shell.set_now_playing_artwork(&path, asset)
-                {
-                    tracing::debug!(
-                        elapsed_ms,
-                        startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
-                        "loaded deferred now playing artwork"
-                    );
-                    self.render_widget_surfaces(WidgetKind::Media, queue_handle);
-                }
-                self.maybe_start_artwork_load();
-            }
+            BackgroundEvent::ArtworkReady => self.finish_artwork_load(queue_handle),
             BackgroundEvent::Failed { error, elapsed_ms } => {
                 tracing::warn!(
                     elapsed_ms,
@@ -206,54 +178,6 @@ impl CurtainApp {
             Err(error) => {
                 self.avatar_load_needed = false;
                 tracing::warn!(%error, "failed to start avatar worker");
-            }
-        }
-    }
-
-    pub(crate) fn maybe_start_artwork_load(&mut self) {
-        if self.ui_shell.emergency_active()
-            || !self.session_locked
-            || self.artwork_in_flight.is_some()
-        {
-            return;
-        }
-        let Some(path) = self
-            .ui_shell
-            .pending_now_playing_artwork_path()
-            .map(std::path::Path::to_path_buf)
-        else {
-            return;
-        };
-        if self
-            .artwork_last_attempt
-            .as_ref()
-            .is_some_and(|(previous, attempted_at)| {
-                previous == &path && attempted_at.elapsed() < ARTWORK_RETRY_INTERVAL
-            })
-        {
-            return;
-        }
-        let max_dimension = self
-            .lock_surfaces
-            .iter()
-            .filter_map(|surface| surface.size)
-            .map(|size| {
-                self.ui_shell
-                    .now_playing_artwork_decode_size_at_scale(size.buffer, size.render_scale)
-            })
-            .max()
-            .unwrap_or(160);
-        let snapshot = self.now_playing_snapshot.clone();
-        self.artwork_last_attempt = Some((path.clone(), Instant::now()));
-        match spawn_artwork_loader(
-            path.clone(),
-            snapshot.clone(),
-            max_dimension,
-            self.background_sender.clone(),
-        ) {
-            Ok(()) => self.artwork_in_flight = Some((path, snapshot)),
-            Err(error) => {
-                tracing::warn!(%error, path = %path.display(), "failed to start artwork worker")
             }
         }
     }
