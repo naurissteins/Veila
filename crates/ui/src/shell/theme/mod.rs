@@ -230,8 +230,7 @@ fn scale_position(position: WidgetPosition, scale: RenderScale) -> WidgetPositio
 }
 
 pub(super) fn scale_backdrop(mut backdrop: Backdrop, scale: RenderScale) -> Backdrop {
-    backdrop.radius = scale_i32(backdrop.radius, scale);
-    backdrop.border_width = scale_i32(backdrop.border_width, scale);
+    // Keep the radius and border in logical pixels for subpixel rendering.
     backdrop.inset_top = scale_i32(backdrop.inset_top, scale);
     backdrop.inset_bottom = scale_i32(backdrop.inset_bottom, scale);
     backdrop.inset_left = scale_i32(backdrop.inset_left, scale);
