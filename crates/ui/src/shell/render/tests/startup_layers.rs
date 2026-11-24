@@ -53,38 +53,67 @@ const DUSK_LAYERS: &str = r##"
 "##;
 
 #[test]
-fn startup_overlay_draws_dusk_labels_before_the_wordmark() {
+fn startup_overlay_draws_the_complete_dusk_scene() {
     let config = AppConfig::from_toml_str(DUSK_LAYERS).unwrap();
     let shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
 
     for scale in [RenderScale::ONE, RenderScale::from_units(180)] {
         let mut startup = frame(scale);
-        assert!(!shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+        assert!(shell.render_startup_static_overlay_at_scale(&mut startup, scale));
         assert!(has_color(&startup, 1), "session tag");
         assert!(has_color(&startup, 0), "auth hint");
-        assert!(!has_color(&startup, 2), "wordmark deferred");
+        assert!(has_color(&startup, 2), "wordmark");
 
         let mut full = frame(scale);
         shell.render_static_overlay_at_scale(&mut full, scale);
-        assert!(has_color(&full, 2), "wordmark drawn");
+        assert_eq!(startup.pixels(), full.pixels());
     }
 }
 
 #[test]
-fn startup_overlay_is_complete_if_the_layers_fit() {
+fn startup_overlay_defers_additional_wordmarks() {
     let mut config = AppConfig::from_toml_str(DUSK_LAYERS).unwrap();
-    config
+    let mut second_wordmark = config
         .visuals
         .layer
-        .retain(|layer| layer.name.as_deref() != Some("ghost_wordmark"));
+        .iter()
+        .find(|layer| layer.name.as_deref() == Some("ghost_wordmark"))
+        .unwrap()
+        .clone();
+    second_wordmark.text = Some("LOCK".into());
+    second_wordmark.position.halign = Some(veila_common::HorizontalAlign::Right);
+    config.visuals.layer.push(second_wordmark);
     let shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
     let scale = RenderScale::from_units(180);
     let mut startup = frame(scale);
     let mut full = frame(scale);
 
-    assert!(shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+    assert!(!shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+    assert!(has_color(&startup, 2), "first wordmark");
     shell.render_static_overlay_at_scale(&mut full, scale);
-    assert_eq!(startup.pixels(), full.pixels());
+    assert_ne!(startup.pixels(), full.pixels());
+}
+
+#[test]
+fn startup_wordmark_respects_the_scaled_raster_budget() {
+    let mut config = AppConfig::from_toml_str(DUSK_LAYERS).unwrap();
+    let wordmark = config
+        .visuals
+        .layer
+        .iter_mut()
+        .find(|layer| layer.name.as_deref() == Some("ghost_wordmark"))
+        .unwrap();
+    wordmark.text = Some("LOCKED".into());
+    let shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
+
+    assert!(
+        shell
+            .render_startup_static_overlay_at_scale(&mut frame(RenderScale::ONE), RenderScale::ONE)
+    );
+    let scale = RenderScale::from_units(180);
+    let mut startup = frame(scale);
+    assert!(!shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+    assert!(!has_color(&startup, 2), "over-budget wordmark deferred");
 }
 
 #[test]

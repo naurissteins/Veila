@@ -7,6 +7,9 @@ use veila_renderer::{
 };
 
 pub(super) const STARTUP_TEXT_BUDGET: usize = 64 * 1024;
+pub(super) const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
+const STARTUP_WORDMARK_BUDGET: usize = 5 * MAX_CUSTOM_LAYER_FONT_SIZE_PX.pow(2) as usize;
+const MIN_STARTUP_WORDMARK_SIZE_PX: usize = 128;
 
 impl RenderContext<'_> {
     pub(super) fn render_layers(
@@ -19,9 +22,10 @@ impl RenderContext<'_> {
         }
 
         let mut complete = true;
+        let mut wordmark_available = true;
         for (index, layer) in self.theme.layers.iter().enumerate() {
             if let Some(remaining) = &mut startup_budget
-                && !reserve_startup_text(layer, remaining)
+                && !reserve_startup_text(layer, remaining, &mut wordmark_available)
             {
                 complete = false;
                 continue;
@@ -88,21 +92,35 @@ impl RenderContext<'_> {
     }
 }
 
-fn reserve_startup_text(layer: &VisualLayer, remaining: &mut usize) -> bool {
+fn reserve_startup_text(
+    layer: &VisualLayer,
+    remaining: &mut usize,
+    wordmark_available: &mut bool,
+) -> bool {
     if layer.kind != LayerKind::Text || layer.background_color.is_some_and(|color| color.alpha > 0)
     {
         return false;
     }
 
     // Estimate raster work in device pixels and count small text toward the shaping budget too.
-    let font_size = layer.font_size.max(16) as usize;
+    let font_size = layer.font_size.clamp(16, MAX_CUSTOM_LAYER_FONT_SIZE_PX) as usize;
     let cost = layer
         .text
         .len()
         .saturating_mul(font_size.saturating_mul(font_size));
-    let Some(unused) = remaining.checked_sub(cost) else {
-        return false;
-    };
-    *remaining = unused;
-    true
+    if let Some(unused) = remaining.checked_sub(cost) {
+        *remaining = unused;
+        return true;
+    }
+
+    // The separate allowance keeps one large single word from using the label budget.
+    if *wordmark_available
+        && font_size >= MIN_STARTUP_WORDMARK_SIZE_PX
+        && cost <= STARTUP_WORDMARK_BUDGET
+        && layer.text.bytes().all(|byte| byte.is_ascii_graphic())
+    {
+        *wordmark_available = false;
+        return true;
+    }
+    false
 }

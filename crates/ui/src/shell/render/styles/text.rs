@@ -5,9 +5,7 @@ mod widgets;
 use veila_common::FontStyle as ConfigFontStyle;
 use veila_renderer::text::{FontStyle as RendererFontStyle, TextStyle, resolve_font_family};
 
-use super::super::RenderContext;
-
-const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
+use super::super::{RenderContext, layers::MAX_CUSTOM_LAYER_FONT_SIZE_PX};
 
 impl RenderContext<'_> {
     pub(crate) fn custom_layer_text_style(
