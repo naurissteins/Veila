@@ -116,6 +116,9 @@ impl CurtainApp {
         let commit_started_at = timing_enabled.then(Instant::now);
         let dynamic_overlay_started_at = timing_enabled.then(Instant::now);
         let mut dynamic_overlay_ms = 0;
+        if first_frame {
+            self.apply_startup_weather();
+        }
         let ui_shell = &self.ui_shell;
         self.configure_viewport_for_surface(index, size);
         let uses_video_layer = self.uses_video_layer(index, size);

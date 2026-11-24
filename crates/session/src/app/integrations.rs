@@ -123,7 +123,10 @@ impl Running {
                         &message,
                         SupervisorMessage::UpdateWeather { snapshot: Some(_) }
                     ) {
-                        tracing::debug!("supervisor delivered live weather update");
+                        tracing::debug!(
+                            elapsed_us = veila_common::elapsed_us(self.started),
+                            "supervisor delivered live weather update"
+                        );
                     }
                     self.queue(message);
                 }

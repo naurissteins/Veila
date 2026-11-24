@@ -51,17 +51,30 @@ pub(super) async fn run(
     let mut last_awake_since = None;
     let mut pending: Option<oneshot::Receiver<()>> = None;
     let mut media_updates = providers.media.subscribe();
+    let mut weather_updates = providers.weather.subscribe();
     loop {
         tokio::select! {
             changed = changes.changed() => {
                 if changed.is_err() { break; }
                 let next = changes.borrow_and_update().clone();
-                if next.config != state.config { providers.update(&next); configure(&mut suspend, &next); }
+                if next.config != state.config {
+                    if providers.update(&next) {
+                        weather_updates = providers.weather.subscribe();
+                    }
+                    configure(&mut suspend, &next);
+                }
                 if next.generation != state.generation || next.activity != state.activity { suspend.note_activity(next.activity); }
+                let refresh = next.revision != state.revision || next.generation != state.generation || next.confirmed != state.confirmed;
                 state = next;
+                if refresh {
+                    providers.refresh(&state, path.as_deref(), &mut output).await;
+                }
             }
             changed = media_updates.changed() => {
                 if changed.is_err() { break; }
+                providers.refresh(&state, path.as_deref(), &mut output).await;
+            }
+            Ok(()) = weather_updates.changed() => {
                 providers.refresh(&state, path.as_deref(), &mut output).await;
             }
             _ = tick.tick() => {

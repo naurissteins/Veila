@@ -384,12 +384,13 @@ impl ShellState {
         location: Option<String>,
         snapshot: Option<veila_common::WeatherSnapshot>,
         unit: veila_common::WeatherUnit,
-    ) {
+    ) -> bool {
         let next = super::weather::widget_data(location, snapshot, unit);
-        if self.weather != next {
-            self.weather = next;
-            self.bump_static_scene_revision();
+        if self.weather == next {
+            return false;
         }
+        self.weather = next;
+        self.theme.weather.enabled && !self.emergency_active()
     }
     pub fn set_battery_snapshot(&mut self, snapshot: Option<veila_common::BatterySnapshot>) {
         let next = super::battery::widget_data(snapshot);

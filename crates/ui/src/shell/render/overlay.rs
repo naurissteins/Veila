@@ -238,7 +238,11 @@ impl RenderContext<'_> {
         }
     }
 
-    fn render_floating_weather_widgets(&self, buffer: &mut impl PixelBuffer, layout: &SceneLayout) {
+    pub(super) fn render_floating_weather_widgets(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        layout: &SceneLayout,
+    ) {
         let Some(weather) = layout.floating_weather.as_ref() else {
             return;
         };

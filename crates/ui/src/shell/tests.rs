@@ -1739,7 +1739,34 @@ fn disabled_clock_and_date_leave_idle_shell_without_deadline() {
 }
 
 #[test]
-fn live_battery_and_weather_snapshots_invalidate_only_when_data_changes() {
+fn weather_updates_keep_the_static_scene_reusable() {
+    let mut shell = ShellState::default();
+    shell.theme.weather.enabled = true;
+    let weather = veila_common::WeatherSnapshot {
+        temperature_celsius: 10,
+        condition: veila_common::WeatherCondition::ClearDay,
+        fetched_at_unix: 0,
+    };
+    let before = shell.static_scene_revision();
+    assert!(shell.set_weather_snapshot(
+        Some("Riga".into()),
+        Some(weather.clone()),
+        veila_common::WeatherUnit::Celsius,
+    ));
+    assert!(!shell.set_weather_snapshot(
+        Some("Riga".into()),
+        Some(veila_common::WeatherSnapshot {
+            fetched_at_unix: 1,
+            ..weather
+        }),
+        veila_common::WeatherUnit::Celsius,
+    ));
+    assert!(shell.set_weather_snapshot(None, None, veila_common::WeatherUnit::Celsius));
+    assert_eq!(before, shell.static_scene_revision());
+}
+
+#[test]
+fn battery_snapshots_invalidate_only_when_data_changes() {
     let mut shell = ShellState::default();
     let battery = Some(veila_common::BatterySnapshot {
         percent: 90,
@@ -1751,23 +1778,4 @@ fn live_battery_and_weather_snapshots_invalidate_only_when_data_changes() {
     let before = shell.static_scene_revision();
     shell.set_battery_snapshot(battery);
     assert_eq!(before, shell.static_scene_revision());
-    let weather = Some(veila_common::WeatherSnapshot {
-        temperature_celsius: 10,
-        condition: veila_common::WeatherCondition::ClearDay,
-        fetched_at_unix: 0,
-    });
-    shell.set_weather_snapshot(
-        Some("Riga".into()),
-        weather.clone(),
-        veila_common::WeatherUnit::Celsius,
-    );
-    let before = shell.static_scene_revision();
-    shell.set_weather_snapshot(
-        Some("Riga".into()),
-        weather,
-        veila_common::WeatherUnit::Celsius,
-    );
-    assert_eq!(before, shell.static_scene_revision());
-    shell.set_weather_snapshot(None, None, veila_common::WeatherUnit::Celsius);
-    assert!(shell.static_scene_revision() > before);
 }

@@ -11,7 +11,7 @@ use veila_common::{LoadedConfig, session::SupervisorMessage};
 pub(super) struct Providers {
     pub battery: BatteryHandle,
     pub media: NowPlayingHandle,
-    weather: WeatherHandle,
+    pub weather: WeatherHandle,
     weather_config: veila_common::WeatherConfig,
     watcher: AutoReloadWatcher,
     last: Vec<SupervisorMessage>,
@@ -36,7 +36,7 @@ impl Providers {
             generation: state.generation,
         }
     }
-    pub fn update(&mut self, state: &State) {
+    pub fn update(&mut self, state: &State) -> bool {
         self.last.clear();
         self.battery.update_config(
             &state.config.battery,
@@ -47,7 +47,9 @@ impl Providers {
             // Replacing the reader prevents an old-location fetch from reaching the new config.
             self.weather = WeatherHandle::spawn(&state.config.weather);
             self.weather_config = state.config.weather.clone();
+            return true;
         }
+        false
     }
     pub async fn refresh(&mut self, state: &State, path: Option<&Path>, output: &mut Output) {
         if !state.confirmed {
