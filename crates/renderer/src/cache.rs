@@ -2,6 +2,7 @@ mod atomic;
 pub(crate) mod image;
 mod maintenance;
 mod prune;
+pub(crate) use atomic::write_atomic;
 pub use maintenance::spawn_cache_maintenance;
 pub use prune::{CacheKind, CachePrunePolicy, CachePruneReport, prune_cache};
 

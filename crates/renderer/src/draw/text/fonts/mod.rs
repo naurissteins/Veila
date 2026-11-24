@@ -1,4 +1,6 @@
+mod cache;
 mod helper;
+mod query;
 mod selection;
 #[cfg(test)]
 mod tests;

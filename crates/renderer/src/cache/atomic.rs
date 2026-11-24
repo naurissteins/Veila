@@ -8,7 +8,7 @@ use std::{
 
 static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
-pub(super) fn write_atomic(
+pub(crate) fn write_atomic(
     path: &Path,
     write: impl FnOnce(&mut File) -> io::Result<()>,
 ) -> io::Result<()> {

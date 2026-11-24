@@ -1,6 +1,9 @@
+use super::super::query::{escape_family, fontconfig_weight, parse_match, query};
 use super::*;
 use std::{
     fs,
+    os::unix::ffi::OsStringExt,
+    process::Command,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -124,4 +127,52 @@ fn successful_query_requires_complete_framing_and_exit_success() {
         ),
         Some((PathBuf::from("/font"), 0))
     );
+}
+
+#[test]
+fn cached_matches_rebuild_the_same_font_context_until_the_file_or_request_changes() {
+    let fixture = Fixture::new();
+    let manifest = fixture.0.join("selection.json");
+    let font = fixture
+        .0
+        .join(std::ffi::OsString::from_vec(b"clock-\xff.ttf".to_vec()));
+    let bytes = include_bytes!("../../../../../../assets/fonts/Geom-SemiBold.ttf");
+    fs::write(&font, bytes).unwrap();
+    let patterns = [(String::from("serif:weight=180:slant=0"), Some("serif"))];
+    let key = cache::key(&patterns);
+    let mut selection = Selection::new();
+    let stamp = selection
+        .add(&patterns[0].0, Some("serif"), &font, 0, None)
+        .unwrap()
+        .clone();
+    let font_key = selection.hash.finish();
+    cache::write(
+        &manifest,
+        key,
+        font_key,
+        vec![Some(FontMatch::new(&font, 0, stamp))],
+    )
+    .unwrap();
+
+    let saved = cache::read(&manifest, key, patterns.len()).unwrap();
+    let cached = replay_selection(&saved, &patterns).unwrap();
+    assert_eq!(saved.font_key, font_key);
+    assert!(prepare_configured_fonts(&saved, &patterns).is_some());
+    assert_eq!(cached.aliases, selection.aliases);
+    let edited = [(String::from("serif:weight=200:slant=0"), Some("serif"))];
+    assert!(cache::read(&manifest, cache::key(&edited), edited.len()).is_none());
+
+    let replacement = fixture.0.join("replacement.ttf");
+    fs::write(&replacement, bytes).unwrap();
+    fs::rename(replacement, font).unwrap();
+    assert!(prepare_configured_fonts(&saved, &patterns).is_none());
+    assert!(replay_selection(&saved, &patterns).is_none());
+}
+
+#[test]
+fn corrupted_selection_is_a_cache_miss() {
+    let fixture = Fixture::new();
+    let manifest = fixture.0.join("selection.json");
+    fs::write(&manifest, b"{invalid").unwrap();
+    assert!(cache::read(&manifest, 0, 0).is_none());
 }

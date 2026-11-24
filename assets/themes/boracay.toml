@@ -1,4 +1,3 @@
-# Font: https://www.1001fonts.com/mail-ray-stuff-font.html
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
@@ -16,8 +15,8 @@ format = "24h"
 meridiem_font_size = 22
 meridiem_x = 6
 meridiem_y = 7
-font_family = "Mail Ray Stuff"
-font_weight = 400
+font_family = "Geom"
+font_weight = 600
 color = "rgba(255, 255, 255, 0.4)"
 font_size = 148
 halign = "center"
@@ -27,8 +26,8 @@ y = 40
 
 [visuals.date]
 format = "long"
-font_family = "Mail Ray Stuff"
-font_weight = 400
+font_family = "Geom"
+font_weight = 600
 color = "rgba(255, 255, 255, 0.4)"
 font_size = 46
 halign = "center"

@@ -24,9 +24,7 @@ impl CurtainApp {
     ) {
         match event {
             BackgroundEvent::Video(update) => self.accept_video_frame(update, queue_handle),
-            BackgroundEvent::FontsReady { generation, fonts } => {
-                self.accept_fonts(generation, *fonts, queue_handle)
-            }
+            BackgroundEvent::FontsReady => self.accept_fonts(queue_handle),
             BackgroundEvent::BuffersReady {
                 path,
                 buffers,

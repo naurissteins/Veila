@@ -47,28 +47,20 @@ impl CurtainApp {
             .is_none_or(|pool| !pool.has_committed_frame());
         let frame_size = size.buffer;
         let render_scale = size.render_scale;
-        let revision = self.ui_shell.static_scene_revision();
         let output_role = self.output_role_for_surface(index);
         let ui_visible = output_role.renders_shell();
         let background_started_at = timing_enabled.then(Instant::now);
-        let scene_base_cache_ready = if ui_visible {
-            self.try_prepare_scene_base_without_background(index, size, revision)?
-        } else {
-            None
-        };
-        let background_refreshed = if scene_base_cache_ready.is_some() {
-            false
-        } else {
-            self.prepare_background(index, size, ui_visible.then_some(revision))?
-        };
-        let scene_base_refreshed = if ui_visible {
-            match scene_base_cache_ready {
-                Some(refreshed) => refreshed,
-                None => self.prepare_scene_base(index, size, background_refreshed)?,
-            }
-        } else {
-            false
-        };
+        if first_frame && ui_visible {
+            self.apply_startup_fonts();
+        }
+        let (mut background_refreshed, mut scene_base_refreshed) =
+            self.prepare_full_scene(index, size, ui_visible)?;
+        if first_frame && ui_visible && self.apply_startup_fonts() {
+            let (background, scene) = self.prepare_full_scene(index, size, ui_visible)?;
+            background_refreshed |= background;
+            scene_base_refreshed |= scene;
+        }
+        let revision = self.ui_shell.static_scene_revision();
         let background_prepare_ms = background_started_at.map(elapsed_ms).unwrap_or(0);
 
         if !ui_visible
@@ -225,6 +217,24 @@ impl CurtainApp {
         self.note_memory_after_render(first_frame);
 
         Ok(())
+    }
+
+    fn prepare_full_scene(
+        &mut self,
+        index: usize,
+        size: SurfaceSize,
+        ui_visible: bool,
+    ) -> Result<(bool, bool)> {
+        let revision = self.ui_shell.static_scene_revision();
+        if ui_visible
+            && let Some(refreshed) =
+                self.try_prepare_scene_base_without_background(index, size, revision)?
+        {
+            return Ok((false, refreshed));
+        }
+        let background = self.prepare_background(index, size, ui_visible.then_some(revision))?;
+        let scene = ui_visible && self.prepare_scene_base(index, size, background)?;
+        Ok((background, scene))
     }
 
     #[allow(clippy::too_many_arguments)]
