@@ -5,7 +5,7 @@ use super::*;
 fn initial_database_contains_only_embedded_faces() {
     let fonts = bundled_fonts();
     let db = fonts.0.font_system.db();
-    assert_eq!(db.faces().count(), 3);
+    assert_eq!(db.faces().count(), BUNDLED_FONTS.len());
     assert!(
         db.faces()
             .all(|face| matches!(face.source, Source::Binary(_)))
@@ -13,6 +13,30 @@ fn initial_database_contains_only_embedded_faces() {
     for family in ["Geom", "Google Sans Flex", "Nunito"] {
         assert!(resolve_font_family_in_db(db, family).is_some(), "{family}");
     }
+}
+
+#[test]
+fn embedded_fonts_shape_the_status_dot_with_google_sans_flex() {
+    use cosmic_text::{Attrs, Buffer, Family, Metrics, Shaping};
+
+    let mut fonts = bundled_fonts();
+    let font_system = &mut fonts.0.font_system;
+    let family = resolve_font_family_in_db(font_system.db(), "Google Sans Flex").unwrap();
+    let mut buffer = Buffer::new(font_system, Metrics::new(14.0, 19.0));
+    buffer.set_text(
+        "●",
+        &Attrs::new().family(Family::Name(&family)),
+        Shaping::Advanced,
+        None,
+    );
+    buffer.shape_until_scroll(font_system, true);
+
+    let glyph = buffer
+        .layout_runs()
+        .flat_map(|run| run.glyphs)
+        .next()
+        .unwrap();
+    assert_ne!(glyph.glyph_id, 0);
 }
 
 #[test]
