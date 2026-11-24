@@ -67,7 +67,7 @@ use wayland_protocols_wlr::output_power_management::v1::client::{
 
 use crate::{
     CurtainOptions,
-    background::{BackgroundEvent, BackgroundSlideshow},
+    background::{ArtworkLoad, BackgroundEvent, BackgroundSlideshow},
     ipc::auth::AuthEvent,
     ipc::control::{ControlEvent, ControlSender},
     keyboard_cache::load_keyboard_layout_label,
@@ -259,7 +259,7 @@ pub(crate) struct CurtainApp {
     pub(crate) avatar_path: Option<PathBuf>,
     pub(crate) avatar_load_started: bool,
     pub(crate) avatar_load_needed: bool,
-    pub(crate) artwork_in_flight: Option<(PathBuf, Option<NowPlayingSnapshot>)>,
+    pub(crate) artwork_in_flight: Option<ArtworkLoad>,
     pub(crate) artwork_last_attempt: Option<(PathBuf, Instant)>,
     pub(crate) lock_wait_timeout: Duration,
     pub(crate) startup_started_at: Instant,
