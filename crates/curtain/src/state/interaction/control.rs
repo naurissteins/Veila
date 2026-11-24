@@ -51,8 +51,12 @@ impl CurtainApp {
                 }
             }
             ControlEvent::UpdateNowPlaying { snapshot } => {
+                if self.now_playing_snapshot == snapshot {
+                    return;
+                }
                 tracing::debug!(
                     has_snapshot = snapshot.is_some(),
+                    startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
                     "received live now playing update from supervisor"
                 );
                 self.now_playing_snapshot = snapshot.clone();

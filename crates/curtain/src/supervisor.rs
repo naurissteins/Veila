@@ -11,7 +11,8 @@ use std::{
     thread,
 };
 use veila_common::{
-    WeatherSnapshot,
+    NowPlayingSnapshot, WeatherSnapshot,
+    ipc::CurtainControlMessage,
     session::{self, CurtainMessage, SupervisorMessage, frame},
 };
 
@@ -20,6 +21,8 @@ pub(crate) struct Supervisor {
     _lock: File,
     sender: SyncSender<CurtainMessage>,
     startup_weather: Receiver<WeatherSnapshot>,
+    startup_media: Receiver<NowPlayingSnapshot>,
+    startup_media_sampled: bool,
     activity_at: std::cell::Cell<Option<std::time::Instant>>,
 }
 impl Supervisor {
@@ -32,9 +35,10 @@ impl Supervisor {
         let writer = channel.try_clone()?;
         let (sender, receiver) = mpsc::sync_channel(64);
         let (startup_weather_tx, startup_weather) = mpsc::sync_channel(1);
+        let (startup_media_tx, startup_media) = mpsc::sync_channel(1);
         thread::Builder::new()
             .name("veila-supervisor-read".into())
-            .spawn(move || read_updates(channel, control, startup_weather_tx))?;
+            .spawn(move || read_updates(channel, control, startup_weather_tx, startup_media_tx))?;
         thread::Builder::new()
             .name("veila-supervisor-write".into())
             .spawn(move || {
@@ -51,6 +55,8 @@ impl Supervisor {
             _lock: lock,
             sender,
             startup_weather,
+            startup_media,
+            startup_media_sampled: false,
         })
     }
     pub fn send(&self, message: CurtainMessage) {
@@ -68,9 +74,15 @@ impl Supervisor {
     }
 }
 
-fn read_updates(channel: UnixStream, control: ControlSender, startup: SyncSender<WeatherSnapshot>) {
+fn read_updates(
+    channel: UnixStream,
+    control: ControlSender,
+    startup_weather: SyncSender<WeatherSnapshot>,
+    startup_media: SyncSender<NowPlayingSnapshot>,
+) {
     let mut reader = BufReader::new(channel);
-    let mut startup = Some(startup);
+    let mut startup_weather = Some(startup_weather);
+    let mut startup_media = Some(startup_media);
     loop {
         let message = match frame::read::<SupervisorMessage>(&mut reader) {
             Ok(Some(message)) => message,
@@ -83,13 +95,23 @@ fn read_updates(channel: UnixStream, control: ControlSender, startup: SyncSender
                 break;
             }
         };
-        // only the first forecast belonging to the initial config can be sampled during rendering
+        // The first populated snapshots for the initial config can be sampled during rendering.
         match &message {
-            SupervisorMessage::ReloadConfig { .. } => startup = None,
+            SupervisorMessage::ReloadConfig { .. } => {
+                startup_weather = None;
+                startup_media = None;
+            }
             SupervisorMessage::UpdateWeather {
                 snapshot: Some(snapshot),
             } => {
-                if let Some(sender) = startup.take() {
+                if let Some(sender) = startup_weather.take() {
+                    let _ = sender.try_send(snapshot.clone());
+                }
+            }
+            SupervisorMessage::Control(CurtainControlMessage::UpdateNowPlaying {
+                snapshot: Some(snapshot),
+            }) => {
+                if let Some(sender) = startup_media.take() {
                     let _ = sender.try_send(snapshot.clone());
                 }
             }
@@ -118,6 +140,18 @@ impl CurtainApp {
                 self.notify_supervisor(CurtainMessage::ResumeGuardArmed { request });
             }
             SupervisorMessage::ReloadConfig { config } => self.apply_config(*config, queue),
+            SupervisorMessage::Control(CurtainControlMessage::UpdateNowPlaying { snapshot }) => {
+                if let Some(supervisor) = &mut self.supervisor {
+                    if snapshot.is_some() {
+                        let _ = supervisor.startup_media.try_recv();
+                        supervisor.startup_media_sampled = false;
+                    } else if supervisor.startup_media_sampled {
+                        // The initial empty reply precedes the track already painted on startup.
+                        return;
+                    }
+                }
+                self.handle_control_event(ControlEvent::UpdateNowPlaying { snapshot }, queue);
+            }
             SupervisorMessage::Control(message) => {
                 self.handle_control_event(crate::ipc::control::control_event(message), queue)
             }
@@ -149,7 +183,7 @@ impl CurtainApp {
         }
     }
 
-    pub(crate) fn apply_startup_weather(&mut self) {
+    pub(crate) fn apply_startup_widgets(&mut self) {
         if !self.session_locked
             || self.ready_notified
             || self.ui_shell.emergency_active()
@@ -176,6 +210,20 @@ impl CurtainApp {
                 startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
                 "included weather in the first UI frame"
             );
+        }
+
+        if let Some(supervisor) = &mut self.supervisor
+            && let Ok(snapshot) = supervisor.startup_media.try_recv()
+        {
+            supervisor.startup_media_sampled = true;
+            self.now_playing_snapshot = Some(snapshot.clone());
+            if self.ui_shell.set_initial_now_playing_snapshot(snapshot) {
+                tracing::debug!(
+                    startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
+                    "included now playing in the first UI frame"
+                );
+                self.maybe_start_artwork_load();
+            }
         }
     }
 
@@ -227,17 +275,24 @@ mod tests {
     use std::net::Shutdown;
 
     #[test]
-    fn startup_weather_does_not_pass_a_config_reload() {
+    fn startup_snapshots_only_copy_first_populated_updates_before_reload() {
         let snapshot = WeatherSnapshot {
             temperature_celsius: 4,
             condition: veila_common::WeatherCondition::Overcast,
+            fetched_at_unix: 1,
+        };
+        let track = NowPlayingSnapshot {
+            title: String::from("First track"),
+            artist: None,
+            artwork_path: None,
             fetched_at_unix: 1,
         };
         for reloaded in [false, true] {
             let (mut writer, reader) = UnixStream::pair().unwrap();
             let (sender, control) = mpsc::channel();
             let (wake, _source) = calloop::ping::make_ping().unwrap();
-            let (initial_tx, initial_rx) = mpsc::sync_channel(1);
+            let (weather_tx, weather_rx) = mpsc::sync_channel(1);
+            let (media_tx, media_rx) = mpsc::sync_channel(1);
             if reloaded {
                 frame::write(
                     &mut writer,
@@ -247,17 +302,42 @@ mod tests {
                 )
                 .unwrap();
             }
-            let weather = SupervisorMessage::UpdateWeather {
-                snapshot: Some(snapshot.clone()),
-            };
-            frame::write(&mut writer, &weather).unwrap();
+            let updates = [
+                SupervisorMessage::UpdateWeather {
+                    snapshot: Some(snapshot.clone()),
+                },
+                SupervisorMessage::Control(CurtainControlMessage::UpdateNowPlaying {
+                    snapshot: None,
+                }),
+                SupervisorMessage::Control(CurtainControlMessage::UpdateNowPlaying {
+                    snapshot: Some(track.clone()),
+                }),
+                SupervisorMessage::Control(CurtainControlMessage::UpdateNowPlaying {
+                    snapshot: Some(NowPlayingSnapshot {
+                        title: String::from("Next track"),
+                        ..track.clone()
+                    }),
+                }),
+            ];
+            for message in &updates {
+                frame::write(&mut writer, message).unwrap();
+            }
             writer.shutdown(Shutdown::Write).unwrap();
 
-            read_updates(reader, ControlSender::new(sender, wake), initial_tx);
+            read_updates(
+                reader,
+                ControlSender::new(sender, wake),
+                weather_tx,
+                media_tx,
+            );
 
             assert_eq!(
-                initial_rx.try_recv().ok(),
+                weather_rx.try_recv().ok(),
                 (!reloaded).then_some(snapshot.clone())
+            );
+            assert_eq!(
+                media_rx.try_recv().ok(),
+                (!reloaded).then_some(track.clone())
             );
             if reloaded {
                 assert!(matches!(
@@ -266,10 +346,12 @@ mod tests {
                         if matches!(*message, SupervisorMessage::ReloadConfig { .. })
                 ));
             }
-            assert_eq!(
-                control.try_recv().unwrap(),
-                ControlEvent::Supervisor(Box::new(weather))
-            );
+            for message in updates {
+                assert_eq!(
+                    control.try_recv().unwrap(),
+                    ControlEvent::Supervisor(Box::new(message))
+                );
+            }
         }
     }
 }

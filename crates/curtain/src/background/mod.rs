@@ -174,7 +174,11 @@ impl CurtainApp {
                     && let Some(asset) = asset
                     && self.ui_shell.set_now_playing_artwork(&path, asset)
                 {
-                    tracing::debug!(elapsed_ms, "loaded deferred now playing artwork");
+                    tracing::debug!(
+                        elapsed_ms,
+                        startup_elapsed_us = crate::state::elapsed_us(self.startup_started_at),
+                        "loaded deferred now playing artwork"
+                    );
                     self.render_widget_surfaces(WidgetKind::Media, queue_handle);
                 }
                 self.maybe_start_artwork_load();
