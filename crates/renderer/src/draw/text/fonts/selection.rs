@@ -1,207 +1,288 @@
 use super::super::context::{FontContext, resolve_font_family_in_db};
-use super::{FontRequest, MAX_CONFIGURED_FONT_REQUESTS, PreparedFonts, bundled_database};
+use super::{
+    FontRequest, PreparedFonts, bundled_database,
+    cache::{self, FileStamp, FontMatch},
+    query::{font_patterns, query_pattern},
+};
 use cosmic_text::fontdb::{Database, Source};
-use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use std::{
-    collections::HashMap,
-    ffi::OsString,
+    collections::{HashMap, hash_map::DefaultHasher},
     fs::OpenOptions,
     hash::Hasher,
-    io::{ErrorKind, Read},
-    os::unix::{ffi::OsStringExt, fs::OpenOptionsExt},
+    io::Read,
+    os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
     sync::Arc,
-    thread,
     time::{Duration, Instant},
 };
 
-const QUERY_TIMEOUT: Duration = Duration::from_millis(1500);
 const LOAD_BUDGET: Duration = Duration::from_secs(3);
-const MAX_QUERY_BYTES: usize = 4096;
 const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 128 * 1024 * 1024;
+const MAX_STARTUP_FONT_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_FACES: usize = 64;
-// installed script faces remain available to cosmic-text's shaping and fallback engine
-const FALLBACKS: [&str; 21] = [
-    "Open Sans",
-    "Noto Sans",
-    "DejaVu Sans",
-    "FreeSans",
-    "Noto Sans Mono",
-    "DejaVu Sans Mono",
-    "FreeMono",
-    "Noto Sans Symbols",
-    "Noto Sans Symbols2",
-    "Noto Color Emoji",
-    "DejaVu Serif",
-    "sans-serif:charset=0627",
-    "sans-serif:charset=05d0",
-    "sans-serif:charset=4e2d",
-    "sans-serif:charset=3042",
-    "sans-serif:charset=ac00",
-    "sans-serif:charset=0915",
-    "sans-serif:charset=09ac",
-    "sans-serif:charset=0e01",
-    "emoji:charset=1f600",
-    "sans-serif:charset=f1105",
-];
+struct LoadedFile {
+    faces: Vec<cosmic_text::fontdb::ID>,
+    stamp: FileStamp,
+}
+
+struct Selection {
+    db: Database,
+    hash: DefaultHasher,
+    loaded: HashMap<PathBuf, LoadedFile>,
+    aliases: HashMap<String, Option<String>>,
+    remaining: u64,
+}
+
+impl Selection {
+    fn new() -> Self {
+        let (db, hash) = bundled_database();
+        Self {
+            db,
+            hash,
+            loaded: HashMap::new(),
+            aliases: HashMap::new(),
+            remaining: MAX_TOTAL_BYTES,
+        }
+    }
+
+    fn add(
+        &mut self,
+        pattern: &str,
+        family: Option<&str>,
+        path: &Path,
+        index: u32,
+        expected: Option<&FileStamp>,
+    ) -> Option<&FileStamp> {
+        if self.db.faces().count() >= MAX_FACES || !path.is_absolute() {
+            return None;
+        }
+        if !self.loaded.contains_key(path) {
+            let (bytes, stamp) = read_font(path, self.remaining)?;
+            if expected.is_some_and(|expected| *expected != stamp) {
+                return None;
+            }
+            let bytes = Arc::new(bytes);
+            let faces = self
+                .db
+                .load_font_source(Source::Binary(bytes.clone()))
+                .to_vec();
+            if self.db.faces().count() > MAX_FACES || self.face_family(&faces, index).is_none() {
+                for id in faces {
+                    self.db.remove_face(id);
+                }
+                return None;
+            }
+            self.remaining -= bytes.len() as u64;
+            if expected.is_none() {
+                self.hash.write(&bytes);
+            }
+            self.loaded
+                .insert(path.to_owned(), LoadedFile { faces, stamp });
+        }
+        let file = self.loaded.get(path)?;
+        if expected.is_some_and(|expected| *expected != file.stamp) {
+            return None;
+        }
+        let resolved = self.face_family(&file.faces, index)?;
+        if let Some(family) = family.filter(|family| is_generic(family)) {
+            self.aliases
+                .insert(family.to_owned(), Some(resolved.to_owned()));
+        }
+        if expected.is_none() {
+            self.hash.write_usize(pattern.len());
+            self.hash.write(pattern.as_bytes());
+            self.hash.write_u32(index);
+        }
+        Some(&file.stamp)
+    }
+
+    fn face_family(&self, faces: &[cosmic_text::fontdb::ID], index: u32) -> Option<&str> {
+        faces
+            .iter()
+            .filter_map(|id| self.db.face(*id))
+            .find(|face| face.index == index & 0xffff)?
+            .families
+            .first()
+            .map(|(family, _)| family.as_str())
+    }
+
+    fn finish(self, font_key: u64) -> PreparedFonts {
+        if self.loaded.is_empty() {
+            tracing::warn!(
+                "optional system fonts unavailable; using bundled fonts (check fc-match and installed fonts)"
+            );
+        }
+        let mut context = FontContext::from_database(self.db, font_key);
+        context.resolved_families = self.aliases;
+        // Materialize selected faces off the dispatch thread.
+        let faces: Vec<_> = context
+            .font_system
+            .db()
+            .faces()
+            .map(|face| (face.id, face.weight))
+            .collect();
+        for (id, weight) in faces {
+            let _ = context.font_system.get_font(id, weight);
+        }
+        PreparedFonts(context)
+    }
+}
+
+pub(super) fn prepare_cached(
+    requests: &[FontRequest],
+    helper: &Path,
+    publish: &dyn Fn(PreparedFonts),
+) -> PreparedFonts {
+    let path = cache::path();
+    prepare_with_cache(requests, Some(helper), path.as_deref(), publish)
+}
 
 pub(super) fn prepare(requests: &[FontRequest], helper: Option<&Path>) -> PreparedFonts {
+    prepare_with_cache(requests, helper, None, &|_| {})
+}
+
+fn prepare_with_cache(
+    requests: &[FontRequest],
+    helper: Option<&Path>,
+    cache_path: Option<&Path>,
+    publish: &dyn Fn(PreparedFonts),
+) -> PreparedFonts {
     let started = Instant::now();
-    let deadline = started + LOAD_BUDGET;
-    let (mut db, mut hash) = bundled_database();
-    let bundled = db.clone();
-    let mut aliases = HashMap::new();
-    let mut loaded = HashMap::new();
-    let mut remaining = MAX_TOTAL_BYTES;
-    for pattern in FALLBACKS {
-        let _ = load_pattern(
-            &mut db,
-            &mut loaded,
-            &mut remaining,
-            &mut hash,
-            pattern,
-            deadline,
-            helper,
-        );
-    }
-    // keep cosmic-text's existing generic-family and ordered fallback policy
-    db.set_sans_serif_family("Open Sans");
-    db.set_monospace_family("Noto Sans Mono");
-    db.set_serif_family("DejaVu Serif");
-    let mut styles = Vec::new();
-    for request in requests.iter().take(MAX_CONFIGURED_FONT_REQUESTS) {
-        let style = (request.weight, request.italic);
-        if !styles.contains(&style) {
-            styles.push(style);
-            for family in ["Open Sans", "Noto Sans", "DejaVu Sans", "Noto Sans Mono"] {
-                let pattern = format!(
-                    "{family}:weight={}:slant={}",
-                    fontconfig_weight(style.0),
-                    if style.1 { 100 } else { 0 }
-                );
-                let _ = load_pattern(
-                    &mut db,
-                    &mut loaded,
-                    &mut remaining,
-                    &mut hash,
-                    &pattern,
-                    deadline,
-                    helper,
-                );
-            }
+    let mut selection = Selection::new();
+    let patterns = font_patterns(requests, &selection.db);
+    let key = cache::key(&patterns);
+    if let Some(path) = cache_path
+        && let Some(manifest) = cache::read(path, key, patterns.len())
+        && manifest.matches.iter().flatten().all(FontMatch::is_current)
+    {
+        // Large system fallbacks can finish after the theme's faces are ready.
+        if let Some(fonts) = prepare_configured_fonts(&manifest, &patterns) {
+            tracing::debug!(
+                elapsed_ms = started.elapsed().as_millis(),
+                "prepared cached theme fonts"
+            );
+            publish(fonts);
+        }
+        if let Some(cached) = replay_selection(&manifest, &patterns) {
+            let fonts = finish_selection(cached, manifest.font_key, started);
+            tracing::debug!(
+                elapsed_ms = started.elapsed().as_millis(),
+                "reused cached font selection"
+            );
+            return fonts;
         }
     }
-    for request in requests.iter().take(MAX_CONFIGURED_FONT_REQUESTS) {
-        let family = request.family.trim();
-        if family.is_empty() || family.len() > 256 {
-            continue;
+    let deadline = Instant::now() + LOAD_BUDGET;
+    let mut matches = Vec::new();
+    let mut complete = true;
+    for (pattern, family) in &patterns {
+        let found = (selection.db.faces().count() < MAX_FACES)
+            .then(|| query_pattern(pattern, helper, deadline))
+            .flatten()
+            .and_then(|(path, index)| {
+                let stamp = selection.add(pattern, *family, &path, index, None)?;
+                Some(FontMatch::new(&path, index, stamp.clone()))
+            });
+        if let Some(name) = family {
+            complete &= found.is_some()
+                && (is_generic(name) || resolve_font_family_in_db(&selection.db, name).is_some());
         }
-        if resolve_font_family_in_db(&bundled, family).is_some() {
-            continue;
-        }
-        let pattern = format!(
-            "{}:weight={}:slant={}",
-            escape_family(family),
-            fontconfig_weight(request.weight),
-            if request.italic { 100 } else { 0 }
-        );
-        if let Some(resolved) = load_pattern(
-            &mut db,
-            &mut loaded,
-            &mut remaining,
-            &mut hash,
-            &pattern,
-            deadline,
-            helper,
-        ) {
-            // fontconfig also returns a default for unknown names; keep the existing UI fallback
-            if matches!(
-                family.to_ascii_lowercase().as_str(),
-                "sans-serif" | "sans" | "serif" | "monospace" | "system-ui" | "ui-monospace"
-            ) {
-                aliases.insert(family.to_owned(), Some(resolved));
-            }
-        }
+        matches.push(found);
     }
-    if loaded.is_empty() {
-        tracing::warn!(
-            "optional system fonts unavailable; using bundled fonts (check fc-match and installed fonts)"
-        );
+    let font_key = selection.hash.finish();
+    if complete
+        && !selection.loaded.is_empty()
+        && Instant::now() < deadline
+        && let Some(path) = cache_path
+        && let Err(error) = cache::write(path, key, font_key, matches)
+    {
+        tracing::debug!(%error, "failed to save font selection");
     }
+    finish_selection(selection, font_key, started)
+}
+
+fn finish_selection(mut selection: Selection, font_key: u64, started: Instant) -> PreparedFonts {
+    // The startup subset keeps bundled generic families until the system fallbacks are ready.
+    selection.db.set_sans_serif_family("Open Sans");
+    selection.db.set_monospace_family("Noto Sans Mono");
+    selection.db.set_serif_family("DejaVu Serif");
+    let (faces, bytes) = (
+        selection.db.faces().count(),
+        MAX_TOTAL_BYTES - selection.remaining,
+    );
+    let fonts = selection.finish(font_key);
     tracing::info!(
-        faces = db.faces().count(),
-        bytes = MAX_TOTAL_BYTES - remaining,
+        faces,
+        bytes,
         elapsed_ms = started.elapsed().as_millis(),
         "bounded fonts prepared"
     );
-    let mut context = FontContext::from_database(db, hash.finish());
-    context.resolved_families = aliases;
-    // materialize selected faces here so first use performs no lazy font-file parsing in dispatch
-    let faces: Vec<_> = context
-        .font_system
-        .db()
-        .faces()
-        .map(|face| (face.id, face.weight))
-        .collect();
-    for (id, weight) in faces {
-        let _ = context.font_system.get_font(id, weight);
-    }
-    PreparedFonts(context)
+    fonts
 }
 
-fn load_pattern(
-    db: &mut Database,
-    loaded: &mut HashMap<PathBuf, Vec<cosmic_text::fontdb::ID>>,
-    remaining: &mut u64,
-    hash: &mut impl Hasher,
-    pattern: &str,
-    deadline: Instant,
-    helper: Option<&Path>,
-) -> Option<String> {
-    if Instant::now() >= deadline || db.faces().count() >= MAX_FACES {
-        return None;
-    }
-    let mut command = Command::new(helper.unwrap_or_else(|| Path::new("fc-match")));
-    if helper.is_some() {
-        command
-            .arg(super::helper::FONT_QUERY_SUBCOMMAND)
-            .env(super::helper::PARENT_ENV, std::process::id().to_string());
-    }
-    let (path, index) = query(&mut command, pattern, deadline)?;
-    if !loaded.contains_key(&path) {
-        let bytes = read_font(&path, *remaining)?;
-        let length = bytes.len() as u64;
-        let bytes = Arc::new(bytes);
-        let ids = db.load_font_source(Source::Binary(bytes.clone())).to_vec();
-        if ids.is_empty() {
+fn prepare_configured_fonts(
+    manifest: &cache::Manifest,
+    patterns: &[(String, Option<&str>)],
+) -> Option<PreparedFonts> {
+    let mut selection = Selection::new();
+    selection.remaining = MAX_STARTUP_FONT_BYTES;
+    for ((pattern, family), matched) in patterns.iter().zip(&manifest.matches) {
+        let Some(family) = family else {
+            continue;
+        };
+        let matched = matched.as_ref()?;
+        if !selection.loaded.contains_key(matched.path())
+            && matched.byte_len() > selection.remaining
+        {
             return None;
         }
-        if db.faces().count() > MAX_FACES {
-            for id in ids {
-                db.remove_face(id);
-            }
+        selection.add(
+            pattern,
+            Some(family),
+            matched.path(),
+            matched.index,
+            Some(&matched.stamp),
+        )?;
+        if !is_generic(family) && resolve_font_family_in_db(&selection.db, family).is_none() {
             return None;
         }
-        *remaining -= length;
-        hash.write(&bytes);
-        loaded.insert(path.clone(), ids);
     }
-    hash.write_usize(pattern.len());
-    hash.write(pattern.as_bytes());
-    hash.write_u32(index);
-    loaded
-        .get(&path)?
-        .iter()
-        .filter_map(|id| db.face(*id))
-        .find(|face| face.index == index & 0xffff)?
-        .families
-        .first()
-        .map(|(family, _)| family.clone())
+    let mut hash = DefaultHasher::new();
+    hash.write(b"veila-configured-startup-fonts-v1");
+    hash.write_u64(manifest.font_key);
+    (!selection.loaded.is_empty()).then(|| selection.finish(hash.finish()))
 }
 
-fn read_font(path: &Path, remaining: u64) -> Option<Vec<u8>> {
+fn replay_selection(
+    manifest: &cache::Manifest,
+    patterns: &[(String, Option<&str>)],
+) -> Option<Selection> {
+    let mut selection = Selection::new();
+    for ((pattern, family), matched) in patterns.iter().zip(&manifest.matches) {
+        if let Some(matched) = matched {
+            selection.add(
+                pattern,
+                *family,
+                matched.path(),
+                matched.index,
+                Some(&matched.stamp),
+            )?;
+        } else if family.is_some() {
+            return None;
+        }
+    }
+    (!selection.loaded.is_empty()).then_some(selection)
+}
+
+fn is_generic(family: &str) -> bool {
+    matches!(
+        family.to_ascii_lowercase().as_str(),
+        "sans-serif" | "sans" | "serif" | "monospace" | "system-ui" | "ui-monospace"
+    )
+}
+
+fn read_font(path: &Path, remaining: u64) -> Option<(Vec<u8>, FileStamp)> {
     let file = OpenOptions::new()
         .read(true)
         .custom_flags(nix::libc::O_NONBLOCK)
@@ -212,9 +293,10 @@ fn read_font(path: &Path, remaining: u64) -> Option<Vec<u8>> {
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > limit {
         return None;
     }
-    let mut data = Vec::new();
-    file.take(limit + 1).read_to_end(&mut data).ok()?;
-    if data.len() as u64 > limit {
+    let mut data = Vec::with_capacity(metadata.len() as usize);
+    (&file).take(limit + 1).read_to_end(&mut data).ok()?;
+    let stamp = FileStamp::from(&metadata);
+    if data.len() as u64 != metadata.len() || FileStamp::from(&file.metadata().ok()?) != stamp {
         return None;
     }
     // reject absurd collection counts before fontdb reserves one entry per declared face
@@ -224,83 +306,7 @@ fn read_font(path: &Path, remaining: u64) -> Option<Vec<u8>> {
             return None;
         }
     }
-    Some(data)
-}
-
-fn query(command: &mut Command, pattern: &str, deadline: Instant) -> Option<(PathBuf, u32)> {
-    let deadline = deadline.min(Instant::now() + QUERY_TIMEOUT);
-    let mut child = command
-        .args(["-f", super::helper::QUERY_FORMAT, "--", pattern])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-    let result = (|| {
-        let mut stdout = child.stdout.take()?;
-        fcntl(&stdout, FcntlArg::F_SETFL(OFlag::O_NONBLOCK)).ok()?;
-        let mut output = Vec::new();
-        loop {
-            let mut buffer = [0; 512];
-            match stdout.read(&mut buffer) {
-                Ok(0) => {
-                    if let Some(status) = child.try_wait().ok()? {
-                        return status.success().then(|| parse_match(&output)).flatten();
-                    }
-                }
-                Ok(length) => {
-                    if output.len() + length > MAX_QUERY_BYTES {
-                        return None;
-                    }
-                    output.extend_from_slice(&buffer[..length]);
-                }
-                Err(error) if error.kind() == ErrorKind::WouldBlock => (),
-                Err(_) => return None,
-            }
-            if Instant::now() >= deadline {
-                return None;
-            }
-            thread::sleep(Duration::from_millis(2));
-        }
-    })();
-    let _ = child.kill();
-    let _ = child.wait();
-    result
-}
-
-fn parse_match(output: &[u8]) -> Option<(PathBuf, u32)> {
-    let mut fields = output.split(|byte| *byte == 0x1f);
-    let path = PathBuf::from(OsString::from_vec(fields.next()?.to_vec()));
-    let index = std::str::from_utf8(fields.next()?).ok()?.parse().ok()?;
-    if !path.is_absolute() || fields.next()? != b"" || fields.next().is_some() {
-        return None;
-    }
-    Some((path, index))
-}
-
-fn escape_family(family: &str) -> String {
-    let mut escaped = String::new();
-    for ch in family.chars() {
-        if matches!(ch, '\\' | ':' | ',' | '=') {
-            escaped.push('\\');
-        }
-        escaped.push(ch);
-    }
-    escaped
-}
-
-fn fontconfig_weight(weight: u16) -> u16 {
-    match weight {
-        0..=149 => 0,
-        150..=249 => 40,
-        250..=349 => 50,
-        350..=449 => 80,
-        450..=549 => 100,
-        550..=649 => 180,
-        650..=749 => 200,
-        750..=849 => 205,
-        _ => 210,
-    }
+    Some((data, stamp))
 }
 
 #[cfg(test)]

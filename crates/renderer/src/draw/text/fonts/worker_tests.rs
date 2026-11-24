@@ -17,7 +17,7 @@ fn reloads_coalesce_while_loading_without_blocking_the_caller() {
         move |generation, _| {
             ready.send(generation).unwrap();
         },
-        move |requests| {
+        move |requests, _| {
             if count.fetch_add(1, Ordering::SeqCst) == 0 {
                 started.send(()).unwrap();
                 resume.lock().unwrap().recv().unwrap();
@@ -55,7 +55,7 @@ fn dropping_the_loader_never_joins_blocked_optional_work() {
     let resume = Mutex::new(resume);
     let loader = FontLoader::with_prepare(
         |_, _| {},
-        move |_| {
+        move |_, _| {
             started.send(()).unwrap();
             resume.lock().unwrap().recv().unwrap();
             bundled_fonts()

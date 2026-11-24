@@ -1,4 +1,4 @@
-use super::{FontRequest, MAX_CONFIGURED_FONT_REQUESTS, PreparedFonts, prepare_fonts};
+use super::{FontRequest, MAX_CONFIGURED_FONT_REQUESTS, PreparedFonts, selection};
 use std::{
     io,
     sync::{
@@ -17,14 +17,14 @@ pub struct FontLoader {
 
 impl FontLoader {
     pub fn new(ready: impl Fn(u64, PreparedFonts) + Send + 'static) -> io::Result<Self> {
-        Self::with_prepare(ready, |requests| {
-            prepare_fonts(requests, Some(std::path::Path::new("/proc/self/exe")))
+        Self::with_prepare(ready, |requests, publish| {
+            selection::prepare_cached(requests, std::path::Path::new("/proc/self/exe"), publish)
         })
     }
 
     fn with_prepare(
         ready: impl Fn(u64, PreparedFonts) + Send + 'static,
-        prepare: impl Fn(&[FontRequest]) -> PreparedFonts + Send + 'static,
+        prepare: impl Fn(&[FontRequest], &dyn Fn(PreparedFonts)) -> PreparedFonts + Send + 'static,
     ) -> io::Result<Self> {
         let pending = Arc::new(Mutex::new(None::<Request>));
         let next = pending.clone();
@@ -35,7 +35,8 @@ impl FontLoader {
                 while receiver.recv().is_ok() {
                     let request = next.lock().ok().and_then(|mut pending| pending.take());
                     if let Some((generation, requests)) = request {
-                        ready(generation, prepare(&requests));
+                        let publish = |fonts| ready(generation, fonts);
+                        publish(prepare(&requests, &publish));
                     }
                 }
             })?;

@@ -2003,6 +2003,8 @@ dependencies = [
  "memmap2",
  "nix",
  "resvg",
+ "serde",
+ "serde_json",
  "smithay-client-toolkit",
  "sys-locale",
  "thiserror",
