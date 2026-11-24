@@ -12,7 +12,7 @@ pub use helper::{FONT_QUERY_SUBCOMMAND, run_font_query};
 pub use worker::FontLoader;
 
 pub const MAX_CONFIGURED_FONT_REQUESTS: usize = 32;
-const BUNDLED_FONTS: [&[u8]; 3] = [
+const BUNDLED_FONTS: [&[u8]; 4] = [
     include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../assets/fonts/Geom-SemiBold.ttf"
@@ -24,6 +24,10 @@ const BUNDLED_FONTS: [&[u8]; 3] = [
     include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../assets/fonts/Nunito-ExtraBoldItalic.ttf"
+    )),
+    include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/fonts/VeilaSymbols-Regular.ttf"
     )),
 ];
 
