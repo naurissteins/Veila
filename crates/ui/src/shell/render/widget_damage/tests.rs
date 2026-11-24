@@ -206,6 +206,65 @@ fn media_backdrop_appearance_and_removal_match_full_render() {
 }
 
 #[test]
+fn weather_partial_frame_matches_full_render_on_appearance_change_and_removal() {
+    let config = veila_common::AppConfig::from_toml_str(
+        r##"
+        [[visuals.backdrop]]
+        name = "weather"
+        show_when = "weather"
+        mode = "blur"
+        color = "#FFFFFF30"
+        radius = 20
+        border_width = 1
+        width = 220
+        height = 88
+        halign = "left"
+        valign = "bottom"
+        x = 16
+        y = -16
+
+        [visuals.weather.icon]
+        enabled = true
+        size = 40
+        relative_to = "weather"
+        halign = "left"
+        valign = "center"
+        x = 10
+
+        [visuals.weather.temperature]
+        enabled = true
+        relative_to = "weather"
+        halign = "center"
+        valign = "center"
+        "##,
+    )
+    .unwrap();
+    let mut shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
+    let scale = RenderScale::from_units(180);
+    for snapshot in [
+        Some(veila_common::WeatherSnapshot {
+            temperature_celsius: 7,
+            condition: veila_common::WeatherCondition::Rain,
+            fetched_at_unix: 1,
+        }),
+        Some(veila_common::WeatherSnapshot {
+            temperature_celsius: -10,
+            condition: veila_common::WeatherCondition::Snow,
+            fetched_at_unix: 2,
+        }),
+        None,
+    ] {
+        verify_widget_change(&mut shell, scale, WidgetKind::Weather, |shell| {
+            assert!(shell.set_weather_snapshot(
+                Some("Riga".into()),
+                snapshot,
+                veila_common::WeatherUnit::Celsius,
+            ));
+        });
+    }
+}
+
+#[test]
 fn overlapping_auth_forces_full_frame() {
     let size = FrameSize::new(100, 100);
     let old = WidgetRegions {

@@ -10,6 +10,7 @@ pub enum WidgetKind {
     Header,
     Media,
     Indicators,
+    Weather,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,6 +66,16 @@ impl WidgetRegions {
                     (previous.media, self.media),
                     (previous.auth, self.auth),
                     (previous.weather, self.weather),
+                ],
+            ),
+            WidgetKind::Weather => (
+                previous.weather,
+                self.weather,
+                [
+                    (previous.header, self.header),
+                    (previous.media, self.media),
+                    (previous.indicators, self.indicators),
+                    (previous.auth, self.auth),
                 ],
             ),
         };
@@ -134,6 +145,11 @@ impl RenderContext<'_> {
             WidgetKind::Indicators => {
                 self.render_widget_backdrops(buffer, BackdropShowWhen::Battery);
                 self.render_top_right_indicators(buffer);
+            }
+            WidgetKind::Weather => {
+                self.render_widget_backdrops(buffer, BackdropShowWhen::Weather);
+                let layout = self.scene_layout(buffer.size());
+                self.render_floating_weather_widgets(buffer, &layout);
             }
         }
     }

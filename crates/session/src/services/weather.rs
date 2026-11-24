@@ -47,6 +47,10 @@ impl WeatherHandle {
         self.snapshot_rx.borrow().clone()
     }
 
+    pub fn subscribe(&self) -> watch::Receiver<Option<WeatherSnapshot>> {
+        self.snapshot_rx.clone()
+    }
+
     pub fn update_config(&self, config: &WeatherConfig) {
         let _ = self.config_tx.send(config.clone());
     }
