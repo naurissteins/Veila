@@ -6,6 +6,7 @@ use veila_renderer::{
 use super::super::ShellStatus;
 use super::{
     RenderContext, SceneLayout,
+    layers::STARTUP_TEXT_BUDGET,
     layout::{SceneMetrics, hero_block_x},
     model::{AuthGroup, LayoutRole, SceneSection, SceneWidget},
     widgets::{
@@ -60,27 +61,28 @@ impl RenderContext<'_> {
     }
 
     pub fn render_static_overlay(&self, buffer: &mut impl PixelBuffer) {
-        if self.shell.emergency_active() {
-            self.render_emergency_static_overlay(buffer);
-            return;
-        }
+        self.render_static_overlay_with_layer_budget(buffer, None);
+    }
 
-        self.render_static_overlay_with_layers(buffer, true);
+    pub(super) fn render_startup_static_overlay(&self, buffer: &mut impl PixelBuffer) -> bool {
+        self.render_static_overlay_with_layer_budget(buffer, Some(STARTUP_TEXT_BUDGET))
     }
 
     pub fn render_static_overlay_without_layers(&self, buffer: &mut impl PixelBuffer) {
-        if self.shell.emergency_active() {
-            self.render_emergency_static_overlay(buffer);
-            return;
-        }
-
-        self.render_static_overlay_with_layers(buffer, false);
+        self.render_static_overlay_with_layer_budget(buffer, Some(0));
     }
 
-    fn render_static_overlay_with_layers(&self, buffer: &mut impl PixelBuffer, layers: bool) {
-        if layers {
-            self.render_layers(buffer);
+    fn render_static_overlay_with_layer_budget(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        startup_budget: Option<usize>,
+    ) -> bool {
+        if self.shell.emergency_active() {
+            self.render_emergency_static_overlay(buffer);
+            return true;
         }
+
+        let complete = self.render_layers(buffer, startup_budget);
         let layout = self.scene_layout(buffer.size());
         self.render_identity_group(buffer, &layout, false);
         self.render_floating_identity_widgets(buffer, &layout);
@@ -100,6 +102,7 @@ impl RenderContext<'_> {
             layout.anchors.footer_y,
             false,
         );
+        complete
     }
 
     pub fn render_dynamic_overlay(&self, buffer: &mut impl PixelBuffer) {

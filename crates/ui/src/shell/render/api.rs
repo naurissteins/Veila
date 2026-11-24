@@ -16,7 +16,7 @@ impl ShellState {
     }
 
     pub fn render_layers(&self, buffer: &mut impl PixelBuffer) {
-        self.render_context().render_layers(buffer);
+        self.render_context().render_layers(buffer, None);
     }
 
     pub fn render(&self, buffer: &mut impl PixelBuffer) {
@@ -100,6 +100,17 @@ impl ShellState {
         scale: RenderScale,
     ) {
         self.with_pixel_scale(scale, |context| context.render_static_overlay(buffer));
+    }
+
+    /// renders the startup overlay and reports whether it includes all custom layers
+    pub fn render_startup_static_overlay_at_scale(
+        &self,
+        buffer: &mut impl PixelBuffer,
+        scale: RenderScale,
+    ) -> bool {
+        self.with_pixel_scale(scale, |context| {
+            context.render_startup_static_overlay(buffer)
+        })
     }
 
     pub fn render_static_overlay_without_layers_at_scale(

@@ -162,7 +162,10 @@ impl CurtainApp {
             || self
                 .lock_surfaces
                 .iter()
-                .all(|surface| surface.scene_base_has_layers)
+                .enumerate()
+                .all(|(index, surface)| {
+                    surface.scene_base_has_layers || !self.ui_visible_on_surface(index)
+                })
         {
             return;
         }

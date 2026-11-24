@@ -356,10 +356,16 @@ impl CurtainApp {
         scale: RenderScale,
     ) -> bool {
         if !self.ready_notified && self.ui_shell.has_visual_layers() {
-            self.ui_shell
-                .render_static_overlay_without_layers_at_scale(buffer, scale);
-            self.pending_pre_ready_redraw = true;
-            return false;
+            if !self.session_locked {
+                self.ui_shell
+                    .render_static_overlay_without_layers_at_scale(buffer, scale);
+                return false;
+            }
+            let complete = self
+                .ui_shell
+                .render_startup_static_overlay_at_scale(buffer, scale);
+            self.pending_pre_ready_redraw |= !complete;
+            return complete;
         }
 
         self.ui_shell.render_static_overlay_at_scale(buffer, scale);

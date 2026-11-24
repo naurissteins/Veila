@@ -14,6 +14,7 @@ mod auth_style_tests;
 mod floating_tests;
 mod header_style_tests;
 mod layout_tests;
+mod startup_layers;
 mod text_cache_tests;
 mod text_role_tests;
 mod widget_style_tests;
