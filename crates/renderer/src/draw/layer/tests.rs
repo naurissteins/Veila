@@ -20,9 +20,9 @@ fn draws_solid_backdrop_layer() {
             BackdropLayerShape::Panel,
             ClearColor::rgba(255, 255, 255, 64),
             0,
-            0,
+            0.0,
             None,
-            0,
+            0.0,
         ),
     );
 
@@ -42,9 +42,9 @@ fn rotated_solid_backdrop_layer_uses_rotated_bounds() {
             BackdropLayerShape::Panel,
             ClearColor::opaque(255, 0, 0),
             0,
-            0,
+            0.0,
             None,
-            0,
+            0.0,
         )
         .with_rotation(90),
     );
@@ -81,9 +81,9 @@ fn blur_backdrop_layer_changes_region_pixels() {
             BackdropLayerShape::Panel,
             ClearColor::rgba(8, 10, 14, 0),
             8,
-            0,
+            0.0,
             None,
-            0,
+            0.0,
         ),
     );
 
@@ -109,9 +109,9 @@ fn rounded_blur_layer_preserves_corner_pixels() {
             BackdropLayerShape::Panel,
             ClearColor::rgba(8, 10, 14, 0),
             8,
-            3,
+            3.0,
             None,
-            0,
+            0.0,
         ),
     );
 
@@ -131,9 +131,9 @@ fn draws_rounded_layer_border() {
             BackdropLayerShape::Panel,
             ClearColor::rgba(8, 10, 14, 0),
             0,
-            2,
+            2.0,
             Some(ClearColor::opaque(255, 255, 255)),
-            1,
+            1.0,
         ),
     );
 
@@ -153,9 +153,9 @@ fn diagonal_layer_keeps_bottom_right_unfilled() {
             BackdropLayerShape::Diagonal(BackdropLayerAlignment::Left),
             ClearColor::opaque(255, 0, 0),
             0,
-            0,
+            0.0,
             None,
-            0,
+            0.0,
         ),
     );
 

@@ -14,7 +14,7 @@ use super::{
 };
 
 use blur::blur_region;
-use shapes::layer_path;
+use shapes::{layer_path, panel_path};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BackdropLayerAlignment {
@@ -38,15 +38,15 @@ pub enum BackdropLayerMode {
     Blur,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BackdropLayerStyle {
     pub mode: BackdropLayerMode,
     pub shape: BackdropLayerShape,
     pub color: ClearColor,
     pub blur_radius: u8,
-    pub radius: i32,
+    pub radius: f32,
     pub border_color: Option<ClearColor>,
-    pub border_width: i32,
+    pub border_width: f32,
     pub rotate_degrees: i16,
 }
 
@@ -56,9 +56,9 @@ impl BackdropLayerStyle {
         shape: BackdropLayerShape,
         color: ClearColor,
         blur_radius: u8,
-        radius: i32,
+        radius: f32,
         border_color: Option<ClearColor>,
-        border_width: i32,
+        border_width: f32,
     ) -> Self {
         Self {
             mode,
@@ -147,16 +147,9 @@ pub fn draw_backdrop_layer(buffer: &mut impl PixelBuffer, rect: Rect, style: Bac
     }
 
     if let Some(border_color) = style.border_color.filter(|color| color.alpha > 0)
-        && style.border_width > 0
+        && style.border_width > 0.0
     {
-        stroke_layer_shape(
-            buffer,
-            surface,
-            BackdropLayerStyle {
-                color: border_color,
-                ..style
-            },
-        );
+        draw_layer_border(buffer, surface, style, border_color);
     }
 }
 
@@ -167,7 +160,7 @@ fn fill_layer_shape(
 ) {
     if surface.rotate_degrees == 0
         && matches!(style.shape, BackdropLayerShape::Panel)
-        && style.radius <= 0
+        && style.radius <= 0.0
     {
         fill_rect(buffer, surface.bounds, style.color);
         return;
@@ -192,10 +185,11 @@ fn fill_layer_shape(
     );
 }
 
-fn stroke_layer_shape(
+fn draw_layer_border(
     buffer: &mut impl PixelBuffer,
     surface: LayerSurface,
     style: BackdropLayerStyle,
+    color: ClearColor,
 ) {
     draw_overlay(
         buffer,
@@ -204,19 +198,24 @@ fn stroke_layer_shape(
         surface.bounds.width.max(1) as u32,
         surface.bounds.height.max(1) as u32,
         |overlay| {
-            let Some(path) = layer_path(surface.rect.width, surface.rect.height, style) else {
-                return;
-            };
-
             let mut paint = Paint::default();
-            paint.set_color(skia_color(style.color));
+            paint.set_color(skia_color(color));
             paint.anti_alias = true;
+            let width = surface.rect.width;
+            let height = surface.rect.height;
+            let transform = surface.transform();
 
-            let stroke = Stroke {
-                width: style.border_width.max(1) as f32,
-                ..Stroke::default()
-            };
-            overlay.stroke_path(&path, &paint, &stroke, surface.transform(), None);
+            if style.shape == BackdropLayerShape::Panel {
+                if let Some(path) = panel_path(width, height, style.radius, style.border_width) {
+                    overlay.fill_path(&path, &paint, FillRule::EvenOdd, transform, None);
+                }
+            } else if let Some(path) = layer_path(width, height, style) {
+                let stroke = Stroke {
+                    width: style.border_width,
+                    ..Stroke::default()
+                };
+                overlay.stroke_path(&path, &paint, &stroke, transform, None);
+            }
         },
     );
 }

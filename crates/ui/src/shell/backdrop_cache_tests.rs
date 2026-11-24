@@ -3,7 +3,7 @@ use veila_common::AppConfig;
 use super::{ShellState, ShellTheme};
 
 #[test]
-fn scaled_backdrop_variant_preserves_existing_disk_keys() {
+fn scaled_backdrop_variant_uses_versioned_disk_keys() {
     let config = AppConfig::from_toml_str(
         r#"
         [[visuals.backdrop]]
@@ -25,7 +25,7 @@ fn scaled_backdrop_variant_preserves_existing_disk_keys() {
     .expect("config");
     let mut shell = ShellState::new(ShellTheme::from_config(&config), None, None, false);
     let base =
-        "backdrop:v2:Blur:0:1:Left:1:0:0:0:1:24:36:0:0:540:600:12:0:0:0:0:26:12:0:1:255:255:255:24";
+        "backdrop:v3:Blur:0:1:Left:1:0:0:0:1:24:36:0:0:540:600:12:0:0:0:0:26:12:0:1:255:255:255:24";
     assert_eq!(
         shell.backdrop_cache_variant_scaled(0).as_deref(),
         Some(base)

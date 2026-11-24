@@ -1003,7 +1003,8 @@ fn render_scale_multiplies_theme_pixels_without_changing_colors() {
     );
     assert_eq!(scaled.backdrops[0].width, 800);
     assert_eq!(scaled.backdrops[0].height, 440);
-    assert_eq!(scaled.backdrops[0].radius, 48);
+    assert_eq!(scaled.backdrops[0].radius, 24);
+    assert_eq!(scaled.backdrops[0].border_width, 2);
     assert_eq!(scaled.backdrops[0].rotate, 15);
     assert_eq!(scaled.backdrops[0].color, ClearColor::rgba(20, 30, 40, 160));
     assert_eq!(scaled.layers[0].font_size, 48);

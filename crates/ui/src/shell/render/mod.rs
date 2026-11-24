@@ -251,7 +251,7 @@ impl RenderContext<'_> {
             if !matches_show_when(backdrop.show_when) || !self.shell.backdrop_visible(backdrop) {
                 continue;
             }
-            super::backdrops::draw(buffer, backdrop);
+            super::backdrops::draw(buffer, backdrop, self.render_scale);
         }
     }
 

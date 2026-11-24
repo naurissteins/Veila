@@ -31,7 +31,7 @@ pub fn blur_region(
 
     if surface.rotate_degrees == 0
         && matches!(style.shape, BackdropLayerShape::Panel)
-        && style.radius <= 0
+        && style.radius <= 0.0
     {
         write_rgba_region(buffer, rect, &blurred, fully_opaque);
         log_blur_timing(started_at, width, height, style, fully_opaque);
