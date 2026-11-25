@@ -1,0 +1,453 @@
+[background]
+mode = "layered"
+# path = "/path/to/wallpaper.jpg"
+color = "#0A0618"
+dim_strength = 0
+
+[background.layered.base]
+mode = "gradient"
+
+[background.layered.base.gradient]
+top_left = "#07061A"
+top_right = "#0B0720"
+bottom_left = "#3A0F42"
+bottom_right = "#2C0B38"
+
+[[background.layered.blobs]]
+color = "#FF4FA0"
+opacity = 30
+x = 50
+y = 78
+size = 48
+
+[[background.layered.blobs]]
+color = "#6A3CC8"
+opacity = 28
+x = 80
+y = 18
+size = 36
+
+[[background.layered.blobs]]
+color = "#2BD8F0"
+opacity = 14
+x = 18
+y = 20
+size = 30
+
+[battery]
+enabled = true
+
+[weather]
+enabled = false
+
+[visuals.clock]
+format = "24h"
+style = "standard"
+meridiem_font_size = 28
+meridiem_x = 8
+meridiem_y = 10
+font_family = "Orbitron"
+font_weight = 900
+color = "#7DF3F8"
+font_size = 170
+halign = "center"
+valign = "top"
+x = 0
+y = 40
+
+[visuals.date]
+format = "dmy-dots"
+font_family = "Orbitron"
+font_weight = 500
+font_size = 30
+color = "#FF5FA8"
+halign = "center"
+valign = "top"
+x = 0
+y = 262
+
+[visuals.avatar]
+# image_path = "/path/to/avatar.jpg"
+size = 140
+radius = 4
+background_color = "rgba(70, 60, 120, 0.55)"
+placeholder_padding = 30
+ring_color = "#2BD8F0"
+ring_width = 3
+icon_color = "#ffffff"
+halign = "left"
+valign = "center"
+x = 32
+y = 0
+relative_to = "auth"
+
+[visuals.username]
+enabled = true
+font_family = "Rajdhani"
+font_weight = 600
+color = "#F4E8FF"
+font_size = 40
+halign = "left"
+valign = "top"
+x = 210
+y = 28
+relative_to = "auth"
+
+[visuals.input]
+placeholder = "ENTER PASSPHRASE"
+background_color = "rgba(10, 8, 25, 0.6)"
+border_color = "rgba(255, 79, 139, 0.75)"
+border_width = 2
+width = 560
+height = 60
+radius = 4
+mask_color = "#7DF3F8"
+font_family = "Rajdhani"
+font_weight = 500
+font_size = 20
+halign = "left"
+valign = "bottom"
+x = 210
+y = -48
+relative_to = "auth"
+
+[visuals.status]
+mode = "inline"
+rejected_color = "#FF4F8B"
+pending_color = "#7DF3F8"
+
+[visuals.eye]
+color = "#2BD8F0"
+
+[visuals.caps_lock]
+color = "#FFC24A"
+
+[visuals.placeholder]
+color = "rgba(244, 232, 255, 0.6)"
+
+[visuals.keyboard]
+background_size = 46
+radius = 6
+background_color = "rgba(14, 10, 30, 0.85)"
+color = "#F4E8FF"
+size = 15
+halign = "right"
+valign = "top"
+x = -24
+y = 21
+
+[visuals.battery]
+background_size = 46
+radius = 6
+background_color = "rgba(14, 10, 30, 0.85)"
+color = "#6BFF9A"
+size = 20
+halign = "right"
+valign = "top"
+x = -78
+y = 21
+
+[visuals.power.poweroff]
+enabled = true
+background_size = 46
+radius = 6
+background_color = "rgba(14, 10, 30, 0.85)"
+color = "#FF4F8B"
+size = 20
+confirm = true
+halign = "right"
+valign = "top"
+x = -132
+y = 21
+
+[visuals.power.reboot]
+enabled = true
+background_size = 46
+radius = 6
+background_color = "rgba(14, 10, 30, 0.85)"
+color = "#FFC24A"
+size = 20
+confirm = true
+halign = "right"
+valign = "top"
+x = -186
+y = 21
+
+[visuals.power.suspend]
+enabled = true
+background_size = 46
+radius = 6
+background_color = "rgba(14, 10, 30, 0.85)"
+color = "#B08CFF"
+size = 20
+confirm = false
+halign = "right"
+valign = "top"
+x = -240
+y = 21
+
+[visuals.weather.icon]
+size = 46
+opacity = 90
+halign = "left"
+valign = "center"
+x = 22
+y = 0
+relative_to = "weather"
+
+[visuals.weather.temperature]
+font_size = 36
+font_family = "Orbitron"
+font_weight = 700
+letter_spacing = 2
+color = "#FFC24A"
+halign = "left"
+valign = "top"
+x = 92
+y = 12
+relative_to = "weather"
+
+[visuals.weather.location]
+font_size = 18
+font_family = "Rajdhani"
+font_weight = 600
+color = "rgba(43, 216, 240, 0.8)"
+halign = "left"
+valign = "bottom"
+x = 92
+y = -12
+relative_to = "weather"
+
+[visuals.now_playing]
+enabled = true
+fade_duration_ms = 320
+
+[visuals.now_playing.artwork]
+size = 52
+radius = 4
+opacity = 100
+halign = "left"
+valign = "center"
+x = 14
+y = 0
+relative_to = "now_playing"
+
+[visuals.now_playing.artist]
+width = 340
+color = "#FF5FA8"
+font_family = "Rajdhani"
+font_size = 18
+font_weight = 600
+halign = "left"
+valign = "top"
+x = 82
+y = 17
+relative_to = "now_playing"
+
+[visuals.now_playing.title]
+width = 340
+color = "#F4E8FF"
+font_family = "Rajdhani"
+font_size = 19
+font_weight = 500
+halign = "left"
+valign = "bottom"
+x = 82
+y = -17
+relative_to = "now_playing"
+
+# Neon horizon line behind the auth panel
+[[visuals.backdrop]]
+enabled = true
+name = "horizon"
+mode = "solid"
+color = "rgba(255, 79, 160, 0.55)"
+width = 1920
+height = 2
+full_width = true
+halign = "center"
+valign = "bottom"
+x = 0
+y = -250
+z = 0
+
+# Auth panel
+[[visuals.backdrop]]
+enabled = true
+name = "auth"
+mode = "solid"
+color = "rgba(14, 10, 30, 0.9)"
+radius = 4
+border_color = "rgba(43, 216, 240, 0.8)"
+border_width = 2
+width = 810
+height = 200
+halign = "center"
+valign = "bottom"
+x = 0
+y = -122
+z = 2
+
+# Corner brackets around the auth panel
+[[visuals.backdrop]]
+name = "bracket_tl_h"
+mode = "solid"
+color = "#FF4F8B"
+width = 26
+height = 3
+halign = "center"
+valign = "bottom"
+x = -403
+y = -329
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_tl_v"
+mode = "solid"
+color = "#FF4F8B"
+width = 3
+height = 26
+halign = "center"
+valign = "bottom"
+x = -415
+y = -306
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_tr_h"
+mode = "solid"
+color = "#FF4F8B"
+width = 26
+height = 3
+halign = "center"
+valign = "bottom"
+x = 403
+y = -329
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_tr_v"
+mode = "solid"
+color = "#FF4F8B"
+width = 3
+height = 26
+halign = "center"
+valign = "bottom"
+x = 415
+y = -306
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_bl_h"
+mode = "solid"
+color = "#FF4F8B"
+width = 26
+height = 3
+halign = "center"
+valign = "bottom"
+x = -403
+y = -110
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_bl_v"
+mode = "solid"
+color = "#FF4F8B"
+width = 3
+height = 26
+halign = "center"
+valign = "bottom"
+x = -415
+y = -110
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_br_h"
+mode = "solid"
+color = "#FF4F8B"
+width = 26
+height = 3
+halign = "center"
+valign = "bottom"
+x = 403
+y = -110
+z = 1
+
+[[visuals.backdrop]]
+name = "bracket_br_v"
+mode = "solid"
+color = "#FF4F8B"
+width = 3
+height = 26
+halign = "center"
+valign = "bottom"
+x = 415
+y = -110
+z = 1
+
+# Weather card
+[[visuals.backdrop]]
+enabled = true
+name = "weather"
+show_when = "weather"
+mode = "solid"
+color = "rgba(14, 10, 30, 0.85)"
+radius = 4
+border_color = "rgba(43, 216, 240, 0.7)"
+border_width = 2
+width = 300
+height = 90
+halign = "left"
+valign = "bottom"
+x = 57
+y = -45
+z = 1
+
+# Now playing card
+[[visuals.backdrop]]
+enabled = true
+name = "now_playing"
+show_when = "now_playing"
+mode = "solid"
+color = "rgba(14, 10, 30, 0.85)"
+radius = 4
+border_color = "rgba(255, 79, 139, 0.75)"
+border_width = 2
+width = 440
+height = 80
+halign = "right"
+valign = "bottom"
+x = -41
+y = -45
+z = 1
+
+# Header lines; layers have no letter spacing, so the gaps are literal spaces
+[[visuals.layer]]
+enabled = true
+name = "header_location"
+kind = "text"
+text = "/ /  N E O - R I G A    ·    S E C T O R  0 7"
+font_family = "Rajdhani"
+font_weight = 500
+font_size = 18
+color = "rgba(43, 216, 240, 0.8)"
+halign = "left"
+valign = "top"
+x = 56
+y = 46
+z = 1
+
+[[visuals.layer]]
+enabled = true
+name = "header_status"
+kind = "text"
+text = "S Y S . L O C K   ▮   A C T I V E"
+font_family = "Rajdhani"
+font_weight = 500
+font_size = 18
+color = "#FF5FA8"
+halign = "left"
+valign = "top"
+x = 56
+y = 80
+z = 1
