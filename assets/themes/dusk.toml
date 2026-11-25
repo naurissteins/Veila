@@ -1,0 +1,404 @@
+[background]
+mode = "layered"
+# path = "/path/to/wallpaper.jpg"
+color = "#0B0D1A"
+dim_strength = 0
+
+[background.layered.base]
+mode = "gradient"
+
+[background.layered.base.gradient]
+top_left = "#0D1230"
+top_right = "#1E1A4A"
+bottom_left = "#0A1A1E"
+bottom_right = "#24121F"
+
+[[background.layered.blobs]]
+color = "#6A4CE0"
+opacity = 55
+x = 72
+y = 22
+size = 48
+
+[[background.layered.blobs]]
+color = "#E0506A"
+opacity = 45
+x = 92
+y = 92
+size = 34
+
+[[background.layered.blobs]]
+color = "#1FA58A"
+opacity = 40
+x = 12
+y = 96
+size = 32
+
+[battery]
+enabled = true
+
+[weather]
+enabled = false
+
+[visuals.clock]
+format = "24h"
+style = "stacked"
+font_family = "Geom"
+font_weight = 600
+color = "rgba(240, 240, 245, 0.95)"
+font_size = 330
+halign = "center"
+valign = "top"
+x = 0
+y = -55
+relative_to = "clock_column"
+
+[visuals.date]
+format = "long"
+font_family = "Google Sans Flex"
+font_weight = 400
+font_size = 26
+color = "rgba(255, 255, 255, 0.7)"
+halign = "center"
+valign = "bottom"
+x = 0
+y = -20
+relative_to = "clock_column"
+
+[visuals.avatar]
+# image_path = "/path/to/avatar.jpg"
+size = 150
+background_color = "rgba(255, 255, 255, 0.12)"
+placeholder_padding = 34
+ring_color = "#FF6F8A"
+ring_width = 4
+icon_color = "#ffffff"
+halign = "center"
+valign = "top"
+x = 0
+y = 65
+relative_to = "auth_glass"
+
+[visuals.username]
+enabled = true
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "rgba(255, 255, 255, 0.95)"
+font_size = 32
+halign = "center"
+valign = "top"
+x = 0
+y = 245
+relative_to = "auth_glass"
+
+[visuals.input]
+placeholder = "Password"
+background_color = "rgba(255, 255, 255, 0.08)"
+border_color = "rgba(255, 255, 255, 0.25)"
+border_width = 2
+width = 330
+height = 58
+radius = 29
+mask_color = "#ffffff"
+font_family = "Google Sans Flex"
+font_weight = 400
+font_size = 17
+halign = "center"
+valign = "center"
+x = 0
+y = 140
+relative_to = "auth_glass"
+
+[visuals.status]
+mode = "inline"
+rejected_color = "#FF9AAA"
+pending_color = "#ECECEC"
+
+[visuals.eye]
+color = "rgba(255, 255, 255, 0.8)"
+
+[visuals.caps_lock]
+color = "rgba(255, 255, 255, 0.52)"
+
+[visuals.placeholder]
+color = "rgba(255, 255, 255, 0.85)"
+
+[visuals.keyboard]
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.07)"
+color = "rgba(255, 255, 255, 0.85)"
+size = 16
+halign = "right"
+valign = "top"
+x = -24
+y = 21
+
+[visuals.battery]
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.07)"
+color = "rgba(255, 255, 255, 0.85)"
+size = 20
+halign = "right"
+valign = "top"
+x = -78
+y = 21
+
+[visuals.power.poweroff]
+enabled = true
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.07)"
+color = "rgba(255, 255, 255, 0.85)"
+size = 20
+confirm = true
+halign = "right"
+valign = "top"
+x = -132
+y = 21
+
+[visuals.power.reboot]
+enabled = true
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.07)"
+color = "rgba(255, 255, 255, 0.85)"
+size = 20
+confirm = true
+halign = "right"
+valign = "top"
+x = -186
+y = 21
+
+[visuals.power.suspend]
+enabled = true
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.07)"
+color = "rgba(255, 255, 255, 0.85)"
+size = 20
+confirm = false
+halign = "right"
+valign = "top"
+x = -240
+y = 21
+
+[visuals.weather.icon]
+size = 44
+opacity = 90
+halign = "left"
+valign = "center"
+x = 24
+y = 0
+relative_to = "weather"
+
+[visuals.weather.temperature]
+font_size = 40
+font_family = "Geom"
+font_weight = 600
+letter_spacing = 0
+color = "rgba(255, 255, 255, 0.95)"
+halign = "left"
+valign = "top"
+x = 92
+y = 12
+relative_to = "weather"
+
+[visuals.weather.location]
+font_size = 18
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "rgba(255, 255, 255, 0.7)"
+halign = "left"
+valign = "bottom"
+x = 92
+y = -12
+relative_to = "weather"
+
+[visuals.now_playing]
+enabled = true
+fade_duration_ms = 320
+
+[visuals.now_playing.artwork]
+size = 52
+radius = 10
+opacity = 100
+halign = "left"
+valign = "center"
+x = 14
+y = 0
+relative_to = "now_playing"
+
+[visuals.now_playing.artist]
+width = 370
+color = "rgba(255, 255, 255, 0.5)"
+font_family = "Google Sans Flex"
+font_size = 15
+font_weight = 400
+halign = "left"
+valign = "top"
+x = 82
+y = 17
+relative_to = "now_playing"
+
+[visuals.now_playing.title]
+width = 370
+color = "rgba(255, 255, 255, 0.9)"
+font_family = "Google Sans Flex"
+font_size = 17
+font_weight = 400
+halign = "left"
+valign = "bottom"
+x = 82
+y = -17
+relative_to = "now_playing"
+
+# Invisible anchor that centers the stacked clock and date
+[[visuals.backdrop]]
+enabled = true
+name = "clock_column"
+mode = "solid"
+color = "rgba(0, 0, 0, 0)"
+width = 600
+height = 640
+halign = "left"
+valign = "center"
+x = 170
+y = -60
+z = 0
+
+# Tinted back slab
+[[visuals.backdrop]]
+enabled = true
+name = "auth_back"
+mode = "solid"
+color = "rgba(98, 74, 214, 0.55)"
+radius = 56
+width = 560
+height = 700
+rotate = 7
+halign = "right"
+valign = "center"
+x = -270
+y = -10
+z = 1
+
+# Frosted front slab holding the auth stack
+[[visuals.backdrop]]
+enabled = true
+name = "auth_glass"
+mode = "blur"
+color = "rgba(140, 120, 235, 0.16)"
+blur_strength = 24
+radius = 56
+border_color = "rgba(255, 255, 255, 0.16)"
+border_width = 1
+width = 545
+height = 690
+rotate = -5
+halign = "right"
+valign = "center"
+x = -270
+y = -10
+z = 2
+
+# Weather pill
+[[visuals.backdrop]]
+enabled = true
+name = "weather"
+show_when = "weather"
+mode = "blur"
+color = "rgba(255, 255, 255, 0.06)"
+blur_strength = 12
+radius = 20
+border_color = "rgba(255, 255, 255, 0.14)"
+border_width = 1
+width = 330
+height = 92
+halign = "left"
+valign = "bottom"
+x = 70
+y = -62
+z = 1
+
+# Now playing bar
+[[visuals.backdrop]]
+enabled = true
+name = "now_playing"
+show_when = "now_playing"
+mode = "blur"
+color = "rgba(255, 255, 255, 0.06)"
+blur_strength = 12
+radius = 20
+border_color = "rgba(255, 255, 255, 0.14)"
+border_width = 1
+width = 470
+height = 80
+halign = "right"
+valign = "bottom"
+x = -40
+y = -40
+z = 1
+
+# Status dot
+[[visuals.layer]]
+enabled = true
+name = "status_dot"
+kind = "text"
+text = "●"
+font_family = "Google Sans Flex"
+font_size = 14
+color = "#2FD6B0"
+halign = "left"
+valign = "top"
+x = 68
+y = 62
+z = 1
+
+# Spaced-out tag; layers have no letter spacing, so the gaps are literal spaces
+[[visuals.layer]]
+enabled = true
+name = "session_tag"
+kind = "text"
+text = "S E S S I O N   L O C K E D"
+font_family = "Google Sans Flex"
+font_size = 15
+color = "rgba(255, 255, 255, 0.6)"
+halign = "left"
+valign = "top"
+x = 92
+y = 61
+z = 1
+
+# Faint ghost wordmark bleeding off the bottom edge
+[[visuals.layer]]
+enabled = true
+name = "ghost_wordmark"
+kind = "text"
+text = "VEILA"
+font_family = "Geom"
+font_weight = 600
+font_size = 420
+color = "rgba(255, 255, 255, 0.035)"
+halign = "left"
+valign = "bottom"
+x = -30
+y = 110
+z = 0
+
+# Subtitle under the username
+[[visuals.layer]]
+enabled = true
+name = "auth_hint"
+kind = "text"
+text = "Enter password to unlock"
+font_family = "Google Sans Flex"
+font_size = 17
+color = "rgba(255, 255, 255, 0.55)"
+halign = "center"
+valign = "top"
+x = 0
+y = 292
+relative_to = "auth_glass"
+z = 2
