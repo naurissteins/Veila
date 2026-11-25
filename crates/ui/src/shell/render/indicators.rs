@@ -156,13 +156,14 @@ impl RenderContext<'_> {
                 battery_icon_size,
             );
             let rect = self.positioned_rect(buffer.size(), position, chip_diameter, chip_diameter);
-            let battery_color = self.theme.battery_color.unwrap_or(self.theme.foreground);
-            let icon_style =
-                veila_renderer::icon::IconStyle::new(if battery_color.alpha == u8::MAX {
-                    battery_color.with_alpha(styles::percent_to_alpha(68))
+            let battery_color = self.theme.battery_color.unwrap_or_else(|| {
+                let foreground = self.theme.foreground;
+                if foreground.alpha == u8::MAX {
+                    foreground.with_alpha(styles::percent_to_alpha(68))
                 } else {
-                    battery_color
-                });
+                    foreground
+                }
+            });
             draw_icon_chip(
                 buffer,
                 rect.x,
@@ -171,7 +172,7 @@ impl RenderContext<'_> {
                 self.theme.battery_background_size,
                 self.theme.battery_radius,
                 AssetIcon::Battery(battery.icon),
-                icon_style,
+                veila_renderer::icon::IconStyle::new(battery_color),
                 battery_icon_size,
             );
         }
