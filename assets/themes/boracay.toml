@@ -1,7 +1,7 @@
 [background]
 mode = "file"
 path = "/path/to/wallpaper.jpg"
-color = "#494732"
+color = "#6EC6F2"
 dim_strength = 0
 
 [battery]
@@ -11,171 +11,292 @@ enabled = true
 enabled = false
 
 [visuals.clock]
-format = "24h"
+format = "12h"
+style = "standard"
 meridiem_font_size = 22
-meridiem_x = 6
-meridiem_y = 7
+meridiem_x = 8
+meridiem_y = 22
 font_family = "Geom"
 font_weight = 600
-color = "rgba(255, 255, 255, 0.4)"
-font_size = 148
+color = "#0E5876"
+font_size = 112
 halign = "center"
 valign = "top"
 x = 0
-y = 40
+y = 322
+relative_to = "auth_pill"
 
 [visuals.date]
 format = "long"
-font_family = "Geom"
-font_weight = 600
-color = "rgba(255, 255, 255, 0.4)"
-font_size = 46
+font_family = "Google Sans Flex"
+font_weight = 400
+font_size = 22
+color = "#2F6F86"
 halign = "center"
 valign = "top"
 x = 0
-y = 200
+y = 464
+relative_to = "auth_pill"
+
+[visuals.avatar]
+# image_path = "/path/to/avatar.jpg"
+size = 150
+background_color = "rgba(255, 255, 255, 0.35)"
+placeholder_padding = 34
+ring_color = "rgba(255, 255, 255, 0.85)"
+ring_width = 3
+icon_color = "#0F5E78"
+halign = "center"
+valign = "top"
+x = 0
+y = 60
+relative_to = "auth_pill"
+
+[visuals.username]
+enabled = true
+font_family = "Google Sans Flex"
+font_weight = 400
+color = "#0F4C66"
+font_size = 26
+halign = "center"
+valign = "top"
+x = 0
+y = 230
+relative_to = "auth_pill"
 
 [visuals.input]
 placeholder = "Password"
-background_color = "rgba(255, 255, 255, 0.02)"
-border_color = "rgba(255, 255, 255, 0.08)"
-border_width = 3
-width = 310
-height = 54
-radius = 50
-mask_color = "#ffffff"
+background_color = "rgba(255, 255, 255, 0.5)"
+border_color = "rgba(255, 255, 255, 0.85)"
+border_width = 2
+width = 330
+height = 58
+radius = 29
+mask_color = "#0E5876"
 font_family = "Google Sans Flex"
 font_weight = 400
-font_size = 16
+font_size = 17
 halign = "center"
 valign = "bottom"
 x = 0
-y = -40
+y = -122
+relative_to = "auth_pill"
 
 [visuals.status]
 mode = "inline"
-rejected_color = "#FFD5D5"
-pending_color = "#ECECEC"
+rejected_color = "#C8324A"
+pending_color = "#0E5876"
 
 [visuals.eye]
-color = "rgba(255, 255, 255, 0.72)"
+color = "#0E5876"
 
 [visuals.caps_lock]
-color = "rgba(255, 255, 255, 0.52)"
+color = "#D48A1E"
 
 [visuals.placeholder]
-color = "rgba(255, 255, 255, 0.6)"
-
-[visuals.avatar]
-enabled = false
-
-[visuals.username]
-enabled = false
+color = "rgba(14, 76, 102, 0.75)"
 
 [visuals.keyboard]
 background_size = 46
 radius = 23
-background_color = "rgba(255, 255, 255, 0.05)"
-color = "rgba(255, 255, 255, 0.68)"
-size = 16
+background_color = "rgba(255, 255, 255, 0.4)"
+color = "#0F4C66"
+size = 15
 halign = "right"
 valign = "top"
 x = -24
 y = 21
 
 [visuals.battery]
-background_color = "rgba(255, 255, 255, 0.05)"
 background_size = 46
 radius = 23
-color = "rgba(255, 255, 255, 0.68)"
+background_color = "rgba(255, 255, 255, 0.4)"
+color = "#0F4C66"
 size = 20
 halign = "right"
 valign = "top"
 x = -78
 y = 21
 
+[visuals.power.poweroff]
+enabled = true
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.4)"
+color = "#0F4C66"
+size = 20
+confirm = true
+halign = "right"
+valign = "top"
+x = -132
+y = 21
+
+[visuals.power.reboot]
+enabled = true
+background_size = 46
+radius = 23
+background_color = "rgba(255, 255, 255, 0.4)"
+color = "#0F4C66"
+size = 20
+confirm = true
+halign = "right"
+valign = "top"
+x = -186
+y = 21
+
 [visuals.weather.icon]
-size = 40
-opacity = 80
+size = 44
+opacity = 100
 halign = "left"
-valign = "bottom"
-x = 40
-y = -112
+valign = "center"
+x = 22
+y = 0
+relative_to = "weather"
 
 [visuals.weather.temperature]
-font_size = 40
-font_family = "Nunito"
-font_weight = 800
-font_style = "italic"
+font_size = 34
+font_family = "Geom"
+font_weight = 600
 letter_spacing = 0
-color = "rgba(255, 255, 255, 0.73)"
+color = "#0E4C66"
 halign = "left"
-valign = "bottom"
-x = 40
-y = -70
+valign = "top"
+x = 84
+y = 12
+relative_to = "weather"
 
 [visuals.weather.location]
-font_size = 22
+font_size = 18
 font_family = "Google Sans Flex"
 font_weight = 400
-color = "rgba(214, 227, 255, 0.58)"
+color = "#2F6F86"
 halign = "left"
 valign = "bottom"
-x = 40
-y = -44
+x = 84
+y = -12
+relative_to = "weather"
 
 [visuals.now_playing]
 enabled = true
 fade_duration_ms = 320
 
 [visuals.now_playing.artwork]
-size = 44
-radius = 8
-opacity = 90
+size = 52
+radius = 26
+opacity = 100
 halign = "left"
 valign = "center"
-x = 10
+x = 14
 y = 0
 relative_to = "now_playing"
 
 [visuals.now_playing.artist]
-width = 318
-color = "rgba(255, 255, 255, 0.39)"
+width = 330
+color = "#3A7F94"
 font_family = "Google Sans Flex"
-font_size = 16
+font_size = 15
 font_weight = 400
 halign = "left"
 valign = "top"
-x = 65
-y = 10
+x = 84
+y = 17
 relative_to = "now_playing"
 
 [visuals.now_playing.title]
-width = 318
-color = "rgba(255, 255, 255, 0.69)"
+width = 330
+color = "#0E4C66"
 font_family = "Google Sans Flex"
-font_size = 16
+font_size = 18
 font_weight = 400
 halign = "left"
 valign = "bottom"
-x = 65
-y = -10
+x = 84
+y = -17
 relative_to = "now_playing"
 
-# Now playing backdrop
+# Frosted pill holding avatar, clock, and input
+[[visuals.backdrop]]
+enabled = true
+name = "auth_pill"
+mode = "blur"
+color = "rgba(255, 255, 255, 0.3)"
+blur_strength = 24
+radius = 160
+border_color = "rgba(255, 255, 255, 0.6)"
+border_width = 2
+width = 460
+height = 800
+halign = "left"
+valign = "center"
+x = 120
+y = 0
+z = 1
+
+# Weather pill
+[[visuals.backdrop]]
+enabled = true
+name = "weather"
+show_when = "weather"
+mode = "blur"
+color = "rgba(255, 255, 255, 0.55)"
+blur_strength = 16
+radius = 42
+border_color = "rgba(255, 255, 255, 0.75)"
+border_width = 2
+width = 300
+height = 84
+halign = "center"
+valign = "bottom"
+x = -110
+y = -46
+z = 1
+
+# Now playing pill
 [[visuals.backdrop]]
 enabled = true
 name = "now_playing"
 show_when = "now_playing"
 mode = "blur"
-color = "rgba(255, 255, 255, 0.05)"
-blur_strength = 12
-radius = 10
-border_color = "#FFFFFF18"
-width = 400
-height = 60
+color = "rgba(255, 255, 255, 0.55)"
+blur_strength = 16
+radius = 39
+border_color = "rgba(255, 255, 255, 0.75)"
+border_width = 2
+width = 440
+height = 78
 halign = "right"
 valign = "bottom"
 x = -40
-y = -40
-z = 0
+y = -45
+z = 1
+
+[[visuals.layer]]
+enabled = true
+name = "tagline"
+kind = "text"
+text = "sea breeze"
+font_family = "Noto Serif Display"
+font_weight = 500
+font_style = "italic"
+font_size = 80
+color = "#FFFFFF"
+halign = "center"
+valign = "center"
+x = 233
+y = -265
+z = 1
+
+# Layers have no letter spacing, so the gaps are literal spaces
+[[visuals.layer]]
+enabled = true
+name = "tagline_caption"
+kind = "text"
+text = "C L E A R   W A T E R   ·   N O   R U S H"
+font_family = "Google Sans Flex"
+font_size = 16
+color = "rgba(255, 255, 255, 0.9)"
+halign = "center"
+valign = "center"
+x = 210
+y = -198
+z = 1
