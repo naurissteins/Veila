@@ -45,6 +45,50 @@ fn keyboard_layout_style_defaults_to_geom() {
 }
 
 #[test]
+fn battery_icon_renders_the_configured_color_and_alpha() {
+    use veila_renderer::{
+        icon::{AssetIcon, BatteryIcon, IconStyle, draw_icon},
+        shape::Rect,
+    };
+
+    let size = FrameSize::new(80, 80);
+    for (configured, color) in [
+        ("#0F4C66", ClearColor::opaque(15, 76, 102)),
+        ("#0F4C6680", ClearColor::rgba(15, 76, 102, 128)),
+    ] {
+        let config = veila_common::AppConfig::from_toml_str(&format!(
+            r#"
+            [visuals.battery]
+            color = "{configured}"
+            background_size = 0
+            size = 20
+            halign = "left"
+            valign = "top"
+            "#
+        ))
+        .unwrap();
+        let mut shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
+        shell.set_battery_snapshot(Some(veila_common::BatterySnapshot {
+            percent: 100,
+            charging: false,
+        }));
+
+        let mut actual = SoftwareBuffer::solid(size, ClearColor::opaque(255, 255, 255)).unwrap();
+        let mut expected = actual.clone();
+        shell
+            .render_context()
+            .render_top_right_indicators(&mut actual);
+        draw_icon(
+            &mut expected,
+            Rect::new(0, 0, 20, 20),
+            AssetIcon::Battery(BatteryIcon::Full),
+            IconStyle::new(color).with_padding(0),
+        );
+        assert!(actual.pixels() == expected.pixels(), "{configured}");
+    }
+}
+
+#[test]
 fn weather_styles_use_configured_font_size_px() {
     let theme = ShellTheme {
         foreground: ClearColor::rgba(240, 244, 250, 255),
