@@ -8,6 +8,9 @@ use veila_renderer::{
 
 pub(super) const STARTUP_TEXT_BUDGET: usize = 64 * 1024;
 pub(super) const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
+const STARTUP_TITLE_BUDGET: usize = 256 * 1024;
+const MIN_STARTUP_TITLE_SIZE_PX: usize = 64;
+const MAX_STARTUP_TITLE_BYTES: usize = 16;
 const STARTUP_WORDMARK_BUDGET: usize = 5 * MAX_CUSTOM_LAYER_FONT_SIZE_PX.pow(2) as usize;
 const MIN_STARTUP_WORDMARK_SIZE_PX: usize = 128;
 
@@ -22,10 +25,16 @@ impl RenderContext<'_> {
         }
 
         let mut complete = true;
+        let mut title_available = true;
         let mut wordmark_available = true;
         for (index, layer) in self.theme.layers.iter().enumerate() {
             if let Some(remaining) = &mut startup_budget
-                && !reserve_startup_text(layer, remaining, &mut wordmark_available)
+                && !reserve_startup_text(
+                    layer,
+                    remaining,
+                    &mut title_available,
+                    &mut wordmark_available,
+                )
             {
                 complete = false;
                 continue;
@@ -95,6 +104,7 @@ impl RenderContext<'_> {
 fn reserve_startup_text(
     layer: &VisualLayer,
     remaining: &mut usize,
+    title_available: &mut bool,
     wordmark_available: &mut bool,
 ) -> bool {
     if layer.kind != LayerKind::Text || layer.background_color.is_some_and(|color| color.alpha > 0)
@@ -108,6 +118,20 @@ fn reserve_startup_text(
         .text
         .len()
         .saturating_mul(font_size.saturating_mul(font_size));
+    // reserve the label budget for smaller layers when a short title can use its own allowance
+    if *title_available
+        && font_size >= MIN_STARTUP_TITLE_SIZE_PX
+        && cost <= STARTUP_TITLE_BUDGET
+        && layer.text.len() <= MAX_STARTUP_TITLE_BYTES
+        && layer.text.contains(' ')
+        && layer
+            .text
+            .bytes()
+            .all(|byte| byte == b' ' || byte.is_ascii_graphic())
+    {
+        *title_available = false;
+        return true;
+    }
     if let Some(unused) = remaining.checked_sub(cost) {
         *remaining = unused;
         return true;

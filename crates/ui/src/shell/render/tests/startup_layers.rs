@@ -52,6 +52,79 @@ const DUSK_LAYERS: &str = r##"
     z = 2
 "##;
 
+const BORACAY_LAYERS: &str = r##"
+    [[visuals.layer]]
+    name = "tagline"
+    kind = "text"
+    text = "sea breeze"
+    font_family = "Noto Serif Display"
+    font_weight = 500
+    font_style = "italic"
+    font_size = 80
+    color = "#00FF00"
+    halign = "center"
+    valign = "center"
+    x = 233
+    y = -165
+    z = 1
+
+    [[visuals.layer]]
+    name = "tagline_caption"
+    kind = "text"
+    text = "C L E A R   W A T E R   ·   N O   R U S H"
+    font_family = "Google Sans Flex"
+    font_size = 16
+    color = "#0000FF"
+    halign = "center"
+    valign = "center"
+    x = 210
+    y = -98
+    z = 1
+"##;
+
+#[test]
+fn startup_overlay_draws_boracay_title_and_caption_together() {
+    let config = AppConfig::from_toml_str(BORACAY_LAYERS).unwrap();
+    let shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
+
+    for units in [120, 150, 180, 240] {
+        let scale = RenderScale::from_units(units);
+        let mut startup = frame(scale);
+        let mut full = frame(scale);
+
+        assert!(shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+        assert!(has_color(&startup, 1), "title");
+        assert!(has_color(&startup, 0), "caption");
+        shell.render_static_overlay_at_scale(&mut full, scale);
+        assert_eq!(startup.pixels(), full.pixels());
+    }
+}
+
+#[test]
+fn startup_title_allowance_defers_additional_or_over_budget_titles() {
+    let mut config = AppConfig::from_toml_str(BORACAY_LAYERS).unwrap();
+    let mut title = config.visuals.layer[0].clone();
+    title.color = Some(veila_common::ConfigColor(255, 0, 0, 255));
+    title.position.x = Some(-160);
+    config.visuals.layer.push(title);
+    let shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
+    let scale = RenderScale::from_units(180);
+    let mut startup = frame(scale);
+
+    assert!(!shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+    assert!(has_color(&startup, 1), "first title");
+    assert!(!has_color(&startup, 2), "second title");
+
+    config.visuals.layer.truncate(2);
+    config.visuals.layer[0].font_size = Some(128);
+    let shell = ShellState::new(ShellTheme::from_config(&config), None, None, true);
+    let mut startup = frame(scale);
+
+    assert!(!shell.render_startup_static_overlay_at_scale(&mut startup, scale));
+    assert!(!has_color(&startup, 1), "over-budget title");
+    assert!(has_color(&startup, 0), "caption");
+}
+
 #[test]
 fn startup_overlay_draws_the_complete_dusk_scene() {
     let config = AppConfig::from_toml_str(DUSK_LAYERS).unwrap();
